@@ -36,10 +36,11 @@ afterAll(() => db.close());
 
 function spellingSet(location: string): string[] {
   const s = quranWordSpellings(dk(location));
-  return [...new Set([s.imlaei, s.rasm, ...s.mixed])].sort();
+  return [...new Set([s.imlaei, ...s.alternates, s.rasm, ...s.mixed])].sort();
 }
 
 describe('quranWordSpellings', () => {
+  // The design's table (docs/plans/2026-11-14-word-study/03-word-search.md §7).
   it.each([
     ['2:3:5', 'ٱلصَّلَوٰةَ', ['الصلاه', 'الصلوه']],
     ['1:1:3', 'ٱلرَّحْمَٰنِ', ['الرحمان', 'الرحمن']],
@@ -68,9 +69,43 @@ describe('quranWordSpellings', () => {
     expect(spellingSet(location)).toEqual(expected);
   });
 
+  // Rules added after measuring typed spellings against the whole text
+  // (docs/features/quran-search.md, "Spelling rules").
+  it.each([
+    ['69:3:2', 'أَدْرَىٰكَ (ىٰ before a suffix)', ['ادراك', 'ادريك']],
+    ['3:3:10', 'ٱلتَّوْرَىٰةَ', ['التوراه', 'التوريه']],
+    ['2:258:18', 'يُحْيِۦ (small yeh after yeh)', ['يحي', 'يحيي']],
+    ['9:19:17', 'يَسْتَوُۥنَ (small waw after waw)', ['يستون', 'يستوون']],
+    ['2:251:5', 'دَاوُۥدُ', ['داود', 'داوود']],
+    ['81:8:2', 'ٱلْمَوْءُۥدَةُ', ['الموده', 'المووده']],
+    ['2:22:13', 'بِهِۦ (the pronoun only lengthens)', ['به']],
+    ['21:88:7', 'نُـۨجِي (small high noon)', ['نجي', 'ننجي']],
+    ['4:23:21', 'ٱلَّٰتِي (drawn with one lam)', ['اللاتي', 'اللتي']],
+    ['4:16:1', 'وَٱلَّذَانِ (dual, drawn with one lam)', ['واللذان']],
+    ['2:24:8', 'ٱلَّتِي (one lam in both)', ['التي']],
+    ['2:221:30', 'يَدْعُوٓا۟ (silent final alif)', ['يدعو', 'يدعوا']],
+    ['11:68:7', 'ثَمُودَا۟', ['ثمود', 'ثمودا']],
+    ['2:259:19', 'مِا۟ئَةَ (silent alif inside)', ['مايه', 'ميه']],
+    ['10:4:8', 'يَبْدَؤُا۟ (final hamza on waw)', ['يبد', 'يبدا', 'يبدوا']],
+    ['6:76:5', 'رَءَا', ['را', 'ري']],
+    ['3:184:8', 'جَآءُو', ['جاو', 'جاوا']],
+    ['10:94:8', 'فَسْـَٔلِ', ['فاسل', 'فسل']],
+    ['3:144:10', 'أَفَإِي۟ن (silent yeh)', ['افان', 'افاين']],
+  ])('%s %s', (location, _word, expected) => {
+    expect(spellingSet(location)).toEqual(expected);
+  });
+
+  it('keeps the plural alif as the main spelling', () => {
+    // قَالُوا۟: قالوا first; قالو only as an alternate.
+    const said = quranWordSpellings('قَالُوا\u{06DF}');
+    expect(said.imlaei).toBe('قالوا');
+    expect(said.alternates).toEqual(['قالو']);
+  });
+
   it('gives nothing for a verse marker', () => {
     expect(quranWordSpellings(dk('1:1:5'))).toEqual({
       imlaei: '',
+      alternates: [],
       rasm: '',
       mixed: [],
       hasHamza: false,
@@ -170,6 +205,26 @@ describe('quranWordForms (proclitics and the article)', () => {
     ]);
   });
 
+  it('spells an open taa with ة when the lemma ends in one', () => {
+    // رَحْمَتَ (lemma رَحْمَة) and ٱمْرَأَتُ (lemma read as ٱمْرَأَة)
+    expect(forms('2:218:12', morph([], false, 'رَحْمَة'))).toEqual([
+      'رحمت 3',
+      'رحمه 3',
+    ]);
+    expect(forms('3:35:3', morph([], false, 'ٱمْرَأَة'))).toEqual([
+      'امرات 3',
+      'امراه 3',
+    ]);
+    // Not for a plural -at (صلوات, lemma صَلَوٰة) or a word whose lemma ends
+    // in ت (أخت).
+    expect(
+      quranWordForms('صَلَوَٰتٌ', morph([], false, 'صَلَوٰة')).map(f => f.form),
+    ).toEqual(['صلوات', 'صلوت']);
+    expect(
+      quranWordForms('أُخْتٌ', morph([], false, 'أُخْت')).map(f => f.form),
+    ).toEqual(['اخت']);
+  });
+
   it('flags the hamza of the part each form spells', () => {
     const [full, bare] = quranWordForms(
       dk('2:4:10'),
@@ -234,9 +289,10 @@ describe('parseQuranQuery', () => {
     expect(keys(dk('2:3:5'))).toEqual([['الصلاه']]);
   });
 
-  it('joins a standalone يا, ها or ال to the next word', () => {
+  it('joins a standalone يا, ها or إل to the next word', () => {
     expect(keys('يا أيها')).toEqual([['ياايها']]);
-    expect(keys('ياأيها')).toEqual([['ياايها']]);
+    // Typed as one word, its أ is a medial seat like any other.
+    expect(keys('ياأيها')).toEqual([['ياايها', 'يايها']]);
     expect(keys('يا أيها الذين آمنوا')).toEqual([
       ['ياايها'],
       ['الذين'],
@@ -247,6 +303,9 @@ describe('parseQuranQuery', () => {
     // Not when typed with a hamza, nor at the end.
     expect(keys('ياء')).toEqual([['يا']]);
     expect(keys('قوم يا')).toEqual([['قوم'], ['يا']]);
+    // آل (family of) stays a word of its own, typed with or without madda.
+    expect(keys('آل فرعون')).toEqual([['ال'], ['فرعون']]);
+    expect(keys('ال عمران')).toEqual([['ال'], ['عمران']]);
   });
 
   it('asks for a hamza only when one is typed', () => {
@@ -266,6 +325,24 @@ describe('parseQuranQuery', () => {
     expect(keys('يستهزئون')).toEqual([['يستهزيون', 'يستهزون']]);
     expect(keys('رؤوف')).toEqual([['رووف', 'روف']]);
     expect(keys('شئ')).toEqual([['شي', 'ش']]);
+    // أ and إ after the first letter (يَسْـَٔلُونَكَ, أَرَءَيْتُمْ, ءَأَنتُمْ).
+    expect(keys('يسألونك')).toEqual([['يسالونك', 'يسلونك']]);
+    expect(keys('أرأيتم')).toEqual([['ارايتم', 'اريتم']]);
+    expect(keys('أأنتم')).toEqual([['اانتم', 'انتم']]);
+    expect(keys('أإله')).toEqual([['االه', 'اله']]);
+    // Never the first letter: أنتم keeps one key.
+    expect(keys('أنتم')).toEqual([['انتم']]);
+  });
+
+  it('counts letters, not marks, for the length cap', () => {
+    // 30 pasted words of 10 letters each are cut whole, after 20 words.
+    const word = 'كَتَبْنَٰهَا'.repeat(1);
+    const parsed = parseQuranQuery(Array(30).fill(`${word}كتب`).join(' '));
+    expect(parsed.kind === 'text' && parsed.tokens.length).toBe(20);
+    expect(
+      parsed.kind === 'text' &&
+        parsed.tokens.every(t => t.keys[0] === 'كتبناهاكتب'),
+    ).toBe(true);
   });
 
   it('reads a pasted verse with its end-of-ayah number', () => {
