@@ -6,7 +6,8 @@
  *
  *  - the verse label is in the numbering of the mushaf on screen (the store's
  *    currentVerseLabel), never "S:0", and says when verse tracking is off;
- *  - previous / next ayah are disabled when there is no verse tracking;
+ *  - previous / next ayah are disabled when there is no verse tracking, and
+ *    ask the store to skip (it tells a skip from the reciter moving on);
  *  - refused playback requests and untracked surahs surface as notices.
  */
 
@@ -124,6 +125,7 @@ interface ButtonProps {
   icon?: string;
   disabled?: boolean;
   children?: unknown;
+  onPress?: () => void;
 }
 
 let renderer: TestRenderer.ReactTestRenderer | null = null;
@@ -230,6 +232,26 @@ describe('verse label', () => {
       numberingMode: 'hafs',
     });
     expect(playPause().children).toBe('Al-Baqarah');
+  });
+});
+
+describe('previous / next ayah', () => {
+  it('ask the store to skip', () => {
+    const nextVerse = jest.fn();
+    const previousVerse = jest.fn();
+    setPlayer({
+      playbackState: 'playing',
+      currentSurah: 2,
+      numberingMode: 'hafs',
+      nextVerse,
+      previousVerse,
+    });
+    act(() => button('forward.end.fill').onPress?.());
+    expect(nextVerse).toHaveBeenCalledTimes(1);
+    expect(previousVerse).not.toHaveBeenCalled();
+    act(() => button('backward.end.fill').onPress?.());
+    expect(previousVerse).toHaveBeenCalledTimes(1);
+    expect(nextVerse).toHaveBeenCalledTimes(1);
   });
 });
 

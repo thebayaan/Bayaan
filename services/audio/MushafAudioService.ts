@@ -256,9 +256,14 @@ class MushafAudioService {
     }
   }
 
-  seekToNextAyah(): void {
-    if (!this.verseSeekingEnabled) return;
-    if (this.lastTrackedAyah < 0 || this.timestamps.length === 0) return;
+  // @ai-start
+  /**
+   * Returns false when nothing was done (verse seeking is off, or no verse
+   * is being tracked yet), so the caller can tell a skip from a no-op.
+   */
+  seekToNextAyah(): boolean {
+    if (!this.verseSeekingEnabled) return false;
+    if (this.lastTrackedAyah < 0 || this.timestamps.length === 0) return false;
 
     const nextAyah = this.lastTrackedAyah + 1;
     const maxAyah = this.timestamps[this.timestamps.length - 1].ayahNumber;
@@ -266,27 +271,28 @@ class MushafAudioService {
     if (nextAyah > maxAyah) {
       // End of surah — trigger surah end
       this.handleSurahEnd('skipped');
-      return;
+      return true;
     }
 
-    this.seekToAyah(nextAyah);
+    return this.seekToAyah(nextAyah);
   }
 
-  seekToPreviousAyah(): void {
-    if (!this.verseSeekingEnabled) return;
-    if (this.lastTrackedAyah <= 1 || this.timestamps.length === 0) return;
+  /** Returns false when nothing was done (see seekToNextAyah). */
+  seekToPreviousAyah(): boolean {
+    if (!this.verseSeekingEnabled) return false;
+    if (this.lastTrackedAyah <= 1 || this.timestamps.length === 0) return false;
 
     const prevAyah = this.lastTrackedAyah - 1;
     const minAyah = this.timestamps[0].ayahNumber;
 
     if (prevAyah < minAyah) {
       // Already at first ayah — seek to beginning
-      this.seekToAyah(minAyah);
-      return;
+      return this.seekToAyah(minAyah);
     }
 
-    this.seekToAyah(prevAyah);
+    return this.seekToAyah(prevAyah);
   }
+  // @ai-end
 
   setRate(rate: number): void {
     this.rate = Math.max(0.5, Math.min(2.0, rate));

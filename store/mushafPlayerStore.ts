@@ -257,6 +257,17 @@ export interface MushafPlayerStoreState {
     page: number,
     startAt?: string | AudioUnitInput,
   ) => Promise<void>;
+  // @ai-start
+  /**
+   * The reader's Next / Previous verse buttons. They go through the store,
+   * never straight to MushafAudioService: with "play each verse 2x / Loop"
+   * on, a seek the store did not know about was taken for the reciter
+   * reaching the next verse and answered with a jump back, so the buttons
+   * did nothing.
+   */
+  nextVerse: () => void;
+  previousVerse: () => void;
+  // @ai-end
   stop: () => void;
   computeAvailableReciters: () => Promise<void>;
 }
@@ -950,6 +961,25 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     void playSurahFrom(nextSurah, null);
   };
 
+  // @ai-start
+  /**
+   * Next / previous verse asked by the reader. As in jumpToEntry,
+   * `_entryAyah` is cleared first so the entry change the service dispatches
+   * for the seek is not mistaken for the reciter moving on (verse repeat
+   * would jump straight back), and the verse reached starts its own repeat
+   * count. When nothing moved (the first verse, no verse tracking) the verse
+   * playing keeps its place and its count.
+   */
+  const skipVerse = (forward: boolean) => {
+    const {_entryAyah, _versePlayCount} = get();
+    set({_entryAyah: 0, _versePlayCount: 1});
+    const moved = forward
+      ? mushafAudioService.seekToNextAyah()
+      : mushafAudioService.seekToPreviousAyah();
+    if (!moved) set({_entryAyah, _versePlayCount});
+  };
+  // @ai-end
+
   const registerCallbacks = () => {
     mushafAudioService.setOnAyahChange(handleEntryChange);
     mushafAudioService.setOnSurahEnd(handleSurahEnd);
@@ -961,6 +991,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     loadSurahAudio,
     prepareSurah,
     registerCallbacks,
+    skipVerse, // @ai
   };
 }
 
@@ -1183,6 +1214,11 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             if (session === playbackSession) set({playbackState: 'idle'});
           }
         },
+
+        // @ai-start
+        nextVerse: () => engine.skipVerse(true),
+        previousVerse: () => engine.skipVerse(false),
+        // @ai-end
 
         stop: () => {
           playbackSession++;

@@ -354,11 +354,11 @@ export function MushafToolbar() {
   }, []);
 
   const handlePrev = useCallback(() => {
-    mushafAudioService.seekToPreviousAyah();
+    useMushafPlayerStore.getState().previousVerse(); // @ai
   }, []);
 
   const handleNext = useCallback(() => {
-    mushafAudioService.seekToNextAyah();
+    useMushafPlayerStore.getState().nextVerse(); // @ai
   }, []);
 
   const handleOptions = useCallback(() => {

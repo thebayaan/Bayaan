@@ -143,11 +143,11 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   }, []);
 
   const handlePrevAyah = useCallback(() => {
-    mushafAudioService.seekToPreviousAyah();
+    useMushafPlayerStore.getState().previousVerse(); // @ai
   }, []);
 
   const handleNextAyah = useCallback(() => {
-    mushafAudioService.seekToNextAyah();
+    useMushafPlayerStore.getState().nextVerse(); // @ai
   }, []);
 
   const handleOptions = useCallback(() => {

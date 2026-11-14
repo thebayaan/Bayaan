@@ -6,7 +6,9 @@
  * actions replaced by spies.
  *
  *  - Play starts the page on screen: a range or a start verse left in the
- *    store by an earlier request must not decide where it starts.
+ *    store by an earlier request must not decide where it starts;
+ *  - Next / Previous ayah go through the store, which tells a skip from the
+ *    reciter reaching the next verse (verse repeat used to undo the skip).
  */
 
 import React, {act} from 'react';
@@ -150,5 +152,27 @@ describe('Play', () => {
       payload: {currentPage: PAGE},
     });
     expect(st().pendingStartVerseKey).toBeNull();
+  });
+});
+
+describe('Next / Previous ayah', () => {
+  it('ask the store to skip', () => {
+    const nextVerse = jest.fn();
+    const previousVerse = jest.fn();
+    act(() => {
+      useMushafPlayerStore.setState({
+        playbackState: 'playing',
+        currentSurah: 2,
+        numberingMode: 'hafs',
+        nextVerse,
+        previousVerse,
+      });
+    });
+    press('Next ayah');
+    expect(nextVerse).toHaveBeenCalledTimes(1);
+    expect(previousVerse).not.toHaveBeenCalled();
+    press('Previous ayah');
+    expect(previousVerse).toHaveBeenCalledTimes(1);
+    expect(nextVerse).toHaveBeenCalledTimes(1);
   });
 });

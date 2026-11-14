@@ -621,6 +621,95 @@ describe('Play after the previous playback ended by itself', () => {
   });
 });
 
+describe('Next / Previous verse while each verse repeats', () => {
+  const range = () => st().setRange({surah: 2, ayah: 30}, {surah: 2, ayah: 37});
+
+  it('each verse 2x: Next goes to the next verse at the first tap', async () => {
+    range();
+    st().setVerseRepeatCount(2);
+    await play('hafs-clean', 2, '2:30');
+    at(entry('hafs-clean', 2, 30).timestampFrom + 50);
+    const seeks = player().seeks.length;
+    st().nextVerse();
+    expect(st().currentVerseKey).toBe('2:31');
+    // one seek, to 2:31: no jump back to 2:30
+    expect(player().seeks.slice(seeks)).toEqual([
+      entry('hafs-clean', 2, 31).timestampFrom / 1000,
+    ]);
+    st().nextVerse();
+    expect(st().currentVerseKey).toBe('2:32');
+  });
+
+  it('each verse Loop: Next and Previous leave the verse', async () => {
+    range();
+    st().setVerseRepeatCount(0);
+    await play('hafs-clean', 2, '2:30');
+    at(entry('hafs-clean', 2, 30).timestampFrom + 50);
+    st().nextVerse();
+    st().nextVerse();
+    expect(st().currentVerseKey).toBe('2:32');
+    st().previousVerse();
+    expect(st().currentVerseKey).toBe('2:31');
+    // and the verse reached loops, as asked
+    at(entry('hafs-clean', 2, 32).timestampFrom + 50);
+    expect(st().currentVerseKey).toBe('2:31');
+  });
+
+  it('each verse 3x: Previous goes back at the first tap', async () => {
+    range();
+    st().setVerseRepeatCount(3);
+    await play('hafs-clean', 2, '2:32');
+    at(entry('hafs-clean', 2, 32).timestampFrom + 50);
+    st().previousVerse();
+    expect(st().currentVerseKey).toBe('2:31');
+  });
+
+  it('the verse reached is played its full number of times', async () => {
+    range();
+    st().setVerseRepeatCount(2);
+    await play('hafs-clean', 2, '2:30');
+    // 2:30 is on its second play when Next is tapped
+    at(entry('hafs-clean', 2, 31).timestampFrom + 50);
+    expect(st()).toMatchObject({currentVerseKey: '2:30', _versePlayCount: 2});
+    st().nextVerse();
+    expect(st()).toMatchObject({currentVerseKey: '2:31', _versePlayCount: 1});
+    // 2:31 plays twice before 2:32
+    at(entry('hafs-clean', 2, 32).timestampFrom + 50);
+    expect(st().currentVerseKey).toBe('2:31');
+    at(entry('hafs-clean', 2, 32).timestampFrom + 50);
+    expect(st().currentVerseKey).toBe('2:32');
+  });
+
+  it('Previous on the first verse does nothing and loses no repeat', async () => {
+    st().setVerseRepeatCount(2);
+    await play('hafs-clean', 604, '112:1');
+    at(entry('hafs-clean', 112, 1).timestampFrom + 50);
+    at(entry('hafs-clean', 112, 2).timestampFrom + 50); // second play of 112:1
+    expect(st()).toMatchObject({currentVerseKey: '112:1', _versePlayCount: 2});
+    const seeks = player().seeks.length;
+    st().previousVerse();
+    expect(player().seeks).toHaveLength(seeks);
+    expect(st()).toMatchObject({
+      currentVerseKey: '112:1',
+      _entryAyah: 1,
+      _versePlayCount: 2,
+    });
+    // so the reciter reaching 112:2 now moves on instead of repeating again
+    at(entry('hafs-clean', 112, 2).timestampFrom + 50);
+    expect(st().currentVerseKey).toBe('112:2');
+  });
+
+  it('without verse tracking they do nothing', async () => {
+    await play('doori-269', 562, '67:1');
+    expect(st().numberingMode).toBe('disabled');
+    const seeks = player().seeks.length;
+    st().nextVerse();
+    st().previousVerse();
+    expect(player().seeks).toHaveLength(seeks);
+    expect(st().playbackState).toBe('playing');
+  });
+});
+
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
