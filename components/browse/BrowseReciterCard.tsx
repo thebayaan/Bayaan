@@ -90,7 +90,7 @@ function createStyles(theme: Theme, width: number, height: number) {
     reciterInfo: {
       fontSize: moderateScale(9),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textSecondary,
       lineHeight: moderateScale(12),
       includeFontPadding: false,
       flexShrink: 1,
