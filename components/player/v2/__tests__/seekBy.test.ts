@@ -16,7 +16,17 @@ jest.mock('@/services/player/store/playerStore', () => {
     queue: {tracks: [{url: 'https://cdn.example.com/2.mp3'}], currentIndex: 0},
     seekTo: jest.fn(),
   };
-  return {usePlayerStore: {getState: () => state}};
+  return {
+    usePlayerStore: {getState: () => state},
+    // The real check: the player holds the current track, loaded.
+    isCurrentTrackLoaded: () => {
+      const {expoAudioService: audio} = jest.requireMock(
+        '@/services/audio/ExpoAudioService',
+      );
+      const url = state.queue.tracks[state.queue.currentIndex]?.url;
+      return !!url && audio.isSourceReady(url) && audio.getIsLoaded();
+    },
+  };
 });
 
 import {expoAudioService} from '@/services/audio/ExpoAudioService';

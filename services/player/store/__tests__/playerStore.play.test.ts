@@ -297,6 +297,34 @@ describe('playerStore: loads that fail', () => {
   });
 });
 
+describe('playerStore: play() straight after a load that failed', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('does not load the same track a second time', async () => {
+    // Many screens do `await updateQueue(...)` then `await play()`.
+    audio.isSourceReady.mockReturnValue(false);
+    audio.loadTrack.mockRejectedValue(new Error('offline'));
+    const reported = jest.fn();
+    const stop = onPlaybackFailed(reported);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    await usePlayerStore.getState().updateQueue([makeTrack('late')], 0);
+    await usePlayerStore.getState().play();
+
+    expect(audio.loadTrack).toHaveBeenCalledTimes(1);
+    expect(reported).toHaveBeenCalledTimes(1);
+    const state = usePlayerStore.getState();
+    expect(state.playback.state).toBe('paused');
+    expect(state.loading.trackLoading).toBe(false);
+    stop();
+    consoleError.mockRestore();
+  });
+});
+
 describe('playerStore.skipToNext() on the last track', () => {
   beforeEach(() => {
     jest.clearAllMocks();

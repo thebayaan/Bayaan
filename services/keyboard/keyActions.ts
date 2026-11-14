@@ -1,5 +1,6 @@
 // @ai-generated
 import {SheetManager, getSheetStack} from 'react-native-actions-sheet';
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
@@ -35,7 +36,8 @@ function ready() {
 export function togglePlayback(): void {
   const player = ready();
   if (!player) return;
-  if (player.playback.state === 'playing') player.pause();
+  // @ai As the play button: a stalled stream ('buffering') is playing.
+  if (isActivelyPlaying(player.playback.state)) player.pause();
   else player.play();
 }
 

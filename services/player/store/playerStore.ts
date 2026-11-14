@@ -131,6 +131,23 @@ let loadedSource: {trackId: string; url: string} | null = null;
 function sourceUrlFor(track: Track): string {
   return loadedSource?.trackId === track.id ? loadedSource.url : track.url;
 }
+
+// The last load that failed. Many callers do `await updateQueue(...)` and
+// then `await play()`. After a failed load, that play() would load the same
+// track again at once: a second wait and a second failure for one tap.
+let lastLoadFailure: {trackId: string; at: number} | null = null;
+const RETRY_AFTER_FAILURE_MS = 1500;
+
+function noteLoadFailure(trackId: string | undefined): void {
+  lastLoadFailure = trackId ? {trackId, at: Date.now()} : null;
+}
+
+function justFailedToLoad(trackId: string): boolean {
+  return (
+    lastLoadFailure?.trackId === trackId &&
+    Date.now() - lastLoadFailure.at < RETRY_AFTER_FAILURE_MS
+  );
+}
 // @ai-end
 
 // Monotonic id for the in-flight play operation. Every loadTrackAtIndex()
@@ -157,6 +174,24 @@ function invalidatePlayOps(): void {
 export function currentPlayOpId(): number {
   return playOpId;
 }
+
+// @ai-start
+/**
+ * Whether the player holds the current queue track, loaded and not failed,
+ * so its own clock can be trusted. The url compared is the one the track was
+ * loaded from, which is not always the one in the queue (see
+ * setTrackUrlResolver).
+ */
+export function isCurrentTrackLoaded(): boolean {
+  const {tracks, currentIndex} = usePlayerStore.getState().queue;
+  const track = tracks[currentIndex];
+  return (
+    !!track?.url &&
+    expoAudioService.isSourceReady(sourceUrlFor(track)) &&
+    expoAudioService.getIsLoaded()
+  );
+}
+// @ai-end
 
 /**
  * @ai Before a write that leaves no current track (the app then shows no
@@ -220,6 +255,7 @@ async function loadTrackAtIndex(
     // A superseded load that failed is not the user's problem any more: the
     // newer action owns the state, so do not surface the failure.
     if (opId !== playOpId) return 'superseded';
+    noteLoadFailure(track.id);
     throw error;
   }
   // @ai-end
@@ -361,6 +397,15 @@ export const usePlayerStore = create<PlayerStoreState>()(
             const finished =
               playback.state === 'ended' ||
               (duration > 0 && position >= duration - END_OF_TRACK_SECONDS);
+
+            // This track's load failed a moment ago and the user has been
+            // told. This play() is the tail of the same tap, not a retry.
+            if (!ready && justFailedToLoad(track.id)) {
+              set(state => ({
+                loading: {...state.loading, trackLoading: false},
+              }));
+              return;
+            }
 
             if (finished || !ready) {
               // A finished track goes on to what follows it, as it would

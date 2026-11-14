@@ -1,5 +1,8 @@
 // @ai-generated
-import {usePlayerStore} from '@/services/player/store/playerStore';
+import {
+  usePlayerStore,
+  isCurrentTrackLoaded,
+} from '@/services/player/store/playerStore';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 
 // A seek this old counts as landed, even if it never reported back.
@@ -17,12 +20,10 @@ let pendingSeek: {target: number; at: number} | null = null;
  * Android stream that is buffering again.
  */
 function playhead(): {position: number; duration: number} {
-  const {playback, queue} = usePlayerStore.getState();
-  const url = queue.tracks[queue.currentIndex]?.url;
-  const live =
-    !!url &&
-    expoAudioService.isSourceReady(url) &&
-    expoAudioService.getIsLoaded();
+  const {playback} = usePlayerStore.getState();
+  // The store knows which url the track was loaded from: a downloaded surah
+  // plays from its file, not from the url in the queue.
+  const live = isCurrentTrackLoaded();
   return live
     ? {
         position: expoAudioService.getCurrentTime(),
