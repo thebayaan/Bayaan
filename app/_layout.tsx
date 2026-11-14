@@ -4,7 +4,13 @@ import {uiFontFiles} from '@/i18n/fonts';
 import {bootstrapDirection} from '@/i18n/language';
 import {appDirection, appLayoutDirection, isRTL} from '@/utils/rtl';
 // @ai-end
-import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useReducer, // @ai
+} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
@@ -25,6 +31,7 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import {runAfterInteractions} from '@/utils/afterInteractions';
+import {hideSplash, whenSplashHidden} from '@/utils/splashHidden'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 // @ai-start
 import {LocaleDirContext, ThemeProvider} from 'expo-router/react-navigation';
@@ -63,6 +70,18 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
+// @ai-start
+import {
+  HomeHeldContext,
+  PHASE_TIMERS,
+  ReaderRestoreContext,
+  holdsHome,
+  holdsSplash,
+  readerRestoreReducer,
+  type ReaderRestorePhase,
+} from '@/services/mushaf/readerRestoreState';
+// @ai-end
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
@@ -181,7 +200,23 @@ function RootLayout() {
   useEffect(bootstrapDirection, []);
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
+  // @ai-start
+  // The restore of this launch (services/mushaf/readerRestoreState.ts). It
+  // reads the reader's flag once, before any route mounts: the reader writes
+  // it. Each phase has at most one timer.
+  const [restorePhase, dispatchRestore] = useReducer(
+    readerRestoreReducer,
+    null,
+    (): ReaderRestorePhase =>
+      mushafSessionStore.getLastScreenWasMushaf() ? 'pushing' : 'none',
+  );
+  useEffect(() => {
+    const timer = PHASE_TIMERS[restorePhase];
+    if (!timer) return;
+    const id = setTimeout(() => dispatchRestore(timer.event), timer.ms);
+    return () => clearTimeout(id);
+  }, [restorePhase]);
+  // @ai-end
   const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
   const initializationRef = useRef(false);
@@ -245,6 +280,14 @@ function RootLayout() {
     };
   }, [appIsReady]);
 
+  // @ai-start
+  // The Mushaf load does not hold the splash. A screen that needs it sooner (a
+  // restored reader, a link) starts it itself.
+  useEffect(() => {
+    whenSplashHidden().then(() => mushafPreloadService.startIfIdle());
+  }, []);
+  // @ai-end
+
   // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {
     runAfterInteractions(() => {
@@ -252,28 +295,6 @@ function RootLayout() {
       preloadTajweedData();
     });
   }, []);
-
-  const onLayoutRootView = useCallback(async () => {
-    try {
-      if (
-        appIsReady &&
-        fontsLoaded &&
-        isPlayerReady &&
-        !hasShareIntent &&
-        mushafRestoreHandled
-      ) {
-        await SplashScreen.hideAsync();
-      }
-    } catch (e) {
-      if (__DEV__) console.warn('Error hiding splash screen:', e);
-    }
-  }, [
-    appIsReady,
-    fontsLoaded,
-    isPlayerReady,
-    hasShareIntent,
-    mushafRestoreHandled,
-  ]);
 
   // Initialize app with expo-audio
   useEffect(() => {
@@ -348,7 +369,7 @@ function RootLayout() {
         const files = shareIntent.files;
         if (!files || files.length === 0) {
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           return;
         }
 
@@ -356,7 +377,7 @@ function RootLayout() {
 
         if (audioFiles.length === 0) {
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           return;
         }
 
@@ -369,7 +390,7 @@ function RootLayout() {
             file.fileName || i18n.t('app.sharedAudio'),
           );
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           showToast(i18n.t('app.fileImported'));
           SheetManager.show('organize-recitation', {
             payload: {recitation},
@@ -381,14 +402,14 @@ function RootLayout() {
           }));
           await importFiles(mapped);
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           showToast(i18n.t('app.filesImported', {count: audioFiles.length}));
           router.push('/collection/uploads');
         }
       } catch (error) {
         console.error('[ShareIntent] Import failed:', error);
         resetShareIntent();
-        await SplashScreen.hideAsync();
+        await hideSplash();
       }
     };
 
@@ -405,6 +426,7 @@ function RootLayout() {
   // MMKV reads are synchronous — no hydration wait needed.
   useEffect(() => {
     if (!appIsReady || !isPlayerReady || hasShareIntent) return;
+    if (restorePhase !== 'pushing') return; // @ai
 
     let cancelled = false;
     // A launch from a deep link (widget tap, notification) already routed
@@ -413,55 +435,47 @@ function RootLayout() {
       .catch(() => null)
       .then(initialUrl => {
         if (cancelled) return;
-        const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
-        const lastReadPage = mushafSessionStore.getLastReadPage();
-
-        if (!lastScreenWasMushaf || initialUrl) {
-          setMushafRestoreHandled(true);
+        // @ai-start
+        if (initialUrl) {
+          dispatchRestore('linkOpened');
           return;
         }
+        // @ai-end
+        const lastReadPage = mushafSessionStore.getLastReadPage();
         router.push({
           pathname: '/mushaf',
           params: lastReadPage ? {page: String(lastReadPage)} : undefined,
         });
-        // Let the navigation animation finish behind the splash before revealing
-        runAfterInteractions(() => {
-          setMushafRestoreHandled(true);
-        });
+        dispatchRestore('pushed'); // @ai
       });
     return () => {
       cancelled = true;
     };
-  }, [appIsReady, isPlayerReady, hasShareIntent]);
+  }, [appIsReady, isPlayerReady, hasShareIntent, restorePhase]);
 
-  // Hide splash once mushaf restore (if any) has settled.
-  // onLayout only fires once, so this effect covers the case where
-  // mushafRestoreHandled flips after the initial layout.
+  // @ai-start
+  // The one hide of the splash: the boot, the fonts and a share have ended,
+  // and the restore lets it go (at the reader's first content or at the
+  // deadline). The report comes from a layout effect, so React runs this
+  // render and this effect in the same task as the commit of the content.
+  const splashCanHide =
+    appIsReady &&
+    fontsLoaded &&
+    isPlayerReady &&
+    !hasShareIntent &&
+    !holdsSplash(restorePhase);
   useEffect(() => {
-    if (
-      appIsReady &&
-      fontsLoaded &&
-      isPlayerReady &&
-      !hasShareIntent &&
-      mushafRestoreHandled
-    ) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [
-    appIsReady,
-    fontsLoaded,
-    isPlayerReady,
-    hasShareIntent,
-    mushafRestoreHandled,
-  ]);
+    if (splashCanHide) hideSplash().catch(() => undefined);
+  }, [splashCanHide]);
+  // @ai-end
 
   if (fontError) {
-    SplashScreen.hideAsync();
+    hideSplash();
     return <AppErrorScreen message={i18n.t('app.fontError')} />; // @ai
   }
 
   if (setupError) {
-    SplashScreen.hideAsync();
+    hideSplash();
     // @ai-start
     return (
       <AppErrorScreen
@@ -503,84 +517,92 @@ function RootLayout() {
                   // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
                   overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
                   onTouchStart={recordTouch} // @ai
-                  onLayout={onLayoutRootView}>
+                >
                   <NetworkStatusMonitor />
                   <ConfirmationDialogHost /* @ai: iPad confirmations */ />
                   <SheetProvider>
-                    <Stack
-                      screenOptions={{
-                        headerShown: false,
-                        contentStyle: {
-                          direction: appDirection,
-                          paddingTop: 0,
-                          backgroundColor: theme.colors.background,
-                        },
-                        animation: 'fade',
-                      }}>
-                      <Stack.Screen
-                        name="(tabs)"
-                        options={{headerShown: false}}
-                      />
-                      <Stack.Screen
-                        name="adhkar-playing"
-                        options={{headerShown: false, animation: 'none'}}
-                      />
-                      <Stack.Screen
-                        name="mushaf"
-                        options={{
-                          headerShown: USE_GLASS,
-                          headerTransparent: true,
-                          headerStyle: {backgroundColor: 'transparent'},
-                          headerShadowVisible: false,
-                          headerTitle: '',
-                          headerTitleAlign: 'center',
-                          headerBackButtonDisplayMode: 'minimal',
-                          animation: isRTL
-                            ? 'slide_from_left'
-                            : 'slide_from_right',
-                          fullScreenGestureEnabled: false,
-                        }}
-                      />
-                      {/* @ai-start */}
-                      <Stack.Screen
-                        name="translations"
-                        options={
-                          isTablet
-                            ? {
-                                // iPad: a centered card over the reader
-                                // (TabletDialog), not a full page.
-                                presentation: 'transparentModal',
-                                animation: 'fade',
-                                headerShown: false,
-                                contentStyle: {
-                                  direction: appDirection,
-                                  backgroundColor: 'transparent',
-                                },
-                              }
-                            : {
-                                title: i18n.t('home:translations.title'),
-                                headerShown: true,
-                                headerTintColor: theme.colors.text,
-                                ...(USE_GLASS
-                                  ? {
-                                      headerTransparent: true,
-                                      headerStyle: {
-                                        backgroundColor: 'transparent',
-                                      },
-                                    }
-                                  : {
-                                      headerStyle: {
-                                        backgroundColor:
-                                          theme.colors.background,
-                                      },
-                                    }),
-                                headerShadowVisible: false,
-                                headerBackButtonDisplayMode: 'minimal',
-                              }
-                        }
-                      />
-                      {/* @ai-end */}
-                    </Stack>
+                    {/* @ai-start */}
+                    <ReaderRestoreContext.Provider value={dispatchRestore}>
+                      <HomeHeldContext.Provider value={holdsHome(restorePhase)}>
+                        {/* @ai-end */}
+                        <Stack
+                          screenOptions={{
+                            headerShown: false,
+                            contentStyle: {
+                              direction: appDirection,
+                              paddingTop: 0,
+                              backgroundColor: theme.colors.background,
+                            },
+                            animation: 'fade',
+                          }}>
+                          <Stack.Screen
+                            name="(tabs)"
+                            options={{headerShown: false}}
+                          />
+                          <Stack.Screen
+                            name="adhkar-playing"
+                            options={{headerShown: false, animation: 'none'}}
+                          />
+                          <Stack.Screen
+                            name="mushaf"
+                            options={{
+                              headerShown: USE_GLASS,
+                              headerTransparent: true,
+                              headerStyle: {backgroundColor: 'transparent'},
+                              headerShadowVisible: false,
+                              headerTitle: '',
+                              headerTitleAlign: 'center',
+                              headerBackButtonDisplayMode: 'minimal',
+                              animation: isRTL
+                                ? 'slide_from_left'
+                                : 'slide_from_right',
+                              fullScreenGestureEnabled: false,
+                            }}
+                          />
+                          {/* @ai-start */}
+                          <Stack.Screen
+                            name="translations"
+                            options={
+                              isTablet
+                                ? {
+                                    // iPad: a centered card over the reader
+                                    // (TabletDialog), not a full page.
+                                    presentation: 'transparentModal',
+                                    animation: 'fade',
+                                    headerShown: false,
+                                    contentStyle: {
+                                      direction: appDirection,
+                                      backgroundColor: 'transparent',
+                                    },
+                                  }
+                                : {
+                                    title: i18n.t('home:translations.title'),
+                                    headerShown: true,
+                                    headerTintColor: theme.colors.text,
+                                    ...(USE_GLASS
+                                      ? {
+                                          headerTransparent: true,
+                                          headerStyle: {
+                                            backgroundColor: 'transparent',
+                                          },
+                                        }
+                                      : {
+                                          headerStyle: {
+                                            backgroundColor:
+                                              theme.colors.background,
+                                          },
+                                        }),
+                                    headerShadowVisible: false,
+                                    headerBackButtonDisplayMode: 'minimal',
+                                  }
+                            }
+                          />
+                          {/* @ai-end */}
+                        </Stack>
+                        {/* @ai-start */}
+                      </HomeHeldContext.Provider>
+                    </ReaderRestoreContext.Provider>
+                    {/* @ai-end */}
                     <PlayerHost />
                     {keyCommandsSupported() && <AppKeyCommands />}
                     <WhatsNewModal ref={whatsNewModalRef} />

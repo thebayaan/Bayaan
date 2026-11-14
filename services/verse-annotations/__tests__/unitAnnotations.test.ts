@@ -417,45 +417,55 @@ describe('describeSavedVerse: a collection row in its own rewayah', () => {
 });
 
 describe('opening a saved verse', () => {
-  it('Hafs rows route exactly as before (no anchor)', () => {
+  it('Hafs rows route with no anchor', () => {
     for (const rewayahId of ['hafs', null, undefined] as const) {
-      const params = savedVerseRouteParams(
-        {verseKey: '2:255', surahNumber: 2, ayahNumber: 255, rewayahId},
-        42,
-      );
-      expect(params).toEqual({surah: '2', ayah: '255', page: '42'});
+      const params = savedVerseRouteParams({
+        verseKey: '2:255',
+        surahNumber: 2,
+        ayahNumber: 255,
+        rewayahId,
+      });
+      expect(params).toEqual({surah: '2', ayah: '255'});
       expect('anchor' in params).toBe(false);
     }
   });
 
   it('rewayah rows pass their anchor so the exact verse is selected', () => {
     expect(
-      savedVerseRouteParams(
-        {verseKey: '1:7:5', surahNumber: 1, ayahNumber: 7, rewayahId: 'warsh'},
-        1,
-      ),
-    ).toEqual({surah: '1', ayah: '7', page: '1', anchor: '1:7:5'});
+      savedVerseRouteParams({
+        verseKey: '1:7:5',
+        surahNumber: 1,
+        ayahNumber: 7,
+        rewayahId: 'warsh',
+      }),
+    ).toEqual({surah: '1', ayah: '7', anchor: '1:7:5'});
     expect(
-      savedVerseRouteParams(
-        {verseKey: '1:7:1', surahNumber: 1, ayahNumber: 7, rewayahId: 'warsh'},
-        1,
-      ).anchor,
+      savedVerseRouteParams({
+        verseKey: '1:7:1',
+        surahNumber: 1,
+        ayahNumber: 7,
+        rewayahId: 'warsh',
+      }).anchor,
     ).toBe('1:7:1');
     // A row saved before verse units passes its key: it opens at the first
     // verse it marks (unitForRouteAnchor).
     expect(
-      savedVerseRouteParams(
-        {verseKey: '1:7', surahNumber: 1, ayahNumber: 7, rewayahId: 'warsh'},
-        1,
-      ).anchor,
+      savedVerseRouteParams({
+        verseKey: '1:7',
+        surahNumber: 1,
+        ayahNumber: 7,
+        rewayahId: 'warsh',
+      }).anchor,
     ).toBe('1:7');
-    // An unreadable key opens its page only.
+    // An unreadable key opens its Hafs verse only.
     expect(
-      savedVerseRouteParams(
-        {verseKey: 'x', surahNumber: 1, ayahNumber: 7, rewayahId: 'warsh'},
-        1,
-      ),
-    ).toEqual({surah: '1', ayah: '7', page: '1'});
+      savedVerseRouteParams({
+        verseKey: 'x',
+        surahNumber: 1,
+        ayahNumber: 7,
+        rewayahId: 'warsh',
+      }),
+    ).toEqual({surah: '1', ayah: '7'});
   });
 
   it('unitForRouteAnchor opens the verse holding the anchored word', () => {

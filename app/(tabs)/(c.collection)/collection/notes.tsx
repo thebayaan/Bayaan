@@ -57,6 +57,7 @@ const NotesScreen = () => {
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+  const openingRef = useRef(false); // @ai
 
   useCollectionNativeHeader({
     title: t('collectionScreen.notes'),
@@ -87,6 +88,7 @@ const NotesScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      openingRef.current = false; // @ai: ignores taps after one opened the reader
       loadNotes();
     }, [loadNotes]),
   );
@@ -120,19 +122,14 @@ const NotesScreen = () => {
   }, []);
 
   // @ai-start
-  const openingRef = useRef(false);
   const handleOpenVerse = useCallback(
-    async (note: VerseNote) => {
+    (note: VerseNote) => {
       if (openingRef.current) return;
       openingRef.current = true;
-      try {
-        router.push({
-          pathname: '/mushaf',
-          params: await savedVerseOpenParams(note),
-        });
-      } finally {
-        openingRef.current = false;
-      }
+      router.push({
+        pathname: '/mushaf',
+        params: savedVerseOpenParams(note),
+      });
     },
     [router],
   );

@@ -1,9 +1,7 @@
 import React, {
   useEffect,
-  useMemo,
   useCallback,
-  useState, // @ai
-  useSyncExternalStore, // @ai
+  useContext, // @ai
 } from 'react';
 import {
   View,
@@ -15,8 +13,11 @@ import {
 import {Stack, useLocalSearchParams} from 'expo-router';
 import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {useTheme} from '@/hooks/useTheme';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
+import {
+  useMushafOpenTarget,
+  type MushafOpenTarget,
+} from '@/hooks/useMushafOpenTarget'; // @ai
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 // @ai-start
 import {
@@ -26,6 +27,7 @@ import {
 } from '@/services/mushaf/MushafVerseMapService';
 // @ai-end
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {ReaderRestoreContext} from '@/services/mushaf/readerRestoreState'; // @ai
 import {
   formatPlaybackInfo, // @ai
   getPlaybackNotice, // @ai
@@ -61,53 +63,32 @@ export type MushafScreenParams = {
   // rewayah's verse holding that slot (verse-units contract 4.4) instead of
   // every verse holding Hafs `surah`:`ayah`. Never a rewayah verse number.
   anchor?: string;
+  // The rewayah a saved verse was saved in, sent with no page. The screen
+  // restores it when the data is ready, then opens the page of the verse.
+  rewayah?: string;
+  // '1' from the player's Repeat, sent with no page. The screen shows the
+  // player options when the page of the verse is known.
+  playerOptions?: string;
   // @ai-end
 };
 
 export default function MushafScreen() {
-  const {surah, page, ayah, anchor} =
-    useLocalSearchParams<MushafScreenParams>(); // @ai
+  const params = useLocalSearchParams<MushafScreenParams>(); // @ai
   const {theme} = useTheme();
   const {t} = useTranslation(['reader', 'common']); // @ai
-
-  // Safety net — DK data is initialized at AppInitializer priority 4-5,
-  // so in practice this is always true by the time MushafScreen mounts.
-  // Capture it as a value so the hooks below run unconditionally.
-  const dkReady = digitalKhattDataService.initialized;
-  const surahStartPages = dkReady
-    ? digitalKhattDataService.getSurahStartPages()
-    : {};
-
-  // Resolve page number from params
-  const pageNumber = useMemo(() => {
-    if (page) {
-      const p = parseInt(page, 10);
-      if (!isNaN(p) && p >= 1 && p <= 604) return p;
-    }
-    if (surah) {
-      const s = parseInt(surah, 10);
-      if (!isNaN(s) && surahStartPages[s]) return surahStartPages[s];
-    }
-    return 1;
-  }, [page, surah, surahStartPages]);
-
   // @ai-start
-  // The surah the user asked for, when the page was resolved from it. A page
-  // can hold the end of one surah and the start of another (or three, on
-  // 601-604), so the page number alone cannot name the surah — this keeps
-  // the header honest until the reader turns the page.
-  const initialSurahId = useMemo(() => {
-    if (page || !surah) return undefined;
-    const s = parseInt(surah, 10);
-    return !isNaN(s) && surahStartPages[s] ? s : undefined;
-  }, [page, surah, surahStartPages]);
+  // The data loads after the splash, so this screen can open first. The reader
+  // mounts when the data, the fonts and its page are ready.
+  const open = useMushafOpenTarget(params);
+  // The restore of this launch (app/_layout.tsx) waits for the first content:
+  // the page that the reader opens on, or the failed view.
+  const reportRestore = useContext(ReaderRestoreContext);
+  const onFirstContent = useCallback(
+    () => reportRestore('content'),
+    [reportRestore],
+  );
+  useFirstContent(open.state === 'failed', onFirstContent);
   // @ai-end
-
-  // Build initial verse key for highlight
-  const initialVerseKey = useMemo(() => {
-    if (surah && ayah) return `${surah}:${ayah}`;
-    return undefined;
-  }, [surah, ayah]);
 
   // Phones may turn to landscape while the mushaf screen is open and go back
   // to portrait on exit. iPads aren't locked, so leaving the reader in
@@ -119,47 +100,102 @@ export default function MushafScreen() {
     mushafSessionStore.setLastScreenWasMushaf(true);
     return () => {
       mushafSessionStore.setLastScreenWasMushaf(false);
+      // With no reader there is nothing to wait for: a return to Home renders
+      // it at once. @ai
+      reportRestore('closed'); // @ai
       // Reset UI state in store when leaving mushaf
       useMushafPlayerStore.setState({
         isImmersive: false,
         isSearchMode: false,
       });
     };
-  }, []);
+  }, [reportRestore]); // @ai
 
   // @ai-start
-  // When the mushaf text cannot be loaded at all (e.g. no storage left to
-  // copy it to the device), say so and offer a retry instead of an endless
-  // spinner. The preload retries both the text and the fonts.
-  const preloadState = useSyncExternalStore(subscribePreload, getPreloadState);
-  const [retrying, setRetrying] = useState(false);
-  const retryLoad = useCallback(() => {
-    setRetrying(true);
-    mushafPreloadService
-      .initialize()
-      .catch(() => undefined)
-      .finally(() => setRetrying(false));
-  }, []);
+  if (open.state === 'ready') {
+    return (
+      <MushafReader
+        target={open.target}
+        playerOptions={params.playerOptions === '1'}
+        onFirstContent={onFirstContent}
+      />
+    );
+  }
+
+  // When the mushaf text cannot be loaded (e.g. no storage left to copy it
+  // to the device), say so and offer a retry, not an endless spinner.
+  if (open.state === 'failed') {
+    return (
+      <View
+        style={[styles.loading, {backgroundColor: theme.colors.background}]}
+        accessibilityRole="alert">
+        <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
+          {t('reader:mushaf.loadFailedTitle')}
+        </Text>
+        <Text style={[styles.errorBody, {color: theme.colors.text}]}>
+          {t('reader:mushaf.loadFailedBody')}
+        </Text>
+        <Pressable
+          onPress={open.retry}
+          accessibilityRole="button"
+          hitSlop={8}
+          style={({pressed}) => [
+            styles.retryButton,
+            {borderColor: theme.colors.text},
+            pressed && styles.retryButtonPressed,
+          ]}>
+          <Text style={[styles.retryText, {color: theme.colors.text}]}>
+            {t('common:actions.tryAgain')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
   // @ai-end
+  return (
+    <View style={[styles.loading, {backgroundColor: theme.colors.background}]}>
+      <ActivityIndicator size="large" color={theme.colors.text} />
+    </View>
+  );
+}
+
+// @ai-start
+// The reader at its open target. The target is fixed, so each effect here runs
+// once: the player options open once, and the verse flashes once.
+function MushafReader({
+  target,
+  playerOptions,
+  onFirstContent,
+}: {
+  target: MushafOpenTarget;
+  /** The player's Repeat opened the reader: show the player options. */
+  playerOptions: boolean;
+  /** Called once, when the page of the target has content. */
+  onFirstContent: () => void;
+}) {
+  const {theme} = useTheme();
+  const {page, anchor, verseKey} = target;
+
+  // The options of the player's Repeat need the page (VerseActionsSheet).
+  useEffect(() => {
+    if (!playerOptions) return;
+    useMushafPlayerStore.setState({currentPage: page});
+    SheetManager.show('mushaf-player-options', {payload: {currentPage: page}});
+  }, [playerOptions, page]);
 
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
   useEffect(() => {
-    // @ai-start
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const flash = () => {
       // The unit a stored anchor names, in the shown rewayah's numbering.
       const unitSelection = anchor ? selectionForAnchor(anchor) : null;
-      if (!unitSelection && !initialVerseKey) return;
+      if (!unitSelection && !verseKey) return;
       const selection = useMushafVerseSelectionStore.getState();
       if (unitSelection) {
-        selection.selectUnits(
-          unitSelection.rewayah,
-          unitSelection.units,
-          pageNumber,
-        );
-      } else if (initialVerseKey) {
-        selection.selectVerse(initialVerseKey, pageNumber);
+        selection.selectUnits(unitSelection.rewayah, unitSelection.units, page);
+      } else if (verseKey) {
+        selection.selectVerse(verseKey, page);
       }
       timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
@@ -172,7 +208,7 @@ export default function MushafScreen() {
     // of a Hafs verse starts once the pages can paint it (no verse layer is
     // painted while the units build) instead of running out unseen.
     if (
-      (anchor || initialVerseKey) &&
+      (anchor || verseKey) &&
       mushafVerseMapService.isShownVerseUnitsPending()
     ) {
       whenShownVerseUnitsResolved().then(() => {
@@ -186,69 +222,28 @@ export default function MushafScreen() {
       if (timer !== null) clearTimeout(timer);
       useMushafVerseSelectionStore.getState().clearSelection();
     };
-    // @ai-end
-  }, [anchor, initialVerseKey, pageNumber]); // @ai: anchor
-
-  if (!dkReady) {
-    // @ai-start
-    if (preloadState === 'failed' && !retrying) {
-      return (
-        <View
-          style={[styles.loading, {backgroundColor: theme.colors.background}]}
-          accessibilityRole="alert">
-          <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
-            {t('reader:mushaf.loadFailedTitle')}
-          </Text>
-          <Text style={[styles.errorBody, {color: theme.colors.text}]}>
-            {t('reader:mushaf.loadFailedBody')}
-          </Text>
-          <Pressable
-            onPress={retryLoad}
-            accessibilityRole="button"
-            hitSlop={8}
-            style={({pressed}) => [
-              styles.retryButton,
-              {borderColor: theme.colors.text},
-              pressed && styles.retryButtonPressed,
-            ]}>
-            <Text style={[styles.retryText, {color: theme.colors.text}]}>
-              {t('common:actions.tryAgain')}
-            </Text>
-          </Pressable>
-        </View>
-      );
-    }
-    // @ai-end
-    return (
-      <View
-        style={[styles.loading, {backgroundColor: theme.colors.background}]}>
-        <ActivityIndicator size="large" color={theme.colors.text} />
-      </View>
-    );
-  }
+  }, [anchor, verseKey, page]);
 
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       {USE_GLASS && <MushafToolbar />}
       <MushafViewer
-        pageNumber={pageNumber}
-        initialSurahId={initialSurahId} // @ai
-        initialVerseKey={initialVerseKey}
+        pageNumber={page}
+        initialSurahId={target.surahId}
+        initialVerseKey={verseKey}
+        onFirstContent={onFirstContent}
       />
     </View>
   );
 }
+// @ai-end
 
 // ============================================================================
 // iOS Native Toolbar (Stack.Toolbar)
 // ============================================================================
 
 // @ai-start
-const subscribePreload = (listener: () => void): (() => void) =>
-  mushafPreloadService.subscribe(listener);
-const getPreloadState = () => mushafPreloadService.state;
-
 const surahNameOf = (surah: number): string =>
   surah >= 1 && surah <= 114 ? getSurahDisplayName(SURAHS[surah - 1]) : '';
 // @ai-end

@@ -85,6 +85,7 @@ import {
 } from '@/services/mushaf/QCFFontLoader'; // @ai
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 // @ai-start
+import {useFirstContent} from '@/hooks/useFirstContent';
 import {appLayoutDirection, isRTL} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
@@ -197,6 +198,7 @@ const DKPageView: React.FC<{
   isBookLayout: boolean;
   metrics: MushafLayoutMetrics;
   onTap?: () => void;
+  onFirstContent?: () => void;
 }> = ({
   pageNumber,
   textColor,
@@ -210,6 +212,7 @@ const DKPageView: React.FC<{
   isBookLayout,
   metrics,
   onTap,
+  onFirstContent,
 }) => {
   const [pageReady, setPageReady] = useState(false);
   const insets = useSafeAreaInsets();
@@ -219,6 +222,9 @@ const DKPageView: React.FC<{
   const shownSurahLabel = isQCF
     ? getSurahNamesForPage(pageNumber, true)
     : surahLabel;
+  // A Skia page has opacity 0 until it is ready, so this reports after the
+  // commit that shows it. QCFPage reports for itself.
+  useFirstContent(pageReady && !isQCF, onFirstContent);
 
   const {isRightPage, contentMarginLeft} = useMemo(
     () => getPageEdgeLayout(pageNumber),
@@ -337,6 +343,7 @@ const DKPageView: React.FC<{
           frame={qcfFrame} // @ai
           onReady={() => setPageReady(true)}
           onTap={onTap}
+          onFirstContent={onFirstContent}
         />
       ) : (
         <SkiaPage
@@ -432,6 +439,7 @@ const DKSpreadView: React.FC<{
   isBookLayout: boolean;
   metrics: MushafLayoutMetrics;
   onTap?: () => void;
+  onFirstContent?: () => void;
 }> = ({
   pageNumber,
   leftPageNumber,
@@ -444,8 +452,21 @@ const DKSpreadView: React.FC<{
   isBookLayout,
   metrics,
   onTap,
+  onFirstContent,
 }) => {
   const spreadBg = isBookLayout ? edgeBg : cardColor;
+  // Two facing pages report once, when both have content: half a spread is not
+  // the page the user asked for. A page can report again (a remount of
+  // QCFPage), so this counts pages, not reports.
+  const pagesWithContentRef = useRef(new Set<number>());
+  const facingPageContent = (page: number) =>
+    onFirstContent &&
+    (() => {
+      const pages = pagesWithContentRef.current;
+      if (pages.has(page)) return;
+      pages.add(page);
+      if (pages.size === 2) onFirstContent();
+    });
 
   // Phone landscape: full-width scrollable page.
   if (metrics.scrollContainerHeight) {
@@ -472,6 +493,7 @@ const DKSpreadView: React.FC<{
           isBookLayout={isBookLayout}
           metrics={metrics}
           onTap={onTap}
+          onFirstContent={onFirstContent}
         />
       </ScrollView>
     );
@@ -496,6 +518,7 @@ const DKSpreadView: React.FC<{
         isBookLayout={isBookLayout}
         metrics={metrics}
         onTap={onTap}
+        onFirstContent={onFirstContent}
       />
     );
   }
@@ -529,6 +552,7 @@ const DKSpreadView: React.FC<{
           isBookLayout={isBookLayout}
           metrics={metrics}
           onTap={onTap}
+          onFirstContent={facingPageContent(leftPageNumber)}
         />
         <View style={{width: metrics.facingGap, height: '100%'}} />
         <DKPageView
@@ -544,6 +568,7 @@ const DKSpreadView: React.FC<{
           isBookLayout={isBookLayout}
           metrics={metrics}
           onTap={onTap}
+          onFirstContent={facingPageContent(pageNumber)}
         />
       </View>
     );
@@ -571,6 +596,7 @@ const DKSpreadView: React.FC<{
         isBookLayout={isBookLayout}
         metrics={metrics}
         onTap={onTap}
+        onFirstContent={onFirstContent}
       />
     </View>
   );
@@ -585,6 +611,11 @@ interface MushafViewerProps {
   /** Surah the viewer was opened for, when `pageNumber` was derived from it. */
   initialSurahId?: number; // @ai
   initialVerseKey?: string;
+  /**
+   * Called once, when the page that the viewer opens on has content (RFC-023
+   * step 5). Only that page reports: the list mounts it first.
+   */
+  onFirstContent?: () => void; // @ai
 }
 
 /** A surah the reader was explicitly sent to, pinned to the page it starts on. */
@@ -593,6 +624,7 @@ type AskedSurah = {surahId: number; page: number}; // @ai
 export default function MushafViewer({
   pageNumber: initialPage,
   initialSurahId,
+  onFirstContent, // @ai
 }: MushafViewerProps) {
   useKeepAwake();
   const {t} = useTranslation(['reader', 'common']);
@@ -773,6 +805,10 @@ export default function MushafViewer({
       }),
     [],
   );
+  // @ai — the report of the first content goes only to the item that shows
+  // the page the viewer opens on.
+  const firstContentOf = (...shownPages: (number | null)[]) =>
+    shownPages.includes(initialPage) ? onFirstContent : undefined;
 
   // DK data is pre-initialized by MushafPreloadService (AppInitializer priority 5)
   // before this tab mounts, so the synchronous check is safe.
@@ -1327,6 +1363,7 @@ export default function MushafViewer({
           onCurrentPageChange={handleContinuousPageChange}
           metrics={scrollMetrics} // @ai
           scrollsToTop={scrollsToTop} // @ai
+          onFirstContent={onFirstContent} // @ai
         />
       ) : isVertical && viewMode === 'list' ? (
         <ContinuousListView
@@ -1340,6 +1377,7 @@ export default function MushafViewer({
           onCurrentPageChange={handleContinuousPageChange}
           width={readingPageSize?.width} // @ai
           scrollsToTop={scrollsToTop} // @ai
+          onFirstContent={onFirstContent} // @ai
         />
       ) : metrics.facingPages && viewMode === 'mushaf' ? (
         <FlatList
@@ -1359,6 +1397,7 @@ export default function MushafViewer({
               isBookLayout={isBookLayout}
               metrics={metrics}
               onTap={toggleImmersive}
+              onFirstContent={firstContentOf(item.right, item.left)} // @ai
             />
           )}
           keyExtractor={item => `spread-${item.right}`}
@@ -1404,6 +1443,7 @@ export default function MushafViewer({
                   isBookLayout={isBookLayout}
                   onTap={toggleImmersive}
                   pageSize={readingPageSize} // @ai
+                  onFirstContent={firstContentOf(item)} // @ai
                 />
               );
             }
@@ -1419,6 +1459,7 @@ export default function MushafViewer({
                 isBookLayout={isBookLayout}
                 metrics={metrics}
                 onTap={toggleImmersive}
+                onFirstContent={firstContentOf(item)} // @ai
               />
             );
           }}
