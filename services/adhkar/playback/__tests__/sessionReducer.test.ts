@@ -123,6 +123,55 @@ describe('rule 1: start from a card', () => {
   });
 });
 
+// @ai-start
+describe('Repeat armed before the card plays', () => {
+  it('starts a single session that already loops', () => {
+    const s = reduceSession(
+      null,
+      {type: 'pressCard', source: morning, index: 1, loop: true},
+      NOW,
+    );
+    expect(s).toMatchObject({mode: 'single', index: 1, loop: true});
+  });
+  it('starts without a loop when Repeat was not armed', () => {
+    const s = reduceSession(
+      null,
+      {type: 'pressCard', source: morning, index: 1},
+      NOW,
+    );
+    expect(s?.loop).toBe(false);
+  });
+  it('replaces a session of another dhikr with a looping one', () => {
+    const s = reduceSession(
+      session({mode: 'single', index: 0, loop: false}),
+      {type: 'pressCard', source: morning, index: 1, loop: true},
+      NOW,
+    );
+    expect(s).toMatchObject({mode: 'single', index: 1, loop: true});
+  });
+  it('does not make Play All loop when the press joins it', () => {
+    const s = reduceSession(
+      session({index: 0}),
+      {type: 'pressCard', source: morning, index: 3, loop: true},
+      NOW,
+    );
+    expect(s).toMatchObject({mode: 'all', index: 3, loop: false});
+  });
+  it('leaves the loop of the current card to toggleLoop', () => {
+    const s = reduceSession(
+      session({mode: 'single', index: 1, status: 'paused', loop: false}),
+      {type: 'pressCard', source: morning, index: 1, loop: true},
+      NOW,
+    );
+    expect(s).toMatchObject({status: 'loading', loop: false});
+  });
+  it('never loops a Play All session', () => {
+    const s = reduceSession(null, {type: 'pressPlayAll', source: morning}, NOW);
+    expect(s?.loop).toBe(false);
+  });
+});
+// @ai-end
+
 describe('rule 2: toggle the current card', () => {
   it('pauses a playing current card', () => {
     const s = reduceSession(

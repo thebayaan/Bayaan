@@ -219,6 +219,26 @@ it('sets loop in single mode only', () => {
   expect(player.loop).toBe(true);
 });
 
+// @ai-start
+it('loops from the first play when Repeat was armed before Play', () => {
+  let loopAtPlay: boolean | null = null;
+  player.play.mockImplementation(() => {
+    loopAtPlay = player.loop;
+  });
+  dispatch({type: 'pressCard', source: src, index: 0, loop: true});
+  expect(player.play).toHaveBeenCalledTimes(1);
+  expect(loopAtPlay).toBe(true);
+  // A looping clip reports its end too; the session must not end with it.
+  player.emit({playing: true});
+  player.emit({playing: false, didJustFinish: true});
+  expect(useAdhkarSessionStore.getState().session).toMatchObject({
+    index: 0,
+    mode: 'single',
+    loop: true,
+  });
+});
+// @ai-end
+
 it('keeps loop off in all mode', () => {
   dispatch({type: 'pressPlayAll', source: src});
   dispatch({type: 'toggleLoop'});

@@ -125,3 +125,136 @@ it('reserves the same progress row height on current and other cards', () => {
   expect(currentHeight).toBeGreaterThan(0);
   expect(otherHeight).toBe(currentHeight);
 });
+
+// @ai-start
+describe('Repeat before the dhikr plays', () => {
+  function Card({dhikrId}: {dhikrId: string}): React.JSX.Element {
+    return (
+      <AdhkarAudioControls
+        dhikrId={dhikrId}
+        audioFile={`${dhikrId}.mp3`}
+        onCopy={jest.fn()}
+        onBookmark={jest.fn()}
+        onShare={jest.fn()}
+        onSettings={jest.fn()}
+        isBookmarked={false}
+      />
+    );
+  }
+
+  const pages = (shown: string[]): React.JSX.Element => (
+    <AdhkarSessionSourceProvider source={src}>
+      {shown.map(id => (
+        <Card key={id} dhikrId={id} />
+      ))}
+    </AdhkarSessionSourceProvider>
+  );
+
+  // The reader's pager keeps a few pages mounted and drops the rest.
+  function renderPages(shown: string[]): ReactTestRenderer {
+    let renderer: ReactTestRenderer | undefined;
+    act(() => {
+      renderer = TestRenderer.create(pages(shown));
+    });
+    if (!renderer) throw new Error('not rendered');
+    mounted = renderer;
+    return renderer;
+  }
+
+  function buttons(renderer: ReactTestRenderer, testID: string) {
+    // Not deep: a touchable is two nested components with the same props.
+    return renderer.root.findAll(
+      node =>
+        node.props.testID === testID &&
+        typeof node.props.onPress === 'function',
+      {deep: false},
+    );
+  }
+  const repeatOn = (renderer: ReactTestRenderer, at = 0): unknown =>
+    buttons(renderer, 'adhkar-repeat-button')[at].props.accessibilityState
+      .selected;
+  function press(renderer: ReactTestRenderer, testID: string, at = 0): void {
+    act(() => {
+      buttons(renderer, testID)[at].props.onPress();
+    });
+  }
+
+  it('highlights when tapped with nothing playing, and Play then loops', () => {
+    const renderer = renderPages(['a']);
+    expect(repeatOn(renderer)).toBe(false);
+    press(renderer, 'adhkar-repeat-button');
+    expect(repeatOn(renderer)).toBe(true);
+    expect(useAdhkarSessionStore.getState().session).toBeNull();
+
+    press(renderer, 'adhkar-play-button');
+    expect(useAdhkarSessionStore.getState().session).toMatchObject({
+      index: 0,
+      mode: 'single',
+      loop: true,
+    });
+    expect(repeatOn(renderer)).toBe(true);
+  });
+
+  it('can be switched off again before Play', () => {
+    const renderer = renderPages(['a']);
+    press(renderer, 'adhkar-repeat-button');
+    press(renderer, 'adhkar-repeat-button');
+    expect(repeatOn(renderer)).toBe(false);
+    press(renderer, 'adhkar-play-button');
+    expect(useAdhkarSessionStore.getState().session?.loop).toBe(false);
+  });
+
+  it('follows the session once it plays, not the earlier tap', () => {
+    const renderer = renderPages(['a']);
+    press(renderer, 'adhkar-repeat-button');
+    press(renderer, 'adhkar-play-button');
+    // Switched off while it plays, then the session ends.
+    press(renderer, 'adhkar-repeat-button');
+    expect(useAdhkarSessionStore.getState().session?.loop).toBe(false);
+    act(() => useAdhkarSessionStore.getState().dispatch({type: 'stop'}));
+    expect(repeatOn(renderer)).toBe(false);
+  });
+
+  it('stays with its own dhikr when another page is shown', () => {
+    const renderer = renderPages(['a', 'b']);
+    press(renderer, 'adhkar-repeat-button', 0);
+    expect(repeatOn(renderer, 0)).toBe(true);
+    expect(repeatOn(renderer, 1)).toBe(false);
+
+    // Play on the other dhikr does not take the armed Repeat with it.
+    press(renderer, 'adhkar-play-button', 1);
+    expect(useAdhkarSessionStore.getState().session).toMatchObject({
+      index: 1,
+      loop: false,
+    });
+
+    // The pager drops the armed page and brings it back.
+    act(() => renderer.update(pages(['b'])));
+    act(() => renderer.update(pages(['a', 'b'])));
+    expect(repeatOn(renderer, 0)).toBe(true);
+    press(renderer, 'adhkar-play-button', 0);
+    expect(useAdhkarSessionStore.getState().session).toMatchObject({
+      index: 0,
+      mode: 'single',
+      loop: true,
+    });
+  });
+
+  it('is hidden on every card of a list that plays all', () => {
+    useAdhkarSessionStore
+      .getState()
+      .dispatch({type: 'pressPlayAll', source: src});
+    const renderer = renderPages(['a', 'b']);
+    expect(buttons(renderer, 'adhkar-repeat-button')).toHaveLength(0);
+  });
+
+  it('shows while another list plays all', () => {
+    useAdhkarSessionStore.getState().dispatch({
+      type: 'pressPlayAll',
+      source: {...src, listId: 'evening-adhkar'},
+    });
+    const renderer = renderPages(['a']);
+    expect(buttons(renderer, 'adhkar-repeat-button')).toHaveLength(1);
+  });
+});
+// @ai-end

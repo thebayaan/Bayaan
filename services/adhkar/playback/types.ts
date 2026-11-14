@@ -31,7 +31,11 @@ export interface AdhkarSession extends SessionSource {
 }
 
 export type SessionEvent =
-  | {type: 'pressCard'; source: SessionSource; index: number}
+  // @ai-start
+  // loop: Repeat was switched on in the reader before this dhikr played. It
+  // only counts when the press starts a new single-dhikr session.
+  | {type: 'pressCard'; source: SessionSource; index: number; loop?: boolean}
+  // @ai-end
   | {type: 'pressPlayAll'; source: SessionSource}
   // The dhikr id, not a screen index: the reader's list can drift from the
   // session's items (an unsaved row leaves the Saved reader).
