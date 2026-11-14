@@ -33,6 +33,16 @@ export interface MorphFact {
   value: string;
 }
 
+// @ai-start
+/**
+ * The labels scripts/irab/sarf.ts writes for a word's root (its letters
+ * joined by spaces, ء for hamza: "ك ت ب") and its lemma. A word has at most
+ * one of each; 20,586 words have no lemma.
+ */
+export const MORPH_ROOT_LABEL = 'الجذر';
+export const MORPH_LEMMA_LABEL = 'الأصل المعجمي';
+// @ai-end
+
 export interface WordIrab {
   position: number;
   entries: IrabEntry[];
