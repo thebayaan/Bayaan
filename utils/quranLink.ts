@@ -19,6 +19,32 @@ export function quranLinkParams(
   return page === undefined ? {surah, ayah} : {surah, ayah, page: String(page)};
 }
 
+// @ai-start
+/**
+ * Mushaf route params that open a Quran search hit: the page of its first
+ * matched word, an anchor on that word ('S:A:W', so the shown rewayah
+ * selects the verse holding it), and the matched Digital Khatt slots to
+ * flash ('3,4').
+ */
+export function quranHitLinkParams(
+  verseKey: string,
+  positions: readonly number[],
+  pageForWord: (verseKey: string, position: number) => number | undefined,
+): QuranLinkParams & {anchor: string; words: string} {
+  const [surah, ayah] = verseKey.split(':');
+  const sorted = [...new Set(positions)].sort((a, b) => a - b);
+  const first = sorted[0] ?? 1;
+  const params = {
+    surah,
+    ayah,
+    anchor: `${verseKey}:${first}`,
+    words: sorted.join(','),
+  };
+  const page = pageForWord(verseKey, first);
+  return page === undefined ? params : {...params, page: String(page)};
+}
+// @ai-end
+
 export type QuranLinkResolution =
   | {status: 'pending'}
   | {status: 'ready'; params: QuranLinkParams};

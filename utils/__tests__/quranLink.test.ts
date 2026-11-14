@@ -1,4 +1,35 @@
-import {quranLinkParams, resolveQuranLink} from '../quranLink';
+import {
+  quranHitLinkParams, // @ai
+  quranLinkParams,
+  resolveQuranLink,
+} from '../quranLink';
+
+// @ai-start
+describe('quranHitLinkParams', () => {
+  // A layout where 2:282 runs from page 48 (slots 1-60) onto page 49.
+  const pageForWord = (verseKey: string, position: number) =>
+    verseKey === '2:282' ? (position <= 60 ? 48 : 49) : undefined;
+
+  it('anchors the first matched slot and opens its page', () => {
+    expect(quranHitLinkParams('2:282', [77, 76], pageForWord)).toEqual({
+      surah: '2',
+      ayah: '282',
+      page: '49',
+      anchor: '2:282:76',
+      words: '76,77',
+    });
+  });
+
+  it('leaves the page out when it is not known', () => {
+    expect(quranHitLinkParams('1:1', [3], pageForWord)).toEqual({
+      surah: '1',
+      ayah: '1',
+      anchor: '1:1:3',
+      words: '3',
+    });
+  });
+});
+// @ai-end
 
 describe('quranLinkParams', () => {
   const pageFor = (key: string): number | undefined =>

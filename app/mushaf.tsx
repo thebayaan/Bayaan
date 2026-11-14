@@ -18,6 +18,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore'; // @ai
 // @ai-start
 import {
   mushafVerseMapService,
@@ -62,10 +63,26 @@ export type MushafScreenParams = {
   // every verse holding Hafs `surah`:`ayah`. Never a rewayah verse number.
   anchor?: string;
   // @ai-end
+  // @ai-start
+  // Digital Khatt slots of Hafs verse `surah`:`ayah` to flash, comma-
+  // separated ('3,4'): the words a Quran search matched.
+  words?: string;
+  // @ai-end
 };
 
+// @ai-start
+/** The slots of a `words` param ('3,4' → [3, 4]); invalid parts dropped. */
+function parseFlashWords(words: string | undefined): number[] {
+  if (!words) return [];
+  return words
+    .split(',')
+    .map(part => Number(part.trim()))
+    .filter(n => Number.isInteger(n) && n >= 1 && n <= 255);
+}
+// @ai-end
+
 export default function MushafScreen() {
-  const {surah, page, ayah, anchor} =
+  const {surah, page, ayah, anchor, words} =
     useLocalSearchParams<MushafScreenParams>(); // @ai
   const {theme} = useTheme();
   const {t} = useTranslation(['reader', 'common']); // @ai
@@ -181,6 +198,11 @@ export default function MushafScreen() {
       } else if (initialVerseKey) {
         selection.selectVerse(initialVerseKey, pageNumber);
       }
+      // The words a Quran search matched flash with their verse.
+      const flashWords = parseFlashWords(words);
+      if (initialVerseKey && flashWords.length) {
+        useMushafWordFlashStore.getState().show(initialVerseKey, flashWords);
+      }
       timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
       }, 3000);
@@ -205,9 +227,10 @@ export default function MushafScreen() {
       cancelled = true;
       if (timer !== null) clearTimeout(timer);
       useMushafVerseSelectionStore.getState().clearSelection();
+      useMushafWordFlashStore.getState().clear();
     };
     // @ai-end
-  }, [anchor, initialVerseKey, pageNumber]); // @ai: anchor
+  }, [anchor, initialVerseKey, pageNumber, words]); // @ai: anchor, words
 
   if (!dkReady) {
     // @ai-start
