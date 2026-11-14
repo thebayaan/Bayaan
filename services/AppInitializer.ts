@@ -7,6 +7,8 @@ import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotati
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
+import {followSelectedTranslation} from '@/services/translation/selectedTranslation'; // @ai
+import {useTranslationStore} from '@/store/translationStore'; // @ai
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {useTafseerStore} from '@/store/tafseerStore';
 import {wbwDataService} from '@/services/wbw/WBWDataService';
@@ -415,7 +417,21 @@ appInitializer.registerService({
   priority: 10,
   critical: false,
   initialize: async () => {
-    await translationDbService.initialize();
+    // @ai-start
+    try {
+      await translationDbService.initialize();
+      // The downloaded translations and their names, as the Tafseer step
+      // does below. They were loaded only when Settings > Translations was
+      // opened, so after a restart a downloaded translation showed as its
+      // raw id ("ur.jalandhry") with "not available".
+      await useTranslationStore.getState().loadDownloadedMeta();
+    } finally {
+      // Apply the selected translation to the verse data, now and on every
+      // change. Started also when the database failed to open: the bundled
+      // translations do not need it.
+      followSelectedTranslation();
+    }
+    // @ai-end
   },
 });
 

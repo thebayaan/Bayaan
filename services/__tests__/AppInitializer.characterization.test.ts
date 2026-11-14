@@ -54,6 +54,18 @@ jest.mock('@/services/mushaf/QulDataService', () => ({
 jest.mock('@/services/translation/TranslationDbService', () => ({
   translationDbService: {initialize: mockStep('translationDb.initialize')},
 }));
+// @ai-start
+jest.mock('@/store/translationStore', () => ({
+  useTranslationStore: mockStore({
+    loadDownloadedMeta: mockStep('translationStore.loadDownloadedMeta'),
+  }),
+}));
+jest.mock('@/services/translation/selectedTranslation', () => ({
+  followSelectedTranslation: mockSyncStep(
+    'selectedTranslation.followSelectedTranslation',
+  ),
+}));
+// @ai-end
 jest.mock('@/services/tafseer/TafseerDbService', () => ({
   tafseerDbService: {
     initialize: mockStep('tafseerDb.initialize'),
@@ -232,10 +244,27 @@ describe('AppInitializer startup (characterization, develop behavior)', () => {
     expect(bundled).toBeLessThan(meta);
   });
 
+  // @ai-start
+  // The downloaded translations (and their names) and the selected
+  // translation used to be loaded only by the Translations screen and the
+  // audio player. After a restart a downloaded translation showed as its raw
+  // id, and the Mushaf list view showed Saheeh under the selected name.
+  it('runs the Translation DB steps in order: open, store meta, follow the selection', async () => {
+    await freshInitializer().initialize();
+    const open = indexOf('translationDb.initialize');
+    const meta = indexOf('translationStore.loadDownloadedMeta');
+    const follow = indexOf('selectedTranslation.followSelectedTranslation');
+    expect(open).toBeLessThan(meta);
+    expect(meta).toBeLessThan(follow);
+  });
+  // @ai-end
+
   it('runs every content-touching step exactly once', async () => {
     await freshInitializer().initialize();
     for (const step of [
       'translationDb.initialize',
+      'translationStore.loadDownloadedMeta', // @ai
+      'selectedTranslation.followSelectedTranslation', // @ai
       'tafseerDb.initialize',
       'tafseerDb.importBundledIbnKathir',
       'tafseerStore.loadDownloadedMeta',
@@ -290,6 +319,18 @@ describe('AppInitializer startup (characterization, develop behavior)', () => {
     await initializer.initialize();
     expect(initializer.isInitialized()).toBe(true);
     expect(mockCalls).toContain('tafseerStore.loadDownloadedMeta');
+    // @ai-start
+    // Nothing downloaded can be listed, but a bundled translation (Clear
+    // Quran) needs no database and is still applied.
+    expect(mockCalls).not.toContain('translationStore.loadDownloadedMeta');
+    expect(mockCalls).toContain(
+      'selectedTranslation.followSelectedTranslation',
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      '[AppInitializer] Non-critical service Translation DB failed, continuing...',
+      expect.any(Error),
+    );
+    // @ai-end
   });
 
   it('aborts startup when a critical service fails, before any non-critical service runs', async () => {

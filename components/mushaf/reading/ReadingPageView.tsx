@@ -27,6 +27,7 @@ import {
   getReadingPageItems,
   type ReadingPageItem,
 } from '@/utils/mushafPageVerses';
+import {useEnhancedVersesVersion} from '@/utils/enhancedVersesVersion'; // @ai
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
@@ -205,6 +206,10 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   );
   // @ai-end
 
+  // Counts rebuilds of the verse data: the page's rows are taken again when
+  // another translation has been applied. Before, a page already visited
+  // kept the previous translation's text under the new one's name.
+  const versesVersion = useEnhancedVersesVersion();
   const items = useMemo<ReadingPageItem[]>(
     () =>
       // @ai — a rewayah's page: its verse rows (none until they are ready)
@@ -213,7 +218,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
           ? readingPageUnitItems(pageUnits, pageNumber)
           : []
         : getReadingPageItems(pageNumber),
-    [pageNumber, unitsRewayah, pageUnits],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pageNumber, unitsRewayah, pageUnits, versesVersion],
   );
 
   const {isRightPage} = useMemo(

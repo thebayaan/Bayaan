@@ -25,6 +25,7 @@ import {
   enhancedVersesBySurah,
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
+import {useEnhancedVersesVersion} from '@/utils/enhancedVersesVersion'; // @ai
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
 import {
   useMushafPlayerStore,
@@ -74,9 +75,20 @@ type ContinuousListItem =
 
 // Build the flat list once at module scope
 let cachedItems: ContinuousListItem[] | null = null;
+// @ai-start
+// The verse arrays `cachedItems` was built from. Applying another
+// translation (rebuildEnhancedVerses) replaces every surah's array, and the
+// list is then built again; kept forever, it showed the old translation's
+// text under the new one's name for the rest of the session.
+let cachedContent: EnhancedVerse[] | undefined;
+// @ai-end
 
 function buildContinuousListItems(): ContinuousListItem[] {
-  if (cachedItems) return cachedItems;
+  // @ai-start
+  if (cachedItems && cachedContent === enhancedVersesBySurah[1]) {
+    return cachedItems;
+  }
+  // @ai-end
 
   const items: ContinuousListItem[] = [];
   for (const surah of surahData) {
@@ -95,6 +107,7 @@ function buildContinuousListItems(): ContinuousListItem[] {
   }
 
   cachedItems = items;
+  cachedContent = enhancedVersesBySurah[1]; // @ai
   return items;
 }
 
@@ -248,12 +261,16 @@ const ContinuousListView = forwardRef<
     const unitsRewayah = mushafRewayah === 'hafs' ? null : mushafRewayah;
     const {units: verseUnits, status: verseUnitsStatus} =
       useRewayahVerseUnits(unitsRewayah);
+    // Counts rebuilds of the verse data: the rows are built again when
+    // another translation has been applied.
+    const versesVersion = useEnhancedVersesVersion();
     const unitList = useMemo<UnitListModel | null>(
       () =>
         unitsRewayah && verseUnits?.rewayah === unitsRewayah
           ? buildUnitListModel(verseUnits)
           : null,
-      [unitsRewayah, verseUnits],
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [unitsRewayah, verseUnits, versesVersion],
     );
     // The follow-along band as rows of the rewayah: the band the mushaf
     // pages paint (verse-units contract 4.2), e.g. a Warsh reciter on Warsh
@@ -375,7 +392,8 @@ const ContinuousListView = forwardRef<
     const fontMgr = isDK ? subscribedFontMgr : null;
     const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
-    const items = useMemo(() => buildContinuousListItems(), []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const items = useMemo(() => buildContinuousListItems(), [versesVersion]); // @ai
 
     const sidePadding =
       width === undefined
@@ -551,7 +569,7 @@ const ContinuousListView = forwardRef<
         ref={flashListRef}
         data={unitList ? unitList.items : items} // @ai
         renderItem={renderItem}
-        extraData={`${(unitList ? bandKeys : playbackVerseKeys).join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`} // @ai
+        extraData={`${(unitList ? bandKeys : playbackVerseKeys).join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${versesVersion}`} // @ai
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}

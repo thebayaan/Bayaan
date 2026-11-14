@@ -46,7 +46,7 @@ import {
   useTimestampStore,
 } from '@/store/timestampStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {getTranslationTextRaw} from '@/utils/translationLookup';
+import {loadPlainTranslations} from '@/services/translation/plainTranslations'; // @ai
 import {stripTranslationMarkup} from '@/utils/translationMarkup'; // @ai
 import * as Clipboard from 'expo-clipboard';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
@@ -273,7 +273,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // Hafs verse; any other selection uses the selected translation for every
   // Hafs verse, so one copy never mixes two translations.
   const translationFor = useCallback(
-    (ready: ReadyVerseSelection) => {
+    async (ready: ReadyVerseSelection) => {
       const parts = selectionTranslationParts(ready);
       const callerTranslation =
         parts.length === 1 && parts[0].hafsKey === verseKey
@@ -281,11 +281,18 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           : undefined;
       // Plain text: the stored text carries footnote markers, which pasted
       // as `<sup foot_note="…">1</sup>` in the middle of the verse.
-      return joinTranslationParts(parts, hafsKey =>
-        stripTranslationMarkup(
-          callerTranslation ||
-            getTranslationTextRaw(hafsKey, selectedTranslationId) ||
-            '',
+      if (callerTranslation) {
+        return joinTranslationParts(parts, () =>
+          stripTranslationMarkup(callerTranslation),
+        );
+      }
+      // Also reads a downloaded translation from its database when it is
+      // not in memory yet (right after launch), instead of copying none.
+      return joinTranslationParts(
+        parts,
+        await loadPlainTranslations(
+          parts.map(part => part.hafsKey),
+          selectedTranslationId,
         ),
       );
     },
@@ -422,7 +429,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       await Clipboard.setStringAsync(
         formatVerseCopyText(
           joinVerseTexts(result.texts),
-          translationFor(ready),
+          await translationFor(ready),
           formatQuranCitation(ready.label, result.rewayah),
         ),
       );

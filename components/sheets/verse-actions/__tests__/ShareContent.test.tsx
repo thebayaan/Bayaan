@@ -82,6 +82,17 @@ jest.mock('@/utils/translationLookup', () => ({
     mockTranslations.get(verseKey) ?? '',
 }));
 
+// @ai-start
+// A downloaded translation's rows in the translations database, per verse.
+const mockDbTranslations = new Map<string, string>();
+jest.mock('@/services/translation/TranslationDbService', () => ({
+  translationDbService: {
+    getTranslation: async (verseKey: string) =>
+      mockDbTranslations.get(verseKey) ?? null,
+  },
+}));
+// @ai-end
+
 // Hafs is the active mushaf rewayah; Warsh words sit in a side cache. Both
 // are in memory, so the text is ready at once.
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
@@ -205,12 +216,17 @@ async function press(label: string) {
 
 beforeEach(() => {
   mockTranslations.clear();
+  mockDbTranslations.clear(); // @ai
   (shareUrl as jest.Mock).mockClear();
   shareSpy = jest.spyOn(Share, 'share').mockImplementation(async () => ({
     action: 'sharedAction',
     activityType: undefined,
   }));
-  useMushafSettingsStore.setState({rewayah: 'hafs', mushafRenderer: 'dk_v2'});
+  useMushafSettingsStore.setState({
+    rewayah: 'hafs',
+    mushafRenderer: 'dk_v2',
+    selectedTranslationId: 'saheeh', // @ai
+  });
 });
 
 afterEach(() => {
@@ -319,6 +335,21 @@ describe('Share as Text', () => {
     await press('Share as Text');
     expect(sharedMessage()).toBe(
       'HAFS-255a HAFS-255b ۝٢٥٥\n\nthe Ever-Living, the Self-Sustaining.\n\n-- Quran Al-Baqarah 2:255',
+    );
+  });
+  // @ai-end
+
+  // @ai-start
+  // A downloaded translation is looked up in a copy held in memory, which is
+  // not there right after launch. The message then went out with no
+  // translation at all.
+  it('reads a downloaded translation from its database when it is not in memory', async () => {
+    useMushafSettingsStore.setState({selectedTranslationId: 'ur.jalandhry'});
+    mockDbTranslations.set('2:255', 'urdu kursi');
+    open(['2:255'], 'hafs');
+    await press('Share as Text');
+    expect(sharedMessage()).toBe(
+      'HAFS-255a HAFS-255b ۝٢٥٥\n\nurdu kursi\n\n-- Quran Al-Baqarah 2:255',
     );
   });
   // @ai-end
