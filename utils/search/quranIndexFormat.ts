@@ -45,6 +45,23 @@ export interface QuranPosting {
   rasmOnly: boolean;
 }
 
+/** A root of the i'rab data ('ر ح م'), counted in words (not stems). */
+export interface QuranRoot {
+  id: number;
+  root: string;
+  words: number;
+  ayahs: number;
+}
+
+/** A lemma of a root; lemma null holds the root's words without one. */
+export interface QuranLemma {
+  id: number;
+  rootId: number;
+  lemma: string | null;
+  words: number;
+  ayahs: number;
+}
+
 export function packPosting(posting: QuranPosting): number {
   const {verseIndex, position, tier} = posting;
   if (

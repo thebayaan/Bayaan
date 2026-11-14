@@ -110,6 +110,26 @@ and `IqraEval/Iqra_train` (now under non-commercial terms).
   al-Ukbari (d. 616 AH) and *I'rab al-Qur'an* of al-Nahhas (d. 338 AH),
   converted to plain text.
 
+## Quran word search index
+
+`assets/data/quran-search-v1.db` is built by
+`scripts/search/build-quran-search-db.ts` from two files already in this
+repository; it adds no outside source:
+
+- **Digital Khatt** Hafs words (`data/mushaf/digitalkhatt/digital-khatt-v2.db`),
+  SIL Open Font License 1.1 (see Fonts above). The index stores search
+  spellings derived from each word by rule (the Quran text itself is not
+  copied into it) with the word's position.
+- **Quranic Arabic Corpus** morphology, through `assets/data/irab-v1.db`
+  (see Quran i'rab above), GNU General Public License: the proclitic
+  segmentation, roots and lemmas. The roots and lemmas are stored as they are
+  in `irab-v1.db`.
+
+The build records the sha256 of both inputs in the database's `meta` table.
+The build's `--imlaei` option, unused in this version, would add the words of
+an imla'i Quran text; a text fed in that way needs its own licence check and
+notice here first.
+
 ## Adhkar content & audio
 
 The Arabic adhkar text and English translations in `data/adhkar.json` are
