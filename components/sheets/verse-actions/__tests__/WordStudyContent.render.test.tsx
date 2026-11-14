@@ -345,6 +345,8 @@ describe('one Hafs verse (1:4)', () => {
     });
     await press('Previous word');
     expect(cardWord()).toBe('1:4:2');
+    // The verse's gharib and rasm were read once, not once per word.
+    expect(wordStudyDataService.getVerse).toHaveBeenCalledTimes(1);
   });
 
   it('opens on the word it was given', async () => {
