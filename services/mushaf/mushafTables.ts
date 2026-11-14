@@ -1,7 +1,8 @@
 // @ai-generated
 // RFC-023 step 3: the verse index and the page lines are the same for every
 // rewayah, so a script generates them (scripts/rewayah/gen-mushaf-tables.mjs).
-// They load on the first Mushaf use: a user who only listens never parses them.
+// They load with the Mushaf data (after the splash, RFC-023 step 1), not with
+// the bundle.
 import type {DKLine} from './DigitalKhattDataService';
 import {
   buildVerseIndex,
