@@ -110,6 +110,105 @@ and `IqraEval/Iqra_train` (now under non-commercial terms).
   al-Ukbari (d. 616 AH) and *I'rab al-Qur'an* of al-Nahhas (d. 338 AH),
   converted to plain text.
 
+## Arabic word meanings (gharib) and rasm
+
+`assets/data/gharib-v1.db` and `assets/data/rasm-v1.db` are built by
+`scripts/word-study/` from the two inputs pinned in
+`scripts/word-study/sources.lock.json`; `scripts/word-study/SOURCES.md`
+records how each was obtained.
+
+### Gharib: Ibn al-Ha'im, *al-Tibyan fi Tafsir Gharib al-Qur'an*
+
+- **Quranpedia** data dumps — https://quranpedia.net/dumps, file
+  `meanings.json.gz`, **version 2026-11-14** (SHA-256
+  `b46ca5ae7baa5287dc08816d5c6037e8ad9282e49cf870357e6bb6184b8d0699`, as
+  listed in the dumps' `manifest.json`): book 327, *al-Tibyan fi Tafsir
+  Gharib al-Qur'an* (التبيان في تفسير غريب القرآن) by Ibn al-Ha'im (d. 815 AH),
+  edited by Dahi Abd al-Baqi Muhammad (Dar al-Gharb al-Islami, 1st edition,
+  1423 AH). The work is a classical text. Changes were made: the editor's
+  bracketed insertions (`[…]`) and footnote markers were removed, and each
+  entry was placed on the words of the verse it explains. The book's own
+  wording is not changed.
+- Quranpedia's licence (https://quranpedia.net/dumps/LICENSE.md, version
+  2026-11-13), English part, verbatim:
+
+  > ### Ownership
+  > The classical works contained in this data — the Quran text in its canonical qira'at, and the classical tafsirs — are the shared heritage of the Muslim ummah; no one claims ownership of them. The digitization, structuring, verification, diacritical correction (dabt), linking, and metadata in this dataset are the work of the **Quranpedia.net** team, compiled and continuously corrected over years. Translations and contemporary works remain the intellectual property of their respective authors and publishers.
+  >
+  > ### License
+  > - **Free to use** inside apps, websites, bots, and research tools — no attribution required (a visible link to https://quranpedia.net is appreciated).
+  > - **Republishing this data — in full or in part — as a downloadable database or dataset requires**: (1) crediting **Quranpedia.net** as the source with a link, and (2) stating this dump's version.
+  > - The content is **continuously corrected**. Keep any copy current via `https://quranpedia.net/api/v1/changes?since=<version>` — distributing outdated Quranic text is the distributor's responsibility.
+  > - Provided as-is, without warranty; verification remains the user's duty.
+
+  The database can be downloaded from this repository on its own, so it is
+  credited as republished data: Quranpedia.net, with a link and the dump
+  version, here, in the database's `meta` table (`source_327_credit`), and on
+  the app's Credits screen. The app's gharib section names the book and
+  "Quranpedia (quranpedia.net)". Re-sync with the dump on each release.
+
+### Rasm: Tanzil Quran Text (Simple, version 1.1)
+
+- **Tanzil Project** — https://tanzil.net, Tanzil Quran Text (Simple),
+  **version 1.1** (released 2021-02-12), downloaded on 2026-11-14 from
+  https://tanzil.net/download/ as text without pause marks (SHA-256
+  `f3268cfe7a400add8a8024fe23368d66f58cc8baa51773fe94e323625c66344b`). It is
+  used as the standard (imla'i) spelling the app compares with the mushaf's.
+  Each verse is split into its words and stored letter for letter, only for
+  the 6,913 words whose spelling differs from the mushaf's; the basmala the
+  text file puts before verse 1 of each surah is not used. The copyright
+  notice is stored in the database's `meta` table (`notice`). The app's rasm
+  section names "Tanzil Project (tanzil.net)", and the Credits screen links
+  to https://tanzil.net.
+- The notice in the downloaded file (stored byte for byte in the database;
+  trailing spaces dropped here):
+
+  ```
+  # PLEASE DO NOT REMOVE OR CHANGE THIS COPYRIGHT BLOCK
+  #====================================================================
+  #
+  #  Tanzil Quran Text (Simple, Version 1.1)
+  #  Copyright (C) 2007-2026 Tanzil Project
+  #  License: Creative Commons Attribution 3.0
+  #
+  #  This copy of the Quran text is carefully produced, highly
+  #  verified and continuously monitored by a group of specialists
+  #  at Tanzil Project.
+  #
+  #  TERMS OF USE:
+  #
+  #  - Permission is granted to copy and distribute verbatim copies
+  #    of this text, but CHANGING IT IS NOT ALLOWED.
+  #
+  #  - This Quran text can be used in any website or application,
+  #    provided that its source (Tanzil Project) is clearly indicated,
+  #    and a link is made to tanzil.net to enable users to keep
+  #    track of changes.
+  #
+  #  - This copyright notice shall be included in all verbatim copies
+  #    of the text, and shall be reproduced appropriately in all files
+  #    derived from or containing substantial portion of this text.
+  #
+  #  Please check updates at: http://tanzil.net/updates/
+  #
+  #====================================================================
+  ```
+
+- **Open questions.** No answer from Tanzil is recorded yet; ask before
+  release.
+  - Tanzil's FAQ (https://tanzil.net/docs/faq) answers "I want to develop a
+    Quranic website/application. Can I use your resources?" with "Sure. We
+    have provided all resources used in Tanzil in our resources page. They
+    are available for non-commercial purposes." The text's own licence above
+    has no such condition. If the FAQ line covers the Quran text too, this
+    data is for non-commercial use only, as the Tanzil transliteration in the
+    adhkar is (see Adhkar text sources below), and anyone redistributing or
+    using the app commercially must obtain permission from Tanzil first.
+  - The terms say "CHANGING IT IS NOT ALLOWED". The words are stored letter
+    for letter, but split per word and only where they differ from the
+    mushaf; whether such excerpts count as a change is not stated. The
+    notice is kept in the derived file, as the terms ask.
+
 ## Adhkar content & audio
 
 The Arabic adhkar text and English translations in `data/adhkar.json` are

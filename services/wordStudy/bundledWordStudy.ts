@@ -20,6 +20,14 @@ export interface BundledWordStudy {
 }
 
 export const BUNDLED_WORD_STUDY: Readonly<BundledWordStudy> = {
-  gharib: null,
-  rasm: null,
+  gharib: {
+    name: 'gharib-v1.db',
+    assetId: require('../../assets/data/gharib-v1.db'),
+    old: [],
+  },
+  rasm: {
+    name: 'rasm-v1.db',
+    assetId: require('../../assets/data/rasm-v1.db'),
+    old: [],
+  },
 };

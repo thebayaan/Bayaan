@@ -1,1 +1,50 @@
-{"__format": 1, "gharib": [], "rasm": null}
+{
+  "__format": 1,
+  "gharib": [
+    {
+      "file": "meanings.json.gz",
+      "downloadUrl": "https://quranpedia.net/dumps/meanings.json.gz",
+      "sha256": "b46ca5ae7baa5287dc08816d5c6037e8ad9282e49cf870357e6bb6184b8d0699",
+      "bytes": 748521,
+      "version": "2026-11-14",
+      "retrieved": "2026-11-14",
+      "licence": "Quranpedia.net data licence, https://quranpedia.net/dumps/LICENSE.md (version 2026-11-13): free to use in apps; republishing as a database or dataset requires crediting Quranpedia.net with a link and stating the dump version",
+      "adapter": "quranpedia-meanings",
+      "books": [
+        {
+          "id": 327,
+          "ord": 1,
+          "minPlaced": 0.95,
+          "nameAr": "التبيان في تفسير غريب القرآن",
+          "nameEn": "al-Tibyan fi Tafsir Gharib al-Qur'an",
+          "authorAr": "ابن الهائم (ت ٨١٥هـ)",
+          "authorEn": "Ibn al-Ha'im (d. 815 AH)",
+          "viaAr": "الموسوعة القرآنية (quranpedia.net)",
+          "viaEn": "Quranpedia (quranpedia.net)",
+          "url": "https://quranpedia.net",
+          "edition": "تحقيق ضاحي عبد الباقي محمد، دار الغرب الإسلامي، الطبعة الأولى، ١٤٢٣هـ"
+        }
+      ]
+    }
+  ],
+  "rasm": {
+    "id": 1,
+    "ord": 1,
+    "file": "quran-simple.txt",
+    "downloadUrl": "https://tanzil.net/pub/download/index.php?quranType=simple&outType=txt-2&agree=true",
+    "sha256": "f3268cfe7a400add8a8024fe23368d66f58cc8baa51773fe94e323625c66344b",
+    "textSha256": "244fef960ae27eb289ade46144d913041dc0944461a156ae18e471c0fe3a58d1",
+    "bytes": 1338090,
+    "version": "1.1 (2021-02-12)",
+    "retrieved": "2026-11-14",
+    "licence": "Tanzil Quran Text, Creative Commons Attribution 3.0 with Tanzil's terms of use: verbatim copies only (CHANGING IT IS NOT ALLOWED), the source (Tanzil Project) indicated with a link to tanzil.net, and the copyright notice kept in derived files",
+    "adapter": "tanzil",
+    "nameAr": "نص القرآن الإملائي من مشروع التنزيل (الإصدار ١٫١)",
+    "nameEn": "Tanzil Quran Text (Simple, version 1.1)",
+    "authorAr": "مشروع التنزيل",
+    "authorEn": "Tanzil Project",
+    "viaAr": "مشروع التنزيل (tanzil.net)",
+    "viaEn": "Tanzil Project (tanzil.net)",
+    "url": "https://tanzil.net"
+  }
+}
