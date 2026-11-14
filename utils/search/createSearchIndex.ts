@@ -108,6 +108,12 @@ function prepareField(text: string, weight: number): PreparedField {
   // Article-less Arabic variants are extra tokens, so "بق" prefix-matches
   // "البقره" the way "ba" matches "baqarah".
   const tokens = baseTokens.flatMap(token => {
+    // @ai-start
+    // A sounded article glued to a Latin name ("Arrifai", "Assadan") is
+    // also split off, so "hani al rifai" and "hani rifai" find "Hani Arrifai".
+    const glued = /^a([tdrzsn])\1[a-z]{3,}$/.test(token);
+    if (glued) return [token, token.slice(0, 2), token.slice(2)];
+    // @ai-end
     const bare = stripArabicArticle(token);
     return bare === token ? [token] : [token, bare];
   });

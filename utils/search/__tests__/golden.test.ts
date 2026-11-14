@@ -18,6 +18,7 @@ const MEAQLI = '06c3f79f-02d9-42e8-9e9b-c6f355648305';
 const AJMY = '0499ceb5-320e-4bf3-af9a-a5a6ea84d1e5';
 const QATAMI = 'bcaade68-f0c8-4d6b-b3b6-725515bbd952';
 const YASSER_DOSARI = 'c0f887a2-a6a8-4538-8244-1550dc34793d';
+const RIFAI = '03c64a64-a830-47da-81c4-0000a74ae794'; // @ai
 const SUDAIS = '9d6f5e54-c170-4063-8dec-3db3080a714a'; // @ai
 
 describe('golden reciter queries (top result)', () => {
@@ -52,6 +53,12 @@ describe('golden reciter queries (top result)', () => {
     ['الشيخ ماهر المعيقلي', MEAQLI],
     ['القارئ ماهر المعيقلي', MEAQLI],
     ['الشيخ عبد الباسط', ABDULBASIT],
+    // @ai-end
+    // @ai-start
+    // A sounded article glued to the name ("Arrifai").
+    ['hani al rifai', RIFAI],
+    ['hani rifai', RIFAI],
+    ['hani ar-rifai', RIFAI],
     // @ai-end
   ])('%s', (query, id) => {
     expect(reciters.search(query)[0]?.item.id).toBe(id);
