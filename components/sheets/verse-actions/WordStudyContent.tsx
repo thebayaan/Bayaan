@@ -374,7 +374,9 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
         </View>
       );
     }
-    if (!partData) return null;
+    if (!partData) {
+      return <Text style={styles.message}>{t('wordView.noWords')}</Text>;
+    }
     const {part} = partData;
     const inPart = current !== null && current.part === partIndex;
     const verseName = partLabel(part, sheetsT);

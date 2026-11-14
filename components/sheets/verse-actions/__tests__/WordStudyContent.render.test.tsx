@@ -460,6 +460,19 @@ describe('one Hafs verse (1:4)', () => {
     expect(() => control('Next word')).toThrow();
   });
 
+  it('says so when a verse has no word-by-word words', async () => {
+    const words = mockWbw.get('1:4') ?? [];
+    mockWbw.set('1:4', []);
+    try {
+      await open(hafs('1:4'));
+      expect(texts()).toContain("Word data isn't available for this verse.");
+      expect(mockRecorded.grid).toBeUndefined();
+      expect(() => control('Next word')).toThrow();
+    } finally {
+      mockWbw.set('1:4', words);
+    }
+  });
+
   it('shows a spinner while loading, and a retry after a failure', async () => {
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     let fail: (e: Error) => void = () => undefined;
