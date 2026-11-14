@@ -1,4 +1,11 @@
-import React, {useState, useMemo, useRef, useCallback, useEffect} from 'react';
+import React, {
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+  useEffect,
+  useLayoutEffect, // @ai
+} from 'react';
 import {useKeepAwake} from 'expo-keep-awake';
 import {
   View,
@@ -1077,6 +1084,29 @@ export default function MushafViewer({
     [trackPageChange],
   );
 
+  // @ai-start
+  // Starts a new Recent reads chain at `page`, leaving the place being read
+  // as its own chip. A no-op when the active chain is already on that page.
+  const startChainAt = useCallback((page: number) => {
+    const surahId = digitalKhattDataService.initialized
+      ? digitalKhattDataService.getPageToSurah()[page]
+      : undefined;
+    if (surahId) {
+      useMushafSettingsStore.getState().startNewChain(surahId, page);
+    }
+  }, []);
+  // Opening the reader somewhere other than where reading stopped (a surah
+  // from the Surahs tab, a bookmark, a link) is a jump like one made inside
+  // the reader. It used to start no chain, so the first page shown simply
+  // overwrote the active one: read Al-Baqarah to page 30, open Ya-Sin, and
+  // page 30 was gone from Recent reads. A layout effect, so it runs before
+  // the list can report its first page (which moves the active chain).
+  useLayoutEffect(() => {
+    startChainAt(initialPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // @ai-end
+
   const viewabilityConfig = useMemo(
     () => ({
       itemVisiblePercentThreshold: 50,
@@ -1167,12 +1197,15 @@ export default function MushafViewer({
       const targetPage = surahStartPages[surahId];
       if (targetPage) setAskedSurah({surahId, page: targetPage}); // @ai
       if (isVertical) {
+        // A jump, as in page mode (navigateToPage): the place being read
+        // keeps its own Recent reads chip. @ai
+        if (targetPage) startChainAt(targetPage); // @ai
         continuousListRef.current?.scrollToSurah(surahId);
       } else if (targetPage) {
         navigateToPage(targetPage);
       }
     },
-    [isVertical, surahStartPages, navigateToPage],
+    [isVertical, surahStartPages, navigateToPage, startChainAt], // @ai
   );
 
   // @ai-start
@@ -1223,6 +1256,7 @@ export default function MushafViewer({
       const target = verseNavigationTarget(verseKey, rewayah);
       if (isVertical) {
         setIsSearchMode(false);
+        startChainAt(page); // a jump: see navigateToSurah
         // The vertical views scroll to the verse's first slot: a unit's
         // storage anchor ('S:A:W' for each part of a split Hafs verse, which
         // the list view finds as its own row), else the Hafs verse. @ai
@@ -1245,7 +1279,7 @@ export default function MushafViewer({
       if (target.hafsKey || target.unit) flashSelection();
       // @ai-end
     },
-    [isVertical, navigateToPage, flashSelection], // @ai
+    [isVertical, navigateToPage, flashSelection, startChainAt], // @ai
   );
 
   // @ai-start
