@@ -64,6 +64,11 @@ function getCredits(
           description: t('credits.items.quranpedia'),
           link: 'https://quranpedia.net',
         },
+        {
+          title: 'Tanzil Quran Text',
+          description: t('credits.items.tanzilText'),
+          link: 'https://tanzil.net',
+        },
       ],
     },
     {

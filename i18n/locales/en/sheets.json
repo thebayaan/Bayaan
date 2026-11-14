@@ -448,5 +448,33 @@
     "readLess": "Show less",
     "booksSources": "Text from Quranpedia (quranpedia.net).",
     "morphology": "Morphology (ṣarf)"
+  },
+  "wordStudy": {
+    "gharib": {
+      "title": "Arabic meaning",
+      "sources": "Text from {{source}}."
+    },
+    "rasm": {
+      "title": "Rasm",
+      "uthmani": "Mushaf",
+      "imlaei": "Standard",
+      "kind": {
+        "hadhf": "Omitted (ḥadhf)",
+        "ziyada": "Added (ziyādah)",
+        "badal": "Substituted (badal)",
+        "hamz": "Hamza (hamz)",
+        "wasl": "Joined (waṣl)",
+        "fasl": "Separated (faṣl)"
+      },
+      "note": {
+        "hadhf": "{{letter}} is not written in the mushaf.",
+        "ziyada": "The mushaf writes an extra {{letter}}.",
+        "badal": "{{standard}} is written as {{mushaf}} in the mushaf.",
+        "hamz": "The hamza is written {{mushaf}} in the mushaf and {{standard}} in the standard spelling.",
+        "wasl": "Written as one word in the mushaf; the standard spelling separates it.",
+        "fasl": "Written apart in the mushaf; the standard spelling joins the words."
+      },
+      "sources": "Standard spelling from {{source}}. The differences come from comparing it letter by letter with the mushaf's spelling; only those that the mushaf's own signs, a known spelling rule or a review confirm are shown. Shown for the Hafs text."
+    }
   }
 }
