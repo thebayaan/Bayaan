@@ -8,6 +8,7 @@ import type {
 import type {RecitationStopReason} from '@/services/analytics/events';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
 import {deleteRecitationAssets} from './recitationAssets';
 import {debugTakeAudio} from './debugTake';
 import type {
@@ -152,11 +153,19 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Pauses Bayaan's own Quran audio; true when something was playing. */
+// @ai The main player's states in which it is playing or about to.
+const MAIN_ACTIVE_STATES = ['playing', 'buffering', 'loading'];
+
+/** Pauses Bayaan's own audio; true when something was playing. */
 function pauseQuranAudio(): boolean {
   let paused = false;
   const player = usePlayerStore.getState();
-  if (player.playback.state === 'playing') {
+  // @ai-start
+  // Also while it is still loading or waiting for data: left alone, it
+  // started playing into the microphone a moment after the session began.
+  // (Its ambient sound follows its state, so that stops with it.)
+  if (MAIN_ACTIVE_STATES.includes(player.playback.state)) {
+    // @ai-end
     player.pause();
     paused = true;
   }
@@ -165,6 +174,15 @@ function pauseQuranAudio(): boolean {
     mushafPlayer.stop();
     paused = true;
   }
+  // @ai-start
+  // Adhkar too. On iOS a playing list kept going while the mic listened,
+  // and the recogniser heard it instead of the reciter.
+  const adhkar = useAdhkarSessionStore.getState();
+  if (adhkar.session && adhkar.session.status !== 'paused') {
+    adhkar.dispatch({type: 'otherAudioStarted'});
+    paused = true;
+  }
+  // @ai-end
   return paused;
 }
 

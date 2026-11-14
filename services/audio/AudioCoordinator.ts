@@ -95,6 +95,8 @@ class AudioCoordinator {
    * Called before the adhkar player plays. Pauses the main and mushaf players.
    */
   adhkarWillPlay(): void {
+    // @ai Like the other two: nothing of ours plays into an open mic.
+    this.stopRecitation();
     const store = usePlayerStore.getState();
     // @ai 'loading' too, as in mushafWillPlay().
     if (MAIN_ACTIVE_STATES.includes(store.playback.state)) {
