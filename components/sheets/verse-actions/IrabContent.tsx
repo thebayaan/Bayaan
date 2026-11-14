@@ -6,6 +6,11 @@
  * word view (the mushaf's words), and a word referred to inside an i'rab
  * line is filled in from the app's word list. The i'rab data never supplies
  * Quran text. Like word by word, i'rab is aligned to Hafs verses.
+ *
+ * The i'rab drawing is exported as building blocks for Word Study
+ * (createIrabStyles, renderRefs, IrabEntryList, MorphTable, IrabBooksTab):
+ * a reference to a word renders as a tappable «word» only when the caller's
+ * canOpen allows it. @ai
  */
 import React, {
   useCallback,
@@ -52,6 +57,7 @@ import {
 import {localizeDigits} from '@/i18n/format';
 import {isRTL, latinLetterSpacing} from '@/utils/rtl';
 import {wbwParts, type UnitStart} from './verseUnitScreens';
+import type {WordRef} from './wordStudy'; // @ai
 
 interface IrabContentProps {
   surahNumber: number;
@@ -77,8 +83,10 @@ const ARABIC_FONT_BOLD = 'ScheherazadeNew-SemiBold';
 // The i'rab is Arabic in every app language, so it sits on the physical
 // right. In an RTL app React Native swaps left and right (textAlign, flex
 // rows, borders), so the physical side is named per direction.
-const RIGHT = isRTL ? 'left' : 'right';
-const ROW_FROM_RIGHT = isRTL ? 'row' : 'row-reverse';
+// @ai-start
+export const RIGHT = isRTL ? 'left' : 'right';
+export const ROW_FROM_RIGHT = isRTL ? 'row' : 'row-reverse';
+// @ai-end
 /** Keeps a Latin label's colon after it inside a right-to-left line. */
 const LRM = String.fromCharCode(0x200e);
 
@@ -90,7 +98,7 @@ export const IrabContent: React.FC<IrabContentProps> = ({
 }) => {
   const {t} = useTranslation('sheets');
   const {theme} = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createIrabStyles(theme), [theme]); // @ai
   const verseKey = `${surahNumber}:${ayahNumber}`;
   const parts = useMemo(
     () => wbwParts(verseKey, unitStart),
@@ -193,20 +201,35 @@ export const IrabContent: React.FC<IrabContentProps> = ({
   );
   const noop = useCallback(() => undefined, []);
 
+  // @ai-start
+  // A tap on a reference to another word of the shown verses selects it; a
+  // reference outside them does nothing.
   const selectRef = useCallback(
-    (refVerseKey: string, position: number) => {
-      if (parts.some(p => p.verseKey === refVerseKey)) {
-        setSelected({verseKey: refVerseKey, position});
+    (ref: WordRef) => {
+      if (parts.some(p => p.verseKey === ref.verseKey)) {
+        setSelected({verseKey: ref.verseKey, position: ref.position});
         setShowAll(false);
       }
     },
     [parts],
+  );
+  const wordTextOf = useCallback(
+    (vk: string, pos: number) => data?.get(vk)?.wordText.get(pos),
+    [data],
   );
 
   const renderWordCard = (partKey: string, word: WordIrab) => {
     const verse = data?.get(partKey);
     const total = verse?.words.length ?? 0;
     const text = verse?.wordText.get(word.position);
+    const refContext: IrabRefContext = {
+      verseKey: partKey,
+      wordTextOf,
+      canOpen: anyRef,
+      onRef: selectRef,
+      styles,
+      t,
+    };
     return (
       <View key={`${partKey}:${word.position}`} style={styles.card}>
         <View style={styles.cardHeader}>
@@ -215,40 +238,14 @@ export const IrabContent: React.FC<IrabContentProps> = ({
             {localizeDigits(t('irab.wordOf', {n: word.position, total}))}
           </Text>
         </View>
-        {word.entries.map((entry, i) => (
-          <EntryRow
-            key={i}
-            entry={entry}
-            verseKey={partKey}
-            wordTextOf={(vk, pos) => data?.get(vk)?.wordText.get(pos)}
-            onRef={selectRef}
-            styles={styles}
-            t={t}
-          />
-        ))}
-        {word.agreed ? (
-          <View style={styles.agreedRow}>
-            <Feather
-              name="check-circle"
-              size={moderateScale(12)}
-              color={theme.colors.primary}
-            />
-            <Text style={styles.agreedText}>{t('irab.agreed')}</Text>
-          </View>
-        ) : null}
+        <IrabEntryList word={word} {...refContext} />
         {!showAll && word.morph.length > 0 ? (
-          <MorphTable
-            facts={word.morph}
-            verseKey={partKey}
-            wordTextOf={(vk, pos) => data?.get(vk)?.wordText.get(pos)}
-            onRef={selectRef}
-            styles={styles}
-            t={t}
-          />
+          <MorphTable facts={word.morph} {...refContext} />
         ) : null}
       </View>
     );
   };
+  // @ai-end
 
   return (
     <ScrollView
@@ -339,43 +336,67 @@ export const IrabContent: React.FC<IrabContentProps> = ({
           <Text style={styles.sources}>{t('irab.sources')}</Text>
         </>
       ) : (
-        <BooksTab
+        // @ai-start
+        <IrabBooksTab
           parts={parts.map(p => ({
             verseKey: p.verseKey,
-            caption: p.caption,
+            caption:
+              p.caption === null
+                ? null
+                : localizeDigits(t('irab.hafsVerse', {verse: p.verseKey})),
             books: books?.get(p.verseKey) ?? [],
           }))}
           styles={styles}
           t={t}
         />
+        // @ai-end
       )}
     </ScrollView>
   );
 };
 
-type Styles = ReturnType<typeof createStyles>;
-type T = ReturnType<typeof useTranslation<'sheets'>>['t'];
+// @ai-start
+export type IrabStyles = ReturnType<typeof createIrabStyles>;
+export type IrabT = ReturnType<typeof useTranslation<'sheets'>>['t'];
 
-/** Text with its word placeholders filled in as tappable words. */
-function renderRefs(
+/** The I'rab screen keeps every reference tappable, as before. */
+const anyRef = () => true;
+
+/** What i'rab text needs to show the words it refers to. */
+export interface IrabRefContext {
+  /** The verse the text belongs to (`{{5}}` is its word 5). */
+  verseKey: string;
+  /** The app's text of a word, for quoting it; undefined when unknown. */
+  wordTextOf: (verseKey: string, position: number) => string | undefined;
+  /**
+   * Whether a referred word can be opened (Word Study: a word of the
+   * selection). Otherwise it is plain text with no onPress.
+   */
+  canOpen: (ref: WordRef) => boolean;
+  onRef: (ref: WordRef) => void;
+  styles: IrabStyles;
+  t: IrabT;
+}
+
+/**
+ * Text with its word placeholders filled in: «word» (or "word 5" when the
+ * word's text is unknown), tappable when canOpen allows it.
+ */
+export function renderRefs(
   text: string,
-  verseKey: string,
-  wordTextOf: (verseKey: string, position: number) => string | undefined,
-  onRef: (verseKey: string, position: number) => void,
-  styles: Styles,
-  t: T,
+  context: IrabRefContext,
 ): React.ReactNode[] {
+  const {verseKey, wordTextOf, canOpen, onRef, styles, t} = context;
   return splitRefs(text, verseKey).map((part, i) => {
     if (part.type === 'text') return part.text;
-    const word = wordTextOf(part.verseKey, part.position);
+    const ref: WordRef = {verseKey: part.verseKey, position: part.position};
+    const word = wordTextOf(ref.verseKey, ref.position);
     const shown = word
       ? `«${word}»`
-      : localizeDigits(t('irab.wordN', {n: part.position}));
+      : localizeDigits(t('irab.wordN', {n: ref.position}));
+    if (!canOpen(ref)) return shown;
     return (
-      <Text
-        key={i}
-        style={styles.ref}
-        onPress={() => onRef(part.verseKey, part.position)}>
+      <Text key={i} style={styles.ref} onPress={() => onRef(ref)}>
         {shown}
       </Text>
     );
@@ -383,35 +404,56 @@ function renderRefs(
 }
 
 /** The word's morphology (الصرف) as label / value rows. */
-const MorphTable: React.FC<{
-  facts: MorphFact[];
-  verseKey: string;
-  wordTextOf: (verseKey: string, position: number) => string | undefined;
-  onRef: (verseKey: string, position: number) => void;
-  styles: Styles;
-  t: T;
-}> = ({facts, verseKey, wordTextOf, onRef, styles, t}) => (
-  <View style={styles.morph}>
-    <Text style={styles.morphTitle}>{t('irab.morphology')}</Text>
-    {facts.map((fact, i) => (
-      <View key={i} style={[styles.morphRow, i > 0 && styles.morphRowBorder]}>
-        <Text style={styles.morphLabel}>{fact.label}</Text>
-        <Text style={styles.morphValue}>
-          {renderRefs(fact.value, verseKey, wordTextOf, onRef, styles, t)}
-        </Text>
-      </View>
-    ))}
-  </View>
-);
+export const MorphTable: React.FC<
+  IrabRefContext & {facts: readonly MorphFact[]}
+> = ({facts, ...context}) => {
+  const {styles, t} = context;
+  return (
+    <View style={styles.morph}>
+      <Text style={styles.morphTitle}>{t('irab.morphology')}</Text>
+      {facts.map((fact, i) => (
+        <View key={i} style={[styles.morphRow, i > 0 && styles.morphRowBorder]}>
+          <Text style={styles.morphLabel}>{fact.label}</Text>
+          <Text style={styles.morphValue}>
+            {renderRefs(fact.value, context)}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+};
 
-const EntryRow: React.FC<{
-  entry: IrabEntry;
-  verseKey: string;
-  wordTextOf: (verseKey: string, position: number) => string | undefined;
-  onRef: (verseKey: string, position: number) => void;
-  styles: Styles;
-  t: T;
-}> = ({entry, verseKey, wordTextOf, onRef, styles, t}) => {
+/** A word's i'rab entries, then the mark that both analyses agree. */
+export const IrabEntryList: React.FC<
+  IrabRefContext & {word: Pick<WordIrab, 'entries' | 'agreed'>}
+> = ({word, ...context}) => {
+  const {theme} = useTheme();
+  const {styles, t} = context;
+  return (
+    <>
+      {word.entries.map((entry, i) => (
+        <EntryRow key={i} entry={entry} context={context} />
+      ))}
+      {word.agreed ? (
+        <View style={styles.agreedRow}>
+          <Feather
+            name="check-circle"
+            size={moderateScale(12)}
+            color={theme.colors.primary}
+          />
+          <Text style={styles.agreedText}>{t('irab.agreed')}</Text>
+        </View>
+      ) : null}
+    </>
+  );
+};
+
+const EntryRow: React.FC<{entry: IrabEntry; context: IrabRefContext}> = ({
+  entry,
+  context,
+}) => {
+  const {styles, t} = context;
+  // @ai-end
   const label =
     entry.kind === 'implied' ? t('irab.implied') : entry.label || null;
   const rowStyle = [
@@ -437,21 +479,27 @@ const EntryRow: React.FC<{
             {/[A-Za-z]/.test(label) ? `:${LRM} ` : ': '}
           </Text>
         ) : null}
-        {renderRefs(entry.text, verseKey, wordTextOf, onRef, styles, t)}
+        {renderRefs(entry.text, context) /* @ai */}
       </Text>
     </View>
   );
 };
 
-const BooksTab: React.FC<{
-  parts: {
+// @ai-start
+/**
+ * The classical i'rab books' passages on each verse. A part's caption is the
+ * label shown over its books ("Hafs 1:7"), null for none.
+ */
+export const IrabBooksTab: React.FC<{
+  parts: readonly {
     verseKey: string;
     caption: string | null;
-    books: IrabBookPassages[];
+    books: readonly IrabBookPassages[];
   }[];
-  styles: Styles;
-  t: T;
+  styles: IrabStyles;
+  t: IrabT;
 }> = ({parts, styles, t}) => {
+  // @ai-end
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const anyBooks = parts.some(p => p.books.length > 0);
   return (
@@ -461,9 +509,7 @@ const BooksTab: React.FC<{
       {parts.map(part => (
         <React.Fragment key={part.verseKey}>
           {part.caption !== null && part.books.length > 0 && (
-            <Text style={styles.partCaption}>
-              {localizeDigits(t('irab.hafsVerse', {verse: part.verseKey}))}
-            </Text>
+            <Text style={styles.partCaption}>{part.caption /* @ai */}</Text>
           )}
           {part.books.map(book => (
             <View key={book.bookId} style={styles.bookCard}>
@@ -516,10 +562,14 @@ const BooksTab: React.FC<{
   );
 };
 
-const createStyles = (theme: Theme) => {
+// @ai-start
+/** The i'rab styles, shared by the I'rab screen and Word Study. */
+export const createIrabStyles = (theme: Theme) => {
   const subtle = Color(theme.colors.text).alpha(0.04).toString();
   const hairline = Color(theme.colors.text).alpha(0.08).toString();
-  const secondary = Color(theme.colors.textSecondary).alpha(0.75).toString();
+  // Secondary text: 0.8 alpha at least (ipad-standards.md §12).
+  const secondary = Color(theme.colors.textSecondary).alpha(0.8).toString();
+  // @ai-end
   const phraseRule = Color(theme.colors.primary).alpha(0.45).toString();
   return StyleSheet.create({
     container: {
