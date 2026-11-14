@@ -1,6 +1,7 @@
 // @ai-generated
 import {
   alifFreeKey,
+  hamzaKey,
   looseKey,
   matchKey,
   plainKey,
@@ -47,6 +48,51 @@ describe('matching keys', () => {
     );
     expect(alifFreeKey(matchKey('أَزْوَٰجٌ'))).toBe(
       alifFreeKey(matchKey('أزواج')),
+    );
+  });
+
+  it('writes the article’s merged ل again, only where the standard has two', () => {
+    expect(matchKey('ٱلَّيْلِ')).toBe(matchKey('اللَّيْلِ'));
+    expect(matchKey('وَبِٱلَّيْلِ')).toBe(matchKey('وَبِاللَّيْلِ'));
+    expect(matchKey('وَٱلَّـٰتِى')).toBe(matchKey('وَاللَّاتِي'));
+    // Its seatless hamza matches ئ at tier 2 (hamzaKey), not tier 1.
+    expect(hamzaKey(plene('ٱلَّـٰٓـِٔى'), 'uthmani')).toBe(
+      hamzaKey('اللَّائِي'),
+    );
+    expect(matchKey('وَٱلَّذَانِ')).toBe(matchKey('وَاللَّذَانِ'));
+    expect(matchKey('ٱلَّذَيْنِ')).toBe(matchKey('اللَّذَيْنِ'));
+    expect(matchKey('ٱلَّذِينَ')).toBe(matchKey('الَّذِينَ'));
+    expect(matchKey('ٱلَّذِى')).toBe(matchKey('الَّذِي'));
+    expect(matchKey('ٱلَّتِى')).toBe(matchKey('الَّتِي'));
+  });
+});
+
+describe('hamzaKey', () => {
+  it('drops alifs of length and unifies every hamza', () => {
+    expect(hamzaKey('ٱلْكِتَـٰبُ', 'uthmani')).toBe(hamzaKey('الْكِتَابُ'));
+    expect(hamzaKey('شَيْـًۭٔا', 'uthmani')).toBe(hamzaKey('شَيْئاً'));
+    expect(hamzaKey('مُسْتَهْزِءُونَ', 'uthmani')).toBe(
+      hamzaKey('مُسْتَهْزِئُونَ'),
+    );
+    expect(hamzaKey('أَنۢبِـُٔونِى', 'uthmani')).toBe(hamzaKey('أَنْبِئُونِي'));
+    expect(hamzaKey('ءَامَنُوا۟', 'uthmani')).toBe(hamzaKey('آمَنُوا'));
+  });
+
+  it('keeps a hamza apart from an alif of length', () => {
+    expect(hamzaKey('أَثْمَرَ', 'uthmani')).not.toBe(hamzaKey('ثمر'));
+    expect(hamzaKey('ثَمَرِهِۦٓ', 'uthmani')).toBe(hamzaKey('ثمره'));
+  });
+
+  it('reads آ as a madd in the mushaf and a hamza in the standard text', () => {
+    expect(hamzaKey('سَآئِلٌۢ', 'uthmani')).toBe(hamzaKey('سَائِلٌ'));
+    expect(hamzaKey('آمنوا')).toBe('ءمنو');
+    expect(hamzaKey('جَآءَ', 'uthmani')).toBe('جء');
+  });
+
+  it('turns a decomposed seat into the hamza', () => {
+    expect(hamzaKey('سُؤالِ')).toBe(hamzaKey('سُؤَالِ'));
+    expect(hamzaKey('فَٱدَّٰرَْٰٔتُمْ', 'uthmani')).toBe(
+      hamzaKey('فَادَّارَأْتُمْ'),
     );
   });
 });
