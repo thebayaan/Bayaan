@@ -207,6 +207,7 @@ function renderPage(): void {
         cardColor="#ffffff"
         bgColor="#fafafa"
         isBookLayout={false}
+        pageSize={{width: 390, height: 844}}
       />,
     );
   });
@@ -220,6 +221,7 @@ function renderList(): void {
         labelColor="#666666"
         borderColor="#cccccc"
         initialPage={1}
+        width={390}
       />,
     );
   });

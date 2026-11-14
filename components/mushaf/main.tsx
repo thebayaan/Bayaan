@@ -689,14 +689,19 @@ export default function MushafViewer({
   // The vertical mushaf shows one page per row, also where the pager shows
   // spreads.
   const scrollMetrics = useMemo(() => singlePageLayout(metrics), [metrics]);
-  // iPad: the list and translation views take the measured pane, not the
-  // launch-time screen size. Phones keep their layout.
+  // The list and translation views take the live size: the measured pane
+  // on iPad, the window on a phone. They used to fall back to the screen
+  // size the app launched with (portrait), so in phone landscape the pager
+  // paged by the landscape width over portrait-sized pages: two narrow pages
+  // side by side, each swipe moving more than two, the lower half cut off.
+  // A phone's landscape `metrics.screenHeight` is the zoomed mushaf page,
+  // taller than the screen, so phones take the window height.
   const readingPageSize = useMemo(
-    () =>
-      isTablet
-        ? {width: metrics.screenWidth, height: metrics.screenHeight}
-        : undefined,
-    [isTablet, metrics.screenWidth, metrics.screenHeight],
+    () => ({
+      width: metrics.screenWidth,
+      height: isTablet ? metrics.screenHeight : windowHeight,
+    }),
+    [isTablet, metrics.screenWidth, metrics.screenHeight, windowHeight],
   );
   // A tap on the status bar scrolls a vertical reader back to page 1. On
   // iPad the toolbar sits close enough to the status bar (the mini in
@@ -1314,7 +1319,7 @@ export default function MushafViewer({
           onTap={toggleImmersive}
           initialPage={currentPage}
           onCurrentPageChange={handleContinuousPageChange}
-          width={readingPageSize?.width} // @ai
+          width={readingPageSize.width} // @ai
           scrollsToTop={scrollsToTop} // @ai
         />
       ) : metrics.facingPages && viewMode === 'mushaf' ? (

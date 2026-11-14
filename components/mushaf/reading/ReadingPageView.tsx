@@ -41,8 +41,6 @@ import PageEdgeDecoration, {
 } from '../PageEdgeDecoration';
 import {moderateScale} from '@/utils/scale';
 import {
-  SCREEN_WIDTH,
-  SCREEN_HEIGHT,
   PAGE_PADDING_HORIZONTAL,
   PAGE_PADDING_TOP,
   PAGE_PADDING_BOTTOM,
@@ -80,11 +78,10 @@ interface ReadingPageViewProps {
   onTap?: () => void;
   // @ai-start
   /**
-   * The pager item's size on iPad, where the text also sits in a centred
-   * reading column. Phones leave it out and keep the launch-time screen
-   * size.
+   * The pager item's live size. Where it is wider than the reading column
+   * (iPad, a phone in landscape) the text sits in a centred column.
    */
-  pageSize?: {width: number; height: number};
+  pageSize: {width: number; height: number};
   // @ai-end
 }
 
@@ -227,26 +224,25 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     [pageNumber],
   );
 
-  const pageWidth = pageSize?.width ?? SCREEN_WIDTH;
-  const pageHeight = pageSize?.height ?? SCREEN_HEIGHT;
+  // Always the size the pager gives its items. The screen size the app
+  // launched with (portrait) was used on phones, which broke the pager in
+  // landscape: its items were narrower and taller than the pages it turned.
+  const pageWidth = pageSize.width;
+  const pageHeight = pageSize.height;
 
-  // Content area horizontal padding for the ScrollView
+  // Content area horizontal padding for the ScrollView. A phone in portrait
+  // is narrower than the reading column, so it keeps its edge padding.
   const bookContentPadding = moderateScale(12);
   const contentHorizontalPadding = isBookLayout
     ? bookContentPadding
-    : pageSize
-      ? readingColumnPadding(pageWidth, PAGE_PADDING_HORIZONTAL + 8)
-      : PAGE_PADDING_HORIZONTAL + 8;
+    : readingColumnPadding(pageWidth, PAGE_PADDING_HORIZONTAL + 8);
 
-  // Book layout on iPad: the card holds the reading column and is centred
-  // in the item with all four corners rounded, like a single mushaf page.
-  const sheetWidth = pageSize
-    ? Math.min(
-        pageWidth,
-        READING_COLUMN_MAX_WIDTH +
-          (bookContentPadding + EDGE_HORIZONTAL_INSET) * 2,
-      )
-    : pageWidth;
+  // Book layout in a wide item: the card holds the reading column and is
+  // centred with all four corners rounded, like a single mushaf page.
+  const sheetWidth = Math.min(
+    pageWidth,
+    READING_COLUMN_MAX_WIDTH + (bookContentPadding + EDGE_HORIZONTAL_INSET) * 2,
+  );
   const symmetricEdges = sheetWidth < pageWidth;
 
   // Width available for SurahDivider / content items

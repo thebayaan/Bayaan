@@ -37,7 +37,6 @@ import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/Basmal
 import {getTranslationName} from '@/utils/translationLookup';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {
-  SCREEN_WIDTH,
   VERTICAL_READER_VIEWABILITY, // @ai
   readingColumnPadding, // @ai
 } from '../constants';
@@ -203,11 +202,10 @@ interface ContinuousListViewProps {
   onCurrentPageChange?: (page: number) => void;
   // @ai-start
   /**
-   * The list's measured width on iPad, where the text also sits in a centred
-   * reading column. Phones leave it out and keep the launch-time screen
-   * width.
+   * The list's live width. Where it is wider than the reading column (iPad,
+   * a phone in landscape) the text sits in a centred column.
    */
-  width?: number;
+  width: number;
   /** Whether a tap on the status bar scrolls back to the start. Default on. */
   scrollsToTop?: boolean;
   // @ai-end
@@ -396,11 +394,10 @@ const ContinuousListView = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const items = useMemo(() => buildContinuousListItems(), [versesVersion]); // @ai
 
-    const sidePadding =
-      width === undefined
-        ? moderateScale(8)
-        : readingColumnPadding(width, moderateScale(8));
-    const contentWidth = (width ?? SCREEN_WIDTH) - sidePadding * 2;
+    // From the live width, never the width the app launched with: in phone
+    // landscape the surah dividers and basmala stayed portrait-sized.
+    const sidePadding = readingColumnPadding(width, moderateScale(8));
+    const contentWidth = width - sidePadding * 2;
 
     // Load annotations for visible surahs
     const loadAnnotationsForSurah = useVerseAnnotationsStore(

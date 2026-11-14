@@ -249,6 +249,7 @@ const views = {
       initialPage={page}
       onCurrentPageChange={p => mockRecorded.pages.push(p)}
       onCurrentSurahChange={s => mockRecorded.surahs.push(s)}
+      width={390} // @ai
     />
   ),
   ReadingPageView: (page: number) => (
@@ -263,6 +264,7 @@ const views = {
       cardColor="#ffffff"
       bgColor="#ffffff"
       isBookLayout={false}
+      pageSize={{width: 390, height: 844}} // @ai
     />
   ),
 };
