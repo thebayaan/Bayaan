@@ -4,8 +4,10 @@
  * once the whole file has arrived. An interrupted download, an HTTP error
  * page or a short file must never end up under the real .mp3 name.
  */
+import {Platform} from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import {downloadSurah} from '../downloadService';
+import {useNetworkStore} from '@/store/networkStore';
+import {downloadFailureReason, downloadSurah} from '../downloadService';
 
 jest.mock('expo-file-system/legacy', () => ({
   documentDirectory: 'file:///docs/',
@@ -38,6 +40,9 @@ let files: Map<string, number>;
 /** What the next transfer does: writes to the fake disk and answers. */
 let transfer: (uri: string) => Promise<TransferResult | undefined>;
 
+/** The native cancel call of the transfer in flight. */
+const cancelAsync = jest.fn(async () => undefined);
+
 function download() {
   return downloadSurah(1, 'reciter', 'rewayah');
 }
@@ -46,6 +51,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  useNetworkStore.setState({isOnline: true});
   files = new Map();
   transfer = async uri => {
     files.set(uri, 5000);
@@ -71,6 +77,7 @@ beforeEach(() => {
   fs.createDownloadResumable.mockImplementation(
     (_url: string, uri: string) => ({
       downloadAsync: () => transfer(uri),
+      cancelAsync,
     }),
   );
 });
@@ -201,4 +208,51 @@ it('shares one transfer between two calls for the same file', async () => {
   };
   await download();
   expect(fs.createDownloadResumable).toHaveBeenCalledTimes(2);
+});
+
+describe('offline', () => {
+  it('does not start a download on iOS, where it would wait for good', async () => {
+    useNetworkStore.setState({isOnline: false});
+    const error = await download().catch((e: unknown) => e);
+    expect(downloadFailureReason(error)).toBe('offline');
+    expect(fs.createDownloadResumable).not.toHaveBeenCalled();
+  });
+
+  it('still tries on Android, which fails by itself', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    useNetworkStore.setState({isOnline: false});
+    await expect(download()).resolves.toMatchObject({fileSize: 5000});
+  });
+});
+
+describe('stopping a download', () => {
+  it('rejects as cancelled at once and removes the partial file', async () => {
+    // The native side never answers: the file is waiting for a connection.
+    transfer = uri => {
+      files.set(uri, 900);
+      return new Promise(() => undefined);
+    };
+    let cancel: (() => void) | undefined;
+    const pending = downloadSurah(1, 'reciter', 'rewayah', undefined, {
+      onStart: stop => {
+        cancel = stop;
+      },
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    expect(fs.createDownloadResumable).toHaveBeenCalledTimes(1);
+
+    cancel?.();
+    const error = await pending.catch((e: unknown) => e);
+    expect(downloadFailureReason(error)).toBe('cancelled');
+    expect(cancelAsync).toHaveBeenCalledTimes(1);
+    expect(files.size).toBe(0);
+  });
+
+  it('reports a plain failure as failed', async () => {
+    transfer = async () => {
+      throw new Error('connection lost');
+    };
+    const error = await download().catch((e: unknown) => e);
+    expect(downloadFailureReason(error)).toBe('failed');
+  });
 });

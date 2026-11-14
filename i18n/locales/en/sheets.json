@@ -131,7 +131,10 @@
     "downloaded": "Downloaded",
     "shareListen": "Listen to Surah {{surah}} on {{appName}}",
     "shareListenSurah": "Listen to {{surah}} on {{appName}}",
-    "removeFromPlaylist": "Remove from Playlist"
+    "removeFromPlaylist": "Remove from Playlist",
+    "downloadFailedTitle": "Couldn't download {{surah}}",
+    "downloadFailedHint": "Check your internet connection and try again.",
+    "downloadOfflineHint": "You're offline. Connect to the internet and try again."
   },
   "uploads": {
     "untagged": "Untagged",

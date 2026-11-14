@@ -1,4 +1,6 @@
+import {Platform} from 'react-native'; // @ai
 import * as FileSystem from 'expo-file-system/legacy';
+import {useNetworkStore} from '@/store/networkStore'; // @ai
 import {fetchAudioUrl} from './dataService';
 import {DownloadedSurah} from './player/store/downloadStore';
 
@@ -6,6 +8,30 @@ interface DownloadResult {
   filePath: string; // This is now a RELATIVE path (just the filename)
   fileSize: number;
 }
+
+// @ai-start
+/** Why a download did not finish, so callers can say the right thing. */
+export type DownloadFailureReason = 'offline' | 'cancelled' | 'failed';
+
+export class DownloadError extends Error {
+  constructor(message: string, readonly reason: DownloadFailureReason) {
+    super(message);
+    this.name = 'DownloadError';
+  }
+}
+
+export function downloadFailureReason(error: unknown): DownloadFailureReason {
+  return error instanceof DownloadError ? error.reason : 'failed';
+}
+
+export interface DownloadSurahOptions {
+  /**
+   * Called once the download is under way, with a function that stops it.
+   * A stopped download rejects with reason 'cancelled'.
+   */
+  onStart?: (cancel: () => void) => void;
+}
+// @ai-end
 
 /**
  * Resolves a relative file path (filename) to an absolute path.
@@ -65,6 +91,12 @@ function expectedBytes(
   return Number.isFinite(length) && length > 0 ? length : null;
 }
 
+/** A download under way, and the way to stop it. */
+interface Transfer {
+  done: Promise<number>;
+  cancel: () => void;
+}
+
 /**
  * Downloads to `<file>.part` and only renames it to the real name once the
  * whole file has arrived.
@@ -74,76 +106,104 @@ function expectedBytes(
  * killed, and the next tap on Download found "the file", marked the surah
  * downloaded, and it cut off part-way on every play. On both platforms a
  * 404/403/5xx error page was saved as the .mp3 and marked downloaded.
- * @returns The size of the file on disk, in bytes
+ *
+ * `done` resolves to the size of the file on disk, in bytes.
  */
-async function transferToFile(
+function startTransfer(
   remoteUrl: string,
   localPath: string,
   onProgress?: (progress: number) => void,
-): Promise<number> {
+): Transfer {
   const partPath = `${localPath}.part`;
-  // A killed app or an earlier failure can leave a partial file behind.
-  await FileSystem.deleteAsync(partPath, {idempotent: true});
+  let cancelled = false;
+  let task: FileSystem.DownloadResumable | null = null;
+  let settleAsCancelled: (() => void) | null = null;
 
-  try {
-    // Use downloadResumable for progress tracking
-    const downloadResumable = FileSystem.createDownloadResumable(
-      remoteUrl,
-      partPath,
-      {},
-      onProgress
-        ? downloadProgress => {
-            const progress =
-              downloadProgress.totalBytesWritten /
-              downloadProgress.totalBytesExpectedToWrite;
-            onProgress(progress);
-          }
-        : undefined,
-    );
+  const cancel = () => {
+    if (cancelled) return;
+    cancelled = true;
+    task?.cancelAsync().catch(() => undefined);
+    // Do not wait for the native side to answer the cancel.
+    settleAsCancelled?.();
+  };
 
-    const result = await downloadResumable.downloadAsync();
+  const run = async (): Promise<number> => {
+    // A killed app or an earlier failure can leave a partial file behind.
+    await FileSystem.deleteAsync(partPath, {idempotent: true});
 
-    if (!result) {
-      throw new Error('Download failed: no result returned');
-    }
-    if (result.status < 200 || result.status >= 300) {
-      throw new Error(`Download failed: HTTP ${result.status}`);
-    }
+    try {
+      if (cancelled) throw new DownloadError('Download cancelled', 'cancelled');
 
-    const info = await FileSystem.getInfoAsync(partPath);
-    const size = info.exists ? info.size : 0;
-    const expected = expectedBytes(result.headers);
-    if (size <= 0 || (expected !== null && size !== expected)) {
-      throw new Error(
-        `Download incomplete: ${size} of ${expected ?? 'unknown'} bytes`,
+      // Use downloadResumable for progress tracking
+      const downloadResumable = FileSystem.createDownloadResumable(
+        remoteUrl,
+        partPath,
+        {},
+        onProgress
+          ? downloadProgress => {
+              const progress =
+                downloadProgress.totalBytesWritten /
+                downloadProgress.totalBytesExpectedToWrite;
+              onProgress(progress);
+            }
+          : undefined,
       );
-    }
+      task = downloadResumable;
 
-    await FileSystem.moveAsync({from: partPath, to: localPath});
-    return size;
-  } catch (error) {
-    await FileSystem.deleteAsync(partPath, {idempotent: true}).catch(
-      () => undefined,
-    );
-    throw error;
-  }
+      const result = await new Promise<
+        FileSystem.FileSystemDownloadResult | undefined
+      >((resolve, reject) => {
+        settleAsCancelled = () => resolve(undefined);
+        downloadResumable.downloadAsync().then(resolve, reject);
+      });
+
+      if (cancelled) throw new DownloadError('Download cancelled', 'cancelled');
+      if (!result) {
+        throw new Error('Download failed: no result returned');
+      }
+      if (result.status < 200 || result.status >= 300) {
+        throw new Error(`Download failed: HTTP ${result.status}`);
+      }
+
+      const info = await FileSystem.getInfoAsync(partPath);
+      const size = info.exists ? info.size : 0;
+      const expected = expectedBytes(result.headers);
+      if (size <= 0 || (expected !== null && size !== expected)) {
+        throw new Error(
+          `Download incomplete: ${size} of ${expected ?? 'unknown'} bytes`,
+        );
+      }
+
+      await FileSystem.moveAsync({from: partPath, to: localPath});
+      return size;
+    } catch (error) {
+      await FileSystem.deleteAsync(partPath, {idempotent: true}).catch(
+        () => undefined,
+      );
+      throw error;
+    }
+  };
+
+  return {done: run(), cancel};
 }
 
 // Transfers under way, by destination. Two callers asking for the same file
 // share one transfer: a second one would delete the first one's partial file
 // from under it.
-const transfers = new Map<string, Promise<number>>();
+const transfers = new Map<string, Transfer>();
 
 function downloadToFile(
   remoteUrl: string,
   localPath: string,
   onProgress?: (progress: number) => void,
-): Promise<number> {
+): Transfer {
   const running = transfers.get(localPath);
   if (running) return running;
-  const transfer = transferToFile(remoteUrl, localPath, onProgress).finally(
-    () => transfers.delete(localPath),
-  );
+  const started = startTransfer(remoteUrl, localPath, onProgress);
+  const transfer: Transfer = {
+    done: started.done.finally(() => transfers.delete(localPath)),
+    cancel: started.cancel,
+  };
   transfers.set(localPath, transfer);
   return transfer;
 }
@@ -155,14 +215,17 @@ function downloadToFile(
  * @param reciterId - The reciter's unique identifier
  * @param rewayatId - Optional: the rewayat ID (reading style)
  * @param onProgress - Optional: callback for download progress (0-1)
+ * @param options - Optional: `onStart` hands back a way to stop the download
  * @returns Promise resolving to download result with file path and size
- * @throws {Error} When download fails or invalid parameters provided
+ * @throws {DownloadError} When the download fails, is stopped, or cannot
+ *   start offline; `reason` says which. Invalid parameters throw a plain Error.
  */
 export async function downloadSurah(
   surahId: number,
   reciterId: string,
   rewayatId?: string,
   onProgress?: (progress: number) => void,
+  options?: DownloadSurahOptions, // @ai
 ): Promise<DownloadResult> {
   // Validate inputs
   if (!surahId || surahId < 1 || surahId > 114) {
@@ -178,6 +241,17 @@ export async function downloadSurah(
   const sanitizedRewayatId = rewayatId?.replace(/[^a-zA-Z0-9_-]/g, '');
 
   try {
+    // @ai-start
+    // iOS hands the download to a background URLSession, which waits for a
+    // connection instead of failing: one started offline sat at 0% for good,
+    // with no error and no way to stop it. Android is left to try. It fails
+    // by itself within seconds, and its "network validated" flag can read
+    // offline on networks that do work.
+    if (Platform.OS === 'ios' && !useNetworkStore.getState().isOnline) {
+      throw new DownloadError('No internet connection', 'offline');
+    }
+    // @ai-end
+
     // Get the remote URL using the data service
     const remoteUrl = await fetchAudioUrl(surahId, reciterId, rewayatId);
 
@@ -199,7 +273,9 @@ export async function downloadSurah(
     // The size comes from the file itself: the Content-Length lookup missed
     // on Android (lowercase header name) and recorded 0, which made
     // Settings > Storage show "Downloads: 0 bytes".
-    const fileSize = await downloadToFile(remoteUrl, localPath, onProgress);
+    const transfer = downloadToFile(remoteUrl, localPath, onProgress);
+    options?.onStart?.(transfer.cancel);
+    const fileSize = await transfer.done;
     // @ai-end
 
     console.log('Download complete:', localPath, `Size: ${fileSize} bytes`);
@@ -211,10 +287,17 @@ export async function downloadSurah(
       fileSize,
     };
   } catch (error) {
-    console.error('Download failed:', error);
+    // @ai-start
+    // Being offline or stopped by the user is not an error worth reporting.
+    const reason = downloadFailureReason(error);
+    if (reason === 'failed') console.error('Download failed:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error occurred';
-    throw new Error(`Failed to download Surah ${surahId}: ${errorMessage}`);
+    throw new DownloadError(
+      `Failed to download Surah ${surahId}: ${errorMessage}`,
+      reason,
+    );
+    // @ai-end
   }
 }
 

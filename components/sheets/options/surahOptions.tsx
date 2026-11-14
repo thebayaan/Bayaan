@@ -13,6 +13,7 @@ import {
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
+import {showDownloadFailedToast} from './downloadFailedToast';
 import {getReciterByIdSync} from '@/services/dataService';
 import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
@@ -134,6 +135,7 @@ export function useSurahOptions(
     } catch (error) {
       console.error('Download failed:', error);
       clearDownloading(downloadId);
+      showDownloadFailedToast(surah, error);
     }
   }, [
     reciterId,

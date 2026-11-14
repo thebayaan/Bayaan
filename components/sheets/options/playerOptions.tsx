@@ -12,6 +12,7 @@ import {
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
+import {showDownloadFailedToast} from './downloadFailedToast';
 import {getReciterByIdSync} from '@/services/dataService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -115,6 +116,7 @@ export function usePlayerOptions(
     } catch (error) {
       console.error('Download failed:', error);
       clearDownloading(downloadId);
+      showDownloadFailedToast(surah, error);
     }
   }, [
     reciterId,

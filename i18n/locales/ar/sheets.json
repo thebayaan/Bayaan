@@ -151,7 +151,10 @@
     "downloaded": "تم التنزيل",
     "shareListen": "استمع إلى السورة رقم {{surah}} على {{appName}}",
     "shareListenSurah": "استمع إلى سورة {{surah}} على {{appName}}",
-    "removeFromPlaylist": "إزالة من قائمة التشغيل"
+    "removeFromPlaylist": "إزالة من قائمة التشغيل",
+    "downloadFailedTitle": "تعذّر تنزيل سورة {{surah}}",
+    "downloadFailedHint": "يُرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.",
+    "downloadOfflineHint": "لا يوجد اتصال بالإنترنت. اتصل بالإنترنت ثم حاول مرة أخرى."
   },
   "uploads": {
     "untagged": "غير مصنّف",
