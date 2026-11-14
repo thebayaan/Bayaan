@@ -69,6 +69,7 @@ const serviceProto = Object.getPrototypeOf(digitalKhattDataService) as {
     rewayah?: string,
   ): DKWordInfo[];
   getVerseText(this: unknown, verseKey: string, rewayah?: string): string;
+  storeOf(this: unknown, rewayah?: string): unknown; // @ai
 };
 
 function realGetLineText(page: FixturePage, db: FixtureDb, line: DKLine) {
@@ -287,7 +288,10 @@ describe('DigitalKhattDataService verse joins', () => {
     return {
       currentRewayah: 'warsh',
       words: store,
-      sideVerseWords: new Map([['al-bazzi', store]]),
+      stores: new Map([['al-bazzi', store]]),
+      storeOf(rewayah?: string) {
+        return serviceProto.storeOf.call(this, rewayah);
+      },
       getVerseWords(verseKey: string, rewayah?: string) {
         return serviceProto.getVerseWords.call(this, verseKey, rewayah);
       },

@@ -48,6 +48,9 @@ jest.mock('../verse-actions/ThemeContent', () => ({
 jest.mock('../verse-actions/WBWContent', () => ({
   WBWContent: (props: Record<string, unknown>) => mockRecord('wbw', props),
 }));
+jest.mock('../verse-actions/IrabContent', () => ({
+  IrabContent: (props: Record<string, unknown>) => mockRecord('irab', props),
+}));
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: (props: Record<string, unknown>) =>
     mockRecord('reflections', props),
@@ -488,6 +491,14 @@ describe('Hafs (unchanged)', () => {
       ayahNumber: 255,
       unitStart: undefined,
     });
+    await openSheet(payload);
+    await press("I'rab");
+    expect(last('irab')).toMatchObject({
+      surahNumber: 2,
+      ayahNumber: 255,
+      rewayah: 'hafs',
+      unitStart: undefined,
+    });
   });
 });
 
@@ -567,6 +578,11 @@ describe('Warsh verses in their own numbering', () => {
     await press('Translation');
     const translation = last('translation');
     expect((translation.unitStart as {unit: {key: string}}).unit.key).toBe(
+      '1:7',
+    );
+    await openSheet(warshUnitPayload(['1:7']));
+    await press("I'rab");
+    expect((last('irab').unitStart as {unit: {key: string}}).unit.key).toBe(
       '1:7',
     );
   });

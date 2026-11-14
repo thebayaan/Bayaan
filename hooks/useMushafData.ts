@@ -1,19 +1,24 @@
 // @ai-generated
 // The Mushaf data loads after the splash (RFC-023 step 1), so a screen that
-// reads it waits for one state, with one retry that knows which load to redo.
-import {useCallback, useState, useSyncExternalStore} from 'react';
+// reads it can open first. It starts the load if nothing did, and waits for one
+// state, with one retry that knows which load to redo.
+import {useCallback, useEffect, useState, useSyncExternalStore} from 'react';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 
 export type MushafDataState = 'ready' | 'loading' | 'failed';
 
+// Ready means the data and the fonts: a page that mounts before the fonts
+// draws without them. The preload fails when either fails, and the pages stay
+// blank either way, so both offer the retry.
+// A failed read of the active rewayah drops its data after the preload
+// finished: the preload stays 'ready', and the rewayah is 'error'.
 function readMushafDataState(): MushafDataState {
+  const preload = mushafPreloadService;
   const dk = digitalKhattDataService;
-  if (dk.initialized) return 'ready';
-  const failed =
-    mushafPreloadService.state === 'failed' ||
-    dk.getRewayahLoadState(dk.rewayah) === 'error';
-  return failed ? 'failed' : 'loading';
+  if (preload.state === 'failed') return 'failed';
+  if (preload.initialized && dk.initialized) return 'ready';
+  return dk.getRewayahLoadState(dk.rewayah) === 'error' ? 'failed' : 'loading';
 }
 
 function subscribeMushafData(listener: () => void): () => void {
@@ -40,6 +45,9 @@ export function useMushafData(): {
   retry: () => void;
 } {
   const state = useSyncExternalStore(subscribeMushafData, readMushafDataState);
+  useEffect(() => {
+    mushafPreloadService.startIfIdle();
+  }, []);
   const [retrying, setRetrying] = useState(false);
   const retry = useCallback(() => {
     setRetrying(true);

@@ -176,15 +176,19 @@ class MushafPreloadService {
 
       // @ai-start
       // The fonts need no Mushaf data, so they load while the data loads
-      // (loadSkiaFonts handles its own errors).
-      const fonts = this.loadSkiaFonts();
+      // (loadSkiaFonts handles its own errors). The run ends after both: a
+      // font load that outlived a failed run would overwrite the provider
+      // that its retry published.
+      const [data] = await Promise.allSettled([
+        digitalKhattDataService.initialize().then(() =>
+          // Hafs (the service's starting rewayah) commits without a change
+          // event.
+          this._loadDiffsFor(digitalKhattDataService.rewayah),
+        ),
+        this.loadSkiaFonts(),
+      ]);
+      if (data.status === 'rejected') throw data.reason;
       // @ai-end
-      await digitalKhattDataService.initialize();
-
-      // Hafs (the service's starting rewayah) commits without a change event.
-      this._loadDiffsFor(digitalKhattDataService.rewayah);
-
-      await fonts; // @ai
 
       // `loadSkiaFonts` swallows its own errors and leaves `_fontMgr` null on
       // failure. Treat a null fontMgr after the load completes as a failure

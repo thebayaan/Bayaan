@@ -15,17 +15,13 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
 }));
 
 import {WordReadError} from '../wordStore';
-import type {
-  DKWordInfo,
-  RewayahLoadState,
-} from '@/services/mushaf/DigitalKhattDataService';
+import type {RewayahLoadState} from '@/services/mushaf/DigitalKhattDataService';
 import {
   buildRewayahVerseUnits,
   type VerseMapReader,
   type VerseUnitSlot,
 } from '../RewayahVerseUnits';
 import {
-  readRewayahSlots,
   RewayahVerseUnitsService,
   type VerseUnitsBuildScheduler,
   type VerseUnitsDataReader,
@@ -33,23 +29,6 @@ import {
 import {rewayahVerseMapService} from '../RewayahVerseMapService';
 import {SURAHS} from '@/data/surahData';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
-
-type FixtureDb = 'hafs' | 'warsh';
-const fixture = require('../__fixtures__/verseUnitsFixture.json') as {
-  locations: string[];
-  texts: Record<FixtureDb, string[]>;
-};
-
-/** Slots with ids renumbered 1..n (the data service's ids are contiguous). */
-function contiguousSlots(
-  locations: string[],
-  texts: string[],
-): VerseUnitSlot[] {
-  return locations.map((location, i) => {
-    const [surah, ayah, word] = location.split(':').map(Number);
-    return {id: i + 1, surah, ayah, word, text: texts[i]};
-  });
-}
 
 const ARABIC_DIGITS =
   '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669';
@@ -82,7 +61,6 @@ function syntheticHafsSlots(): VerseUnitSlot[] {
 /** Fake data service: one main cache plus side caches, like the real one. */
 class FakeDataReader implements VerseUnitsDataReader {
   rewayah: RewayahId = 'hafs';
-  initialized = true;
   readonly states = new Map<RewayahId, RewayahLoadState>();
   private readonly slots = new Map<RewayahId, VerseUnitSlot[]>();
 
@@ -120,42 +98,6 @@ class FakeDataReader implements VerseUnitsDataReader {
     return slots;
   }
 }
-
-/** The adapter reuses one slot object: copy each slot while iterating. */
-function copySlots(dk: VerseUnitsDataReader, rewayah: RewayahId) {
-  return Array.from(readRewayahSlots(dk, rewayah)!, s => ({...s}));
-}
-
-describe('readRewayahSlots', () => {
-  const hafs = contiguousSlots(fixture.locations, fixture.texts.hafs);
-  const warsh = contiguousSlots(fixture.locations, fixture.texts.warsh);
-
-  it('reads the main cache slot by slot', () => {
-    const dk = new FakeDataReader();
-    dk.setMain('warsh', warsh);
-    expect(copySlots(dk, 'warsh')).toEqual(warsh);
-  });
-
-  it('rebuilds a side-cache rewayah with its blank slots', () => {
-    const dk = new FakeDataReader();
-    dk.setMain('hafs', hafs);
-    dk.setSide('warsh', warsh);
-    const read = copySlots(dk, 'warsh');
-    expect(read).toEqual(warsh);
-    expect(read.filter(s => s.text === '').length).toBeGreaterThan(0);
-    const fromSide = buildRewayahVerseUnits('warsh', read, 'k');
-    const direct = buildRewayahVerseUnits('warsh', warsh, 'k');
-    expect(fromSide.units).toEqual(direct.units);
-  });
-
-  it('is null while the words are not in memory', () => {
-    const dk = new FakeDataReader();
-    dk.setMain('hafs', hafs);
-    expect(readRewayahSlots(dk, 'warsh')).toBeNull();
-    dk.initialized = false;
-    expect(readRewayahSlots(dk, 'hafs')).toBeNull();
-  });
-});
 
 /**
  * Runs a build's chunks when the test says so. The app's scheduler runs the
@@ -436,23 +378,13 @@ describe('RewayahVerseUnitsService', () => {
     expect((await build('shubah'))?.units.length).toBe(6236);
   });
 
-  it('a side copy waits for the main cache, and fails with it', async () => {
-    const {dk, service, scheduler, build} = setup();
-    // Startup has not loaded the main cache (word ids, Hafs locations) yet;
-    // a Shu'bah side copy is in memory.
+  // @ai Each rewayah's store has its own verse index (RFC-023 step 2).
+  it('a side copy builds from its own store, whatever the main one does', async () => {
+    const {dk, service, build} = setup();
     dk.setSide('shubah', synthetic);
-    dk.initialized = false;
     dk.states.set('hafs', 'loading');
-    expect(service.getStatus('shubah')).toBe('loading');
-    await expect(service.request('shubah')).resolves.toBeNull();
-    expect(scheduler.tasks).toHaveLength(0);
-    // Startup failed: an error to retry, never an endless 'loading'.
+    expect(service.getStatus('shubah')).toBe('idle');
     dk.states.set('hafs', 'error');
-    expect(service.getStatus('shubah')).toBe('error');
-    expect(service.peek('shubah')).toBeNull();
-    // Loaded at last (a retry): built on request.
-    dk.initialized = true;
-    dk.states.set('hafs', 'ready');
     expect(service.getStatus('shubah')).toBe('idle');
     expect((await build('shubah'))?.units.length).toBe(6236);
   });

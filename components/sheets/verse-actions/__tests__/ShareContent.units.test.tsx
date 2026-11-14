@@ -101,6 +101,7 @@ import {ShareContent} from '../ShareContent';
 import {shareUrl} from '@/utils/shareUtils';
 import {showToast} from '@/utils/toastUtils';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import branding from '@/config/branding'; // @ai
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {
   buildRewayahVerseUnits,
@@ -111,7 +112,7 @@ import {
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
-const BASE = 'https://app.thebayaan.com';
+const BASE = branding.shareBaseUrl; // @ai: the host shareUrl() reads (RFC-007)
 
 const fixture =
   require('@/services/mushaf/__fixtures__/verseUnitsFixture.json') as {

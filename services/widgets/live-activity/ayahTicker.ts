@@ -53,8 +53,8 @@ export function createAyahTicker(deps: AyahTickerDeps): AyahTicker {
   }
 
   function publish(next: NowPlayingAyah | null): void {
-    // What is shown: the ayah number, and whether it has text yet.
-    const shown = next ? `${next.number}:${next.text ? 'text' : 'none'}` : null;
+    // What is shown: the ayah, the count and the text.
+    const shown = next ? `${next.number}/${next.count}:${next.text}` : null;
     if (shown === lastShown) return;
     lastShown = shown;
     deps.setAyah(next);

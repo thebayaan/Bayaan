@@ -38,11 +38,14 @@ export function withWordStoreQueries<T extends FakeDb>(
       rows = (await db.getAllAsync(
         'SELECT id, text, location FROM words;',
       )) as FakeWordRow[];
+      const ids = rows.map(row => row.id).filter(id => id != null);
       return {
         n: rows.length,
-        ids: rows.filter(row => row.id != null).length,
+        ids: ids.length,
         texts: rows.filter(row => row.text != null).length,
         locations: rows.filter(row => row.location != null).length,
+        firstId: ids.length ? ids.reduce((a, b) => Math.min(a, b)) : null,
+        lastId: ids.length ? ids.reduce((a, b) => Math.max(a, b)) : null,
       };
     },
     getAllSync(_sql: string, params: unknown[] = []) {

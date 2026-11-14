@@ -71,6 +71,17 @@ import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {type MushafLayoutMetrics, canvasBottomOverflow} from '../constants'; // @ai
+import {useRecitationLineHighlights} from './useRecitationLineHighlights';
+import {useRecitationHiddenText} from './useRecitationHiddenText';
+import {useRecitationMarkColors} from './useRecitationMarkColors';
+import {SheetManager} from 'react-native-actions-sheet';
+import {markAtChar} from './recitationTap';
+// @ai-start
+import QCFPage, {type QCFPageFrame} from '../qcf/QCFPage';
+import {useDrawsQCF} from '../qcf/useDrawsQCF';
+import {qcfDataService} from '@/services/mushaf/QCFDataService';
+// @ai-end
+import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 
 // Rendering constants are now derived from live `metrics` (see
 // `useRenderConstants` below). On phones the old frozen values are
@@ -132,36 +143,6 @@ function buildRenderConstants(metrics: MushafLayoutMetrics): RenderConstants {
 
 const TOTAL_PAGES = 604;
 const pages = Array.from({length: TOTAL_PAGES}, (_, i) => i + 1);
-
-// Reverse lookup: HAFS verseKey → page number (built lazily from the verse
-// map, rebuilt whenever the active rewayah or the DK words cache changes).
-// scrollToVerse callers (playback page turns, search) pass Hafs keys. @ai
-let verseToPageMap: Map<string, number> | null = null;
-let verseToPageMapRewayah: string | null = null;
-let verseToPageMapVersion = -1;
-
-function getPageForVerse(verseKey: string): number | null {
-  const rewayah = digitalKhattDataService.rewayah;
-  const version = digitalKhattDataService.getCacheVersion();
-  if (rewayah !== verseToPageMapRewayah || version !== verseToPageMapVersion) {
-    verseToPageMap = null;
-    verseToPageMapRewayah = rewayah;
-    verseToPageMapVersion = version;
-  }
-  if (!verseToPageMap) {
-    if (!digitalKhattDataService.initialized) return null;
-    verseToPageMap = new Map();
-    for (let page = 1; page <= 604; page++) {
-      const keys = mushafVerseMapService.getOrderedVerseKeysForPage(page);
-      for (const key of keys) {
-        if (!verseToPageMap.has(key)) {
-          verseToPageMap.set(key, page);
-        }
-      }
-    }
-  }
-  return verseToPageMap.get(verseKey) ?? null;
-}
 
 interface ParagraphInfo {
   paragraph: SkParagraph;
@@ -507,13 +488,33 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       [handleDragStart, handleDragUpdate, handleDragEnd],
     );
 
+    // A tap on a word marked while reciting opens it; any other tap is the
+    // page's own.
+    const handleTap = useCallback(
+      (x: number, y: number) => {
+        const {marks} = useRecitationTrackingStore.getState();
+        if (marks.length > 0) {
+          const hit = charAtPoint(x, y);
+          const line = hit ? pageLines[hit.lineIndex] : undefined;
+          const mark =
+            hit && line ? markAtChar(line, hit.charIndex, marks) : null;
+          if (mark) {
+            void SheetManager.show('recitation-mistake', {payload: {mark}});
+            return;
+          }
+        }
+        onTap?.();
+      },
+      [charAtPoint, pageLines, onTap],
+    );
+
     const tapGesture = useMemo(
       () =>
-        Gesture.Tap().onEnd(() => {
+        Gesture.Tap().onEnd(event => {
           'worklet';
-          if (onTap) runOnJS(onTap)();
+          runOnJS(handleTap)(event.x, event.y);
         }),
-      [onTap],
+      [handleTap],
     );
 
     const composedGesture = useMemo(
@@ -605,6 +606,23 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       verseUnitsVersion, // @ai
     ]);
 
+    // Memorisation: words not yet recited are ghosted while hiding is on.
+    // Live mistakes are drawn in the mistake colour, hidden or not.
+    const lineCharColors = useRecitationMarkColors(
+      pageLines,
+      useRecitationHiddenText(pageLines, lineAllahNameColorMaps),
+      isDarkMode,
+    );
+
+    // Recitation follow-along: recited ayat and the word being recited.
+    const lineHighlights = useRecitationLineHighlights(
+      pageNumber,
+      pageLines,
+      lineBackgroundHighlightsMap,
+      textColor,
+      isDarkMode,
+    );
+
     // ── Render ─────────────────────────────────────────────
     const content = (
       <View
@@ -667,16 +685,14 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 margin={lineMargin}
                 yPos={yPos}
                 textColor={textColor}
-                charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
+                charToColor={lineCharColors?.[lineIndex] ?? undefined}
                 charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
                 arabicTextWeight={arabicTextWeight}
                 textIdentity={textIdentity} // @ai
                 lineHeight={baseLineHeight}
                 onParagraphReady={handleParagraphReady}
-                backgroundHighlights={lineBackgroundHighlightsMap.get(
-                  lineIndex,
-                )}
+                backgroundHighlights={lineHighlights.get(lineIndex)}
               />
             );
           })}
@@ -692,6 +708,44 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
 MushafPageContent.displayName = 'MushafPageContent';
 
 // ── Main component ───────────────────────────────────────
+
+// @ai-start
+// A Mushaf 1440 page in the vertical scroll: the same text block as the
+// DigitalKhatt page it replaces (its lines stacked from the top).
+const ContinuousQCFPage: React.FC<{
+  pageNumber: number;
+  textColor: string;
+  dividerColor: string;
+  onTap?: () => void;
+  render: RenderConstants;
+}> = React.memo(({pageNumber, textColor, dividerColor, onTap, render}) => {
+  const {screenWidth, contentWidth, canvasMarginX, baseLineHeight} = render;
+  const lineCount = qcfDataService.getPage(pageNumber).lines.length;
+  const frame = useMemo<QCFPageFrame>(
+    () => ({
+      width: screenWidth,
+      height: lineCount * baseLineHeight,
+      contentLeft: canvasMarginX,
+      contentTop: 0,
+      contentWidth,
+      contentHeight: lineCount * baseLineHeight,
+      lineHeight: baseLineHeight,
+      centerOpeningPages: false,
+    }),
+    [screenWidth, lineCount, baseLineHeight, canvasMarginX, contentWidth],
+  );
+  return (
+    <QCFPage
+      pageNumber={pageNumber}
+      textColor={textColor}
+      dividerColor={dividerColor}
+      frame={frame}
+      onTap={onTap}
+    />
+  );
+});
+ContinuousQCFPage.displayName = 'ContinuousQCFPage';
+// @ai-end
 
 const ContinuousMushafView = forwardRef<
   ContinuousMushafViewHandle,
@@ -739,6 +793,7 @@ const ContinuousMushafView = forwardRef<
     }, [lineWidth, fontMgr]);
 
     // Settings subscriptions
+    const drawsQCF = useDrawsQCF(); // @ai — Mushaf 1440's glyphs (Hafs)
     const showTajweed = useMushafSettingsStore(s => s.showTajweed);
     const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
     const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
@@ -803,7 +858,9 @@ const ContinuousMushafView = forwardRef<
         // the page of its Hafs verse's start (verse-units invariant 8).
         const loc =
           verseKey.split(':').length === 3 ? parseAnchorKey(verseKey) : null;
-        const page = getPageForVerse(
+        // @ai The page of the Hafs verse's first word, with no word read.
+        // scrollToVerse callers (playback page turns, search) pass Hafs keys.
+        const page = digitalKhattDataService.getPageForVerse(
           loc ? `${loc.surah}:${loc.ayah}` : verseKey,
         );
         if (page) {
@@ -834,6 +891,19 @@ const ContinuousMushafView = forwardRef<
     const renderItem = useCallback(
       ({item}: {item: number}) => {
         if (!fontMgr) return null;
+        // @ai-start
+        if (drawsQCF) {
+          return (
+            <ContinuousQCFPage
+              pageNumber={item}
+              textColor={textColor}
+              dividerColor={dividerColor}
+              onTap={onTap}
+              render={render}
+            />
+          );
+        }
+        // @ai-end
         return (
           <MushafPageContent
             pageNumber={item}
@@ -858,6 +928,7 @@ const ContinuousMushafView = forwardRef<
       },
       [
         fontMgr,
+        drawsQCF, // @ai
         textColor,
         dividerColor,
         showTajweed,
@@ -890,7 +961,7 @@ const ContinuousMushafView = forwardRef<
         ref={flashListRef}
         data={pages}
         renderItem={renderItem}
-        extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}-${textIdentity}`} // @ai
+        extraData={`${drawsQCF}-${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}-${textIdentity}`} // @ai
         keyExtractor={keyExtractor}
         initialScrollIndex={initialPage - 1}
         contentContainerStyle={{

@@ -6,7 +6,9 @@
  * restores the rewayah when the data is ready, and then opens the page of
  * the verse. Before, the list looked the page up at the tap: with no data the
  * reader opened at page 1, and a wait for the data held the tap for seconds.
- * The options of the player's Repeat wait for the same point.
+ * The options of the player's Repeat wait for the same point. The page is
+ * worked out once: a rewayah switch in the reader later keeps it and the
+ * reader's selection. A /quran link opens the same way, with no page.
  * Lives outside app/ because every file there is bundled as a route.
  */
 import React, {act} from 'react';
@@ -17,13 +19,11 @@ const mockViewer: {props: {pageNumber: number} | null} = {props: null};
 const mockDk: {
   initialized: boolean;
   rewayah: string;
-  version: number;
   listeners: Set<() => void>;
   finishSwitch: (() => void) | null;
 } = {
   initialized: false,
   rewayah: 'hafs',
-  version: 0,
   listeners: new Set(),
   finishSwitch: null,
 };
@@ -35,10 +35,25 @@ const mockVersePages: Record<string, Record<string, number>> = {
 };
 
 function mockNotify(): void {
-  mockDk.version += 1;
   for (const listener of [...mockDk.listeners]) listener();
 }
 
+// Recitation follow-along pulls in native audio and ONNX modules.
+jest.mock('@/services/recitation/RecitationTrackingService', () => ({
+  stopRecitationTracking: jest.fn(),
+}));
+jest.mock('@/components/mushaf/RecitationMicButton', () => ({
+  RecitationMicButton: () => null,
+  useRecitationFollowAlong: jest.fn(),
+  useRecitationStatusText: () => null,
+  useRecitationMic: () => ({
+    enabled: false,
+    status: 'off',
+    progress: 0,
+    busy: false,
+    toggle: jest.fn(),
+  }),
+}));
 jest.mock('expo-router', () => ({
   Stack: {Toolbar: () => null},
   useLocalSearchParams: () => mockParams,
@@ -73,8 +88,8 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     get rewayah() {
       return mockDk.rewayah;
     },
-    getRewayahLoadState: () => 'loading',
     getSurahStartPages: () => ({1: 1, 2: 2}),
+    getRewayahLoadState: () => 'loading',
     getPageForVerse: (key: string) => mockVersePages[mockDk.rewayah]?.[key],
     switchRewayah: jest.fn(
       (next: string) =>
@@ -90,13 +105,18 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
       mockDk.listeners.add(listener);
       return () => mockDk.listeners.delete(listener);
     },
-    getCacheVersion: () => mockDk.version,
   },
 }));
 
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
   mushafPreloadService: {
-    state: 'loading',
+    // The preload ends with the data load: the reader waits for both.
+    get initialized() {
+      return mockDk.initialized;
+    },
+    get state() {
+      return mockDk.initialized ? 'ready' : 'loading';
+    },
     subscribe: () => () => undefined,
     initialize: () => Promise.resolve(),
     startIfIdle: jest.fn(),
@@ -217,9 +237,12 @@ it('opens during the load, then shows the page of the verse', async () => {
   expect(selectedKeys()).toEqual(['2:255']);
 });
 
-it('opens with the data ready: the page of the verse at once', () => {
+it('opens with the data ready: the page of the verse, with no wait', async () => {
   mockDk.initialized = true;
   open(HAFS_BOOKMARK);
+  // restoreSavedRewayah returns at once: the rewayah is already Hafs.
+  await act(async () => undefined);
+  expect(switchRewayah).not.toHaveBeenCalled();
   expect(shownPage()).toBe(42);
 });
 
@@ -299,5 +322,56 @@ describe('the player options', () => {
     open(HAFS_BOOKMARK);
     await dataReady();
     expect(optionsShown()).toEqual([]);
+  });
+});
+
+describe('the opened page after mount', () => {
+  it('a rewayah switch in the reader keeps the selection and the page', async () => {
+    open({surah: '2', ayah: '255'});
+    await dataReady();
+    expect(shownPage()).toBe(42);
+    expect(selectedKeys()).toEqual(['2:255']);
+    act(() => {
+      jest.advanceTimersByTime(3100); // the 3 s flash ends
+    });
+    expect(selectedKeys()).toEqual([]);
+    // The reader picks another verse, then switches rewayah in the reader.
+    act(() => {
+      useMushafVerseSelectionStore.getState().selectVerse('2:260', 43);
+    });
+    await act(async () => {
+      mockDk.rewayah = 'warsh';
+      mockNotify();
+    });
+    // The flash does not run again: the reader's selection stays.
+    expect(selectedKeys()).toEqual(['2:260']);
+    // The page was worked out once and kept: it does not follow the verse to
+    // its page in the new rewayah (43).
+    expect(shownPage()).toBe(42);
+  });
+});
+
+const initialSurahId = () =>
+  (mockViewer.props as {initialSurahId?: number} | null)?.initialSurahId;
+
+// What /quran/{surah}?ayah=N sends: no page, and no wait of its own. The
+// reader resolves the page.
+describe('/quran link handed straight to the reader', () => {
+  it('cold start: the ayah page once the data is ready', async () => {
+    open({surah: '2', ayah: '255'});
+    expect(shownPage()).toBeNull(); // loading view
+    await dataReady();
+    expect(shownPage()).toBe(42);
+    expect(initialSurahId()).toBe(2);
+  });
+  it('an ayah with no page falls back to the surah start', async () => {
+    open({surah: '2', ayah: '999'});
+    await dataReady();
+    expect(shownPage()).toBe(2);
+  });
+  it('a surah-only link opens the surah start', async () => {
+    open({surah: '2'});
+    await dataReady();
+    expect(shownPage()).toBe(2);
   });
 });

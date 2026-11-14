@@ -1,132 +1,146 @@
-// Word-level QCF V2 glyph supplier. The page STRUCTURE (which lines are
-// surah-headers vs basmallah vs ayah, what y position each occupies) comes
-// from the DigitalKhatt service — see digitalKhattDataService.getPageLines().
-// This service only owns the page-font glyph codes for ayah lines, plus
-// the constant for the basmala line.
+// @ai-generated
+// The pages of Mushaf 1440: the KFGQPC 1441H Madinah print, line by line,
+// with each word's glyph code in its QCF V4 page font. Built by
+// scripts/build-qcf-1441-layout.mjs into data/mushaf/qcf/qcf-pages.json.
+//
+// Mushaf 1440 has its own line breaks (the print its glyphs were drawn for),
+// which differ from the 1421H layout the DigitalKhatt fonts follow on about
+// half the pages; the words of every page are the same. A word's id is the
+// DigitalKhatt (Hafs) word slot id of the same word, so overlays computed on
+// the DigitalKhatt line text map onto these words by id (qcfDkWordMap.ts).
 
-interface RawWord {
-  c: string;
-  l: string;
-  t: 'w' | 'e';
-  f: string;
-}
-interface RawLine {
-  n: number;
-  w: RawWord[];
-}
-interface RawPage {
-  p: number;
-  l: RawLine[];
-}
-interface RawData {
-  pages: RawPage[];
-}
+export type QCFLineKind = 'surah_name' | 'basmallah' | 'ayah';
 
 export interface QCFWord {
-  code: string;
+  /** The DigitalKhatt word slot id of this word (1-based, Quran order). */
+  id: number;
+  /** "surah:ayah:word" (an ayah's last word is its end marker). */
   location: string;
-  charType: 'word' | 'end';
-  fallbackText: string;
+  /** "surah:ayah" */
+  verseKey: string;
+  /** Glyph code(s) of the word in its page font. */
+  code: string;
 }
 
-// Basmala codepoints. KFGQPC encodes the basmala glyphs in the page-1
-// font (`p1-v2`) at U+FC41..U+FC44 because Al-Fatiha starts with basmala
-// as its verse 1. Other page-fonts don't reliably carry these glyphs, so
-// the canonical pattern (used by qcf_quran Flutter package and similar)
-// is to ALWAYS render basmala with the page-1 font regardless of which
-// surah-start page we're on.
-//
-// The 4 codepoints are the four word-glyphs of the basmala:
-// "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ" → ﱁ ﱂﱃ ﱄ.
-export const BASMALA_TEXT = 'ﱁﱂﱃﱄ';
-export const BASMALA_FONT_FAMILY = 'p1-v2';
+export interface QCFLine {
+  /** Line in the page's 15-line grid (pages 1-2: 8 lines). */
+  lineNumber: number;
+  kind: QCFLineKind;
+  /** The surah a title or basmala line opens; null on ayah lines. */
+  surahNumber: number | null;
+  /** A short line the print centres at its natural width. */
+  centered: boolean;
+  words: readonly QCFWord[];
+}
 
-// Per-page line-content overrides applied at lookup time. Currently
-// empty — the QUL Tarteel-sourced qcf-pages.json (built via
-// scripts/build-qcf-from-qul.mjs) has correct line breaks straight from
-// the curated KFGQPC V2 layout. Add entries here only if a future page
-// needs hand-tuning beyond what the source data provides.
-const LINE_OVERRIDES: Record<number, {moveLastWordToNextLine: number[]}> = {};
+export interface QCFPageModel {
+  pageNumber: number;
+  lines: readonly QCFLine[];
+}
+
+type RawWord = [id: number, location: string, code: string];
+
+interface RawLine {
+  n: number;
+  /** 'a' ayah, 's' surah title, 'b' basmala */
+  k: 'a' | 's' | 'b';
+  /** Surah of a title / basmala line. */
+  s?: number;
+  /** 1 when centred. */
+  c?: 1;
+  w?: RawWord[];
+}
+
+interface RawData {
+  format: number;
+  pages: Array<{p: number; l: RawLine[]}>;
+}
+
+export const QCF_TOTAL_PAGES = 604;
+
+const KIND: Record<RawLine['k'], QCFLineKind> = {
+  a: 'ayah',
+  s: 'surah_name',
+  b: 'basmallah',
+};
+
+const EMPTY_PAGE_LINES: readonly QCFLine[] = Object.freeze([]);
+
+function verseKeyOf(location: string): string {
+  const second = location.indexOf(':', location.indexOf(':') + 1);
+  return location.slice(0, second);
+}
 
 class QCFDataService {
   private raw: RawData | null = null;
-  private wordsCache = new Map<string, QCFWord[]>();
+  private pages = new Map<number, QCFPageModel>();
+  private verseKeys = new Map<number, string[]>();
 
   private ensureLoaded(): RawData {
     if (this.raw) return this.raw;
-    this.raw = require('@/data/mushaf/qcf/qcf-pages.json') as RawData;
-    return this.raw;
+    const data = require('@/data/mushaf/qcf/qcf-pages.json') as RawData;
+    if (data.format !== 2 || data.pages.length !== QCF_TOTAL_PAGES) {
+      throw new Error('Mushaf 1440 page data is not the 1441H layout');
+    }
+    this.raw = data;
+    return data;
   }
 
-  // Returns the QCF V2 word glyphs for a given page+line. Page lines are
-  // 1-indexed and match digitalKhattDataService.getPageLines() line_number.
-  // Returns [] for line numbers without ayah content (surah_name, basmallah).
-  getWordsForLine(pageNumber: number, lineNumber: number): QCFWord[] {
-    const cacheKey = `${pageNumber}:${lineNumber}`;
-    const cached = this.wordsCache.get(cacheKey);
+  /** Lines of a page in order; an empty page outside 1..604. */
+  getPage(pageNumber: number): QCFPageModel {
+    const cached = this.pages.get(pageNumber);
     if (cached) return cached;
-
-    const data = this.ensureLoaded();
-    const page = data.pages[pageNumber - 1];
-    if (!page || page.p !== pageNumber) {
-      this.wordsCache.set(cacheKey, []);
-      return [];
+    const rawPage = this.ensureLoaded().pages[pageNumber - 1];
+    if (!rawPage || rawPage.p !== pageNumber) {
+      return {pageNumber, lines: EMPTY_PAGE_LINES};
     }
-    const rawLine = page.l.find(l => l.n === lineNumber);
-
-    const toQCFWord = (rw: RawWord): QCFWord => ({
-      code: rw.c,
-      location: rw.l,
-      charType: rw.t === 'e' ? 'end' : 'word',
-      fallbackText: rw.f,
-    });
-
-    let words: QCFWord[] = rawLine ? rawLine.w.map(toQCFWord) : [];
-
-    // Apply per-page overrides:
-    //   - If THIS line was demoted (its last word should sit on the next
-    //     line), drop the trailing word.
-    //   - If the PREVIOUS line was demoted, prepend its last word here.
-    const override = LINE_OVERRIDES[pageNumber];
-    if (override) {
-      if (override.moveLastWordToNextLine.includes(lineNumber) && rawLine) {
-        words = words.slice(0, -1);
-      }
-      const prevLineNumber = lineNumber - 1;
-      if (override.moveLastWordToNextLine.includes(prevLineNumber)) {
-        const prevRaw = page.l.find(l => l.n === prevLineNumber);
-        const movedWord = prevRaw?.w.at(-1);
-        if (movedWord) {
-          words = [toQCFWord(movedWord), ...words];
-        }
-      }
-    }
-
-    this.wordsCache.set(cacheKey, words);
-    return words;
+    const lines: QCFLine[] = rawPage.l.map(line => ({
+      lineNumber: line.n,
+      kind: KIND[line.k],
+      surahNumber: line.k === 'a' ? null : (line.s ?? null),
+      centered: line.c === 1,
+      words: (line.w ?? []).map(([id, location, code]) => ({
+        id,
+        location,
+        verseKey: verseKeyOf(location),
+        code,
+      })),
+    }));
+    const page: QCFPageModel = {pageNumber, lines};
+    this.pages.set(pageNumber, page);
+    return page;
   }
 
-  // Verse keys ('3:53', '3:54', ...) in reading order, deduped. Mirrors
-  // MushafVerseMapService.getOrderedVerseKeysForPage but driven off the
-  // QCF data rather than DK line text.
+  /** Verse keys ("3:53", ...) of a page in reading order, each once. */
   getOrderedVerseKeysForPage(pageNumber: number): string[] {
-    const data = this.ensureLoaded();
-    const page = data.pages[pageNumber - 1];
-    if (!page || page.p !== pageNumber) return [];
-
-    const seen = new Set<string>();
+    const cached = this.verseKeys.get(pageNumber);
+    if (cached) return cached;
     const keys: string[] = [];
-    for (const line of page.l) {
-      for (const word of line.w) {
-        const [s, v] = word.l.split(':');
-        const key = `${s}:${v}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          keys.push(key);
-        }
+    for (const line of this.getPage(pageNumber).lines) {
+      for (const word of line.words) {
+        if (keys[keys.length - 1] !== word.verseKey) keys.push(word.verseKey);
       }
     }
+    this.verseKeys.set(pageNumber, keys);
     return keys;
+  }
+
+  /**
+   * Surahs shown on a page, in order: those with words on it and those whose
+   * title opens on it.
+   */
+  getSurahsOnPage(pageNumber: number): number[] {
+    const surahs: number[] = [];
+    const add = (surah: number) => {
+      if (!surahs.includes(surah)) surahs.push(surah);
+    };
+    for (const line of this.getPage(pageNumber).lines) {
+      if (line.surahNumber !== null) add(line.surahNumber);
+      for (const word of line.words) {
+        add(Number(word.verseKey.slice(0, word.verseKey.indexOf(':'))));
+      }
+    }
+    return surahs;
   }
 }
 

@@ -48,6 +48,7 @@ import {playbackBandUnitKeys} from '../skia/verseHighlightLayers';
 import {usePlaybackBand} from '../skia/playbackBand';
 import {buildUnitListModel, type UnitListModel} from './mushafVerseUnitRows';
 import {VerseUnitsPending} from './VerseUnitsPending';
+import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 
@@ -133,36 +134,6 @@ function getVerseIndex(verseKey: string): number {
   return verseIndexMap.get(verseKey) ?? 0;
 }
 
-// Reverse lookup: verseKey → page number (built lazily from all 604 pages,
-// rebuilt whenever the active rewayah or the DK words cache changes).
-let verseToPageMap: Map<string, number> | null = null;
-let verseToPageMapRewayah: string | null = null;
-let verseToPageMapVersion = -1;
-
-function getPageForVerse(verseKey: string): number | null {
-  const rewayah = digitalKhattDataService.rewayah;
-  const version = digitalKhattDataService.getCacheVersion();
-  if (rewayah !== verseToPageMapRewayah || version !== verseToPageMapVersion) {
-    verseToPageMap = null;
-    verseToPageMapRewayah = rewayah;
-    verseToPageMapVersion = version;
-  }
-  if (!verseToPageMap) {
-    if (!digitalKhattDataService.initialized) return null;
-    verseToPageMap = new Map();
-    for (let page = 1; page <= 604; page++) {
-      const keys = mushafVerseMapService.getOrderedVerseKeysForPage(page);
-      for (const key of keys) {
-        // First occurrence wins — a verse spanning two pages maps to its start page
-        if (!verseToPageMap.has(key)) {
-          verseToPageMap.set(key, page);
-        }
-      }
-    }
-  }
-  return verseToPageMap.get(verseKey) ?? null;
-}
-
 // Map page number → first verse key on that page for scroll-to-page support
 function getFirstVerseKeyForPage(pageNumber: number): string | null {
   if (!digitalKhattDataService.initialized) return null;
@@ -223,9 +194,16 @@ const ContinuousListView = forwardRef<
 
     // Active ayah highlighting (same pattern as player QuranView): every
     // Hafs verse the reciter is reciting.
-    const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
+    // While the reader's own recitation is followed (Hafs only), that ayah
+    // takes the player's place.
+    const recitedVerseKey = useRecitedVerseKey();
+    const playerVerseKeys = usePlaybackVerseKeys(); // @ai
+    const playbackVerseKeys = useMemo(
+      () => (recitedVerseKey ? [recitedVerseKey] : playerVerseKeys),
+      [recitedVerseKey, playerVerseKeys],
+    );
     const playbackState = useMushafPlayerStore(s => s.playbackState);
-    const isPlaying = playbackState === 'playing';
+    const isPlaying = playbackState === 'playing' || recitedVerseKey !== null;
     // @ai — the surah whose basmala is being recited (the intro before its
     // first verse): its header's basmala is lit as a recited verse is.
     const basmalaSurah = usePlaybackBasmalaSurah();
@@ -357,10 +335,10 @@ const ContinuousListView = forwardRef<
     // (IndoPak) is never used for non-Hafs text.
     const dkFontFamily = getDkFontFamily(mushafRenderer, mushafRewayah);
     // @ai-end
+    // Mushaf 1440 keeps its Hafs text on the QPC path; another rewayah's
+    // text is drawn from its DigitalKhatt words (as on the mushaf pages). @ai
     const isDK =
-      (mushafRenderer === 'dk_v1' ||
-        mushafRenderer === 'dk_v2' ||
-        mushafRenderer === 'dk_indopak') &&
+      (mushafRenderer !== 'qcf_v2' || mushafRewayah !== 'hafs') &&
       mushafPreloadService.initialized &&
       digitalKhattDataService.initialized;
     const subscribedFontMgr = useMushafFontMgr();
@@ -407,7 +385,9 @@ const ContinuousListView = forwardRef<
           // @ai — a rewayah verse row: the page of its first word
           const page = isVerseUnitRow(firstItem.verse)
             ? unitListRef.current?.pageOfRow(firstItem.verse.verse_key)
-            : getPageForVerse(firstItem.verse.verse_key);
+            : digitalKhattDataService.getPageForVerse(
+                firstItem.verse.verse_key,
+              ); // @ai: reads no word
           if (page) onCurrentPageChange?.(page);
         }
       },

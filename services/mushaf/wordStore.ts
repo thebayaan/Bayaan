@@ -20,7 +20,8 @@ import type {DKWordInfo} from './DigitalKhattDataService';
 
 const WORD_CHUNK = 2048;
 const WORD_SEPARATOR = '\u001f';
-const WORD_CHUNK_QUERY =
+/** The chunk read. Exported for the query plan test only. */
+export const WORD_CHUNK_QUERY =
   'SELECT group_concat(text, char(31) ORDER BY id) AS texts FROM words WHERE id BETWEEN ? AND ?;';
 // Chunks kept per words DB (about 49k words; least recently used go first).
 const MAX_WORD_CHUNKS = 24;
@@ -72,8 +73,9 @@ export class WordReadError extends Error {
 }
 
 /**
- * Throws on a damaged copy of a words table (cut short, NULL fields), so the
- * copy is deleted, re-imported and read again inside the load.
+ * Throws on a damaged copy of a words table (cut short, NULL fields, ids that
+ * are not 1..n), so the copy is deleted, re-imported and read again inside the
+ * load.
  */
 export async function checkWordsTable(
   db: SQLite.SQLiteDatabase,
@@ -84,8 +86,10 @@ export async function checkWordsTable(
     ids: number;
     texts: number;
     locations: number;
+    firstId: number | null;
+    lastId: number | null;
   }>(
-    'SELECT COUNT(*) AS n, COUNT(id) AS ids, COUNT(text) AS texts, COUNT(location) AS locations FROM words;',
+    'SELECT COUNT(*) AS n, COUNT(id) AS ids, COUNT(text) AS texts, COUNT(location) AS locations, MIN(id) AS firstId, MAX(id) AS lastId FROM words;',
   );
   if (!counts || !counts.n) throw new Error('words table is empty');
   const expected = index.last[index.last.length - 1];
@@ -96,6 +100,11 @@ export async function checkWordsTable(
     counts.locations !== expected
   ) {
     throw new Error('words table has a malformed row');
+  }
+  // Ids 1..n with no gaps (id is the primary key, so no two rows share one):
+  // else the first chunk read of a page fails.
+  if (counts.firstId !== 1 || counts.lastId !== expected) {
+    throw new Error(`words table ids are not 1..${expected}`);
   }
 }
 
@@ -118,7 +127,8 @@ export function buildVerseIndex(rows: readonly VerseRangeRow[]): VerseIndex {
       !isWholeNumber(row.ayah) ||
       !isWholeNumber(row.first) ||
       !isWholeNumber(row.last) ||
-      row.first <= previousLast ||
+      // Each verse starts right after the last one, and the first at id 1.
+      row.first !== previousLast + 1 ||
       row.last < row.first
     ) {
       throw new Error(`words table has a malformed verse (row ${i})`);
@@ -149,9 +159,9 @@ function verseIndexOfWord(index: VerseIndex, wordId: number): number {
 }
 
 /**
- * The words of one words DB, read on demand from an open connection. The data
- * service owns it: close() releases the connection (and the DB name's open
- * count), after which every read returns nothing.
+ * The words of one words DB, read on demand from an open connection. The
+ * registry (wordStores.ts) owns it: close() releases the connection (and the
+ * DB name's open count), after which every read returns nothing.
  *
  * The first failed read stops the store: `''` is also a real word text (7 of
  * the 8 words DBs have such words), so a getter cannot report a failure, and a
@@ -161,7 +171,8 @@ function verseIndexOfWord(index: VerseIndex, wordId: number): number {
 export class WordStore {
   private chunks = new Map<number, WordChunk>();
   private verseSlots = new Map<string, DKWordInfo[]>();
-  private closed = false;
+  // Set by close(): a closed store reads nothing.
+  private closing: Promise<void> | null = null;
   private failed = false;
 
   constructor(
@@ -218,7 +229,7 @@ export class WordStore {
       return cached;
     }
     const i = this.index.byKey.get(verseKey);
-    if (i === undefined || this.closed) return undefined;
+    if (i === undefined || this.closing) return undefined;
     const slots: DKWordInfo[] = [];
     for (let id = this.index.first[i]; id <= this.index.last[i]; id++) {
       const info = this.info(id);
@@ -267,12 +278,14 @@ export class WordStore {
     }
   }
 
+  /** Releases the connection. Each call gives the same promise. */
   close(): Promise<void> {
-    if (this.closed) return Promise.resolve();
-    this.closed = true;
-    this.chunks.clear();
-    this.verseSlots.clear();
-    return this.release(this.dbName, this.db);
+    if (!this.closing) {
+      this.chunks.clear();
+      this.verseSlots.clear();
+      this.closing = this.release(this.dbName, this.db);
+    }
+    return this.closing;
   }
 
   private chunkFor(wordId: number): WordChunk | null {
@@ -304,7 +317,7 @@ export class WordStore {
 
   // The texts of ids start..end, or null after a failed read.
   private readChunk(start: number, end: number): string[] | null {
-    if (this.closed || this.failed) return null;
+    if (this.closing || this.failed) return null;
     try {
       const row = this.db.getFirstSync<{texts: string | null}>(
         WORD_CHUNK_QUERY,

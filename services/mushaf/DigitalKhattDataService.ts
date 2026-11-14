@@ -1,7 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
-  rendererPinsHafs, // @ai
   useMushafSettingsStore,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
@@ -19,6 +18,7 @@ import {
 } from './wordStore'; // @ai
 import {loadPageLineRows, loadVerseIndex} from './mushafTables'; // @ai
 import {RETIRED_DB_BASES} from './retiredDbBases'; // @ai
+import {WordStores} from './wordStores'; // @ai
 import {joinSlotTexts, layoutLineSlots, visibleWords} from './lineWordSpans';
 // @ai-start
 import {
@@ -594,13 +594,6 @@ function runInBackground(label: string, task: Promise<unknown>): void {
 type RewayahChangeListener = (rewayah: RewayahId) => void;
 type CacheChangeListener = () => void;
 
-// @ai-start
-// Side copies of rewayat no mounted surface shows that stay in memory (about
-// 7 MB each next to the main cache's 14 MB, measured on V8): the previously
-// active rewayah after a switch, or the last one read once (copy, share).
-const MAX_IDLE_SIDE_ENTRIES = 1;
-// @ai-end
-
 export class DigitalKhattDataService {
   // Main cache: the active rewayah (what the mushaf renders). Replaced as a
   // whole by swapMain(); never cleared or partially filled in place.
@@ -620,12 +613,13 @@ export class DigitalKhattDataService {
   // switch), each side-cache load or failed load, and resetDatabases.
   private cacheVersion = 0;
   private cacheListeners: Set<CacheChangeListener> = new Set();
-  // Side cache for rewayat OTHER than the currently-active mushaf rewayah.
-  // Lets the player render text from a reciter's rewayah without mutating
-  // currentRewayah (which the mushaf page follows). Populated lazily via
-  // ensureRewayahLoaded(), plus the previously active rewayah after a switch.
-  // @ai: each entry is that rewayah's WordStore (an open connection).
-  private sideVerseWords: Map<RewayahId, WordStore> = new Map();
+  // @ai-start
+  // The WordStore of each open rewayah (wordStores.ts): the active one, the
+  // one active before a switch, and those other surfaces read without
+  // changing currentRewayah (the player shows a reciter's rewayah; side
+  // loads, ensureRewayahLoaded).
+  private stores = new WordStores(rewayah => this.openWordStore(rewayah));
+  // @ai-end
   private sideLoading: Map<RewayahId, Promise<void>> = new Map();
   private _initialized = false;
   private _initializing: Promise<void> | null = null;
@@ -640,13 +634,6 @@ export class DigitalKhattDataService {
   private mainWorkerRunning = false;
   private mainOutcomeListeners: (() => void)[] = [];
   private loadErrors: Map<RewayahId, unknown> = new Map();
-  // @ai-start
-  // Side entries a mounted surface shows (retainRewayah): never evicted while
-  // counted. The others are bounded: only the MAX_IDLE_SIDE_ENTRIES most
-  // recently used stay (sideVerseWords is kept in recency order, oldest
-  // first; see trimSideCache).
-  private sideRetainCounts: Map<RewayahId, number> = new Map();
-  // @ai-end
   // Per-DB-name operation chain: imports, opens and deletes of one file never
   // overlap, so concurrent loaders cannot collide.
   private dbLocks: Map<string, Promise<void>> = new Map();
@@ -658,9 +645,6 @@ export class DigitalKhattDataService {
   // Bumped by resetDatabases so in-flight loads drop their results.
   private epoch = 0;
   // @ai-start
-  // Whether this instance follows the settings store's Hafs pin (installed
-  // with the first main-cache request; see followSettingsStore).
-  private followingSettings = false;
   // The saved rewayah a startup fallback to Hafs stands in for, recorded in
   // the settings store by the Hafs commit (runInitialLoad, swapMain).
   private pendingFallbackFrom: RewayahId | null = null;
@@ -857,24 +841,20 @@ export class DigitalKhattDataService {
     this.desiredRewayah = null;
     this._initialized = false;
     this._initializing = null;
-    // @ai-start
-    // Open words connections close before their files are deleted.
-    const stores = [this.words, ...this.sideVerseWords.values()];
-    this.words = null;
-    // @ai-end
+    this.words = null; // @ai
     this.pageLines = new Map();
     this.surahStartPages = {};
     this.pageToSurah = {};
     this.basmalaSurahs = new Map(); // @ai
     this.verseToPage = null;
     this.activeIdentity = null;
-    this.sideVerseWords.clear();
     this.sideLoading.clear();
     this.loadErrors.clear();
     this.sweptBases.clear();
     this.sweepsInFlight.clear(); // @ai
     this.verifiedCopies.clear(); // @ai
-    await Promise.all(stores.map(store => store?.close())); // @ai
+    // @ai: open words connections close before their files are deleted.
+    await this.stores.closeAll();
 
     const currentByBase = sweepNamesByBase();
     const names = new Set<string>();
@@ -915,18 +895,12 @@ export class DigitalKhattDataService {
    *   previous rewayah stays active and intact, getRewayahLoadState(rewayah)
    *   becomes 'error', and the promise rejects with RewayahLoadError.
    */
-  // @ai-start
-  // - Mushaf 1440 (the store pins Hafs) overtakes any other rewayah: such a
-  //   request, or one still loading when the pin lands, rejects with
-  //   RewayahSwitchSupersededError and Hafs stays (or becomes) active.
-  // @ai-end
   async switchRewayah(rewayah: RewayahId): Promise<void> {
     requireRewayahAssets(rewayah);
     return this.requestMain(rewayah, false);
   }
 
   private requestMain(target: RewayahId, anyOutcome: boolean): Promise<void> {
-    this.followSettingsStore(); // @ai
     return new Promise<void>((resolve, reject) => {
       if (anyOutcome) {
         // initialize(): a switch already requested keeps precedence.
@@ -935,15 +909,6 @@ export class DigitalKhattDataService {
         runInBackground('Main-cache worker', this.runMainWorker());
         return;
       }
-      // @ai-start
-      // Mushaf 1440 shows Hafs and the store names Hafs there, so another
-      // rewayah would land under the Hafs label: the pin overtakes it.
-      if (target !== 'hafs' && this.hafsPinned()) {
-        reject(new RewayahSwitchSupersededError(target, 'hafs'));
-        this.followHafsPin();
-        return;
-      }
-      // @ai-end
       if (this.desiredRewayah !== target) this.supersedeMainWaiters(target);
       if (this._initialized && target === this.currentRewayah) {
         // Already active: nothing to load or wait for. A load still running
@@ -957,39 +922,6 @@ export class DigitalKhattDataService {
       runInBackground('Main-cache worker', this.runMainWorker());
     });
   }
-
-  // @ai-start
-  // Mushaf 1440 pins the settings store to Hafs (setMushafRenderer). Follow
-  // that pin from whichever path set it, so the label the store gives and
-  // the text served cannot disagree: a switch still loading is overtaken and
-  // Hafs becomes the active rewayah. Installed once, with the first request.
-  private followSettingsStore(): void {
-    if (this.followingSettings) return;
-    this.followingSettings = true;
-    useMushafSettingsStore.subscribe(state => {
-      if (rendererPinsHafs(state.mushafRenderer)) this.followHafsPin();
-    });
-  }
-
-  private hafsPinned(): boolean {
-    return rendererPinsHafs(useMushafSettingsStore.getState().mushafRenderer);
-  }
-
-  // Requests Hafs when the main cache serves, or is loading, another
-  // rewayah. Before the first load nothing is requested: initialization
-  // starts from the store, which names Hafs under the pin.
-  private followHafsPin(): void {
-    if (!this._initialized && !this.mainWorkerRunning) return;
-    if ((this.desiredRewayah ?? this.currentRewayah) === 'hafs') return;
-    this.requestMain('hafs', false).catch(error => {
-      if (isRewayahSwitchSuperseded(error)) return;
-      console.error(
-        '[DigitalKhattDataService] Could not show Hafs for Mushaf 1440:',
-        error,
-      );
-    });
-  }
-  // @ai-end
 
   private supersedeMainWaiters(target: RewayahId): void {
     const kept: MainWaiter[] = [];
@@ -1050,6 +982,8 @@ export class DigitalKhattDataService {
         }
 
         const epoch = this.epoch;
+        // @ai: its store stays open until the commit makes it the active one.
+        const release = this.stores.retain(target);
         let snapshot: MainSnapshot | null = null;
         let failure: unknown = null;
         try {
@@ -1058,21 +992,11 @@ export class DigitalKhattDataService {
           failure = error;
         }
 
-        // @ai: a snapshot that is not committed releases its connection.
-        const discard = (): void => {
-          if (snapshot) this.releaseStore(snapshot.words);
-        };
         try {
           // resetDatabases ran meanwhile and already rejected the waiters.
-          if (epoch !== this.epoch) {
-            discard(); // @ai
-            continue;
-          }
+          if (epoch !== this.epoch) continue;
           // Superseded: the newer request's waiter is queued; loop to it.
-          if ((this.desiredRewayah ?? this.currentRewayah) !== target) {
-            discard(); // @ai
-            continue;
-          }
+          if ((this.desiredRewayah ?? this.currentRewayah) !== target) continue;
           if (!snapshot) {
             this.desiredRewayah = null;
             this.loadErrors.set(target, failure);
@@ -1088,15 +1012,6 @@ export class DigitalKhattDataService {
             this.notifyCacheChange();
             continue;
           }
-          // @ai-start
-          // Mushaf 1440 pinned the store to Hafs while this load ran: never
-          // commit another rewayah under the Hafs label; Hafs overtakes it.
-          if (target !== 'hafs' && this.hafsPinned()) {
-            discard();
-            this.followHafsPin();
-            continue;
-          }
-          // @ai-end
           const firstCommit = !this._initialized;
           const prevRewayah = this.currentRewayah;
           this.swapMain(snapshot);
@@ -1112,6 +1027,7 @@ export class DigitalKhattDataService {
             runInBackground('Stale-copy sweep', this.sweepStaleCopies('all'));
           }
         } finally {
+          release(); // @ai
           this.flushMainOutcomeListeners();
         }
       }
@@ -1127,10 +1043,10 @@ export class DigitalKhattDataService {
     const cfg = requireRewayahAssets(target);
     const wordsSpec = bundledDbSpec(cfg.wordsDbName, cfg.wordsAssetFile);
     // @ai-start
-    // The words open as a WordStore (checked inside the read: a copy that
-    // fails the checks is deleted, re-imported and read again like any
-    // unreadable copy).
-    const words = await this.openWordStore(wordsSpec);
+    // The words are the rewayah's WordStore: the open one, or a new one,
+    // checked inside the read (a copy that fails the checks is deleted,
+    // re-imported and read again like any unreadable copy).
+    const words = await this.stores.load(target);
     // The one layout, generated at build time, on the first load.
     const layout =
       this.pageLines.size > 0
@@ -1138,7 +1054,6 @@ export class DigitalKhattDataService {
         : buildLayoutData(loadPageLineRows(), wordId =>
             words.surahOfWord(wordId),
           );
-    // @ai-end
     console.log(
       `[DigitalKhattDataService] Loaded ${target}: ${words.wordCount} words, ${words.index.keys.length} verses` +
         (layout ? `, layout for ${layout.pageLines.size} pages` : ''),
@@ -1160,10 +1075,6 @@ export class DigitalKhattDataService {
   // reader can observe a mix of old and new maps. announceMainCommit() must
   // follow in the same synchronous block.
   private swapMain(next: MainSnapshot): void {
-    const prevRewayah = this.currentRewayah;
-    const prevWords = this.words; // @ai
-    const wasInitialized = this._initialized;
-
     this.words = next.words; // @ai
     if (next.layout) {
       this.pageLines = next.layout.pageLines;
@@ -1176,30 +1087,9 @@ export class DigitalKhattDataService {
     this.activeIdentity = next.identity;
     this._initialized = true;
     this.loadErrors.delete(next.rewayah);
-
-    // The new active rewayah reads from the main cache now.
-    // @ai-start
-    const sideCopy = this.sideVerseWords.get(next.rewayah);
-    this.sideVerseWords.delete(next.rewayah);
-    if (sideCopy) this.releaseStore(sideCopy);
-    let keptPrev = false;
-    // @ai-end
-    // Keep the outgoing rewayah readable (e.g. the player still showing a
-    // track in it) instead of dropping it.
-    if (wasInitialized && prevRewayah !== next.rewayah) {
-      if (prevWords && !this.sideVerseWords.has(prevRewayah)) {
-        this.sideVerseWords.set(prevRewayah, prevWords);
-        keptPrev = true; // @ai
-      }
-      // @ai-start
-      // It is the most recent copy nothing retains; older ones go unless a
-      // surface shows them.
-      this.trimSideCache();
-      // @ai-end
-    }
-    if (prevWords && !keptPrev && prevWords !== next.words) {
-      this.releaseStore(prevWords); // @ai
-    }
+    // @ai: the outgoing rewayah stays readable (e.g. the player still showing
+    // a track in it), as the most recent store nothing shows.
+    this.stores.setActive(next.rewayah);
 
     // @ai-start
     // A startup fallback is recorded here, by the Hafs commit itself: one
@@ -1266,10 +1156,10 @@ export class DigitalKhattDataService {
   }
 
   private async openDb(name: string): Promise<SQLite.SQLiteDatabase> {
-    // @ai A connection of its own. A rewayah can load again while its store is
-    // open in the side cache. With the shared connection, the garbage
-    // collection of the old JS object closes the native connection (Android)
-    // under the new store.
+    // @ai A connection of its own. A store closes in the background, so a new
+    // open of the same copy can overlap the close. With the shared connection,
+    // that close, or the garbage collection of the old JS object (Android),
+    // closes the native connection under the new store.
     const db = await SQLite.openDatabaseAsync(name, {useNewConnection: true});
     this.openDbCounts.set(name, (this.openDbCounts.get(name) ?? 0) + 1);
     return db;
@@ -1341,7 +1231,6 @@ export class DigitalKhattDataService {
   ): Promise<T> {
     let db: SQLite.SQLiteDatabase | null = await this.openDb(spec.name);
     let imported = false; // @ai
-    let kept = false; // @ai
     try {
       if (!(await hasWordsTable(db))) {
         // First use of this data version (or a damaged copy): import the
@@ -1375,14 +1264,12 @@ export class DigitalKhattDataService {
         imported = true; // @ai
       }
       await this.verifyCopy(spec, imported); // @ai
-      // @ai-start
       const result = await read(db);
-      kept = keepOpen;
+      if (keepOpen) db = null; // @ai: the WordStore owns it now.
       return result;
     } finally {
-      if (db && !kept) await this.closeDb(spec.name, db);
+      if (db) await this.closeDb(spec.name, db);
     }
-    // @ai-end
   }
 
   // @ai-start
@@ -1516,8 +1403,10 @@ export class DigitalKhattDataService {
   }
 
   // @ai-start
-  /** Opens `spec`'s words as a WordStore (see checkedVerseIndex). */
-  private openWordStore(spec: BundledDbSpec): Promise<WordStore> {
+  /** Opens the words of `rewayah` as a WordStore (see checkedVerseIndex). */
+  private async openWordStore(rewayah: RewayahId): Promise<WordStore> {
+    const cfg = requireRewayahAssets(rewayah);
+    const spec = bundledDbSpec(cfg.wordsDbName, cfg.wordsAssetFile);
     return this.readBundledDb(
       spec,
       async db =>
@@ -1532,22 +1421,20 @@ export class DigitalKhattDataService {
     );
   }
 
+  // The store that serves `rewayah` (the active one when omitted).
+  private storeOf(rewayah?: RewayahId): WordStore | null | undefined {
+    return !rewayah || rewayah === this.currentRewayah
+      ? this.words
+      : this.stores.get(rewayah);
+  }
+
   /**
    * Every word of `rewayah` in id order, outside the chunk cache (the
    * verse-units build), or null while its store is not open.
    */
   readWordSlots(rewayah: RewayahId): Iterable<WordSlot> | null {
-    if (!this.isRewayahReady(rewayah)) return null;
-    const store =
-      rewayah === this.currentRewayah
-        ? this.words
-        : this.sideVerseWords.get(rewayah);
+    const store = this.isRewayahReady(rewayah) ? this.storeOf(rewayah) : null;
     return store && store.wordCount > 0 ? store.readInOrder() : null;
-  }
-
-  /** Closes a store nothing reads any more. */
-  private releaseStore(store: WordStore): void {
-    runInBackground(`Closing ${store.dbName}`, store.close());
   }
 
   // A chunk read failed. Its getter gave '', but '' is also a real word text
@@ -1565,21 +1452,14 @@ export class DigitalKhattDataService {
   // The rewayah of `store` reads 'error', so its surfaces offer their retry,
   // and its copy goes, so that retry imports the bundled asset again.
   private dropFailedStore(store: WordStore, error: unknown): void {
-    let rewayah: RewayahId | null = null;
+    const rewayah = this.stores.fail(store);
+    if (rewayah === null) return; // A reset already closed it.
     if (store === this.words) {
-      rewayah = this.currentRewayah;
       this.words = null;
       this.mainTextFailed = true;
       this._initialized = false;
       this._initializing = null; // initialize() must load it again.
-    } else {
-      for (const [side, words] of this.sideVerseWords) {
-        if (words === store) rewayah = side;
-      }
-      if (rewayah !== null) this.sideVerseWords.delete(rewayah);
     }
-    // A switch or a reset already dropped it.
-    if (rewayah === null) return;
     this.loadErrors.set(rewayah, new RewayahLoadError(rewayah, error));
     runInBackground(
       `Replacing ${store.dbName}`,
@@ -1659,12 +1539,7 @@ export class DigitalKhattDataService {
    * word unit (see lineWordSpans.ts).
    */
   getVerseWords(verseKey: string, rewayah?: RewayahId): DKWordInfo[] {
-    // @ai: from the WordStore of the main or the side cache.
-    const store =
-      !rewayah || rewayah === this.currentRewayah
-        ? this.words
-        : this.sideVerseWords.get(rewayah);
-    const slots = store?.verseWords(verseKey);
+    const slots = this.storeOf(rewayah)?.verseWords(verseKey); // @ai
     return slots ? visibleWords(slots) : [];
   }
 
@@ -1695,9 +1570,9 @@ export class DigitalKhattDataService {
     // another rewayah's text.
     if (this.isRewayahReady(rewayah)) {
       // @ai-start
-      // An explicit request makes a side copy the most recently used one
-      // (a surface that keeps showing it retains it: retainRewayah).
-      this.touchSideCopy(rewayah);
+      // An explicit request makes its store the most recently used one (a
+      // surface that keeps showing it retains it: retainRewayah).
+      await this.stores.load(rewayah);
       // @ai-end
       return;
     }
@@ -1722,16 +1597,7 @@ export class DigitalKhattDataService {
 
     const existing = this.sideLoading.get(rewayah);
     if (existing) return existing;
-    let spec: BundledDbSpec;
-    try {
-      const cfg = requireRewayahAssets(rewayah);
-      spec = bundledDbSpec(cfg.wordsDbName, cfg.wordsAssetFile);
-    } catch (error) {
-      this.loadErrors.set(rewayah, error);
-      this.notifyCacheChange();
-      throw error;
-    }
-    const load = this.loadSideRewayah(rewayah, spec, this.epoch);
+    const load = this.loadSideRewayah(rewayah, this.epoch); // @ai
     this.sideLoading.set(rewayah, load);
     if (retrying) this.notifyCacheChange(); // @ai: 'error' is 'loading' now
     return load;
@@ -1760,44 +1626,24 @@ export class DigitalKhattDataService {
 
   private async loadSideRewayah(
     rewayah: RewayahId,
-    spec: BundledDbSpec,
     epoch: number,
   ): Promise<void> {
-    let words: WordStore; // @ai
     try {
-      words = await this.openWordStore(spec); // @ai
+      await this.stores.load(rewayah); // @ai
     } catch (error) {
-      if (epoch === this.epoch) {
-        this.sideLoading.delete(rewayah);
-        this.loadErrors.set(rewayah, error);
-        console.warn(
-          `[DigitalKhattDataService] Side load of "${rewayah}" failed:`,
-          error,
-        );
-        this.notifyCacheChange();
-      }
+      if (epoch !== this.epoch) return; // @ai: a reset dropped it.
+      this.sideLoading.delete(rewayah);
+      this.loadErrors.set(rewayah, error);
+      console.warn(
+        `[DigitalKhattDataService] Side load of "${rewayah}" failed:`,
+        error,
+      );
+      this.notifyCacheChange();
       throw error;
     }
-    if (epoch !== this.epoch) {
-      this.releaseStore(words); // @ai
-      return;
-    }
+    if (epoch !== this.epoch) return;
     this.sideLoading.delete(rewayah);
     this.loadErrors.delete(rewayah);
-    // If it became the active rewayah meanwhile, the main cache has it.
-    if (!(rewayah === this.currentRewayah && this._initialized)) {
-      // @ai-start
-      // The newest copy (re-inserted: map order is recency); older copies
-      // nothing retains are dropped beyond the bound.
-      const previous = this.sideVerseWords.get(rewayah);
-      this.sideVerseWords.delete(rewayah);
-      if (previous && previous !== words) this.releaseStore(previous);
-      this.sideVerseWords.set(rewayah, words);
-      this.trimSideCache();
-      // @ai-end
-    } else {
-      this.releaseStore(words); // @ai
-    }
     // Side cache for this rewayah is now ready; wake any consumer reading
     // it (e.g. SkiaVerseText on the player screen rendering a non-mushaf
     // rewayah).
@@ -1812,49 +1658,14 @@ export class DigitalKhattDataService {
    * mushaf switches). Loads nothing; ensureRewayahLoaded does.
    */
   retainRewayah(rewayah: RewayahId): () => void {
-    this.sideRetainCounts.set(
-      rewayah,
-      (this.sideRetainCounts.get(rewayah) ?? 0) + 1,
-    );
-    this.touchSideCopy(rewayah);
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      const count = (this.sideRetainCounts.get(rewayah) ?? 1) - 1;
-      if (count > 0) this.sideRetainCounts.set(rewayah, count);
-      else this.sideRetainCounts.delete(rewayah);
-    };
-  }
-
-  private touchSideCopy(rewayah: RewayahId): void {
-    const words = this.sideVerseWords.get(rewayah);
-    if (!words) return;
-    this.sideVerseWords.delete(rewayah);
-    this.sideVerseWords.set(rewayah, words);
-  }
-
-  // Drops the least recently used side copies nothing retains beyond
-  // MAX_IDLE_SIDE_ENTRIES. Runs when a copy is added (not on release, so a
-  // surface that remounts finds its copy still there). Callers notify.
-  private trimSideCache(): void {
-    let idle = 0;
-    for (const rewayah of [...this.sideVerseWords.keys()].reverse()) {
-      if ((this.sideRetainCounts.get(rewayah) ?? 0) > 0) continue;
-      idle += 1;
-      if (idle > MAX_IDLE_SIDE_ENTRIES) {
-        const store = this.sideVerseWords.get(rewayah);
-        this.sideVerseWords.delete(rewayah);
-        if (store) this.releaseStore(store);
-      }
-    }
+    return this.stores.retain(rewayah);
   }
   // @ai-end
 
   /** True when `rewayah`'s words are in memory (main or side cache). */
   isRewayahReady(rewayah: RewayahId): boolean {
     if (rewayah === this.currentRewayah) return this._initialized;
-    return this.sideVerseWords.has(rewayah);
+    return this.stores.get(rewayah) !== undefined; // @ai
   }
 
   getRewayahLoadState(rewayah: RewayahId): RewayahLoadState {
