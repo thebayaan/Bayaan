@@ -151,7 +151,7 @@ const EntryRow: React.FC<{entry: IrabEntry; context: IrabRefContext}> = ({
   // @ai-end
   const label =
     entry.kind === 'implied'
-      ? t('irab.implied', {ns: 'sheets'})
+      ? t('irab.implied', {ns: 'sheets'}) // @ai
       : entry.label || null;
   const rowStyle = [
     styles.entry,
@@ -201,9 +201,13 @@ export const IrabBooksTab: React.FC<{
   const anyBooks = parts.some(p => p.books.length > 0);
   return (
     <View>
-      <Text style={styles.hint}>{t('irab.booksNote', {ns: 'sheets'})}</Text>
+      <Text style={styles.hint}>
+        {t('irab.booksNote', {ns: 'sheets'}) /* @ai */}
+      </Text>
       {!anyBooks && (
-        <Text style={styles.message}>{t('irab.noBooks', {ns: 'sheets'})}</Text>
+        <Text style={styles.message}>
+          {t('irab.noBooks', {ns: 'sheets'}) /* @ai */}
+        </Text>
       )}
       {parts.map(part => (
         <React.Fragment key={part.verseKey}>
@@ -223,7 +227,7 @@ export const IrabBooksTab: React.FC<{
                     <Text style={styles.passageMeta}>
                       {localizeDigits(
                         t('irab.passageRef', {
-                          ns: 'sheets',
+                          ns: 'sheets', // @ai
                           part: passage.part,
                           page: passage.page,
                         }),
@@ -247,7 +251,7 @@ export const IrabBooksTab: React.FC<{
                         }>
                         <Text style={styles.readMore}>
                           {t(open ? 'irab.readLess' : 'irab.readMore', {
-                            ns: 'sheets',
+                            ns: 'sheets', // @ai
                           })}
                         </Text>
                       </Pressable>
@@ -260,7 +264,7 @@ export const IrabBooksTab: React.FC<{
         </React.Fragment>
       ))}
       <Text style={styles.sources}>
-        {t('irab.booksSources', {ns: 'sheets'})}
+        {t('irab.booksSources', {ns: 'sheets'}) /* @ai */}
       </Text>
     </View>
   );
