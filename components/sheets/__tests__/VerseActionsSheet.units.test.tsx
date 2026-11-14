@@ -447,10 +447,13 @@ describe('Hafs (unchanged)', () => {
   it('a player Repeat routes to the Hafs verse without an anchor', async () => {
     await openSheet({...payload, source: 'player'});
     await press('Repeat');
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/mushaf',
-      params: {page: '3', surah: '2', ayah: '255'},
-    });
+    expect(router.push).toHaveBeenCalledWith(
+      {
+        pathname: '/mushaf',
+        params: {page: '3', surah: '2', ayah: '255'},
+      },
+      {withAnchor: true},
+    );
   });
 
   it('passes the screens the payload as before', async () => {
@@ -633,10 +636,13 @@ describe('Warsh verses in their own numbering', () => {
   it('a player Repeat of a verse starting inside a Hafs verse passes its anchor', async () => {
     await openSheet(warshUnitPayload(['1:7'], {source: 'player'}));
     await press('Repeat');
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/mushaf',
-      params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:5'},
-    });
+    expect(router.push).toHaveBeenCalledWith(
+      {
+        pathname: '/mushaf',
+        params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:5'},
+      },
+      {withAnchor: true},
+    );
     // The mushaf player starts at Warsh 1:7 itself. @ai
     expect(mockPlayer.setPendingStart).toHaveBeenCalledWith(
       warsh.unitByKey('1:7'),
@@ -648,10 +654,13 @@ describe('Warsh verses in their own numbering', () => {
     // Warsh verse holding Hafs 1:7 (1:6 and 1:7); its anchor names 1:6.
     await openSheet(warshUnitPayload(['1:6'], {source: 'player'}));
     await press('Repeat');
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/mushaf',
-      params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:1'},
-    });
+    expect(router.push).toHaveBeenCalledWith(
+      {
+        pathname: '/mushaf',
+        params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:1'},
+      },
+      {withAnchor: true},
+    );
   });
 
   it("uses the player's translation only for a verse that is its Hafs verse", async () => {

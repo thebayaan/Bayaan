@@ -40,6 +40,7 @@ import {
 } from '@/components/Icons';
 import Color from 'color';
 import {router} from 'expo-router';
+import {openFromTabs} from '@/services/navigation/openFromTabs'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
   resolvePlayFromHere, // @ai
@@ -701,7 +702,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     // Start at the selected verse itself, in its own rewayah. @ai
     if (ready.units) mushafStore.setPendingStart(ready.units[0]);
 
-    router.push({
+    // The player can be open over a Mushaf already: replace that one rather
+    // than stacking a second Mushaf on it. @ai
+    openFromTabs({
       pathname: '/mushaf',
       params: {
         page: String(page),

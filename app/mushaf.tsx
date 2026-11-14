@@ -64,6 +64,9 @@ export type MushafScreenParams = {
   // @ai-end
 };
 
+// Mounted Mushaf screens (see the session-restore effect). @ai
+let openMushafScreens = 0;
+
 export default function MushafScreen() {
   const {surah, page, ayah, anchor} =
     useLocalSearchParams<MushafScreenParams>(); // @ai
@@ -116,9 +119,17 @@ export default function MushafScreen() {
 
   // Track mushaf screen for session restore (MMKV — sync writes survive force-kill)
   useEffect(() => {
+    openMushafScreens += 1; // @ai
     mushafSessionStore.setLastScreenWasMushaf(true);
     return () => {
-      mushafSessionStore.setLastScreenWasMushaf(false);
+      // @ai-start
+      // A Mushaf opened over another (from the player) mounts before the
+      // old one unmounts; only the last one out clears the flag.
+      openMushafScreens -= 1;
+      if (openMushafScreens === 0) {
+        mushafSessionStore.setLastScreenWasMushaf(false);
+      }
+      // @ai-end
       // Reset UI state in store when leaving mushaf
       useMushafPlayerStore.setState({
         isImmersive: false,
