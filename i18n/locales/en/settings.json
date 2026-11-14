@@ -215,7 +215,9 @@
     "browseAll": "Browse All Reciters",
     "browseAllDescription": "Search through our complete collection of reciters",
     "useDefault": "Use Default Reciter",
-    "useDefaultDescription": "Always use your selected default reciter"
+    "useDefaultDescription": "Always use your selected default reciter",
+    "random": "Random Reciter",
+    "randomDescription": "Play each surah with a reciter picked at random"
   },
   "storage": {
     "loading": "Loading storage information...",
