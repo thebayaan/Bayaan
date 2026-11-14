@@ -24,19 +24,21 @@ import {
   clampBandToSlot,
   clampRectToBand,
   fitWordSize,
-  getLineFit,
   isNaturalWidthLine,
   justifiedLineStrut,
   justifiedSpaceFontSize,
-  lineFitKey,
   mergeTouchingRects,
   naturalJustification,
-  setLineFit,
   rectsBand,
   shortestRectBand,
   spaceFitExtra,
   type LineBand,
 } from './justifiedSpace';
+import {
+  getLineFit,
+  lineFitKey,
+  setLineFit,
+} from '@/services/mushaf/lineFitCache';
 // @ai-end
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
@@ -239,9 +241,9 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     // line at the words' spacing (its spaces stay in the words' runs), so the
     // line ends exactly on the margin. Centered lines are left as built. The
     // fit is kept per line, for the session and across launches
-    // (justifiedSpace.ts getLineFit), so a later build of the same line
+    // (services/mushaf/lineFitCache.ts), so a later build of the same line
     // (colours, highlights, a revisit, the next launch) builds once. Change
-    // LINE_FIT_FORMAT (lineFitStore.ts) when this pass changes a drawn width.
+    // LINE_FIT_FORMAT there when this pass changes a drawn width.
     const isJustifiedLine = !(
       lineInfo.lineType === 1 ||
       (lineInfo.lineType === 2 && pageNumber !== 1 && pageNumber !== 2) ||

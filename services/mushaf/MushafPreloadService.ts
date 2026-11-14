@@ -5,6 +5,7 @@ import {
 } from '@shopify/react-native-skia';
 import {Image} from 'react-native';
 import {digitalKhattDataService} from './DigitalKhattDataService';
+import {openLineFitCache} from './lineFitCache'; // @ai
 import {quranTextService} from './QuranTextService';
 import {rewayahDiffService} from './RewayahDiffService';
 import {
@@ -170,6 +171,12 @@ class MushafPreloadService {
 
       // Hafs (the service's starting rewayah) commits without a change event.
       this._loadDiffsFor(digitalKhattDataService.rewayah);
+
+      // @ai-start
+      // The line fits of the last launch. Opened here, before the reader can
+      // show a page, so the first page's render does not open or clear it.
+      openLineFitCache();
+      // @ai-end
 
       await this.loadSkiaFonts();
 

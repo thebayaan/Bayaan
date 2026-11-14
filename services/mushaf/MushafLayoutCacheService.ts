@@ -21,7 +21,7 @@ import {openVersionedMMKV} from '@/utils/versionedMMKV'; // @ai
 // @ai-start
 // v11: the 600:9 width (84%) moved to 600:10, the line the layout centres.
 // A font or justification change also changes LINE_FIT_FORMAT
-// (lineFitStore.ts).
+// (lineFitCache.ts).
 const SCHEMA_VERSION = 11;
 // @ai-end
 const SCHEMA_VERSION_KEY = 'dk_schema_version';
