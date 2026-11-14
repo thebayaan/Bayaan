@@ -22,6 +22,7 @@ import {
   flagsOfCode,
   hasFlag,
   QURAN_FLAG,
+  QURAN_FLAG_RANGE,
   QURAN_SLOT_STRIDE,
   slotOfCode,
   verseKeyAt,
@@ -65,6 +66,8 @@ export interface QuranTextResult {
 export const QURAN_PREFIX_MIN_LETTERS = 3;
 export const QURAN_PREFIX_FORM_LIMIT = 4000;
 export const QURAN_MAX_TOKENS = 24;
+/** Above this many postings lists, a token is merged into a map to look up. */
+const MAP_LOOKUP_LISTS = 8;
 
 const EXACT_SCORE = 100;
 const PREFIX_SCORE = 60;
@@ -98,6 +101,54 @@ function addPostings(
   }
 }
 
+/** A token's postings lists, each ascending, with how they matched. */
+interface TokenPostings {
+  lists: {codes: readonly number[]; exact: boolean}[];
+  needsHamza: boolean;
+}
+
+function firstAtLeast(codes: readonly number[], value: number): number {
+  let lo = 0;
+  let hi = codes.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (codes[mid] < value) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/** A token's best score at one slot, by binary search in its lists. */
+function scoreAt(token: TokenPostings, slot: number): number {
+  const from = slot * QURAN_FLAG_RANGE;
+  let best = 0;
+  for (const {codes, exact} of token.lists) {
+    for (
+      let i = firstAtLeast(codes, from);
+      i < codes.length && codes[i] < from + QURAN_FLAG_RANGE;
+      i++
+    ) {
+      const code = codes[i];
+      if (
+        token.needsHamza &&
+        !hasFlag(flagsOfCode(code), QURAN_FLAG.hasHamza)
+      ) {
+        continue;
+      }
+      best = Math.max(best, postingScore(code, exact));
+    }
+  }
+  return best;
+}
+
+function slotsOf(token: TokenPostings): Map<number, number> {
+  const slots = new Map<number, number>();
+  for (const {codes, exact} of token.lists) {
+    addPostings(slots, codes, exact, token.needsHamza);
+  }
+  return slots;
+}
+
 /**
  * Consecutive runs of the tokens inside one verse, grouped by verse:
  * tokenSlots[k] maps a slot to token k's score there.
@@ -110,20 +161,37 @@ export function joinPhrase(
   for (let k = 1; k < tokenSlots.length; k++) {
     if (tokenSlots[k].size < tokenSlots[anchor].size) anchor = k;
   }
+  return joinFromAnchor(
+    tokenSlots.length,
+    anchor,
+    tokenSlots[anchor],
+    (k, slot) => tokenSlots[k].get(slot) ?? 0,
+  );
+}
+
+/**
+ * The phrase join from one token's slots (the anchor, the rarest): every
+ * other token is only looked up at the slot the phrase puts it on.
+ */
+function joinFromAnchor(
+  length: number,
+  anchor: number,
+  anchorSlots: ReadonlyMap<number, number>,
+  scoreOf: (k: number, slot: number) => number,
+): QuranVerseHit[] {
   const verses = new Map<number, {score: number; starts: number[]}>();
-  for (const [slot, anchorScore] of tokenSlots[anchor]) {
+  for (const [slot, anchorScore] of anchorSlots) {
     const start = slot - anchor;
-    let score = anchorScore;
-    for (let k = 0; k < tokenSlots.length && score > 0; k++) {
-      if (k === anchor) continue;
-      score = Math.min(score, tokenSlots[k].get(start + k) ?? 0);
-    }
-    if (score <= 0) continue;
     const verseIndex = Math.floor(start / QURAN_SLOT_STRIDE);
     const position = start % QURAN_SLOT_STRIDE;
     // The stride keeps a phrase inside one verse: a start before slot 1
     // could only reach the previous verse's unused high slots.
     if (position < 1) continue;
+    let score = anchorScore;
+    for (let k = 0; k < length && score > 0; k++) {
+      if (k !== anchor) score = Math.min(score, scoreOf(k, start + k));
+    }
+    if (score <= 0) continue;
     const verse = verses.get(verseIndex);
     if (verse) {
       verse.score = Math.max(verse.score, score);
@@ -132,7 +200,6 @@ export function joinPhrase(
       verses.set(verseIndex, {score, starts: [position]});
     }
   }
-  const length = tokenSlots.length;
   return [...verses].map(([verseIndex, {score, starts}]) => ({
     verseIndex,
     verseKey: verseKeyAt(verseIndex),
@@ -238,26 +305,53 @@ export async function searchQuranText(
     ...prefixKeys.map(key => source.prefix(key, QURAN_PREFIX_FORM_LIMIT)),
   ]);
 
-  const tokenSlots = tokens.map((token, k) => {
-    const slots = new Map<number, number>();
+  const postings: TokenPostings[] = tokens.map((token, k) => {
+    const lists: TokenPostings['lists'] = [];
     for (const key of token.keys) {
-      addPostings(slots, exact.get(key), true, token.needsHamza);
+      const codes = exact.get(key);
+      if (codes?.length) lists.push({codes, exact: true});
     }
     if (k === tokens.length - 1) {
       for (const forms of prefixes) {
         for (const codes of forms.values()) {
-          addPostings(slots, codes, false, token.needsHamza);
+          if (codes.length) lists.push({codes, exact: false});
         }
       }
     }
-    return slots;
+    return {lists, needsHamza: token.needsHamza};
   });
 
-  const phrase = joinPhrase(tokenSlots);
+  // Walk the rarest token's slots and look the others up only where the
+  // phrase puts them; a token with many lists (a short prefix) is merged
+  // into one map first.
+  const sizes = postings.map(token =>
+    token.lists.reduce((n, list) => n + list.codes.length, 0),
+  );
+  let anchor = 0;
+  for (let k = 1; k < sizes.length; k++) {
+    if (sizes[k] < sizes[anchor]) anchor = k;
+  }
+  const maps = postings.map((token, k) =>
+    k === anchor || token.lists.length > MAP_LOOKUP_LISTS
+      ? slotsOf(token)
+      : null,
+  );
+  const phrase = joinFromAnchor(
+    tokens.length,
+    anchor,
+    maps[anchor] ?? new Map(),
+    (k, slot) => {
+      const map = maps[k];
+      if (!map) return scoreAt(postings[k], slot);
+      return map.get(slot) ?? 0;
+    },
+  );
   if (phrase.length || tokens.length < 2) {
     return result('phrase', phrase.sort(byScoreThenMushaf));
   }
-  const allWords = joinAllWords(tokenSlots);
+  const allWords = joinAllWords(
+    postings.map((token, k) => maps[k] ?? slotsOf(token)),
+  );
   allWords.sort(
     (a, b) =>
       a.span - b.span || b.score - a.score || a.verseIndex - b.verseIndex,
