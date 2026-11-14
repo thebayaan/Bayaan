@@ -379,9 +379,10 @@ run('the player list recovers from a failed load (local only)', () => {
     act(() => again.unmount());
   });
 
-  it('Hafs failed at startup, the Warsh words loaded: Try Again starts up again', async () => {
-    // A launch whose Hafs words cannot be read: no main cache, whose word
-    // ids and Hafs locations the Warsh units are read with.
+  // @ai Each rewayah's store has its own verse index (RFC-023 step 2).
+  it('Hafs failed at startup, the Warsh words loaded: the Warsh list shows', async () => {
+    // A launch whose Hafs words cannot be read: the Warsh units need only
+    // the Warsh store.
     sqlite.broken.add('dk_words');
     const dk = new DigitalKhattDataService();
     holder.current = dk;
@@ -393,19 +394,11 @@ run('the player list recovers from a failed load (local only)', () => {
     mockUnits.current = new Service(dk) as RewayahVerseUnitsService;
 
     const player = openPlayer();
-    await until(() => text(player).includes("Couldn't load"));
-    expect(dk.isRewayahReady('warsh')).toBe(true);
-    expect(mockUnits.current?.getStatus('warsh')).toBe('error');
-    expect(tryAgainButtons(player)).toHaveLength(1);
-
-    sqlite.broken.clear();
-    await act(async () => {
-      tryAgainButtons(player)[0].props.onPress();
-    });
     await until(() => shownRows().size > 0);
 
-    expect(dk.initialized).toBe(true);
+    expect(dk.initialized).toBe(false);
     expect(mockUnits.current?.getStatus('warsh')).toBe('ready');
+    expect(text(player)).not.toContain("Couldn't load");
     expectWarshFatihah();
     act(() => player.unmount());
   });
