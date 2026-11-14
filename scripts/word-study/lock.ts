@@ -34,7 +34,8 @@ export interface GharibBookLock extends SourceNames {
 export interface InputLock {
   /** File name of the download as SOURCES.md describes it. */
   file: string;
-  url: string;
+  /** Where the file was downloaded from. */
+  downloadUrl: string;
   sha256: string;
   bytes: number;
   /** The publisher's version of the data. */
