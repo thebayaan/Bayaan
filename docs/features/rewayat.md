@@ -70,7 +70,7 @@ python3 scripts/rewayah/validate_rewayah_db.py --glyphs
 6. **Markers**: a Hafs marker slot receives the rewayah marker whose verse ends there, else `''`; rewayah verse ends without a Hafs slot are written inline.
 7. **Emit** the words DB (fresh `CREATE TABLE` + `INSERT` + `VACUUM`, deterministic bytes), the highlight map, the verse map and the basmala file from the same assignment; run the validator and the sibling gate; replace the committed files only if every rewayah passes. A words DB whose rows did not change keeps its committed bytes (another SQLite version would write other bytes for the same rows; the committed DBs come from SQLite 3.53.3). The build directory is under `scripts/rewayah/.build/` (git-ignored).
 
-After a rebuild that changes data, the runtime's asset manifest (`services/mushaf/rewayahDataManifest.ts`, `node scripts/rewayah/gen-manifest.mjs`) must be regenerated so installed apps re-import the new DBs (content-addressed on-device names).
+After a rebuild that changes data, the generated Mushaf tables (`services/mushaf/mushafTables.generated.ts`, `node scripts/rewayah/gen-mushaf-tables.mjs`) and then the runtime's asset manifest (`services/mushaf/rewayahDataManifest.ts`, `node scripts/rewayah/gen-manifest.mjs`) must be regenerated so installed apps re-import the new DBs (content-addressed on-device names). The manifest script fails while the tables are stale.
 
 ## Render policy
 

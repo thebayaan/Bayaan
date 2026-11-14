@@ -55,9 +55,11 @@ deterministic: two runs give byte-identical files (`--out-dir DIR` builds
 elsewhere). A words DB whose schema and rows equal the existing file is not
 replaced, because another SQLite version writes other bytes for the same rows
 and the app names its DB copies by sha256 (the committed DBs were written by
-SQLite 3.53.3). When the data does change, regenerate the asset manifest
-(`node scripts/rewayah/gen-manifest.mjs`, owned by the runtime) so installed
-apps re-import the new DBs.
+SQLite 3.53.3). When the data does change, regenerate the Mushaf tables and
+then the asset manifest (`node scripts/rewayah/gen-mushaf-tables.mjs`, then
+`node scripts/rewayah/gen-manifest.mjs`, owned by the runtime) so installed
+apps re-import the new DBs. The manifest script fails while the tables are
+stale.
 
 To update a source: put the new official zip in a directory, add its entry
 (URL, capture, SHA-256, published MD5 / SHA-1, member, SHA-256) to

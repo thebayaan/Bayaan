@@ -91,8 +91,8 @@ import {
   annotationAnchor,
   deriveUnitAnnotations,
   noteRowKey,
-  savedVerseRouteParams,
 } from '@/services/verse-annotations/unitAnnotations';
+import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {
   selectUnitAnnotations,
   useVerseAnnotationsStore,
@@ -971,25 +971,22 @@ export async function runEndToEnd(
       });
       if (marked.join() !== u.key) fail(`${u.key}: Hafs row marks [${marked}]`);
     }
-    // The saved row opens its page with exactly this verse selected
-    // (/mushaf's anchor param; Hafs: today's params, no anchor).
-    const page = [...(runsOf.get(u.key)?.keys() ?? [])][0];
-    const params = savedVerseRouteParams(
-      {
-        verseKey: anchorKey,
-        surahNumber: u.anchorSurah,
-        ayahNumber: u.anchorAyah,
-        rewayahId: rewayah,
-      },
-      page,
-    );
+    // The saved row opens with exactly this verse selected: the params the
+    // Bookmarks and Notes lists send (/mushaf's anchor param; Hafs: no
+    // anchor). They send no page: the reader opens the page of the verse.
+    const params = savedVerseOpenParams({
+      verseKey: anchorKey,
+      surahNumber: u.anchorSurah,
+      ayahNumber: u.anchorAyah,
+      rewayahId: rewayah,
+    });
     const expectedParams = isHafs
-      ? {surah: String(u.surah), ayah: String(u.ayah), page: String(page)}
+      ? {surah: String(u.surah), ayah: String(u.ayah), rewayah}
       : {
           surah: String(u.anchorSurah),
           ayah: String(u.anchorAyah),
-          page: String(page),
           anchor: u.anchor,
+          rewayah,
         };
     if (JSON.stringify(params) !== JSON.stringify(expectedParams)) {
       fail(`${u.key}: route ${JSON.stringify(params)}`);
