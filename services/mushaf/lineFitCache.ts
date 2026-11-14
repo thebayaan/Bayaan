@@ -148,13 +148,18 @@ export function getLineFit(key: string): LineFit | undefined {
 }
 
 /**
- * Keeps a line's fit for the session and for the next launch. The write is
+ * Keeps a line's fit for the session and, when it changed the line, for the
+ * next launch: a fit that changed nothing saves only a measure. The write is
  * direct: a deferred write ran on the same JS thread. A fit that is not valid
  * stays in the session only.
  */
-export function setLineFit(key: string, fit: LineFit): void {
+export function setLineFit(
+  key: string,
+  fit: LineFit,
+  changedLine: boolean,
+): void {
   remember(key, fit);
-  if (!store || !isUsableFit(fit)) return;
+  if (!changedLine || !store || !isUsableFit(fit)) return;
   try {
     store.set(hashKey(key), `${fit.wordSize},${fit.spaceExtra}`);
   } catch {

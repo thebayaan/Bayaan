@@ -102,7 +102,7 @@ describe('the same bundle', () => {
       {wordSize: 22, spaceExtra: -0.5},
     ];
     const first = launch();
-    fits.forEach((fit, i) => first.setLineFit(`${KEY}${i}`, fit));
+    fits.forEach((fit, i) => first.setLineFit(`${KEY}${i}`, fit, true));
     expect(first.getLineFit(`${KEY}0`)).toEqual(fits[0]);
 
     const next = launch();
@@ -113,7 +113,7 @@ describe('the same bundle', () => {
   });
 
   it('getLineFit promotes a stored fit, so five calls read MMKV once', () => {
-    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     const next = launch();
     mockNative.calls.length = 0;
     for (let i = 0; i < 5; i++) {
@@ -126,25 +126,25 @@ describe('the same bundle', () => {
 describe('the open', () => {
   it('getLineFit and setLineFit never open or clear the store', () => {
     // An earlier update left fits behind; a new update launches.
-    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     mockBundle.updateId = UPDATE_B;
     const cache = launch(false);
     mockNative.calls.length = 0;
 
     // Before the open: the session map only.
     expect(cache.getLineFit(KEY)).toBeUndefined();
-    cache.setLineFit(`${KEY}x`, {wordSize: 21, spaceExtra: 0});
+    cache.setLineFit(`${KEY}x`, {wordSize: 21, spaceExtra: 0}, true);
     expect(mockNative.calls).toEqual([]);
 
     cache.openLineFitCache();
     mockNative.calls.length = 0;
     cache.getLineFit(KEY);
-    cache.setLineFit(KEY, {wordSize: 22, spaceExtra: 0});
+    cache.setLineFit(KEY, {wordSize: 22, spaceExtra: 0}, true);
     expect(count('createMMKV') + count('clearAll')).toBe(0);
   });
 
   it('a new update id starts empty', () => {
-    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     mockBundle.updateId = UPDATE_B;
     expect(launch().getLineFit(KEY)).toBeUndefined();
     expect(fitKeys()).toHaveLength(0);
@@ -153,11 +153,11 @@ describe('the open', () => {
   it('a build from another commit with the same commit count starts empty', () => {
     mockBundle.updateId = null; // updates off
     mockBundle.version = {semanticVersion: '2.3.0', buildNumber: '1900'};
-    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     expect(fitKeys()).toHaveLength(0); // no git hash: no store
 
     mockBundle.version = {...mockBundle.version, gitHash: 'aaaa111'};
-    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     expect(launch().getLineFit(KEY)).toEqual({wordSize: 20, spaceExtra: 1});
 
     mockBundle.version = {...mockBundle.version, gitHash: 'bbbb222'};
@@ -165,7 +165,7 @@ describe('the open', () => {
   });
 
   it('a store over the limit starts again at the next launch', () => {
-    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     for (let i = 0; i < 30000; i++) mockNative.data.set(`k${i}`, '20,1');
     expect(launch().getLineFit(KEY)).toBeUndefined();
     expect(fitKeys()).toHaveLength(0);
@@ -174,9 +174,18 @@ describe('the open', () => {
   it('a dev bundle has no store', () => {
     devFlag.__DEV__ = true;
     const cache = launch();
-    cache.setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+    cache.setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     expect(cache.getLineFit(KEY)).toEqual({wordSize: 20, spaceExtra: 1});
     expect(mockNative.calls).toEqual([]);
+  });
+});
+
+describe('what is stored', () => {
+  it('a fit that did not change the line stays in the session', () => {
+    const cache = launch();
+    cache.setLineFit(KEY, {wordSize: 20, spaceExtra: 0}, false);
+    expect(cache.getLineFit(KEY)).toEqual({wordSize: 20, spaceExtra: 0});
+    expect(fitKeys()).toHaveLength(0);
   });
 });
 
@@ -185,7 +194,7 @@ describe('a bad value', () => {
     'a word size of %p stays in the session',
     w => {
       const cache = launch();
-      cache.setLineFit(KEY, {wordSize: w, spaceExtra: 0});
+      cache.setLineFit(KEY, {wordSize: w, spaceExtra: 0}, true);
       expect(cache.getLineFit(KEY)).toEqual({wordSize: w, spaceExtra: 0});
       expect(fitKeys()).toHaveLength(0);
     },
@@ -194,7 +203,7 @@ describe('a bad value', () => {
   it.each(['20abc,1xyz', '20,', ',1', '0,1', '20', '20,1,2', 'x,y'])(
     'a stored %p is never served',
     value => {
-      launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+      launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
       mockNative.data.set(fitKeys()[0], value);
       expect(launch().getLineFit(KEY)).toBeUndefined();
     },
@@ -205,7 +214,7 @@ describe('a failure in the store never reaches the caller', () => {
   it('at the open, the session map still serves', () => {
     mockNative.failOpen = true;
     const cache = launch();
-    cache.setLineFit(KEY, {wordSize: 20, spaceExtra: 1});
+    cache.setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     expect(cache.getLineFit(KEY)).toEqual({wordSize: 20, spaceExtra: 1});
   });
 
@@ -213,9 +222,9 @@ describe('a failure in the store never reaches the caller', () => {
     const first = launch();
     mockNative.failSetCalls = 1;
     expect(() => {
-      first.setLineFit(`${KEY}0`, {wordSize: 20, spaceExtra: 1});
-      first.setLineFit(`${KEY}1`, {wordSize: 21, spaceExtra: 0});
-      first.setLineFit(`${KEY}2`, {wordSize: 22, spaceExtra: -0.5});
+      first.setLineFit(`${KEY}0`, {wordSize: 20, spaceExtra: 1}, true);
+      first.setLineFit(`${KEY}1`, {wordSize: 21, spaceExtra: 0}, true);
+      first.setLineFit(`${KEY}2`, {wordSize: 22, spaceExtra: -0.5}, true);
     }).not.toThrow();
 
     const next = launch();

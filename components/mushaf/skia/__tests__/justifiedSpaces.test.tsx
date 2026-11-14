@@ -436,11 +436,12 @@ describe('SkiaLine justified spaces', () => {
     expect(mockSkia.built[1].width).toBeCloseTo(122);
   });
 
-  it('builds a line that fits once', () => {
+  it('builds a line that fits once, and does not store its fit', () => {
     mockSkia.shapingLoss = 0.2; // within the quarter-pixel tolerance
     renderLine(WIDENED);
 
     expect(mockSkia.built).toHaveLength(1);
+    expect(mockStore.data.size).toBe(0);
   });
 
   it('keeps a shrunk line that fits at the words size and spacing', () => {

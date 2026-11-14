@@ -270,11 +270,12 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       } else {
         wordSize = fitWordSize(effectiveFontSize, targetWidth, drawnWidth);
       }
-      if (spaceExtra !== 0 || wordSize !== effectiveFontSize) {
+      const changedLine = spaceExtra !== 0 || wordSize !== effectiveFontSize;
+      if (changedLine) {
         paragraph.dispose();
         paragraph = buildParagraph(false, wordSize, spaceExtra);
       }
-      setLineFit(fitKey, {wordSize, spaceExtra});
+      setLineFit(fitKey, {wordSize, spaceExtra}, changedLine);
     }
 
     const strokeWidth = getArabicTextWeightStrokeWidth(
