@@ -41,11 +41,19 @@ export async function getCacheStorage(): Promise<number> {
       FileSystem.cacheDirectory,
     );
     for (const file of files) {
+      // @ai-start
+      // What "Clear cache" leaves alone is not counted either.
+      if (IN_USE_CACHE_ENTRIES.has(file)) continue;
       const filePath = `${FileSystem.cacheDirectory}${file}`;
       const info = await FileSystem.getInfoAsync(filePath);
-      if (info.exists && !info.isDirectory) {
+      // Folders count too: for a folder, `size` is everything inside it.
+      // They were skipped, and nearly all of the cache (picker copies of
+      // imported audio, the image cache) sits in folders, so the figure
+      // barely moved whatever was cached.
+      if (info.exists) {
         totalSize += info.size || 0;
       }
+      // @ai-end
     }
     console.log('[StorageService] Cache size calculated:', totalSize, 'bytes');
   } catch (error) {

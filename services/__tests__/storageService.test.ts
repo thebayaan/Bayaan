@@ -1,6 +1,7 @@
 // @ai-generated
 /**
- * Settings > Storage on a stubbed file system: what "Clear cache" deletes.
+ * Settings > Storage on a stubbed file system: what the Cache figure counts
+ * and what "Clear cache" deletes.
  */
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -15,7 +16,7 @@ jest.mock('../player/store/downloadStore', () => ({
   useDownloadStore: {getState: () => ({downloads: []})},
 }));
 
-import {clearCacheDirectory} from '../storageService';
+import {clearCacheDirectory, getCacheStorage} from '../storageService';
 
 const fs = FileSystem as unknown as {
   readDirectoryAsync: jest.Mock;
@@ -42,6 +43,14 @@ function find(uri: string): Entry | undefined {
   return parts.length === 0 ? {children: root} : entry;
 }
 
+function sizeOf(entry: Entry): number {
+  if (!entry.children) return entry.size ?? 0;
+  return Object.values(entry.children).reduce(
+    (total, child) => total + sizeOf(child),
+    0,
+  );
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -51,8 +60,9 @@ beforeEach(() => {
   );
   fs.getInfoAsync.mockImplementation(async (uri: string) => {
     const entry = find(uri);
+    // As on both platforms, a folder's size is everything inside it.
     return entry
-      ? {exists: true, isDirectory: !!entry.children, size: entry.size ?? 0}
+      ? {exists: true, isDirectory: !!entry.children, size: sizeOf(entry)}
       : {exists: false, isDirectory: false};
   });
   fs.deleteAsync.mockImplementation(async (uri: string) => {
@@ -95,5 +105,25 @@ describe('clearCacheDirectory', () => {
     root = {locked: {size: 1}, 'z.tmp': {size: 2}};
     await expect(clearCacheDirectory()).resolves.toBeUndefined();
     expect(Object.keys(root)).toEqual(['locked']);
+  });
+});
+
+describe('getCacheStorage', () => {
+  it('counts what is inside folders, not only loose files', async () => {
+    root = {
+      'bayaan-share.png': {size: 10},
+      DocumentPicker: {
+        children: {'a.mp3': {size: 500}, nested: {children: {b: {size: 40}}}},
+      },
+    };
+    await expect(getCacheStorage()).resolves.toBe(550);
+  });
+
+  it('leaves out the folders Clear cache does not touch', async () => {
+    root = {
+      'com.apple.nsurlsessiond': {children: {'download.tmp': {size: 900}}},
+      images: {children: {'a.jpg': {size: 20}}},
+    };
+    await expect(getCacheStorage()).resolves.toBe(20);
   });
 });

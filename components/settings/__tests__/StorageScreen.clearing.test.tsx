@@ -38,11 +38,19 @@ jest.mock('@/hooks/useStorageBreakdown', () => ({
   useStorageBreakdown: () => ({
     free: '1 GB',
     downloads: '1 GB',
+    uploads: '1 GB',
     cache: '1 GB',
     otherApps: '1 GB',
     loading: false,
     error: null,
-    rawData: {total: 4, free: 1, downloads: 1, cache: 1, otherApps: 1},
+    rawData: {
+      total: 5,
+      free: 1,
+      downloads: 1,
+      uploads: 1,
+      cache: 1,
+      otherApps: 1,
+    },
     refresh: jest.fn(),
   }),
 }));
