@@ -38,13 +38,14 @@ import {
   type BundledDkSqliteFake,
 } from '../__fixtures__/bundledDkSqlite';
 import {joinSlotTexts, layoutLineSlots, visibleWords} from '../lineWordSpans';
+import {WORD_CHUNK_QUERY} from '../wordStore';
 import {
   useMushafSettingsStore,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 
 interface SqliteDb {
-  prepare(sql: string): {all(): Record<string, unknown>[]};
+  prepare(sql: string): {all(...params: unknown[]): Record<string, unknown>[]};
   close(): void;
 }
 
@@ -60,13 +61,17 @@ const REWAYAT: [RewayahId, string][] = [
   ['al-susi', 'dk_words_soosi'],
 ];
 
-function readAll(base: string, sql: string): Record<string, unknown>[] {
+function readAll(
+  base: string,
+  sql: string,
+  params: unknown[] = [],
+): Record<string, unknown>[] {
   const {DatabaseSync} = require('node:sqlite') as {
     DatabaseSync: new (file: string, options?: object) => SqliteDb;
   };
   const db = new DatabaseSync(bundledDkFile(base), {readOnly: true});
   try {
-    return db.prepare(sql).all();
+    return db.prepare(sql).all(...params);
   } finally {
     db.close();
   }
@@ -183,15 +188,19 @@ run('the words read on demand (local only)', () => {
   });
 
   // A chunk read must seek, not scan the table: words.id is the INTEGER
-  // PRIMARY KEY of every words DB (a page turn can need a chunk).
+  // PRIMARY KEY of every words DB (a page turn can need a chunk). The plan of
+  // the query the app runs also has a temp B-tree, for the ORDER BY of its
+  // group_concat.
   it.each(REWAYAT)('%s: a chunk read seeks by id', (_rewayah, base) => {
     const plan = readAll(
       base,
-      'EXPLAIN QUERY PLAN SELECT id, text, location FROM words WHERE id BETWEEN 1 AND 2048;',
+      `EXPLAIN QUERY PLAN ${WORD_CHUNK_QUERY}`,
+      [1, 2048],
     ).map(row => String(row.detail));
-    expect(plan).toEqual([
-      expect.stringContaining('USING INTEGER PRIMARY KEY'),
-    ]);
+    expect(plan).toContainEqual(
+      expect.stringContaining('SEARCH words USING INTEGER PRIMARY KEY'),
+    );
+    expect(plan).not.toContainEqual(expect.stringContaining('SCAN'));
   });
 
   it.each(REWAYAT)(

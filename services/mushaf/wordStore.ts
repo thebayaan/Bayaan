@@ -20,7 +20,8 @@ import type {DKWordInfo} from './DigitalKhattDataService';
 
 const WORD_CHUNK = 2048;
 const WORD_SEPARATOR = '\u001f';
-const WORD_CHUNK_QUERY =
+/** The chunk read. Exported for the query plan test only. */
+export const WORD_CHUNK_QUERY =
   'SELECT group_concat(text, char(31) ORDER BY id) AS texts FROM words WHERE id BETWEEN ? AND ?;';
 // Chunks kept per words DB (about 49k words; least recently used go first).
 const MAX_WORD_CHUNKS = 24;
