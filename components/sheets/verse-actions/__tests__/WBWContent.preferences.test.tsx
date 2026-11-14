@@ -93,3 +93,48 @@ it.each([
     });
   },
 );
+
+// @ai-start
+describe('a long-press on a word', () => {
+  const grid = () => {
+    if (!renderer) throw new Error('nothing rendered');
+    return renderer.root.find(node => Object.is(node.type, WBWVerseView));
+  };
+
+  it('studies the word when the sheet asks for it', async () => {
+    const onOpenWord = jest.fn();
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <WBWContent
+          surahNumber={2}
+          ayahNumber={255}
+          rewayah="hafs"
+          onOpenWord={onOpenWord}
+          onBack={() => undefined}
+        />,
+      );
+    });
+    act(() => grid().props.onWordPress(3));
+    expect(onOpenWord).toHaveBeenCalledWith({verseKey: '2:255', position: 3});
+    // Not lifted: the sheet moves on to Word Study.
+    expect(grid().props.selectedWordPosition).toBeNull();
+  });
+
+  it('lifts the word, and lets it go, without it', async () => {
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <WBWContent
+          surahNumber={2}
+          ayahNumber={255}
+          rewayah="hafs"
+          onBack={() => undefined}
+        />,
+      );
+    });
+    act(() => grid().props.onWordPress(3));
+    expect(grid().props.selectedWordPosition).toBe(3);
+    act(() => grid().props.onWordPress(3));
+    expect(grid().props.selectedWordPosition).toBeNull();
+  });
+});
+// @ai-end

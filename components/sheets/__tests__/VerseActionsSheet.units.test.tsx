@@ -521,6 +521,18 @@ describe('Hafs (unchanged)', () => {
     await press('Word Study');
     expect(last('words')).toMatchObject({initialWord: undefined});
   });
+
+  it('a long-press in Word by Word studies that word', async () => {
+    await openSheet(payload);
+    await press('Word by Word');
+    const onOpenWord = last('wbw').onOpenWord as (word: unknown) => void;
+    await act(async () => onOpenWord({verseKey: '2:255', position: 5}));
+    expect(last('words')).toMatchObject({
+      selection: {keys: ['2:255']},
+      initialWord: {verseKey: '2:255', position: 5},
+    });
+    expect(texts()).toContain('Word Study');
+  });
   // @ai-end
 });
 
