@@ -5,7 +5,7 @@
  * current verse, the step bar across verses in the Quran's direction, the
  * verse chips, whole-verse mode, the books tab loaded when it opens, the
  * loading and error states, scrolling back to the card after a step, the
- * VoiceOver announcement. The grid and the card
+ * VoiceOver announcement, and the arrow keys on iPad. The grid and the card
  * are recorders; the word-by-word words are placeholders, one per slot.
  */
 import React, {act} from 'react';
@@ -71,6 +71,13 @@ jest.mock('@/hooks/useTheme', () => ({
     },
   }),
 }));
+jest.mock('@/modules/bayaan-keyboard', () => ({
+  BayaanKeyboard: {
+    isAvailable: true,
+    setCommands: jest.fn(),
+    addKeyCommandListener: jest.fn(() => () => undefined),
+  },
+}));
 jest.mock('@/hooks/useMushafFontMgr', () => ({useMushafFontMgr: () => null}));
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
   mushafPreloadService: {initialized: true},
@@ -133,6 +140,10 @@ import {
   unitSelection,
   type ReadyVerseSelection,
 } from '@/components/share/rewayahVerseSelection';
+import {
+  pressKeyForTests,
+  resetKeyCommandsForTests,
+} from '@/services/keyboard/keyCommands';
 import {WordStudyContent} from '../WordStudyContent';
 import type {WordRef} from '../wordStudy';
 
@@ -291,6 +302,7 @@ beforeEach(() => {
   for (const key of Object.keys(mockRecorded)) delete mockRecorded[key];
   mockScroll.calls = [];
   jest.clearAllMocks();
+  resetKeyCommandsForTests(false);
 });
 
 afterEach(() => {
@@ -536,5 +548,32 @@ describe('another rewayah (Warsh)', () => {
     expect(cardWord()).toBe('103:2:2');
     expect(last('grid').verseKey).toBe('103:2');
     expect(texts()).toContain('Whole verse');
+  });
+});
+
+describe('arrow keys on iPad', () => {
+  it('← is the next word and → the previous, as in the reader', async () => {
+    resetKeyCommandsForTests(true);
+    await open(hafs('1:4'));
+    act(() => pressKeyForTests('left'));
+    expect(cardWord()).toBe('1:4:2');
+    act(() => pressKeyForTests('right'));
+    expect(cardWord()).toBe('1:4:1');
+  });
+
+  it('binds nothing in whole-verse mode', async () => {
+    resetKeyCommandsForTests(true);
+    await open(hafs('1:4'));
+    await press('Whole verse');
+    act(() => pressKeyForTests('left'));
+    expect(texts()).toContain('One word');
+    expect(last('grid').selectedWordPosition).toBeNull();
+  });
+
+  it('binds nothing where shortcuts are not supported', async () => {
+    resetKeyCommandsForTests(false);
+    await open(hafs('1:4'));
+    act(() => pressKeyForTests('left'));
+    expect(cardWord()).toBe('1:4:1');
   });
 });
