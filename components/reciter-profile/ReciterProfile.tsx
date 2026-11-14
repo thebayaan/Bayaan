@@ -536,46 +536,54 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
   const {toggleFavorite, isFavoriteReciter} = useFavoriteReciters();
 
+  // @ai-start
+  // `tabId` is the rewayah tab whose list the row was tapped in. Every tab's
+  // list used to share one handler that played the selected rewayah, so a tap
+  // in the Hafs list played Warsh whenever the two had drifted apart (or did
+  // nothing if Warsh lacked the surah). The search overlay has a single list
+  // for the selected rewayah and passes no tab.
   const handleSurahPress = useCallback(
-    async (surah: Surah) => {
-      if (!reciter || !selectedRewayat) return;
+    async (surah: Surah, tabId?: string) => {
+      if (!reciter) return;
+      const rewayat = tabId
+        ? reciter.rewayat.find(r => r.id === tabId)
+        : selectedRewayat;
+      if (!rewayat) return;
       try {
-        const startIndex = filteredSurahs.findIndex(s => s.id === surah.id);
+        const tabSurahs = getSurahsForTab(rewayat.id);
+        const startIndex = tabSurahs.findIndex(s => s.id === surah.id);
         if (startIndex === -1) return;
 
         const artwork = getReciterArtwork(reciter);
 
         // Build all tracks with selected surah first
         const reorderedSurahs = [
-          filteredSurahs[startIndex],
-          ...filteredSurahs.slice(startIndex + 1),
-          ...filteredSurahs.slice(0, startIndex),
+          tabSurahs[startIndex],
+          ...tabSurahs.slice(startIndex + 1),
+          ...tabSurahs.slice(0, startIndex),
         ];
 
         const allTracks = reorderedSurahs.map(s => ({
           id: `${reciter.id}:${s.id}`,
-          url: generateSmartAudioUrl(
-            reciter,
-            s.id.toString(),
-            selectedRewayat.id,
-          ),
+          url: generateSmartAudioUrl(reciter, s.id.toString(), rewayat.id),
           title: getSurahDisplayName(s),
           artist: reciter.name,
           reciterId: reciter.id,
           artwork,
           surahId: s.id.toString(),
           reciterName: reciter.name,
-          rewayatId: selectedRewayat.id,
+          rewayatId: rewayat.id,
         }));
 
         await updateQueue(allTracks, 0);
-        startNewChain(reciter, surah, 0, 0, selectedRewayat.id);
+        startNewChain(reciter, surah, 0, 0, rewayat.id);
       } catch (error) {
         console.error('Error playing surah:', error);
       }
     },
-    [reciter, filteredSurahs, selectedRewayat, startNewChain, updateQueue],
+    [reciter, getSurahsForTab, selectedRewayat, startNewChain, updateQueue],
   );
+  // @ai-end
 
   const handlePlayAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
@@ -1333,7 +1341,9 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                             <MemoizedSurahList
                               inline
                               surahs={getSurahsForTab(tab.id)}
-                              onSurahPress={handleSurahPress}
+                              onSurahPress={(surah: Surah) =>
+                                handleSurahPress(surah, tab.id)
+                              }
                               reciterId={currentReciterId}
                               isLoved={
                                 isLovedPerTab.get(tab.id) ??
@@ -1468,7 +1478,11 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               }}
               availableRewayat={rewayatList}
               selectedRewayatId={selectedRewayatId}
-              onRewayatSelect={handleRewayatChange}
+              // Through the tab handler, so the tab bar and pager under this
+              // overlay move with the chip. Setting only the rewayah left
+              // the old tab's list showing after Cancel while taps, Play,
+              // Shuffle and Download all acted on the chip's rewayah.
+              onRewayatSelect={handleTabChange}
               isDarkMode={theme.isDarkMode}
               reciterName={getReciterDisplayName(reciter)}
               viewMode={viewMode}
