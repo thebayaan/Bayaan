@@ -873,26 +873,11 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   }, [indexedTajweedData, verseKey, isTajweedLoading]);
 
   // @ai-start
-  // Mushaf 1440 is Hafs only. chooseMushafRenderer (rewayahSelection.ts)
-  // switches the data service to Hafs before the store pins it, overtaking a
-  // rewayah switch that is still loading, and keeps the font and rewayah
-  // (with a toast) when Hafs cannot be loaded. It reads the store when
-  // tapped, so a stale render cannot skip that switch.
-  const handleFontSelect = useCallback(
-    async (value: MushafRenderer) => {
-      const switchingToQCF =
-        value === 'qcf_v2' &&
-        useMushafSettingsStore.getState().mushafRenderer !== 'qcf_v2';
-      const outcome = await chooseMushafRenderer(value);
-      if (switchingToQCF && outcome.kind === 'switched') {
-        Alert.alert(
-          t('mushafSettings.qcfBetaTitle'),
-          t('mushafSettings.qcfBetaMessage', {appName: branding.appName}),
-        );
-      }
-    },
-    [t],
-  );
+  // chooseMushafRenderer (rewayahSelection.ts) refuses IndoPak for another
+  // rewayah (its row is disabled too); every other font takes any rewayah.
+  const handleFontSelect = useCallback(async (value: MushafRenderer) => {
+    await chooseMushafRenderer(value);
+  }, []);
   // @ai-end
 
   // @ai-start
@@ -1383,11 +1368,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               {t('mushafSettings.tajweedColoring')}
             </Text>
             <Text style={styles.tajweedSubLabel}>
-              {isQCF1440
-                ? t('mushafSettings.tajweedPreview') // @ai
-                : rewayah !== 'hafs'
-                  ? hafsOnlyTajweedDescription // @ai
-                  : t('mushafSettings.tajweedDescription')}
+              {rewayah !== 'hafs'
+                ? hafsOnlyTajweedDescription // @ai
+                : t('mushafSettings.tajweedDescription')}
             </Text>
           </View>
           <TajweedToggle
@@ -1402,8 +1385,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         {FONT_OPTIONS.map((option, idx) => {
           const isSelected = mushafRenderer === option.value;
           // IndoPak's font lacks marks every non-Hafs rewayah uses, so it is
-          // offered for Hafs only (Mushaf 1440 stays selectable: choosing it
-          // returns the reader to Hafs).
+          // offered for Hafs only. Mushaf 1440 takes any rewayah (another
+          // rewayah's text is drawn in Madani 1421).
           const isHafsOnly =
             option.value === 'dk_indopak' && rewayah !== 'hafs'; // @ai
           return (
@@ -1455,22 +1438,14 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       <Text style={styles.sectionHeader}>
         {t('mushafSettings.rewayahHeader')}
       </Text>
-      {isQCF1440 ? (
-        <View style={styles.card}>
-          <Text style={styles.helperText}>
-            {t('mushafSettings.rewayahDisabled')}
-          </Text>
-        </View>
-      ) : (
-        hasDiffData(rewayah) && (
-          <RewayahDiffCard
-            rewayah={rewayah}
-            showRewayahDiffs={showRewayahDiffs}
-            toggleRewayahDiffs={toggleRewayahDiffs}
-            styles={styles}
-            theme={theme}
-          />
-        )
+      {hasDiffData(rewayah) && (
+        <RewayahDiffCard
+          rewayah={rewayah}
+          showRewayahDiffs={showRewayahDiffs}
+          toggleRewayahDiffs={toggleRewayahDiffs}
+          styles={styles}
+          theme={theme}
+        />
       )}
       {/* @ai-start */}
       {mushafRenderer === 'dk_indopak' && (
@@ -1480,21 +1455,19 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           })}
         </Text>
       )}
+      {isQCF1440 && (
+        <Text style={styles.helperText}>
+          {t('mushafSettings.qcfOtherRewayat', {
+            font: t('mushafSettings.fonts.dkV2.label'),
+          })}
+        </Text>
+      )}
       {/* @ai-end */}
       <RewayahAccordion
         selectedId={rewayah}
-        onSelect={value => {
-          // @ai-start
-          // Mushaf 1440 pins the text to Hafs and the store refuses another
-          // rewayah, so a row left expanded across a renderer switch must not
-          // move the data service on its own.
-          if (isQCF1440) return;
-          // @ai-end
-          handleRewayahSelect(value);
-        }}
+        onSelect={handleRewayahSelect}
         styles={styles}
         theme={theme}
-        disabled={isQCF1440}
       />
     </View>
   );

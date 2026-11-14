@@ -128,26 +128,6 @@ export default function MushafScreen() {
   }, []);
 
   // @ai-start
-  // Mushaf 1440 (qcf_v2) draws Hafs only and the settings store pins the
-  // rewayah to Hafs there. The DigitalKhatt data service must agree: its
-  // words feed the QCF Allah-name highlights now, and the DigitalKhatt pages
-  // and their saved layouts after a later switch back. A path that switched
-  // the service without the store (opening a bookmark saved in another
-  // rewayah used to) would otherwise leave that rewayah's text under a Hafs
-  // header, so put the service back on the store's rewayah.
-  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
-  const settingsRewayah = useMushafSettingsStore(s => s.rewayah);
-  useEffect(() => {
-    if (mushafRenderer !== 'qcf_v2') return;
-    if (!digitalKhattDataService.initialized) return;
-    if (digitalKhattDataService.rewayah === settingsRewayah) return;
-    digitalKhattDataService.switchRewayah(settingsRewayah).catch(error => {
-      console.error('[MushafScreen] Failed to resync rewayah:', error);
-    });
-  }, [mushafRenderer, settingsRewayah]);
-  // @ai-end
-
-  // @ai-start
   // When the mushaf text cannot be loaded at all (e.g. no storage left to
   // copy it to the device), say so and offer a retry instead of an endless
   // spinner. The preload retries both the text and the fonts.
