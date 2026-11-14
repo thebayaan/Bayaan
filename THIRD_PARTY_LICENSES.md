@@ -51,6 +51,27 @@ The word text of the seven non-Hafs rewayah databases (`data/mushaf/digitalkhatt
 
 **Licence status.** KFGQPC offers these packages to developers on its developer page (https://qurancomplex.gov.sa/en/techquran/dev/). No licence or terms of use for the text was found in the packages. The end-user licence embedded in their riwayah fonts covers only those fonts, and Bayaan does not ship them. No written permission from KFGQPC for these texts is recorded in this repository yet. Until one is, this section records where the text comes from, not a licence grant. Details are in `scripts/rewayah/sources/SOURCES.md` (Licence status).
 
+## Quran i'rab (grammatical analysis)
+
+`assets/data/irab-v1.db` is built by `scripts/irab/build-irab-db.ts` from:
+
+- **The Quranic Treebank** — https://github.com/NoorBayan/Quranic
+  (commit `e791af79`), MIT License, Copyright (c) 2025 NoorBayan. Word-level
+  syntax (i'rab relations) for the whole Quran.
+- **Quranic Arabic Corpus** v0.4 — https://corpus.quran.com, Dr. Kais Dukes,
+  University of Leeds, GNU General Public License. The morphology (part of
+  speech, case, mood, root, lemma) inside the Quranic Treebank comes from it.
+- **MASAQ: Morphologically-Analyzed and Syntactically-Annotated Quran
+  Dataset** v5 — https://data.mendeley.com/datasets/9yvrzxktmr/5, Majdi
+  Sawalha et al., University of Jordan, CC BY 4.0. Used to cross-check every
+  word; where it reads a word differently its reading is shown as «وجه آخر»,
+  and the build drops case signs it does not confirm. Changes were made:
+  roles and cases are mapped to Arabic grammar terms.
+- **Quranpedia** data dumps — https://quranpedia.net/dumps (version
+  2026-08-10): the classical i'rab books *al-Tibyan fi I'rab al-Qur'an* of
+  al-Ukbari (d. 616 AH) and *I'rab al-Qur'an* of al-Nahhas (d. 338 AH),
+  converted to plain text.
+
 ## Adhkar content & audio
 
 The Arabic adhkar text and English translations in `data/adhkar.json` are

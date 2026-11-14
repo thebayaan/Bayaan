@@ -31,6 +31,7 @@ jest.mock('../verse-actions/TafseerContent', () => ({
 }));
 jest.mock('../verse-actions/ThemeContent', () => ({ThemeContent: () => null}));
 jest.mock('../verse-actions/WBWContent', () => ({WBWContent: () => null}));
+jest.mock('../verse-actions/IrabContent', () => ({IrabContent: () => null}));
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: () => null,
 }));
