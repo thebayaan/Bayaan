@@ -23,11 +23,11 @@
     "nextAyah": "Next ayah"
   },
   "search": {
-    "placeholder": "Search surahs, pages, or juz...",
+    "placeholder": "Search surahs, ayahs, pages, or juz…",
     "recentReads": "Recent reads",
     "recentSearches": "Recent searches",
     "emptyTitle": "Search the Mushaf",
-    "emptySubtitle": "Find surahs, verses, pages, or juz",
+    "emptySubtitle": "Find words of the Quran, surahs, pages, or juz",
     "sortAsc": "Asc",
     "sortDesc": "Desc",
     "sortRevelation": "Rev",
