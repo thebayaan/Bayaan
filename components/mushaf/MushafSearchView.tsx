@@ -640,15 +640,22 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // ──────────────────────────────────────────────────────────
   const addToHistory = useCallback(
     async (item: SearchHistoryItem) => {
+      // @ai-start
+      // Different verses of one surah are different entries: "2:255" used
+      // to replace "2:1" in the history.
       const deduped = searchHistory.filter(
         h =>
           !(
             h.type === item.type &&
             h.surahId === item.surahId &&
             h.page === item.page &&
-            h.juz === item.juz
+            h.juz === item.juz &&
+            h.verse === item.verse &&
+            h.anchor === item.anchor &&
+            h.rewayah === item.rewayah
           ),
       );
+      // @ai-end
       const updated = [item, ...deduped].slice(0, MAX_HISTORY);
       setSearchHistory(updated);
       await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
