@@ -106,6 +106,14 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 
   const handlePlayPress = useCallback(() => {
     const store = useMushafPlayerStore.getState();
+    // @ai-start
+    // Play means the page on screen. A range left by a start that failed, or
+    // a start verse left by a play options sheet that was closed, used to
+    // win over the page: playback began at that old verse and the reader was
+    // turned back to it.
+    store.clearRange();
+    store.setPendingStart(null);
+    // @ai-end
     if (store.rewayatId) {
       // Reset repeat settings so previous loop mode doesn't carry over
       store.setVerseRepeatCount(1);

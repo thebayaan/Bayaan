@@ -653,6 +653,15 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       ...CLEARED_VERSE,
       basmalaIntroSurah: null, // @ai
       playbackState: 'idle',
+      // @ai-start
+      // The range belonged to the playback that just ended. Left behind, the
+      // next Play started at its first verse again (and the page turned back
+      // to it) instead of at the page on screen, and the play options opened
+      // on the verses played before.
+      rangeStart: null,
+      rangeEnd: null,
+      rangeUnits: null,
+      // @ai-end
       _versePlayCount: 1,
       _rangePlayCount: 1,
     });

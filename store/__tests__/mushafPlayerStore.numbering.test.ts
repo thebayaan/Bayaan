@@ -579,6 +579,48 @@ describe('playback requests', () => {
 });
 
 // @ai-start
+describe('Play after the previous playback ended by itself', () => {
+  it('a verse played to the end of its surah: Play starts at the page on screen', async () => {
+    // the verse sheet's Play: from the verse to the end of its surah
+    st().setRange({surah: 112, ayah: 3}, {surah: 112, ayah: 4});
+    await play('hafs-clean', 604, '112:3');
+    await listen('hafs-clean', 112);
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      rangeStart: null,
+      rangeEnd: null,
+      rangeUnits: null,
+    });
+    // the bar's Play on al-Baqarah's first page: it used to replay 112:3
+    await st().startPlayback(2);
+    expect(st().currentSurah).toBe(2);
+    expect(st().currentVerseKey).toBe('2:1');
+  });
+
+  it('a range that reached its end mid-surah is forgotten too', async () => {
+    st().setRange({surah: 2, ayah: 30}, {surah: 2, ayah: 31});
+    await play('hafs-clean', 2, '2:30');
+    at(entry('hafs-clean', 2, 31).timestampFrom + 50);
+    at(entry('hafs-clean', 2, 32).timestampFrom + 50);
+    expect(st()).toMatchObject({
+      playbackState: 'idle',
+      rangeStart: null,
+      rangeEnd: null,
+    });
+    await st().startPlayback(604);
+    expect(st().currentVerseKey).toBe('112:1');
+  });
+
+  it('a range is kept while its playback is only paused', async () => {
+    st().setRange({surah: 2, ayah: 30}, {surah: 2, ayah: 31});
+    await play('hafs-clean', 2, '2:30');
+    mushafAudioService.pause();
+    st().setPlaybackState('paused');
+    expect(st().rangeStart).toEqual({surah: 2, ayah: 30});
+    expect(st().rangeEnd).toEqual({surah: 2, ayah: 31});
+  });
+});
+
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -887,12 +929,15 @@ describe('player info text and notices', () => {
       numberingMode: 'disabled',
       currentSurah: 67,
     });
-    // the bar's Play on a later page of the same surah
+    // @ai-start
+    // The range ended with the playback: the bar's Play on a later page of
+    // the same surah starts at that page without anything clearing it first.
+    expect(st()).toMatchObject({rangeStart: null, rangeEnd: null});
     mockPageKeys[563] = ['67:13', '67:14'];
     const {messages, barMessages} = await noticesDuring(async () => {
-      st().clearRange();
       await st().startPlayback(563);
     });
+    // @ai-end
     expect(st().ignoredStartVerseKey).toBe('67:13');
     const expected =
       'Al-Mulk plays from the beginning without verse tracking for this reciter.';
