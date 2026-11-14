@@ -25,9 +25,10 @@
       }
     },
     {
-      "rule": "A word written over two Hafs slots (P3) is one span: written as one word without a reading difference (15:7 لَّوْمَا), read differently (40:26 وَأَن), al-Bazzi's one word and Qunbul's two read alike (75:1).",
+      "rule": "A word written over two Hafs slots (P3) is one span: written as one word without a reading difference (15:7 لَّوْمَا), read differently (40:26 وَأَن; 27:20 مَالِى, Nafi' and Abu 'Amr with the ya sakin, whatever their texts' encoding), al-Bazzi's one word and Qunbul's two read alike (75:1).",
       "spans": {
         "15:7:1": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
+        "27:20:4": [["hafs", "shouba", "bazzi", "qumbul"], ["warsh", "qaloon", "doori", "soosi"]],
         "40:26:13": [["hafs", "shouba"], ["bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
         "75:1:1": [["hafs", "shouba", "warsh", "qaloon", "doori", "soosi"], ["bazzi", "qumbul"]]
       }
