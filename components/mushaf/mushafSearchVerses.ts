@@ -131,6 +131,40 @@ export function anchorTarget(
   return units && unit ? unitTarget(units, unit) : null;
 }
 
+// @ai-start
+/**
+ * Where a Quran text search hit leads: the verse of the rewayah on screen
+ * holding its first matched word (Hafs `verseKey`, Digital Khatt slot
+ * `position`, which every rewayah's text keeps). Hafs: the Hafs verse. Null
+ * for another rewayah while its verses are not ready.
+ */
+export function hitTarget(
+  verseKey: string,
+  position: number,
+  shown: ShownVerses,
+): VerseTarget | null {
+  if (shown.rewayah === 'hafs') return anchorTarget(verseKey, shown);
+  return anchorTarget(`${verseKey}:${position}`, shown);
+}
+
+/**
+ * A Quran text search hit's label in the numbering of the rewayah on
+ * screen ("Al-Baqarah 2:255"; "Al-Baqarah 2:254 · Warsh"). While that
+ * rewayah's verses load: the Hafs verse, saying so ("Al-Baqarah 2:255 ·
+ * Hafs"), as the results are the Hafs text.
+ */
+export function hitLabel(
+  verseKey: string,
+  position: number,
+  shown: ShownVerses,
+  surahName: string,
+): string {
+  const target = hitTarget(verseKey, position, shown);
+  if (!target) return `${surahName} ${verseKey} · ${getShortLabel('hafs')}`;
+  return verseHistoryLabel(target, verseResultTexts(target, surahName).primary);
+}
+// @ai-end
+
 /** A verse search result's texts, in the numbering of the rewayah on screen. */
 export function verseResultTexts(
   target: VerseTarget,
