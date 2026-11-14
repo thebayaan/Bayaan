@@ -15,6 +15,7 @@ import {Track} from '@/types/audio';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
 import {hasCarReplacedQueue} from '@/services/car/sessionGate';
+import {trackRestoreLoad, pendingRestoreLoad} from './restoreLoad'; // @ai
 
 /**
  * Waits for playerStore to finish hydrating from AsyncStorage.
@@ -214,13 +215,9 @@ export async function restoreSession(): Promise<void> {
   }
 }
 
-// The in-flight phase 2 load, if any.
-let restoreLoad: Promise<void> | null = null;
-
-/** Resolves once restoreSession's background load (if any) has settled. */
-export function pendingRestoreLoad(): Promise<void> {
-  return restoreLoad ?? Promise.resolve();
-}
+// @ai The in-flight phase 2 load lives in ./restoreLoad (the player store
+// waits for it too). Re-exported for the callers that import it from here.
+export {pendingRestoreLoad};
 
 /**
  * Loads the audio source and seeks to position. Runs after store is populated.
@@ -236,7 +233,7 @@ export function loadAudioInBackground(
   const load = new Promise<void>(resolve => {
     settle = resolve;
   });
-  restoreLoad = load;
+  trackRestoreLoad(load); // @ai
   // Use setTimeout to defer off the critical startup path
   setTimeout(async () => {
     try {
@@ -258,7 +255,6 @@ export function loadAudioInBackground(
         console.debug('[RestoreSession] Background audio load failed:', error);
       }
     } finally {
-      if (restoreLoad === load) restoreLoad = null;
       settle();
     }
   }, 100);

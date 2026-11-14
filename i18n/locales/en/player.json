@@ -101,6 +101,10 @@
       "resumeAll": "Resume all"
     }
   },
+  "playback": {
+    "failedTitle": "Couldn't play this recitation",
+    "failedHint": "Check your internet connection and try again."
+  },
   "a11y": {
     "openPlayer": "Opens the full player",
     "nowPlaying": "{{title}}, {{artist}}",

@@ -24,6 +24,9 @@ interface ExpoAudioServiceState {
 
 type StateListener = (state: ExpoAudioServiceState) => void;
 
+// @ai How long loadTrack() waits for the provider to hand over the player.
+const PLAYER_WAIT_MS = 3000;
+
 class ExpoAudioService {
   private static instance: ExpoAudioService;
   private player: AudioPlayer | null = null;
@@ -39,6 +42,10 @@ class ExpoAudioService {
   // player is injected, so the rate is kept here and pushed to the player
   // whenever one is available.
   private desiredRate = 1;
+  // The current source could not be loaded or played (the player reported an
+  // error for it). play() on such a source is silent, so callers reload.
+  private sourceFailed = false;
+  private statusSubscription: {remove: () => void} | null = null;
   // @ai-end
 
   private constructor() {
@@ -98,6 +105,7 @@ class ExpoAudioService {
   setPlayer(player: AudioPlayer): void {
     this.player = player;
     this.applyDesiredRate(); // @ai
+    this.watchForErrors(player); // @ai
     const waiters = this.playerWaiters;
     this.playerWaiters = [];
     waiters.forEach(resolve => resolve());
@@ -141,6 +149,12 @@ class ExpoAudioService {
    * Uses the player's replace method to load new audio.
    */
   async loadTrack(url: string): Promise<void> {
+    // @ai-start
+    // On a cold start a deep link can ask for a track before the provider
+    // has handed over the player (it does so after an await). Wait for it
+    // rather than fail the first play of the session.
+    if (!this.player) await this.waitForPlayer(PLAYER_WAIT_MS);
+    // @ai-end
     if (!this.player) {
       throw new Error(
         '[ExpoAudioService] Player not set. Call setPlayer first.',
@@ -156,14 +170,28 @@ class ExpoAudioService {
       // Create the audio source
       const source: AudioSource = {uri: url};
 
+      // @ai-start
+      // From here the player holds this source, loaded or not.
+      this.currentUrl = url;
+      this.sourceFailed = false;
+      this.lastError = null;
+      // @ai-end
+
       // Replace current audio with new source
       await this.player.replace(source);
 
       // Wait for the player to be fully loaded (with timeout)
       await this.waitForLoaded(5000);
-      this.applyDesiredRate(); // @ai
+      // @ai-start
+      // The player reported that this source cannot be loaded (offline, a
+      // dead link, a missing file). Fail now: carrying on used to end in a
+      // play() that made no sound while the controls showed playing.
+      if (this.sourceFailed && this.currentUrl === url) {
+        throw this.lastError ?? new Error('The audio could not be loaded');
+      }
+      this.applyDesiredRate();
+      // @ai-end
 
-      this.currentUrl = url;
       this.playbackState = 'ready';
       this.lastError = null;
       this.notifyListeners();
@@ -201,7 +229,7 @@ class ExpoAudioService {
     // or first-ever load where isLoaded starts false), fall through.
     const resetDeadline = startTime + 500;
     while (Date.now() < resetDeadline) {
-      if (!this.player?.isLoaded) {
+      if (!this.player?.isLoaded || this.sourceFailed) {
         break;
       }
       await new Promise(resolve => setTimeout(resolve, pollInterval));
@@ -212,6 +240,7 @@ class ExpoAudioService {
       if (this.player?.isLoaded) {
         return;
       }
+      if (this.sourceFailed) return; // @ai No point in waiting out a failure.
       await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
 
@@ -225,6 +254,40 @@ class ExpoAudioService {
   getCurrentUrl(): string | null {
     return this.currentUrl;
   }
+
+  // @ai-start
+  /**
+   * Whether play() can make sound for `url`: the player holds that source
+   * and has not reported it as failed. False after a launch whose restore
+   * could not load (offline), after a failed load, after a stream that broke
+   * mid-way, and when another source took the player.
+   */
+  isSourceReady(url: string): boolean {
+    return (
+      this.player !== null && this.currentUrl === url && !this.sourceFailed
+    );
+  }
+
+  /**
+   * Remember when the player reports an error for the current source.
+   * expo-audio sends it as an `error` string on a status update, on both
+   * platforms, and then goes back to plain updates.
+   */
+  private watchForErrors(player: AudioPlayer): void {
+    this.statusSubscription?.remove();
+    this.statusSubscription = null;
+    if (typeof player.addListener !== 'function') return;
+    this.statusSubscription = player.addListener(
+      'playbackStatusUpdate',
+      status => {
+        const error = (status as {error?: unknown}).error;
+        if (typeof error !== 'string' || error.length === 0) return;
+        this.sourceFailed = true;
+        this.lastError = new Error(error);
+      },
+    );
+  }
+  // @ai-end
 
   // ========== PLAYBACK CONTROLS ==========
 
@@ -505,6 +568,7 @@ class ExpoAudioService {
     // cache calls playerStore.cleanup()). It also left LockScreenService no
     // player to clear the lock-screen controls on.
     this.currentUrl = null;
+    this.sourceFailed = false; // @ai
     this.playbackState = 'idle';
     this.lastError = null;
     this.stateListeners.clear();
@@ -521,6 +585,8 @@ class ExpoAudioService {
     this.cleanup();
     this.isInitialized = false;
     // @ai Test isolation only: drop the player (cleanup() keeps it).
+    this.statusSubscription?.remove(); // @ai
+    this.statusSubscription = null; // @ai
     this.player = null;
   }
 }

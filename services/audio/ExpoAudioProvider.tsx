@@ -31,6 +31,12 @@ import {
   startSessionSaving,
   restoreSavedSession,
 } from '@/services/adhkar/playback/sessionPersistence';
+// @ai-start
+import {reportPlaybackFailed} from '@/services/player/utils/playbackFailure';
+
+// How long after the store says playing the player is checked to agree.
+const PLAYING_CONFIRM_MS = 1500;
+// @ai-end
 
 // Throttle interval for progress updates — wider on Android to reduce re-renders
 const PROGRESS_UPDATE_INTERVAL = Platform.OS === 'android' ? 2000 : 1000;
@@ -374,6 +380,46 @@ export function ExpoAudioProvider({
     updatePlaybackState,
     persistCurrentProgress,
   ]);
+
+  // @ai-start
+  // A source that fails outside a load the store is waiting on: a stream
+  // that breaks mid-way, or a load that fails after its wait timed out. The
+  // native player then reports neither playing nor loaded, and the effect
+  // above returns early on an unloaded player, so the controls kept showing
+  // playing (or buffering) over silence. Settle them, and tell the user.
+  // While the store is loading, the load itself fails and reports.
+  const statusError = (status as {error?: string | null}).error ?? null;
+  useEffect(() => {
+    if (!statusError) return;
+    const store = usePlayerStore.getState();
+    if (store.loading.trackLoading || store.playback.state === 'loading') {
+      return;
+    }
+    if (store.queue.tracks[store.queue.currentIndex] === undefined) return;
+    store.updatePlaybackState({state: 'paused', buffering: false});
+    store.setError('playback', new Error(statusError));
+    reportPlaybackFailed();
+  }, [statusError]);
+
+  // The store marks itself as playing as soon as it has asked the player to
+  // play. The player can decline without an error (another app holds the
+  // audio, a call is active, the source sits at its end), and then no status
+  // update follows to correct the store. Check once, shortly after, that the
+  // player really is playing or still getting there.
+  const storePlaybackState = usePlayerStore(state => state.playback.state);
+  useEffect(() => {
+    if (storePlaybackState !== 'playing') return;
+    const timer = setTimeout(() => {
+      const store = usePlayerStore.getState();
+      if (store.playback.state !== 'playing') return;
+      if (store.loading.trackLoading) return;
+      if (player.playing || player.isBuffering) return;
+      store.updatePlaybackState({state: 'paused'});
+    }, PLAYING_CONFIRM_MS);
+    return () => clearTimeout(timer);
+  }, [storePlaybackState, player]);
+
+  // @ai-end
 
   // Keep latest status in refs for background persistence events.
   useEffect(() => {
