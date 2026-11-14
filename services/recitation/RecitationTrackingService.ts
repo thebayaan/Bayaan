@@ -52,6 +52,7 @@ import {
   type JudgeAnswer,
   type JudgedVerdict,
   type MarkBook,
+  type EngineWord,
   type MarkKind,
   type SeenVerdict,
   type VerdictChange,
@@ -85,11 +86,25 @@ import {shownFlags, toShownFlag} from './flags';
 import {debugTakeSave, debugTakeStart, trace} from './debugTake';
 import {
   advanceRevealed,
+  isRevealed,
   peekAyah,
   peekWord,
   type AyahRef,
   type RevealSource,
 } from './reveal';
+import {
+  LIVE_BUZZ_GAP_MS,
+  LIVE_CHECK_ENABLED,
+  LIVE_REVEAL_WAIT_MS,
+} from './liveCheck/config';
+import {applyLiveOpinions, type LiveMarkGate} from './liveCheck/liveMarks';
+import {
+  defaultLivePort,
+  startLiveCheck,
+  type LiveCheckPort,
+  type LiveRunner,
+} from './liveCheck/runner';
+import type {LiveOpinion} from './liveCheck/types';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {dkWordPosition} from '@/components/mushaf/skia/recitedWord';
 import {SURAHS} from '@/data/surahData';
@@ -280,7 +295,10 @@ function traceMarks(marks: readonly WordMark[]): void {
 
 function showMarks(marks: readonly WordMark[]): void {
   traceMarks(marks);
-  buzz();
+  // A live mark just buzzed for this moment.
+  if (!LIVE_CHECK_ENABLED || Date.now() - lastLiveBuzzAt >= LIVE_BUZZ_GAP_MS) {
+    buzz();
+  }
   publishMarks();
 }
 
@@ -357,6 +375,7 @@ function askSecondLook(
 
 /** One short vibration for a newly marked mistake, if the reader wants it. */
 function buzz(): void {
+  if (LIVE_CHECK_ENABLED) lastBuzzAt = Date.now();
   const on = useMushafSettingsStore.getState().recitationMistakeHaptics;
   trace(`vibrate ${on ? 'on' : 'off (setting)'}`);
   if (!on) return;
@@ -525,6 +544,170 @@ function noteVerdicts(
   scheduleConfirm();
 }
 
+// The live check (liveCheck/): the second model re-reads the last seconds about twice
+// a second and gives its own opinion on each word. Its marks share the book and the
+// page with the follower's, in their own lane (liveCheck/liveMarks). Nothing here runs
+// unless LIVE_CHECK_ENABLED.
+
+let livePort: LiveCheckPort | null = defaultLivePort;
+let live: LiveRunner | null = null;
+// When the last vibration came, so a live mark does not buzz twice for one moment.
+let lastBuzzAt = -Infinity;
+// When a live mark last buzzed, so a follower mark right after it does not buzz again.
+let lastLiveBuzzAt = -Infinity;
+// Whether the text was hidden when each live mark was made, for the take's record.
+let liveHidden = new Map<string, boolean>();
+// Live marks the reader dismissed this take, for the take's record.
+let dismissedLive = new Map<string, WordMark>();
+// Live mistakes on hidden words not revealed yet, and since when they wait.
+let liveHeld = new Map<string, {opinion: LiveOpinion; since: number}>();
+// Readings that waited too long: sent again on later runs, they are not held again.
+let liveGaveUp = new Set<string>();
+// The latest reading of each word the live lane marked or corrected, by markKey.
+let liveSettled = new Map<string, number>();
+const readingKey = (opinion: LiveOpinion) =>
+  `${markKey(opinion.surah, opinion.ayah, opinion.word)}@${opinion.evidence.reading}`;
+
+/** Attaches what the live check is made of, or with null takes it away. */
+export function setLiveCheckPort(port: LiveCheckPort | null): void {
+  livePort = port;
+}
+
+/** With the text hidden, colouring a word the reader has not reached would show it. */
+function wordRevealed(word: EngineWord & {totalWords: number}): boolean {
+  if (!memo?.hidden) return true;
+  const position = dkWordPosition(
+    digitalKhattDataService.getVerseWords(`${word.surah}:${word.ayah}`),
+    word.word,
+    word.totalWords,
+  );
+  return (
+    position !== null &&
+    isRevealed(
+      useRecitationTrackingStore.getState().revealedThrough,
+      word.surah,
+      word.ayah,
+      position,
+    )
+  );
+}
+
+const liveGate: LiveMarkGate = {
+  dismissed: key => dismissedMarks.has(key),
+  revealed: wordRevealed,
+  settled: key => liveSettled.get(key),
+};
+
+const two = (value: number) => value.toFixed(2);
+
+function applyLive(opinions: readonly LiveOpinion[], now: number): void {
+  if (opinions.length === 0) return;
+  const update = applyLiveOpinions(book, opinions, now, liveGate);
+  if (update.book === book) return;
+  book = update.book;
+  for (const m of [...update.confirmed, ...update.corrected]) {
+    const key = wordMarkKey(m);
+    const reading = m.live?.reading ?? 0;
+    liveSettled.set(key, Math.max(reading, liveSettled.get(key) ?? reading));
+  }
+  for (const m of update.confirmed) {
+    liveHidden.set(wordMarkKey(m), memo?.hidden ?? false);
+    trace(
+      `MARK live ${m.kind} ${m.surah}:${m.ayah} word ${m.word + 1} (reading ${m.live?.reading}, letters ${two(m.live?.letterShare ?? 0)}, gap ${two(m.live?.gap ?? 0)})`,
+    );
+  }
+  for (const m of update.corrected) {
+    trace(
+      `CORRECTED live ${m.surah}:${m.ayah} word ${m.word + 1} (reading ${m.live?.reading})`,
+    );
+  }
+  // A mark left to a skipped-ayah flag is not on the page, so it does not buzz.
+  const onPage = shownMarks(
+    new Map(update.confirmed.map(m => [wordMarkKey(m), m])),
+    skippedAyat(),
+  );
+  if (onPage.length > 0 && now - lastBuzzAt >= LIVE_BUZZ_GAP_MS) {
+    buzz();
+    lastLiveBuzzAt = now;
+  }
+  publishMarks();
+}
+
+/** Held live mistakes whose words are now revealed show; those waited too long go. */
+function releaseHeldLive(now: number): void {
+  const ready: LiveOpinion[] = [];
+  for (const [key, held] of liveHeld) {
+    const {opinion} = held;
+    if (now - held.since >= LIVE_REVEAL_WAIT_MS) {
+      liveGaveUp.add(readingKey(opinion));
+      trace(
+        `live ${opinion.surah}:${opinion.ayah} word ${opinion.word + 1}: not revealed in time, dropped`,
+      );
+    } else if (wordRevealed(opinion)) {
+      ready.push(opinion);
+    } else {
+      continue;
+    }
+    liveHeld.delete(key);
+  }
+  applyLive(ready, now);
+}
+
+/** One live run's opinions. Only final ones may make or correct a mark. */
+function noteLiveOpinions(opinions: readonly LiveOpinion[]): void {
+  const state = useRecitationTrackingStore.getState();
+  if (!live || !memo?.check || state.status !== 'listening' || !state.locked) {
+    return;
+  }
+  const now = Date.now();
+  releaseHeldLive(now);
+  const ready: LiveOpinion[] = [];
+  for (const opinion of opinions) {
+    if (!opinion.final) continue;
+    const key = markKey(opinion.surah, opinion.ayah, opinion.word);
+    if (dismissedMarks.has(key)) continue;
+    if (opinion.verdict !== 'fine' && liveGaveUp.has(readingKey(opinion))) {
+      continue;
+    }
+    if (opinion.verdict !== 'fine' && !wordRevealed(opinion)) {
+      const since = liveHeld.get(key)?.since ?? now;
+      liveHeld.set(key, {opinion, since});
+      continue;
+    }
+    ready.push(opinion);
+  }
+  applyLive(ready, now);
+}
+
+function startLive(): void {
+  liveHidden = new Map();
+  dismissedLive = new Map();
+  liveHeld = new Map();
+  liveGaveUp = new Set();
+  liveSettled = new Map();
+  live?.stop();
+  live = null;
+  if (!memo?.check || !livePort) return;
+  prepareSecondLook();
+  live = startLiveCheck(
+    {
+      engine: secondJudgeEngine,
+      ready: () => {
+        const {status, locked} = useRecitationTrackingStore.getState();
+        return status === 'listening' && locked && !!memo?.check;
+      },
+      report: opinions => {
+        try {
+          noteLiveOpinions(opinions);
+        } catch (error) {
+          trace(`live check: marks failed (${String(error)})`);
+        }
+      },
+    },
+    livePort,
+  );
+}
+
 /** The word's 1-based position in the ayah, as the mushaf numbers it. */
 function hafsWordPosition(
   surah: number,
@@ -567,6 +750,35 @@ function takeWords(): TakeWord[] {
       hidden: entry.hidden,
       at: entry.at,
     });
+  }
+  if (LIVE_CHECK_ENABLED) {
+    // A live mark can stand on a word the follower never judged.
+    const liveMarks = [...book].filter(
+      ([key, m]) =>
+        m.live &&
+        (m.status === 'mistake' || m.status === 'corrected') &&
+        !judged.has(key),
+    );
+    const liveDismissed = [...dismissedLive].filter(
+      ([key]) => !judged.has(key),
+    );
+    for (const [key, mark] of [...liveMarks, ...liveDismissed]) {
+      const {surah, ayah, word, totalWords} = mark;
+      const dismissedKind = dismissedMarks.get(key);
+      out.push({
+        surah,
+        ayah,
+        word: hafsWordPosition(surah, ayah, word, totalWords),
+        result: dismissedKind
+          ? 'dismissed'
+          : mark.status === 'mistake'
+            ? 'mistake'
+            : 'corrected',
+        kind: dismissedKind ?? mark.kind,
+        hidden: liveHidden.get(key) ?? false,
+        at: mark.since,
+      });
+    }
   }
   const added = [...book.values()].filter(
     m => m.kind === 'added' && m.status === 'mistake',
@@ -653,6 +865,7 @@ function handleEvent(msg: EngineMessage): void {
     // across ayat at once is the tracker re-aligning, not the reader.
     if (state.locked && memo?.check) {
       const lock = msg.lock ?? null;
+      if (lock) live?.relocated(lock, msg.audioTime);
       noteVerdicts(
         dropRealignment(dropLockArtifacts(msg.changes, lock)),
         msg.audioTime,
@@ -710,6 +923,15 @@ function handleEvent(msg: EngineMessage): void {
       wordIndex: msg.word_index,
       totalWords: msg.total_words,
     });
+    if (live) {
+      live.setPlace({
+        surah: msg.surah,
+        ayah: msg.ayah,
+        word: msg.word_index,
+        totalWords: msg.total_words,
+      });
+      if (liveHeld.size > 0) releaseHeldLive(Date.now());
+    }
     return;
   }
   if (msg.type === 'verse_match') {
@@ -739,6 +961,7 @@ function handleEvent(msg: EngineMessage): void {
   if (LOCK_EVENTS.has(msg.event)) setState({locked: true});
   if (UNLOCK_EVENTS.has(msg.event)) {
     setState({locked: false});
+    live?.lost();
     dropWhatTheReaderLeftBehind(Date.now());
     scheduleConfirm();
   }
@@ -837,6 +1060,7 @@ function onUpdate(update: SessionUpdate): void {
             CANCEL_MAY_CANCEL,
         );
       }
+      if (LIVE_CHECK_ENABLED) startLive();
       analyticsService.trackRecitationTrackingStarted({
         hint_surah_id: takeHint?.surah ?? null,
         model_loaded: update.modelWasLoaded,
@@ -850,6 +1074,13 @@ function onUpdate(update: SessionUpdate): void {
       setState({status: 'listening'});
       return;
     case 'off': {
+      // The live check stops first, and what it had not settled goes with it: its
+      // marks are made while the reader recites, never after.
+      if (live) {
+        live.stop();
+        live = null;
+        liveHeld = new Map();
+      }
       clearConfirmTimer();
       forgetJudgeWakes();
       // What is due by its own rules shows, as no answer can come now. So does a
@@ -1080,6 +1311,7 @@ export async function dismissRecitationMark(target: {
   if (isTakeActive(status)) {
     dismissedMarks.set(key, mark.kind);
     if (added) dismissedAdded.push(mark);
+    if (LIVE_CHECK_ENABLED && mark.live) dismissedLive.set(key, mark);
     const next = new Map(book);
     next.delete(key);
     book = next;

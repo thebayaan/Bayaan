@@ -154,6 +154,20 @@ describe('createRecitationEngine', () => {
     });
   });
 
+  it('tells a chunk listener when each chunk has been heard, and stops when cleared', async () => {
+    const engine = await createRecitationEngine(ASSETS, () => undefined);
+    const heard: number[] = [];
+    engine.setChunkListener(t => heard.push(t));
+    engine.feed(pcm());
+    engine.feed(pcm());
+    await engine.stop();
+    expect(heard).toEqual([0.48, 0.96]);
+    engine.setChunkListener(null);
+    engine.feed(pcm());
+    await engine.stop();
+    expect(heard).toEqual([0.48, 0.96]);
+  });
+
   it('correct runs after queued audio and resolves with its messages', async () => {
     const engine = await createRecitationEngine(ASSETS, () => undefined);
     engine.feed(pcm());

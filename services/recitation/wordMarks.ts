@@ -135,6 +135,24 @@ export interface WordMark {
    * here or none did. At its Step 2 the cancel step leaves such a mark alone.
    */
   identified?: boolean;
+  /**
+   * Made by the live check (liveCheck/liveMarks), with what it heard. The follower's
+   * later verdicts on the word neither note nor correct it: they are about the same
+   * reading. Only a later reading, as the live check hears it, does.
+   */
+  live?: LiveMarkEvidence;
+}
+
+/**
+ * The live check's evidence on a mark (liveCheck/types, LiveEvidence). Spelled out
+ * here so this file keeps no import but the tuned numbers.
+ */
+export interface LiveMarkEvidence {
+  letterShare: number;
+  gap: number;
+  audioFrom: number;
+  audioTo: number;
+  reading: number;
 }
 
 export type MarkBook = ReadonlyMap<string, WordMark>;
@@ -349,7 +367,7 @@ function noted(mark: WordMark, now?: number): WordMark {
  * is within its reach: red on the word would come from the same extra sounds.
  * @param at - When the verdict came (ms)
  */
-function heldByAdded(
+export function heldByAdded(
   book: MarkBook,
   word: EngineWord & {totalWords: number},
   at: number,
@@ -499,7 +517,8 @@ export function applyVerdicts(
         }
       }
     }
-    if (!mark) continue;
+    // A live mark is about a reading the follower judges late, not a new one.
+    if (!mark || mark.live) continue;
     if (
       mark.status === 'suspect' ||
       (mark.status === 'checking' && change.state === 'ok')
@@ -727,8 +746,10 @@ function confused(book: MarkBook, mark: WordMark, now: number): boolean {
     t >= mark.since - NEIGHBOUR_WINDOW_MS && t <= upTo;
   let around = 0;
   for (const m of book.values()) {
+    // The rule was tuned with no live marks in the book.
     if (
       m.kind === 'added' ||
+      m.live !== undefined ||
       m.surah !== mark.surah ||
       m.ayah !== mark.ayah ||
       m.word === mark.word ||

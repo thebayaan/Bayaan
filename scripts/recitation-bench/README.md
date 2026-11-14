@@ -9,6 +9,17 @@ Needs `node`, `python3` and `ffmpeg`. The first run of `bench.sh` installs
 Recitations and word timings come from Quran.com. Everything downloaded or
 produced stays in `.out/` (git-ignored).
 
+On x86-64, the `onnxruntime-node` 1.24.3 installed here returns garbage in some of
+the second model's output rows on some runs, so `judge/model.mjs` stops with an
+error naming the row whenever a log-probability falls below -1000. Set
+`ORT_NODE_DIR` to a directory holding `node_modules/onnxruntime-node` to run
+another install instead, for example
+`ORT_NODE_DIR=.out/fix2/ortnew node judge/smoke.mjs .out/runs/smoke_67_1.f32` for
+1.31.1. Without it the bench uses its own install, as before.
+
+The live word check (`services/recitation/liveCheck`) has its own bench in `fix2/`:
+see `fix2/README.md` and `docs/features/recitation-live-check.md`.
+
 ## Running the engine
 
 `bench.mjs` feeds 16 kHz mono float32 audio in 480 ms chunks, as the mic

@@ -1402,6 +1402,41 @@ describe('failing open', () => {
     expect(shown()).toEqual(['wrong:2']);
   });
 
+  /** The output as a broken onnxruntime build gives it: one row of garbage. */
+  function corrupted(output: ModelOutput, row = 1): ModelOutput {
+    const logp = output.logp.slice();
+    const width = logp.length / output.frames;
+    logp.fill(-4e5, row * width, (row + 1) * width);
+    logp[row * width] = 0;
+    return {logp, frames: output.frames};
+  }
+
+  it('the first pass gets corrupted output: no score, the mark shows', async () => {
+    await lockedTake();
+    slip();
+    await nextChunk();
+    await reply(calls[0], corrupted(neither()));
+    await chunks(1);
+    expect(calls).toHaveLength(1);
+    expect(shown()).toEqual(['wrong:2']);
+    expect(traced().join('\n')).toMatch(
+      /failed open \(corrupted model output, row 1\)/,
+    );
+  });
+
+  it('the padded look gets corrupted output: it is not cancelled, the mark shows', async () => {
+    await lockedTake();
+    slip();
+    await nextChunk();
+    await reply(calls[0], neither());
+    await reply(calls[1], corrupted(asWritten(), 3));
+    await chunks(4);
+    expect(shown()).toEqual(['wrong:2']);
+    expect(traced().join('\n')).toMatch(
+      /failed open \(corrupted model output, row 3\)/,
+    );
+  });
+
   it('too little audio to cut around the word: no padded look, and the mark shows', async () => {
     await service.startRecitationTracking(null);
     await jest.advanceTimersByTimeAsync(0);

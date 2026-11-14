@@ -9,8 +9,31 @@ import {createRequire} from 'node:module';
 import {fbank, NUM_BINS} from './fbank.mjs';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
-const require = createRequire(path.join(HERE, '../package.json'));
+// ORT_NODE_DIR=<dir holding node_modules/onnxruntime-node> runs another install of
+// the runtime; without it, the bench's own.
+const ORT_FROM = process.env.ORT_NODE_DIR
+  ? path.join(path.resolve(process.env.ORT_NODE_DIR), 'package.json')
+  : path.join(HERE, '../package.json');
+const require = createRequire(ORT_FROM);
 const ort = require('onnxruntime-node');
+const ORT_VERSION =
+  ort.env?.versions?.node ?? ort.env?.versions?.common ?? 'unknown';
+
+/** Below this a log-probability is not the model's but a broken runtime's. */
+export const CORRUPT_LOGP_FLOOR = -1000;
+
+/**
+ * The first row of [frames, width] log-probabilities holding a value below the
+ * floor, or -1. On x86-64, onnxruntime 1.24.3 spoils every 32nd row of this model's
+ * output on some runs: one token at 0 and the rest near -4e5.
+ */
+export function corruptRow(logp, frames) {
+  const width = frames > 0 ? Math.floor(logp.length / frames) : 0;
+  for (let i = 0; i < width * frames; i++) {
+    if (logp[i] < CORRUPT_LOGP_FLOOR) return Math.floor(i / width);
+  }
+  return -1;
+}
 
 export const REVISION = '004f898639f3127a74eac1b898a2cb3ef0b5268d';
 export const MODEL_DIR = path.join(HERE, '../.out/natural/qas', `hf_${REVISION}`);
@@ -45,7 +68,16 @@ export async function loadModel(file = path.join(MODEL_DIR, 'model.int8.onnx')) 
       const t1 = performance.now();
       const dims = out.log_probs.dims;
       const len = Number(out.log_probs_len.data[0]);
-      return {logp: out.log_probs.data.slice(0, len * dims[2]), frames: len, ortMs: t1 - t0};
+      const logp = out.log_probs.data.slice(0, len * dims[2]);
+      const row = corruptRow(logp, len);
+      if (row >= 0) {
+        throw new Error(
+          `corrupted model output at row ${row} (a log-probability below ${CORRUPT_LOGP_FLOOR}): ` +
+            `the onnxruntime-node build in use (${ORT_VERSION}, from ${path.dirname(ORT_FROM)}) is broken for this model; ` +
+            'set ORT_NODE_DIR to a directory holding node_modules/onnxruntime-node of a build that works',
+        );
+      }
+      return {logp, frames: len, ortMs: t1 - t0};
     },
     /** From audio: runs the features too. */
     async run(wave) {

@@ -20,6 +20,7 @@ import {
   JUDGE_STEP,
   type CancelMayCancel,
 } from './config';
+import {corruptRow} from './corruptOutput';
 import {fbankInSteps} from './fbank';
 import {
   cancelAnswer,
@@ -30,7 +31,11 @@ import {
   tokensOf,
   type WordJudgement,
 } from './judge';
-import {loadSecondLookModel, type SecondLookModel} from './model';
+import {
+  loadSecondLookModel,
+  type ModelOutput,
+  type SecondLookModel,
+} from './model';
 import {
   heardAtHold,
   judgeSlice,
@@ -229,6 +234,37 @@ export function prepareSecondLook(): void {
     });
 }
 
+// The live check (liveCheck/runner.ts) runs this same model between looks. One run
+// at a time: a look waits for the live check's run to end before its own. Never set
+// while the live check is off.
+let otherRun: Promise<void> | null = null;
+
+/** The loaded model, for the live check, or null. Loads nothing. */
+export function secondLookModel(): SecondLookModel | null {
+  return model;
+}
+
+/**
+ * A look is running or waiting its turn, or a live run is still on the model (one an
+ * earlier take started, too): the live check leaves the model alone.
+ */
+export function secondLookBusy(): boolean {
+  if (otherRun) return true;
+  return take !== null && (take.running || take.jobs.length > 0);
+}
+
+/** The live check's run of the model: looks wait for it, whatever its outcome. */
+export function holdSecondLookModel(run: Promise<unknown>): void {
+  const settled = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  otherRun = settled;
+  void settled.then(() => {
+    if (otherRun === settled) otherRun = null;
+  });
+}
+
 /** Lets the model go; the next take loads it again. */
 export async function unloadSecondLook(): Promise<void> {
   loadRun += 1;
@@ -283,6 +319,15 @@ function startTimer(current: CheckTake, look: Look): void {
     current.stats.timeouts += 1;
     fail(current, look, `no answer within ${CHECK_TIMEOUT_MS / 1000} s`);
   }, CHECK_TIMEOUT_MS);
+}
+
+/**
+ * A run whose output a broken onnxruntime build spoiled fails as a failed run does:
+ * its looks say nothing and the mark shows, rather than score on garbage.
+ */
+function assertCleanOutput(output: ModelOutput): void {
+  const row = corruptRow(output.logp, output.frames);
+  if (row >= 0) throw new Error(`corrupted model output, row ${row}`);
 }
 
 function noteBacklog(current: CheckTake): void {
@@ -413,11 +458,16 @@ async function runFirstPass(current: CheckTake, slot: Slot): Promise<void> {
     failAll('too little of the slice');
     return;
   }
+  if (otherRun) {
+    await otherRun;
+    if (current !== take) return;
+  }
   const runAt = Date.now();
   const output = await ready.run(span.data, span.frames);
   const modelMs = Date.now() - runAt;
   current.stats.modelRuns += 1;
   if (current !== take) return;
+  assertCleanOutput(output);
   // Every score first, with pauses between them, then every answer in one go: words of
   // one chunk fall due together, and show together with one vibration.
   const scored: {look: Look; judged: WordJudgement}[] = [];
@@ -504,9 +554,14 @@ async function runPadded(current: CheckTake, look: Look): Promise<void> {
   const features = await fbankInSteps(wave);
   const featuresAt = Date.now();
   if (current !== take || look.failure) return;
+  if (otherRun) {
+    await otherRun;
+    if (current !== take || look.failure) return;
+  }
   const output = await ready.run(features.data, features.frames);
   current.stats.modelRuns += 1;
   if (current !== take || look.failure) return;
+  assertCleanOutput(output);
   look.gap = innerGap(
     output.logp,
     output.frames,
