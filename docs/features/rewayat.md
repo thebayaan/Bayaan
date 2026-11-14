@@ -115,6 +115,19 @@ Decisions to confirm with a qualified reader (each is one rule in `highlights.py
 
 Release 1 does not emit the letter-level categories `tashil`, `madd`, `ibdal`, `taghliz` or `minor`: an audit found them 84-99% false or never produced, and the legend must not advertise them. A whole-word tint must not cover a trailing inline marker (`' ۝N'`), and `silah` comes from the JSON, not from scanning the stored text (format 2).
 
+## Per-word readings
+
+How each of the 8 rewayat reads one Hafs word, for the word view's Readings section. The data is a build-time index, `data/mushaf/digitalkhatt/dk_readings.db`, written by `scripts/rewayah/build_readings_index.py` from the committed words DBs and highlight maps only (nothing is re-aligned):
+
+- **Groups.** Hafs's group holds Hafs and every rewayah the diff JSON leaves untinted: the reviewed highlight decision above is the line between "reads it as Hafs does" and "reads it differently". The rewayat that differ are grouped among themselves by `highlights.reads_alike`. It reuses the classifier's rules, but applies one rewayah's rules to another's text only when they can read its encoding, never takes al-Bazzi's own doubled ta' as an idgham, and lets a narrator join the other narrator of his reader only through the same words or the reviewed sibling rule. A doubt therefore splits two rewayat into two readings and never merges them. Nafi' 57:24 `هُوَ` is "not read". Two Hafs slots that a rewayah writes as one word (15:7, 27:20, 36:22, 40:26, 73:20, 75:1) form one span.
+- **Details per rewayah:** its own text where it differs from its group's (and wherever it has silah, coloured from the diff's silah indices), a verse that ends after the word in that rewayah and not in Hafs, or the reverse, a word written as one word or two, and al-Fatiha's basmala, which the Madani and Basri counts do not number.
+- **Not listed per word:** general-rule differences (madd, tashil, ibdal, imala, naql, idgham); a silah never separates two readings either. The section's footer says so.
+- **Suspected misprints.** The four upstream issues listed under [Known limits](#known-limits) (Qunbul 4:136, Qalun 17:62, Warsh 43:58, al-Duri 43:78) are read with their sibling narrator and never shown as a reading of their own (`scripts/rewayah/reading_upstream_issues.json`). The app shows no note.
+- **Size.** 9,499 of the 77,432 Hafs words have a row (9,505 rows; 1.56 MB, 230 KB gzipped); 2,239 have two or more readings. A word with no row reads the same way in all 8 rewayat.
+- **Gates.** `build_readings_index.py --check` in `quran-data.yml`: row identity, partition, exact texts (never synthesised), silah, completeness, the reviewed groupings of `scripts/rewayah/reading_groups_cases.json`, the misprint entries and determinism, on a fresh build and on the committed rows, then a comparison with the committed index and review list.
+- **Review before release.** Grouping the differing rewayat among themselves is new. `scripts/rewayah/reading_review.md`, generated with the data, is the review list: the misprints, the open questions (`toConfirm`), the joins where one rewayah's general rule excused a difference, and every word with three or more readings. A qualified reader signs it off before release (it does not block merging); each decision becomes a group in `reading_groups_cases.json`.
+- **Rebuild** after any change to a words DB or diff: `build_readings_index.py`, then `node scripts/rewayah/gen-manifest.mjs`. The index records the sha256 of every input it was built from.
+
 ## Runtime architecture
 
 ### DigitalKhattDataService: multi-rewayah read API
@@ -195,7 +208,7 @@ Audio-side UGC (loved tracks, downloads, playlists, recently played) already sta
   - taqlil and imala share one filled dot; the Habti waqf signs are omitted (also the one that ends the Warsh / Qalun basmala before 75, 83, 90 and 104: `dk` drops it, `official` keeps it);
   - the hamza below a tatweel (Nafi' `خَٰسِـِٕينَ`) is drawn on the tatweel line; Qunbul's small seen on `صِۜرَٰطَ` and the small noon of 12:110 have no anchor but sit above their letter;
   - 81:24 shows `ظ` instead of ض with a small ظ.
-- **Upstream text.** Qunbul 4:135 (Hafs 4:136) `أُنزَلَ` is kept as both official Qunbul artifacts write it, although Ibn Kathir reads `أُنزِلَ` (as the official al-Bazzi text has it). Qalun 17:62 `قَالْ` (a sukun on the lam, in both official Qalun JSONs) is kept and tinted as written, although every reading has `قَالَ`. Warsh 43:58 `جَدَلاَ` (no iqlab meem, so no tanween as written, in both official Warsh JSONs and the Word file) and al-Duri 43:78 `لَقَدۡ جِّئۡنَٰكُم` (a sukun on the dal that the doubled jim says is merged, in both official al-Duri JSONs and the Word file) are kept and tinted as written. A qualified reader should decide all four before release (and, ideally, they are reported to KFGQPC); a correction is one entry in `sources/errata.json`.
+- **Upstream text.** Qunbul 4:135 (Hafs 4:136) `أُنزَلَ` is kept as both official Qunbul artifacts write it, although Ibn Kathir reads `أُنزِلَ` (as the official al-Bazzi text has it). Qalun 17:62 `قَالْ` (a sukun on the lam, in both official Qalun JSONs) is kept and tinted as written, although every reading has `قَالَ`. Warsh 43:58 `جَدَلاَ` (no iqlab meem, so no tanween as written, in both official Warsh JSONs and the Word file) and al-Duri 43:78 `لَقَدۡ جِّئۡنَٰكُم` (a sukun on the dal that the doubled jim says is merged, in both official al-Duri JSONs and the Word file) are kept and tinted as written. A qualified reader should decide all four before release (and, ideally, they are reported to KFGQPC); a correction is one entry in `sources/errata.json`. The per-word readings read these four with their sibling narrator ([Per-word readings](#per-word-readings)).
 - **Highlights** cover whole-word reading differences and silah only; letter-level rules (madd, tashil, ibdal, taghliz, taqlil, naql) are not highlighted in Release 1.
 - **Omitted words** have no highlight: a word the rewayah does not read leaves its Hafs slot blank (Nafi' 57:24 `هُوَ`, Hafs `هُوَ ٱلْغَنِيُّ`), and nothing on the page marks the omission. Signalling it (e.g. a marker on the neighbouring word) is a decision to confirm.
 - **Word-by-word** translation and transliteration remain Hafs-only.
@@ -207,6 +220,7 @@ Per-riwayah official layouts (page / line / word from the KFGQPC data and print 
 ## Key files
 
 - `scripts/rewayah/` (README, sources, builder, validator, render policy, highlight rules).
+- `scripts/rewayah/build_readings_index.py`, `reading_groups_cases.json`, `reading_upstream_issues.json`, `reading_review.md`; `data/mushaf/digitalkhatt/dk_readings.db`: the per-word readings index, its reviewed cases and its review list.
 - `services/mushaf/DigitalKhattDataService.ts`: multi-rewayah words DB loading + side cache.
 - `services/mushaf/RewayahDiffService.ts`: diff JSON loader + render-time category queries.
 - `store/mushafSettingsStore.ts`: `RewayahId` union, active rewayah persistence.

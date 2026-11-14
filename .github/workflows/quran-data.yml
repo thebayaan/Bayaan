@@ -45,3 +45,8 @@ jobs:
           out="$(mktemp -d)"
           python -B scripts/rewayah/build_sibling_rewayah.py --out-dir "$out"
           python -B scripts/rewayah/compare_outputs.py "$out" data/mushaf/digitalkhatt
+
+      # @ai-start
+      - name: Per-word readings index matches the words DBs, highlight maps and reviewed cases
+        run: python -B scripts/rewayah/build_readings_index.py --check
+      # @ai-end
