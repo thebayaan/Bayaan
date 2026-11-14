@@ -16,25 +16,28 @@
 
 export type Script = 'uthmani' | 'imlaei';
 
-const TATWEEL = 'ـ';
-const DAGGER_ALIF = 'ٰ';
-const MADDA = 'ٓ';
-const HAMZA_ABOVE = 'ٔ';
-const HAMZA_BELOW = 'ٕ';
-/** ۟ and ۠: the letter is written but not read. */
-const ZAID_SIGNS = new Set(['۟', '۠']);
+const TATWEEL = '\u0640';
+const DAGGER_ALIF = '\u0670';
+const MADDA = '\u0653';
+const HAMZA_ABOVE = '\u0654';
+const HAMZA_BELOW = '\u0655';
+/** ۟ (U+06DF) and ۠ (U+06E0): the letter is written but not read. */
+const ZAID_SIGNS = new Set(['\u06DF', '\u06E0']);
 /**
- * ۜ above ص: read as س (يَبْصُۜطُ; the standard spelling writes س). The small
- * seen below ص (ٱلْمُصَۣيْطِرُونَ) keeps ص as the main reading and the
- * standard spelling keeps ص, so it is not a badal sign.
+ * ۜ (U+06DC) above ص: read as س (يَبْصُۜطُ; the standard spelling writes س).
+ * The small seen below ص (U+06E3, ٱلْمُصَۣيْطِرُونَ) keeps ص as the main
+ * reading and the standard spelling keeps ص, so it is not a badal sign.
  */
-const SEEN_SIGNS = new Set(['ۜ']);
-/** The mushaf's small letters: ۥ waw, ۦ ya, ۧ high ya, ۨ high nun. */
+const SEEN_SIGNS = new Set(['\u06DC']);
+/**
+ * The mushaf's small letters: ۥ waw (U+06E5), ۦ ya (U+06E6), ۧ high ya
+ * (U+06E7), ۨ high nun (U+06E8).
+ */
 const SMALL_LETTERS: Readonly<Record<string, string>> = {
-  ۥ: 'و',
-  ۦ: 'ي',
-  'ۧ': 'ي',
-  'ۨ': 'ن',
+  '\u06E5': 'و',
+  '\u06E6': 'ي',
+  '\u06E7': 'ي',
+  '\u06E8': 'ن',
 };
 
 /** Arabic base letters (U+0621–U+064A and alif wasla). */
@@ -73,7 +76,8 @@ function isMark(ch: string): boolean {
  * اللاتي، اللائي، اللذان، اللذين). Only the ٱل is matched; the replacement
  * adds the second ل.
  */
-const ASSIMILATED_LAM = /ٱل(?=(?:َّ|َّ)(?:يْل|ـٰ|ذَا|ذَيْ))/g;
+const ASSIMILATED_LAM =
+  /\u0671\u0644(?=(?:\u0651\u064E|\u064E\u0651)(?:\u064A\u0652\u0644|\u0640\u0670|\u0630\u064E\u0627|\u0630\u064E\u064A\u0652))/g;
 
 /**
  * Restores the long vowels and small letters the mushaf writes small, so an
@@ -267,7 +271,7 @@ export function looseKey(text: string): string {
   for (let i = 0; i < chars.length; i++) {
     const ch = chars[i];
     if (ch === 'ص' && seenSignFollows(chars, i)) read += 'س';
-    else if (ch === 'ۨ') read += 'ن';
+    else if (ch === '\u06E8') read += 'ن';
     else read += ch;
   }
   const words = searchKey(read)
