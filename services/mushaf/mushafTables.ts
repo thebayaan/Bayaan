@@ -9,12 +9,11 @@ import {
   type VerseRangeRow,
 } from './wordStore';
 
-const LINE_TYPES: readonly DKLine['line_type'][] = [
-  'surah_name',
-  'basmallah',
-  'ayah',
-];
-const NUMBERS_PER_LINE = 7;
+// The line codes of PAGE_LINES (scripts/rewayah/gen-mushaf-tables.mjs).
+const SURAH_NAME = '#';
+const BASMALA = '*';
+const UPPER_A = 65; // 'A': an ayah line of 1 word
+const LOWER_A = 97; // 'a': the same, centred
 
 type GeneratedTables = typeof import('./mushafTables.generated');
 
@@ -43,21 +42,54 @@ export function loadVerseIndex(): VerseIndex {
   return verseIndex;
 }
 
-/** Every page line, by page and line, as the layout database has them. */
+/**
+ * Every page line, by page and line, as the layout database has them. The
+ * order gives the rest: the line numbers, the word ids of the ayah lines (one
+ * after the other from 1) and the surah of each surah name line.
+ */
 export function loadPageLineRows(): DKLine[] {
   const {PAGE_LINES} = generated();
   const rows: DKLine[] = [];
-  for (let i = 0; i < PAGE_LINES.length; i += NUMBERS_PER_LINE) {
-    rows.push({
-      page_number: PAGE_LINES[i],
-      line_number: PAGE_LINES[i + 1],
-      line_type: LINE_TYPES[PAGE_LINES[i + 2]],
-      is_centered: PAGE_LINES[i + 3] as DKLine['is_centered'],
+  let lastWord = 0;
+  let surah = 0;
+  PAGE_LINES.forEach((codes, pageIndex) => {
+    for (let i = 0; i < codes.length; i++) {
+      const line = {page_number: pageIndex + 1, line_number: i + 1};
       // 0 where a line type has no such value ('' in the layout database).
-      first_word_id: PAGE_LINES[i + 4],
-      last_word_id: PAGE_LINES[i + 5],
-      surah_number: PAGE_LINES[i + 6],
-    });
-  }
+      if (codes[i] === SURAH_NAME) {
+        surah += 1;
+        rows.push({
+          ...line,
+          line_type: 'surah_name',
+          is_centered: 1,
+          first_word_id: 0,
+          last_word_id: 0,
+          surah_number: surah,
+        });
+      } else if (codes[i] === BASMALA) {
+        rows.push({
+          ...line,
+          line_type: 'basmallah',
+          is_centered: 1,
+          first_word_id: 0,
+          last_word_id: 0,
+          surah_number: 0,
+        });
+      } else {
+        const code = codes.charCodeAt(i);
+        const centred = code >= LOWER_A;
+        const words = code - (centred ? LOWER_A : UPPER_A) + 1;
+        rows.push({
+          ...line,
+          line_type: 'ayah',
+          is_centered: centred ? 1 : 0,
+          first_word_id: lastWord + 1,
+          last_word_id: lastWord + words,
+          surah_number: 0,
+        });
+        lastWord += words;
+      }
+    }
+  });
   return rows;
 }

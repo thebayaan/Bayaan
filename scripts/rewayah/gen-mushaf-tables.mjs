@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Generates services/mushaf/mushafTables.generated.ts: the verse index and the
- * page lines of the Mushaf, as packed numbers. Both are the same for every
- * rewayah (this script checks that), so the app does not read them from a
- * database at load, and digital-khatt-15-lines.db is not bundled. It stays in
- * the repository as the source of the page lines.
+ * Generates services/mushaf/mushafTables.generated.ts: the verse index (word
+ * counts) and the page lines of the Mushaf (a code for each line). Both are
+ * the same for every rewayah (this script checks that), so the app does not
+ * read them from a database at load, and digital-khatt-15-lines.db is not
+ * bundled. It stays in the repository as the source of the page lines.
  *
  *   node scripts/rewayah/gen-mushaf-tables.mjs           # rewrite the module
  *   node scripts/rewayah/gen-mushaf-tables.mjs --check   # exit 1 if it is stale
@@ -36,8 +36,12 @@ const WORDS_DBS = [
   'dk_words_doori.db',
   'dk_words_soosi.db',
 ];
-// The order of DKLine['line_type'] in the packed lines.
-const LINE_TYPES = ['surah_name', 'basmallah', 'ayah'];
+// One character for each page line (mushafTables.ts decodes it): an ayah line
+// of n words is letter n of the alphabet, upper case, or lower case when the
+// line is centred.
+const SURAH_NAME = '#';
+const BASMALA = '*';
+const MAX_LINE_WORDS = 26;
 
 function fail(message) {
   console.error(`[gen-mushaf-tables] ${message}`);
@@ -82,28 +86,77 @@ function readVerseCounts(file) {
   return {wordCounts, surahVerses};
 }
 
-/** Flat page_number, line_number, type, is_centered, first, last, surah. */
-function readPageLines() {
+// A value a line type does not have: '' in the layout DB.
+const none = value => value === '' || value === null;
+
+/**
+ * One string of line codes for each page. The rest of a line follows from the
+ * order, so this checks it: the pages and the lines on a page have no gaps,
+ * the ayah lines hold the word ids one after the other from 1 to `wordTotal`,
+ * and the surah name lines come in surah order, one for each surah.
+ */
+function readPageLines(wordTotal, surahTotal) {
   const rows = readRows(
     LAYOUT_DB,
     'SELECT * FROM pages ORDER BY page_number, line_number',
   );
-  const packed = [];
+  const pages = [];
+  let lastWord = 0;
+  let surah = 0;
   for (const row of rows) {
-    const type = LINE_TYPES.indexOf(row.line_type);
-    if (type < 0) fail(`unknown line type ${row.line_type}`);
-    // A value a line type does not have is '' in the database and 0 here.
-    packed.push(
-      row.page_number,
-      row.line_number,
-      type,
-      row.is_centered,
-      row.first_word_id || 0,
-      row.last_word_id || 0,
-      row.surah_number || 0,
-    );
+    const where = `page ${row.page_number}, line ${row.line_number}`;
+    if (row.page_number === pages.length + 1) pages.push('');
+    if (row.page_number !== pages.length) fail(`${where}: a page is missing`);
+    if (row.line_number !== pages[pages.length - 1].length + 1) {
+      fail(`${where}: a line is missing`);
+    }
+    let code;
+    if (row.line_type === 'surah_name') {
+      surah += 1;
+      if (row.surah_number !== surah) fail(`${where}: not surah ${surah}`);
+      if (!none(row.first_word_id) || !none(row.last_word_id)) {
+        fail(`${where}: a surah name line has word ids`);
+      }
+      if (row.is_centered !== 1) fail(`${where}: is not centred`);
+      code = SURAH_NAME;
+    } else if (row.line_type === 'basmallah') {
+      if (
+        !none(row.first_word_id) ||
+        !none(row.last_word_id) ||
+        !none(row.surah_number)
+      ) {
+        fail(`${where}: a basmala line has a word id or a surah`);
+      }
+      if (row.is_centered !== 1) fail(`${where}: is not centred`);
+      code = BASMALA;
+    } else if (row.line_type === 'ayah') {
+      const words = row.last_word_id - row.first_word_id + 1;
+      if (row.first_word_id !== lastWord + 1) {
+        fail(`${where}: does not start at word ${lastWord + 1}`);
+      }
+      if (!(words >= 1 && words <= MAX_LINE_WORDS)) {
+        fail(`${where}: has ${words} words`);
+      }
+      if (!none(row.surah_number)) fail(`${where}: an ayah line has a surah`);
+      if (row.is_centered !== 0 && row.is_centered !== 1) {
+        fail(`${where}: is_centered is ${row.is_centered}`);
+      }
+      code = String.fromCharCode(
+        (row.is_centered ? 'a' : 'A').charCodeAt(0) + words - 1,
+      );
+      lastWord = row.last_word_id;
+    } else {
+      fail(`${where}: unknown line type ${row.line_type}`);
+    }
+    pages[pages.length - 1] += code;
   }
-  return packed;
+  if (lastWord !== wordTotal) {
+    fail(`the ayah lines end at word ${lastWord}, not ${wordTotal}`);
+  }
+  if (surah !== surahTotal) {
+    fail(`${surah} surah name lines, not ${surahTotal}`);
+  }
+  return pages;
 }
 
 // Prettier's output for a number array: as many as fit in 80 columns.
@@ -123,7 +176,7 @@ function renderNumbers(name, values) {
   return lines;
 }
 
-function render({wordCounts, surahVerses}, pageLines) {
+function render({wordCounts, surahVerses}, pages) {
   return [
     '// AUTO-GENERATED by scripts/rewayah/gen-mushaf-tables.mjs. Do not edit by hand.',
     '//',
@@ -133,8 +186,12 @@ function render({wordCounts, surahVerses}, pageLines) {
     '',
     ...renderNumbers('SURAH_VERSE_COUNTS', surahVerses),
     ...renderNumbers('VERSE_WORD_COUNTS', wordCounts),
-    '// page_number, line_number, type, is_centered, first, last, surah per line.',
-    ...renderNumbers('PAGE_LINES', pageLines),
+    `// One string for each page, one character for each line: ${SURAH_NAME} a surah`,
+    `// name, ${BASMALA} a basmala, letter n an ayah line of n words (lower case: centred).`,
+    'export const PAGE_LINES: readonly string[] = [',
+    ...pages.map(codes => `  '${codes}',`),
+    '];',
+    '',
   ].join('\n');
 }
 
@@ -151,7 +208,9 @@ function main() {
     }
   }
 
-  const rendered = render(verses, readPageLines());
+  const wordTotal = verses.wordCounts.reduce((sum, n) => sum + n, 0);
+  const pages = readPageLines(wordTotal, verses.surahVerses.length);
+  const rendered = render(verses, pages);
   const outPath = path.join(REPO_ROOT, OUT_FILE);
   const existing = existsSync(outPath) ? readFileSync(outPath, 'utf8') : null;
   if (args.includes('--check')) {
