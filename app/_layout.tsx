@@ -2,6 +2,7 @@
 import i18n from '@/i18n';
 import {uiFontFiles} from '@/i18n/fonts';
 import {bootstrapDirection} from '@/i18n/language';
+import {restartIfDirectionMismatched} from '@/i18n/restart';
 import {appDirection, appLayoutDirection, isRTL} from '@/utils/rtl';
 // @ai-end
 import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
@@ -179,7 +180,17 @@ function AnalyticsConnector(): null {
 function RootLayout() {
   // Start reloads after the root has mounted, when native reload listeners are
   // ready, rather than as a side effect of importing translation resources.
-  useEffect(bootstrapDirection, []);
+  useEffect(() => {
+    bootstrapDirection();
+    // Android: a launch whose native direction disagrees with its language
+    // runs half mirrored, so restart once into the right one. This runs
+    // before anything below has mounted. Not while audio is going: the car
+    // or a widget may have started this process and be playing already.
+    const {state} = usePlayerStore.getState().playback;
+    if (state !== 'playing' && state !== 'buffering' && state !== 'loading') {
+      restartIfDirectionMismatched();
+    }
+  }, []);
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
