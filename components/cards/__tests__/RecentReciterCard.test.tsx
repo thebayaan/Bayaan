@@ -22,8 +22,17 @@ jest.mock('@/services/player/utils/resumeRecent', () => ({
   resumeRecent: (args: unknown) => mockResumeRecent(args),
 }));
 const mockResumeChain = jest.fn();
+// The recents list as the store holds it. The second entry is a broken one
+// that Home leaves out, so the card under test is the second card on Home
+// and the third entry in the list.
+const mockRecents = {tracks: [] as object[]};
 jest.mock('@/services/player/store/recentlyPlayedStore', () => ({
-  useRecentlyPlayedStore: {getState: () => ({resumeChain: mockResumeChain})},
+  useRecentlyPlayedStore: {
+    getState: () => ({
+      resumeChain: mockResumeChain,
+      recentTracks: mockRecents.tracks,
+    }),
+  },
 }));
 let mockPlayer = {
   queue: {currentIndex: -1, tracks: [] as unknown[]},
@@ -100,7 +109,6 @@ function render(props: Partial<CardProps> = {}) {
         rewayatId="hafs"
         progress={0.5}
         duration={120}
-        index={2}
         {...props}
       />,
     );
@@ -149,6 +157,18 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockImage.names = [];
   mockUploads.recitations = [];
+  mockRecents.tracks = [
+    {reciter: {id: 'r0'}, surah: {id: 1}, rewayatId: 'hafs'},
+    {reciter: {id: 'gone'}, rewayatId: 'hafs'},
+    {reciter: {id: 'r1'}, surah: {id: 36}, rewayatId: 'hafs'},
+    {
+      reciter: {id: '__uploads__'},
+      surah: {id: 0},
+      rewayatId: '',
+      isUserUpload: true,
+      userRecitationId: 'u1',
+    },
+  ];
   mockPlayer = {
     queue: {currentIndex: -1, tracks: []},
     playback: {position: 0, duration: 0, state: 'paused'},
@@ -164,6 +184,7 @@ it('resumes a surah that is not in the player where it was left', async () => {
       surahId: 36,
       rewayatId: 'hafs',
       startPosition: 60,
+      // Its place in the store's list, not among the cards on Home (1).
       recentIndex: 2,
     }),
   );
@@ -223,7 +244,23 @@ it('loads an upload that is not in the player', async () => {
   await tap(render({isUserUpload: true, userRecitationId: 'u1'}));
 
   expect(mockUpdateQueue).toHaveBeenCalledWith([{id: 'upload:u1'}], 0, 60);
-  expect(mockResumeChain).toHaveBeenCalledWith(2);
+  expect(mockResumeChain).toHaveBeenCalledWith(3);
+});
+
+it('tells the options which upload the card is, and no position', () => {
+  const renderer = render({isUserUpload: true, userRecitationId: 'u1'});
+  const zones = renderer.root.findAll(
+    node =>
+      typeof node.type !== 'string' &&
+      typeof node.props.onLongPress === 'function',
+  );
+  act(() => {
+    zones[zones.length - 1].props.onLongPress();
+  });
+
+  const {payload} = mockSheet.show.mock.calls[0][1];
+  expect(payload.userRecitationId).toBe('u1');
+  expect(payload).not.toHaveProperty('recentIndex');
 });
 
 // The bundled photos are keyed by the catalogue (Latin) name; keyed by the

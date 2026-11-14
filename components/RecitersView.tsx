@@ -164,11 +164,11 @@ const MemoizedFlatList = React.memo(
   }) => (
     <FlatList
       data={data}
-      renderItem={({item, index}) => (
+      renderItem={({item}) => (
+        // @ai
         <RenderSectionItem
           item={item}
           variant={variant}
-          index={index}
           onReciterPress={onReciterPress}
           onRewayatPress={onRewayatPress}
           onPlaylistPress={onPlaylistPress}
@@ -233,7 +233,6 @@ const RenderSectionItem = React.memo(
   ({
     item,
     variant,
-    index,
     onReciterPress,
     onRewayatPress,
     onPlaylistPress,
@@ -247,7 +246,6 @@ const RenderSectionItem = React.memo(
       | 'featured'
       | 'rewayat'
       | 'playlist';
-    index: number;
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
@@ -281,7 +279,6 @@ const RenderSectionItem = React.memo(
             surahId={item.surah?.id || 0}
             duration={item.duration}
             progress={item.progress}
-            index={index}
             isUserUpload
             userRecitationId={item.userRecitationId}
             width={shelf?.cardWidth}
@@ -307,7 +304,6 @@ const RenderSectionItem = React.memo(
           duration={item.duration}
           progress={item.progress}
           rewayatId={item.rewayatId}
-          index={index}
           width={shelf?.cardWidth}
         />
       );

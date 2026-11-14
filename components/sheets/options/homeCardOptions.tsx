@@ -7,6 +7,7 @@ import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useLoved} from '@/hooks/useLoved';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {findRecentIndex} from '@/components/cards/recentCardEntry';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
@@ -30,7 +31,8 @@ export interface HomeCardOptionsPayload {
   surahId?: number;
   surahName?: string;
   rewayatId?: string;
-  recentIndex?: number;
+  /** Set on an upload's card: the upload's id. */
+  userRecitationId?: string;
   variant: 'recent' | 'reciter';
   onContinuePlaying?: () => void;
 }
@@ -55,7 +57,7 @@ export function useHomeCardOptions(
     surahId,
     surahName,
     rewayatId,
-    recentIndex,
+    userRecitationId,
     variant,
   } = payload;
 
@@ -177,11 +179,20 @@ export function useHomeCardOptions(
   ]);
 
   const handleRemoveFromRecents = useCallback(() => {
-    if (recentIndex !== undefined) {
-      useRecentlyPlayedStore.getState().removeTrack(recentIndex);
+    // Found now, not when the options opened: a card arriving at the front
+    // in the meantime shifts every position, and the position the card had
+    // when it was pressed then removed a different card.
+    const index = findRecentIndex({
+      reciterId,
+      surahId,
+      rewayatId,
+      userRecitationId,
+    });
+    if (index !== -1) {
+      useRecentlyPlayedStore.getState().removeTrack(index);
     }
     handleClose();
-  }, [recentIndex, handleClose]);
+  }, [reciterId, surahId, rewayatId, userRecitationId, handleClose]);
 
   const handleContinuePlaying = useCallback(() => {
     handleClose();

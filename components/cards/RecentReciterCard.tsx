@@ -20,6 +20,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
 import {createStyles} from '@/components/cards/recentCardStyles';
+import {findRecentIndex} from '@/components/cards/recentCardEntry'; // @ai
 // @ai-start
 import {forceLTR} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
@@ -51,7 +52,6 @@ interface RecentReciterCardProps {
   duration: number;
   isRecent?: boolean;
   rewayatId?: string;
-  index: number;
   isUserUpload?: boolean;
   userRecitationId?: string;
   /** Card width. Defaults to RECENT_CARD_WIDTH; iPad shelves pass their own. */
@@ -70,7 +70,6 @@ export const RecentReciterCard = ({
   duration,
   isRecent = false,
   rewayatId,
-  index,
   isUserUpload,
   userRecitationId,
   width,
@@ -210,7 +209,11 @@ export const RecentReciterCard = ({
           }
           const uploadTrack = createUserUploadTrack(recitation);
           await updateQueue([uploadTrack], 0, startPosition);
-          useRecentlyPlayedStore.getState().resumeChain(index);
+          // The entry's place in the full recents list. The card's place on
+          // Home is not it when the list holds an entry Home leaves out.
+          useRecentlyPlayedStore
+            .getState()
+            .resumeChain(findRecentIndex({reciterId, userRecitationId}));
           return;
         }
 
@@ -226,7 +229,7 @@ export const RecentReciterCard = ({
           surahId,
           rewayatId,
           startPosition,
-          recentIndex: index,
+          recentIndex: findRecentIndex({reciterId, surahId, rewayatId}),
           updateQueue,
         });
       } catch (error) {
@@ -243,7 +246,6 @@ export const RecentReciterCard = ({
       updateQueue,
       play,
       pause,
-      index,
       rewayatId,
       isUserUpload,
       userRecitationId,
@@ -261,7 +263,7 @@ export const RecentReciterCard = ({
       surahId,
       surahName,
       rewayatId,
-      recentIndex: index,
+      userRecitationId: isUserUpload ? userRecitationId : undefined,
       variant: 'recent',
       onContinuePlaying: handleContinuePlaying,
     }),
@@ -271,7 +273,8 @@ export const RecentReciterCard = ({
       surahId,
       surahName,
       rewayatId,
-      index,
+      isUserUpload,
+      userRecitationId,
       handleContinuePlaying,
     ],
   );
