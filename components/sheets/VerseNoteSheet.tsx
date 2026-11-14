@@ -1,4 +1,10 @@
-import React, {useState, useMemo, useCallback, useEffect} from 'react';
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef, // @ai
+} from 'react';
 import {View, Text, TextInput, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
@@ -185,8 +191,9 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     }
   }, [verseKey, noteId]);
 
-  const handleSave = useCallback(async () => {
-    if (!noteText.trim()) return;
+  // @ai Resolves true once the note is saved and the sheet is closing.
+  const saveNote = useCallback(async (): Promise<boolean> => {
+    if (!noteText.trim()) return false; // @ai
 
     if (isEditMode && noteId) {
       await verseAnnotationService.updateNote(noteId, noteText.trim());
@@ -209,11 +216,12 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       // Another rewayah: stored by its verses' Hafs anchors (verse-units
       // contract section 3), verse_keys = every anchor of a range.
       const ready = await requireSelection('saved');
-      if (!ready || ready.anchors.length === 0) return;
+      if (!ready || ready.anchors.length === 0) return false; // @ai
       await addSelectionNote(ready, noteText.trim());
       // @ai-end
     }
     SheetManager.hideAll();
+    return true; // @ai
   }, [
     verseKey,
     verseKeys,
@@ -228,6 +236,24 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     noteRewayah, // @ai
     requireSelection, // @ai
   ]);
+
+  // @ai-start
+  // One save at a time. The button stays tappable while the write runs and
+  // for the ~200 ms the sheet takes to slide away, and every extra tap used
+  // to insert the note again. Stays locked after a successful save (the
+  // sheet is closing); unlocks if nothing was saved so Save can be retried.
+  const savingRef = useRef(false);
+  const handleSave = useCallback(async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    let saved = false;
+    try {
+      saved = await saveNote();
+    } finally {
+      if (!saved) savingRef.current = false;
+    }
+  }, [saveNote]);
+  // @ai-end
 
   const handleDelete = useCallback(async () => {
     if (!noteId) return;
