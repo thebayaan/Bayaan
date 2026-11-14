@@ -15,6 +15,22 @@ This lists every Surah feature we know of and checks each one against Bayaan's `
 - **In progress**: not on `develop`, but code exists on an unmerged branch or PR, or was merged and then pulled back.
 - **Missing**: nothing on `develop` and no code in progress. If a plan doc exists, the row names it.
 
+## Update: built on `claude/youthful-dijkstra-nqb3yg` (2026-11-14)
+
+The tables below describe `develop` before this work. The branch then built the following. The plan is in [docs/plans/2026-11-14-word-study](../plans/2026-11-14-word-study/README.md).
+
+| Surah feature | Was | Now on the branch |
+|---|---|---|
+| One word view with all word content | Partial | **Has.** *Word Study* in the verse sheet steps through every word of the selected ayat. Each word shows the Arabic word, transliteration, English meaning and audio, then readings, i'rab, morphology, Arabic meaning and rasm. A word long-press opens it, and `WordDetailSheet` is retired. |
+| Readings of each word (`word-qeraat`) | Partial | **Has.** Each word shows how all 8 bundled rewayat read it, grouped by reading (4 of the 10 readers). A qualified reader must sign off `scripts/rewayah/reading_review.md` before release. |
+| Arabic word meanings (`meaning-word`) | Missing | **Has (classical gharib).** Ibn al-Ha'im's *al-Tibyan*, via Quranpedia; 2,696 entries placed on words. |
+| Word rasm (`wordrasm`) | Missing | **Has.** Tanzil Simple v1.1 standard spelling next to the mushaf's; 6,900 words carry a confirmed rasm note. |
+| Word root and its occurrences | Partial | **Has.** The root in the morphology table opens root search: every ayah of the root, with lemma chips. |
+| Search the Quran text by word | Missing | **Has.** Word and phrase search, tolerant of diacritics and spelling, in the Search tab and the mushaf search. A result opens the mushaf on the matched words. |
+| Search by root | Partial | **Has.** Root queries such as `root:رحم`, `جذر: ر ح م` or `ر ح م`. |
+
+Still open from the word level: word pictures and places (out of scope by decision), and tawjih (explanations of the readings).
+
 ## Summary
 
 Of 79 Surah features, Bayaan has 34, has part of 21, has 3 in progress and is missing 21.
