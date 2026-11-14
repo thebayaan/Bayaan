@@ -5,6 +5,10 @@ import {AppState} from 'react-native';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
 import {nextWindowBoundaryAfter} from '@/services/adhkar/timeWindows';
+// @ai-start
+import i18n from '@/i18n';
+import {getSuperCategoryDisplayTitle} from '@/utils/adhkarUtils';
+// @ai-end
 import {toSessionItems} from './sessionReducer';
 import type {AdhkarSession, SavedSession, SessionItem} from './types';
 
@@ -72,18 +76,32 @@ export async function loadSavedSession(): Promise<SavedSession | null> {
   }
 }
 
-async function loadListItems(listId: string): Promise<SessionItem[] | null> {
+// @ai-start
+/** A list's items, and its title in the language the app is in now. */
+export interface RestoredList {
+  items: SessionItem[];
+  title: string;
+}
+
+async function loadList(listId: string): Promise<RestoredList | null> {
   if (listId === 'saved') {
     const saved = await adhkarService.getSaved();
     const rows = await Promise.all(
       saved.map(s => adhkarService.getDhikr(s.dhikrId)),
     );
-    return toSessionItems(rows.filter(row => row !== null));
+    return {
+      items: toSessionItems(rows.filter(row => row !== null)),
+      title: i18n.t('home:adhkar.saved'),
+    };
   }
   const data = await adhkarService.getAdhkarForSuperCategory(listId);
   if (!data) return null;
-  return toSessionItems(data.categoryGroups.flatMap(g => g.adhkar));
+  return {
+    items: toSessionItems(data.categoryGroups.flatMap(g => g.adhkar)),
+    title: getSuperCategoryDisplayTitle(data.superCategory),
+  };
 }
+// @ai-end
 
 // Settles once per process, when the launch restore finishes (or fails).
 let markRestoreSettled: () => void = () => undefined;
@@ -106,7 +124,7 @@ export function waitForSessionRestore(timeoutMs: number): Promise<void> {
 }
 
 async function restoreNow(
-  loadItems: (listId: string) => Promise<SessionItem[] | null>,
+  loadItems: (listId: string) => Promise<RestoredList | null>, // @ai
 ): Promise<void> {
   const saved = await loadSavedSession();
   if (!saved) return;
@@ -114,9 +132,11 @@ async function restoreNow(
     await saveSession(null);
     return;
   }
-  const items = await loadItems(saved.listId);
-  const index = items?.findIndex(i => i.dhikrId === saved.dhikrId) ?? -1;
-  if (!items || index < 0) {
+  // @ai-start
+  const list = await loadItems(saved.listId);
+  const index = list?.items.findIndex(i => i.dhikrId === saved.dhikrId) ?? -1;
+  if (!list || index < 0) {
+    // @ai-end
     await saveSession(null);
     return;
   }
@@ -126,8 +146,12 @@ async function restoreNow(
     type: 'restored',
     session: {
       listId: saved.listId,
-      listTitle: saved.listTitle,
-      items,
+      // @ai-start
+      // The title saved is in the language the app was in then. After a
+      // switch of language the player kept showing the old one.
+      listTitle: list.title,
+      items: list.items,
+      // @ai-end
       index,
       mode: saved.mode,
       loop: saved.loop,
@@ -143,7 +167,7 @@ async function restoreNow(
 
 /** Rebuilds the saved session as paused, or drops it (stale, list gone, dhikr gone). */
 export async function restoreSavedSession(
-  loadItems: (listId: string) => Promise<SessionItem[] | null> = loadListItems,
+  loadItems: (listId: string) => Promise<RestoredList | null> = loadList, // @ai
 ): Promise<void> {
   try {
     await restoreNow(loadItems);
