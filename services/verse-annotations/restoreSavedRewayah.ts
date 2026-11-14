@@ -19,14 +19,8 @@ import {showToast} from '@/utils/toastUtils';
 /**
  * Switches to the rewayah a bookmark was saved in before it opens, keeping
  * the settings store and the DigitalKhatt data service on the same rewayah.
- *
- * Mushaf 1440 (qcf_v2) draws Hafs only and the store refuses a non-Hafs
- * rewayah there. Switching the data service anyway left it on the saved
- * rewayah while the store said Hafs: Allah-name highlights were projected
- * from the wrong words, and after a later switch back to a DigitalKhatt font
- * pages drew that text under a Hafs header and saved Hafs layouts built from
- * it. So under Mushaf 1440 the data service is left alone and the verse opens
- * in Hafs, and the reader is told so.
+ * Under Mushaf 1440 another rewayah opens in the Madani font, as when it is
+ * chosen in the settings.
  */
 export async function restoreSavedRewayah(
   savedRewayah: RewayahId | undefined,
@@ -41,13 +35,6 @@ export async function restoreSavedRewayah(
     return;
   }
   const savedLabel = getRewayahShortLabel(savedRewayah);
-  if (settings.mushafRenderer === 'qcf_v2' && savedRewayah !== 'hafs') {
-    showToast(
-      'Opening in Hafs',
-      `Saved in ${savedLabel}. Mushaf 1440 shows Hafs only.`,
-    );
-    return;
-  }
   if (!hasTextData(savedRewayah)) {
     showToast(
       `${savedLabel} text is not available`,

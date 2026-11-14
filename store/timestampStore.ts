@@ -184,7 +184,11 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
 
     for (const reciter of RECITERS) {
       for (const rewayat of reciter.rewayat) {
-        if (rewayat.has_timestamps) {
+        // @ai: same check as mushafPlayerStore.computeAvailableReciters.
+        // hasSource() ORs RFC-019 bundled coverage
+        // (branding.timestampLocalSurahList) with the R2 `has_timestamps`
+        // flag. With the seam unset it reduces to the flag.
+        if (timestampFetchService.hasSource(rewayat.id)) {
           rewayatIds.add(rewayat.id);
           reciterIds.add(reciter.id);
         }

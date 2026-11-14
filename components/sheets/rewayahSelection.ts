@@ -20,14 +20,13 @@ import {
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
 import {
-  rendererPinsHafs,
   useMushafSettingsStore,
   type MushafRenderer,
 } from '@/store/mushafSettingsStore';
 import {showToast} from '@/utils/toastUtils';
 
 export type RewayahSelectionOutcome =
-  /** Nothing to do (already shown, Mushaf 1440, or no bundled text). */
+  /** Nothing to do (already shown, or no bundled text). */
   | {kind: 'unchanged'}
   /** The requested rewayah is now shown and saved. */
   | {kind: 'switched'; rewayah: RewayahId}
@@ -53,10 +52,8 @@ export async function selectMushafRewayah(
   value: RewayahId,
 ): Promise<RewayahSelectionOutcome> {
   const settings = useMushafSettingsStore.getState();
-  // Mushaf 1440 pins Hafs, and a rewayah without bundled text cannot load.
-  if (rendererPinsHafs(settings.mushafRenderer) || !hasTextData(value)) {
-    return {kind: 'unchanged'};
-  }
+  // A rewayah without bundled text cannot load.
+  if (!hasTextData(value)) return {kind: 'unchanged'};
   const alreadyShown =
     value === settings.rewayah &&
     digitalKhattDataService.initialized &&
@@ -136,84 +133,28 @@ export async function chooseMushafRewayah(
 export type RendererSelectionOutcome =
   /** Refused: IndoPak draws Hafs only and another rewayah is shown. */
   | {kind: 'unchanged'}
-  /** The font is now `renderer` (for Mushaf 1440, with Hafs shown). */
-  | {kind: 'switched'; renderer: MushafRenderer}
-  /** A newer font or rewayah tap overtook this one; it decides. */
-  | {kind: 'superseded'}
-  /** Hafs could not be loaded for Mushaf 1440; font and rewayah stay. */
-  | {kind: 'failed'};
-
-// Font taps in order: a tap still waiting for Hafs yields to a later one.
-let rendererSelectionSeq = 0;
+  /** The font is now `renderer`. */
+  | {kind: 'switched'; renderer: MushafRenderer};
 
 /**
- * True when the data service serves Hafs, or is about to (initialization
- * loads the store's rewayah), and no switch to another rewayah is loading.
- */
-function servesHafsSettled(): boolean {
-  const pending = digitalKhattDataService.pendingRewayah;
-  if (pending !== null && pending !== 'hafs') return false;
-  if (useMushafSettingsStore.getState().rewayah !== 'hafs') return false;
-  return (
-    !digitalKhattDataService.initialized ||
-    digitalKhattDataService.rewayah === 'hafs'
-  );
-}
-
-/**
- * Makes `value` the mushaf font. Mushaf 1440 draws Hafs only and pins the
- * store to Hafs, so before the pin lands the data service is switched to
- * Hafs through the same switch path as a rewayah tap: a rewayah switch still
- * loading is overtaken (it can never land under the Hafs label), and when
- * Hafs cannot be loaded the font and the rewayah stay as they were.
+ * Makes `value` the mushaf font. Every font can be chosen with any rewayah
+ * but IndoPak, which draws Hafs only (its row is disabled for other rewayat,
+ * and the store refuses the pair as well). Mushaf 1440 draws its printed
+ * glyphs for Hafs and another rewayah's text in the Madani font.
  */
 export async function selectMushafRenderer(
   value: MushafRenderer,
 ): Promise<RendererSelectionOutcome> {
-  const seq = ++rendererSelectionSeq;
   const settings = useMushafSettingsStore.getState();
-  // IndoPak draws Hafs only; its row is disabled for other rewayat and the
-  // store refuses the pair as well.
   if (value === 'dk_indopak' && settings.rewayah !== 'hafs') {
     return {kind: 'unchanged'};
   }
-  const pinsHafs =
-    rendererPinsHafs(value) && !rendererPinsHafs(settings.mushafRenderer);
-  if (pinsHafs && !servesHafsSettled()) {
-    try {
-      await digitalKhattDataService.switchRewayah('hafs');
-    } catch (error) {
-      if (isRewayahSwitchSuperseded(error)) return {kind: 'superseded'};
-      console.error('[MushafSettings] Failed to reset rewayah for QCF:', error);
-      // The service keeps the rewayah it served; the store names it.
-      reconcileRewayahWithService();
-      return {kind: 'failed'};
-    }
-    if (seq !== rendererSelectionSeq) return {kind: 'superseded'};
-    useMushafSettingsStore.getState().setRewayah('hafs');
-  }
-  // The store refuses a font that cannot show the rewayah on screen.
-  useMushafSettingsStore.getState().setMushafRenderer(value);
+  settings.setMushafRenderer(value);
   if (useMushafSettingsStore.getState().mushafRenderer !== value) {
     return {kind: 'unchanged'};
   }
   return {kind: 'switched', renderer: value};
 }
 
-/** Tells the reader when a font could not be chosen. */
-export function announceRendererSelection(
-  outcome: RendererSelectionOutcome,
-): void {
-  if (outcome.kind === 'failed') {
-    showToast("Couldn't switch to Mushaf 1440", 'Please try again.', 'error');
-  }
-}
-
-/** selectMushafRenderer, then tell the reader about a failure. */
-export async function chooseMushafRenderer(
-  value: MushafRenderer,
-): Promise<RendererSelectionOutcome> {
-  const outcome = await selectMushafRenderer(value);
-  announceRendererSelection(outcome);
-  return outcome;
-}
+/** The font picker's tap (selectMushafRenderer; no outcome needs a toast). */
+export const chooseMushafRenderer = selectMushafRenderer;

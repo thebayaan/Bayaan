@@ -1,0 +1,18 @@
+{
+ "hafs": "d2960b3217962e7e4252abdcece67bea3d6b48271e4cd3af45bbbb2dd5c872ca",
+ "app": "923a1e95e95f6381026f89f30d9b1c375c5cde7623ae4f59468b3e25cb4a82f5",
+ "corpus": "24360c05ec88fcacf3419c1fe6cd81d69e653326a0bf0e4fb507e7b98fc88127",
+ "quaRevision": "c745cf9f840249a9276ea0cefe65aaecd785e3b9",
+ "manifests": {
+  "reciters.json": "6958214b7a9716121527f631bbce74ef64c2213f67554672d96d1a0d295377eb",
+  "w1_pairs.json": "c44a92432bce956f465640296cc90f6ff4dbb390ee4fb0cfeb430d0cfbb379fd",
+  "w5_sites.json": "c7ec2fd3d6abae299090de99561c09bd34b0e2c006c4844d523e3066a540a09b",
+  "wanted.json": "14b44b3cbc89da2eb1d3a9e8819ba03d05e913710feec2bab843f18052a76bfe",
+  "pool_plan.json": "fcdf25bdedb23ac91c249c7474d80e4a70ba5f7a9c210d50503cee32a9dbddec",
+  "w1.json": "558cf88221713b0016d44c7b38a980d9bf23c56b322ea52007efc9f32c67731c",
+  "w1_control.json": "e3f40b6f3567d2ffacb4500655d240648b8070b5c7e6919ec4d5577d637e73c4",
+  "pool.json": "e2bec7e609cdb90876a6cbc8a733b4ab293ac375dc654add3fb9b13737f62973",
+  "w5.json": "866bec7675535db85ae346e156afa46ef8d746cfd13abcee828228f055f73fb0",
+  "learners.json": "67f281bfd44fce1129d8f63fe4341542f1b970a7a9e3435ef2b3f4f4dac3e2a3"
+ }
+}

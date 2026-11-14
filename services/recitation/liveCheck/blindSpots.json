@@ -1,0 +1,7 @@
+{
+  "about": "Words the checker model misreads on correct recitations by professional reciters. The live check never marks them. Places are surah:ayah:word, the word counted from 0.",
+  "found": "scripts/recitation-bench/fix2/blind_spots.py: a place is listed when the live check called it bad for two or more different reciters reading it right. Built from the dev and validation recitations only (surahs 18, 36, 50, 55, 56, 67, 78, 89); the rest of the mushaf has not been swept yet.",
+  "words": [
+    "18:48:0"
+  ]
+}

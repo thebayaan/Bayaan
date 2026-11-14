@@ -18,3 +18,6 @@ app/src/main/java/inline/
 
 # Bundle artifacts
 *.jsbundle
+
+# Kotlin 2 Gradle plugin session data
+.kotlin/
