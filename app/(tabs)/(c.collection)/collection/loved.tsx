@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import React, {useState, useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -13,11 +13,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
-import {
-  getReciterById,
-  getReciterByIdSync,
-  getSurahById,
-} from '@/services/dataService';
+import {getReciterByIdSync, getSurahById} from '@/services/dataService'; // @ai
 // @ai-start
 import {SurahOptionsProvider} from '@/components/sheets/options/surahOptions';
 import type {SurahOptionsBuilder} from '@/components/sheets/options/SurahOptionsContext';
@@ -95,8 +91,26 @@ const LovedScreen = () => {
     setDownloadProgress,
   } = {...useDownloadQueries(), ...useDownloadActions()};
 
-  const [lovedData, setLovedData] = useState<LovedTrackData[]>([]);
-  const [loading, setLoading] = useState(true);
+  // @ai-start
+  // Each loved track with its reciter and surah, read straight from the
+  // catalogue in memory (it is loaded before any screen shows). This used to
+  // be an async reload behind a "Loading…" view on every change, so unloving
+  // one surah blanked the whole screen and threw the list back to the top.
+  const lovedData = useMemo<LovedTrackData[]>(
+    () =>
+      lovedTracks.map(track => ({
+        track: {
+          reciterId: track.reciterId,
+          surahId: track.surahId,
+          rewayatId: track.rewayatId,
+          userRecitationId: track.userRecitationId,
+        },
+        reciter: getReciterByIdSync(track.reciterId) ?? null,
+        surah: getSurahById(parseInt(track.surahId, 10)) ?? null,
+      })),
+    [lovedTracks],
+  );
+  // @ai-end
   const [isDownloadingBulk, setIsDownloadingBulk] = useState(false);
 
   // Scroll tracking for sticky header
@@ -164,64 +178,7 @@ const LovedScreen = () => {
       textAlign: 'center',
       marginBottom: moderateScale(20),
     },
-    loadingText: {
-      fontSize: moderateScale(16),
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
-    },
   });
-
-  // Use ref to track previous lovedTracks content to prevent infinite loops
-  const prevLovedTracksRef = useRef<string>('');
-
-  const loadLovedData = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      // Enrich with surah and reciter data
-      const enrichedData = await Promise.all(
-        lovedTracks.map(async track => {
-          const [reciter, surah] = await Promise.all([
-            getReciterById(track.reciterId),
-            Promise.resolve(getSurahById(parseInt(track.surahId, 10))),
-          ]);
-
-          return {
-            track: {
-              reciterId: track.reciterId,
-              surahId: track.surahId,
-              rewayatId: track.rewayatId,
-              userRecitationId: track.userRecitationId,
-            },
-            reciter: reciter || null,
-            surah: surah || null,
-          };
-        }),
-      );
-
-      setLovedData(enrichedData);
-    } catch (error) {
-      console.error('Failed to load loved tracks:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [lovedTracks]);
-
-  // Load loved tracks data
-  useEffect(() => {
-    // Create a stable string representation of lovedTracks
-    const currentTracksString = JSON.stringify(
-      lovedTracks.map(
-        lt => `${lt.reciterId}:${lt.surahId}:${lt.rewayatId || ''}`,
-      ),
-    );
-
-    // Only reload if the content actually changed
-    if (prevLovedTracksRef.current !== currentTracksString) {
-      prevLovedTracksRef.current = currentTracksString;
-      loadLovedData();
-    }
-  }, [lovedTracks, loadLovedData]);
 
   // Handle surah press to play track
   const handleSurahPress = useCallback(
@@ -610,7 +567,7 @@ const LovedScreen = () => {
   useCollectionNativeHeader({
     title: t('collectionScreen.loved'),
     scrollY,
-    hasContent: lovedData.length > 0 && !loading,
+    hasContent: lovedData.length > 0, // @ai
     headerRight: lovedData.length > 0 ? renderHeaderRight : undefined,
   });
 
@@ -721,35 +678,6 @@ const LovedScreen = () => {
     `${item.track.reciterId}:${item.track.surahId}:${
       item.track.rewayatId || ''
     }`;
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
-            <Text style={styles.emptyHeaderTitle}>
-              {t('collectionScreen.loved')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <Text style={styles.loadingText}>{t('common:status.loading')}</Text>
-        </View>
-      </View>
-    );
-  }
 
   if (lovedData.length === 0) {
     return (

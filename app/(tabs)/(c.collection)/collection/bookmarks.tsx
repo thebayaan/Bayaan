@@ -73,7 +73,9 @@ const BookmarksScreen = () => {
 
   const loadBookmarks = useCallback(async () => {
     try {
-      setLoading(true);
+      // @ai `loading` starts true and is not raised again: coming back from
+      // the mushaf refreshes the list in place instead of blanking it to
+      // "Loading…" and losing the scroll position.
       const allBookmarks = await verseAnnotationService.getAllBookmarks();
       const enriched = allBookmarks.map(bookmark => {
         const surah = getSurahById(bookmark.surahNumber);

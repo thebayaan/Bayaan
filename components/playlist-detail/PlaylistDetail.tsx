@@ -16,7 +16,7 @@ import {
   type PlaylistOptionsPayload,
 } from '@/components/sheets/options/playlistOptions'; // @ai
 import {usePlaylists} from '@/hooks/usePlaylists';
-import {getReciterById, getSurahById} from '@/services/dataService';
+import {getReciterByIdSync, getSurahById} from '@/services/dataService'; // @ai
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -161,28 +161,28 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
       const playlistItems = await getPlaylistItems(id);
 
-      const enrichedData = await Promise.all(
-        playlistItems.map(async item => {
-          const [reciter, surah] = await Promise.all([
-            getReciterById(item.reciterId),
-            getSurahById(parseInt(item.surahId, 10)),
-          ]);
+      // @ai-start
+      // Reciters come from the catalogue in memory. The async lookup
+      // reloaded the whole catalogue once per row.
+      const enrichedData = playlistItems.map(item => {
+        const reciter = getReciterByIdSync(item.reciterId);
+        const surah = getSurahById(parseInt(item.surahId, 10));
 
-          return {
-            track: {
-              id: item.id,
-              surahId: item.surahId,
-              reciterId: item.reciterId,
-              rewayatId: item.rewayatId,
-              userRecitationId: item.userRecitationId,
-              surah,
-              reciter,
-            },
-            reciter: reciter || null,
-            surah: surah || null,
-          };
-        }),
-      );
+        return {
+          track: {
+            id: item.id,
+            surahId: item.surahId,
+            reciterId: item.reciterId,
+            rewayatId: item.rewayatId,
+            userRecitationId: item.userRecitationId,
+            surah,
+            reciter,
+          },
+          reciter: reciter || null,
+          surah: surah || null,
+        };
+      });
+      // @ai-end
 
       // @ai-start
       if (seq !== loadSeqRef.current || leavingRef.current) return;
@@ -248,12 +248,14 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     async (track: PlaylistTrack) => {
       try {
         await removeFromPlaylist(track.id);
-        await loadPlaylistData();
+        // @ai Drop the row in place. The store's new item count reloads the
+        // list right after, without blanking it.
+        setPlaylistData(prev => prev.filter(i => i.track.id !== track.id));
       } catch (error) {
         console.error('Failed to remove item from playlist:', error);
       }
     },
-    [removeFromPlaylist, loadPlaylistData],
+    [removeFromPlaylist], // @ai
   );
 
   const handlePlayAll = useCallback(async () => {

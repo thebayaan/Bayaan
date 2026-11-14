@@ -1,3 +1,4 @@
+import {useMemo} from 'react'; // @ai
 import {create} from 'zustand';
 import {persist} from 'zustand/middleware';
 import {persistStorage} from '@/utils/storage'; // @ai
@@ -201,9 +202,18 @@ export const useLovedStore = create<LovedTracksState>()(
 // Hook for easy access to loved track functionality
 export const useLoved = () => {
   const store = useLovedStore();
+  // @ai-start
+  // Sorted once per change to the saved tracks. A new array on every render
+  // could not be used as a memo dependency, which is why the Loved screen
+  // had to reload itself asynchronously.
+  const lovedTracks = useMemo(
+    () => [...store.tracks].sort((a, b) => b.timestamp - a.timestamp),
+    [store.tracks],
+  );
+  // @ai-end
   return {
     // State - return tracks sorted by timestamp descending (most recent first)
-    lovedTracks: [...store.tracks].sort((a, b) => b.timestamp - a.timestamp),
+    lovedTracks, // @ai
     loading: store.loading,
     error: store.error,
     syncStatus: store.syncStatus,

@@ -93,6 +93,7 @@ jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 
 import PlaylistDetail from '../PlaylistDetail';
 import {TrackItem} from '@/components/TrackItem';
+import {SurahOptionsRow} from '@/components/sheets/options/surahOptions';
 
 const playlist = (over: Partial<UserPlaylist> = {}): UserPlaylist => ({
   id: 'p1',
@@ -266,4 +267,24 @@ it('switches to the gone state when the open playlist is deleted elsewhere', asy
 
   expect(texts(tree)).toContain('This playlist no longer exists');
   expect(rows(tree)).toHaveLength(0);
+});
+
+it('removing a surah drops its row in place', async () => {
+  mockGetPlaylistItems.mockResolvedValue([item('i2', '3'), item('i1', '2')]);
+  mockPlaylists = [playlist({itemCount: 2})];
+  const tree = await render();
+  const list = listOf(tree);
+  expect(rows(tree).map(row => row.props.surahId)).toEqual(['3', '2']);
+
+  const options = tree.root.findAll(
+    node => (node.type as unknown) === SurahOptionsRow,
+  )[0].props.payload;
+  await act(async () => {
+    await options.onRemoveFromPlaylist();
+  });
+
+  expect(mockRemoveFromPlaylist).toHaveBeenCalledWith('i2');
+  expect(rows(tree).map(row => row.props.surahId)).toEqual(['2']);
+  expect(texts(tree)).not.toContain('Loading…');
+  expect(listOf(tree)).toBe(list);
 });

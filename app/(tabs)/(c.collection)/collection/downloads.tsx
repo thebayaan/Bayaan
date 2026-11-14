@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import React, {useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
   useDownloadActions,
   useDownloads,
 } from '@/services/player/store/downloadSelectors';
-import {getReciterById, getSurahById} from '@/services/dataService';
+import {getReciterByIdSync, getSurahById} from '@/services/dataService'; // @ai
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -78,7 +78,21 @@ export default function DownloadsScreen() {
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
-  const [downloadData, setDownloadData] = useState<DownloadDataItem[]>([]);
+  // @ai-start
+  // Each download with its reciter and surah, read from the catalogue in
+  // memory. This was an async lookup per row with no cancellation: every
+  // row reloaded the whole catalogue, and an older run could finish last
+  // and put a removed row back.
+  const downloadData = useMemo<DownloadDataItem[]>(
+    () =>
+      downloads.map(download => ({
+        download,
+        reciter: getReciterByIdSync(download.reciterId) ?? null,
+        surah: getSurahById(parseInt(download.surahId, 10)) ?? null,
+      })),
+    [downloads],
+  );
+  // @ai-end
   const nativeMenus = useNativeOptionsMenu(); // @ai
 
   // @ai-start
@@ -285,31 +299,6 @@ export default function DownloadsScreen() {
       }),
     [theme, insets.top],
   );
-
-  useEffect(() => {
-    const loadDownloadData = async () => {
-      const data = await Promise.all(
-        downloads.map(async download => {
-          const [reciter, surah] = await Promise.all([
-            getReciterById(download.reciterId),
-            getSurahById(parseInt(download.surahId, 10)),
-          ]);
-          return {
-            download,
-            reciter: reciter || null,
-            surah: surah || null,
-          };
-        }),
-      );
-      setDownloadData(data);
-    };
-
-    if (downloads.length > 0) {
-      loadDownloadData();
-    } else {
-      setDownloadData([]);
-    }
-  }, [downloads]);
 
   const groupedItems = useMemo(() => {
     const byReciter: Record<string, DownloadDataItem[]> = {};
