@@ -45,6 +45,8 @@
   "reciterProfile": {
     "shareMessage": "Listen to {{name}} on {{appName}}",
     "thisReciter": "this reciter",
+    "notFound": "Reciter not found",
+    "notFoundHint": "This reciter is not available in the app right now.",
     "myUploads": "My Uploads",
     "sort": {
       "asc": "Asc",

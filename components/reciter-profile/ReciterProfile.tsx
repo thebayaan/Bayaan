@@ -30,7 +30,6 @@ import {Surah, SURAHS} from '@/data/surahData';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {getReciterByIdSync} from '@/services/dataService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {StatusBar} from 'expo-status-bar';
 import {useLoved} from '@/hooks/useLoved';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -216,13 +215,49 @@ const SurahListSkeleton: React.FC<{theme: any}> = React.memo(({theme}) => {
 const isGlass = USE_GLASS;
 
 // @ai-start
+const notFoundStyles = StyleSheet.create({
+  body: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: moderateScale(32),
+    gap: moderateScale(8),
+  },
+  title: {
+    fontSize: moderateScale(17),
+    fontFamily: 'Manrope-SemiBold',
+    textAlign: 'center',
+  },
+  hint: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-Regular',
+    textAlign: 'center',
+  },
+  button: {
+    marginTop: moderateScale(12),
+    paddingHorizontal: moderateScale(20),
+    paddingVertical: moderateScale(10),
+    borderRadius: moderateScale(12),
+    borderWidth: 1,
+  },
+  buttonPressed: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    fontSize: moderateScale(14),
+    fontFamily: 'Manrope-SemiBold',
+  },
+});
+// @ai-end
+
+// @ai-start
 const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
   showLoved = false,
   initialRewayatId: initialRewayatIdProp,
 }) => {
   const {theme} = useTheme();
-  const {t} = useTranslation('player');
+  const {t} = useTranslation(['player', 'common']);
   const styles = createSharedStyles(theme);
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
@@ -1075,14 +1110,42 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     renderedTabsRef.current.add(tabs[i].id);
   }
 
+  // @ai-start
+  // The reciter is looked up once, from the catalogue already in memory, so
+  // a missing one never arrives: a card or favourite whose reciter left the
+  // catalogue, a mistyped link, "Go to reciter" on an untagged upload. This
+  // used to show a spinner forever, with no way back on screens without the
+  // native header.
   if (!reciter) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style={theme.isDarkMode ? 'light' : 'dark'} />
-        <LoadingIndicator />
+        <View style={notFoundStyles.body}>
+          <Text style={[notFoundStyles.title, {color: theme.colors.text}]}>
+            {t('reciterProfile.notFound')}
+          </Text>
+          <Text
+            style={[notFoundStyles.hint, {color: theme.colors.textSecondary}]}>
+            {t('reciterProfile.notFoundHint')}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigation.goBack()}
+            style={({pressed}) => [
+              notFoundStyles.button,
+              {borderColor: theme.colors.border},
+              pressed && notFoundStyles.buttonPressed,
+            ]}>
+            <Text
+              style={[notFoundStyles.buttonText, {color: theme.colors.text}]}>
+              {t('common:actions.back')}
+            </Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     );
   }
+  // @ai-end
 
   return (
     <View style={styles.container}>

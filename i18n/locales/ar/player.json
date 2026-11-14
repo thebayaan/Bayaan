@@ -45,6 +45,8 @@
   "reciterProfile": {
     "shareMessage": "استمع إلى {{name}} على {{appName}}",
     "thisReciter": "هذا القارئ",
+    "notFound": "تعذّر العثور على القارئ",
+    "notFoundHint": "هذا القارئ غير متاح في التطبيق حاليًا.",
     "myUploads": "تلاواتي",
     "sort": {
       "asc": "تصاعدي",
