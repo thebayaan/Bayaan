@@ -62,12 +62,18 @@ run('the generated Mushaf tables', () => {
   });
 
   it('the page lines are the rows of the layout DB', () => {
-    expect(loadPageLineRows()).toEqual(
-      readAll(
-        'dk_layout',
-        'SELECT * FROM pages ORDER BY page_number, line_number',
-      ),
-    );
+    // The layout DB has '' where a line type has no such value; the tables
+    // have 0.
+    const rows = readAll(
+      'dk_layout',
+      'SELECT * FROM pages ORDER BY page_number, line_number',
+    ).map(row => ({
+      ...row,
+      first_word_id: row.first_word_id || 0,
+      last_word_id: row.last_word_id || 0,
+      surah_number: row.surah_number || 0,
+    }));
+    expect(loadPageLineRows()).toEqual(rows);
   });
 
   it('the module is not stale', () => {

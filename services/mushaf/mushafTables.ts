@@ -53,11 +53,10 @@ export function loadPageLineRows(): DKLine[] {
       line_number: PAGE_LINES[i + 1],
       line_type: LINE_TYPES[PAGE_LINES[i + 2]],
       is_centered: PAGE_LINES[i + 3] as DKLine['is_centered'],
-      // A value a line type does not have is '' in the layout database, and
-      // no reader takes it for a number.
-      first_word_id: (PAGE_LINES[i + 4] || '') as number,
-      last_word_id: (PAGE_LINES[i + 5] || '') as number,
-      surah_number: (PAGE_LINES[i + 6] || '') as number,
+      // 0 where a line type has no such value ('' in the layout database).
+      first_word_id: PAGE_LINES[i + 4],
+      last_word_id: PAGE_LINES[i + 5],
+      surah_number: PAGE_LINES[i + 6],
     });
   }
   return rows;
