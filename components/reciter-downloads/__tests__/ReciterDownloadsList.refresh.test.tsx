@@ -87,16 +87,15 @@ jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 import {ReciterDownloadsList} from '../ReciterDownloadsList';
 import {SurahItem} from '@/components/SurahItem';
 
-const download = (surahId: string, reciterId = 'r1'): DownloadedSurah =>
-  ({
-    reciterId,
-    surahId,
-    rewayatId: 'rw1',
-    filePath: `/downloads/${reciterId}-${surahId}.mp3`,
-    fileSize: 1,
-    downloadDate: 1,
-    status: 'completed',
-  } as DownloadedSurah);
+const download = (surahId: string, reciterId = 'r1'): DownloadedSurah => ({
+  reciterId,
+  surahId,
+  rewayatId: 'rw1',
+  filePath: `/downloads/${reciterId}-${surahId}.mp3`,
+  fileSize: 1,
+  downloadDate: 1,
+  status: 'completed',
+});
 
 const rows = (tree: TestRenderer.ReactTestRenderer) =>
   tree.root.findAll(node => (node.type as unknown) === SurahItem);
