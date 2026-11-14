@@ -50,6 +50,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {useTranslation} from 'react-i18next';
 import {flipX} from '@/utils/rtl';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {queueFromIndex} from '@/utils/queueFromIndex'; // @ai
 import {
   CollectionOptionsMenu,
   type CollectionOptionsPayload,
@@ -203,46 +204,50 @@ const LovedScreen = () => {
 
         const artwork = getReciterArtwork(reciter);
 
-        // Build all tracks with selected surah first
-        const reorderedItems = [
-          lovedData[selectedIndex],
-          ...lovedData.slice(selectedIndex + 1),
-          ...lovedData.slice(0, selectedIndex),
-        ];
+        // @ai-start
+        // One entry per loved row in list order, null where a row cannot be
+        // played (its reciter left the catalogue, or its upload was deleted).
+        const rowTracks = lovedData.map(item => {
+          const itemReciter = item.reciter;
+          const itemSurah = item.surah;
+          if (!itemReciter || !itemSurah) return null;
+          if (item.track.userRecitationId) {
+            const upload = useUploadsStore
+              .getState()
+              .recitations.find(r => r.id === item.track.userRecitationId);
+            return upload ? createUserUploadTrack(upload) : null;
+          }
+          const itemRewayatId =
+            item.track.rewayatId || itemReciter.rewayat[0]?.id;
+          return {
+            id: `${itemReciter.id}:${itemSurah.id}`,
+            url: generateSmartAudioUrl(
+              itemReciter,
+              itemSurah.id.toString(),
+              itemRewayatId,
+            ),
+            title: itemSurah.name,
+            artist: itemReciter.name,
+            reciterId: itemReciter.id,
+            artwork: getReciterArtwork(itemReciter),
+            surahId: itemSurah.id.toString(),
+            reciterName: itemReciter.name,
+            rewayatId: itemRewayatId,
+          };
+        });
 
-        const allTracks = reorderedItems
-          .filter(item => item.reciter && item.surah)
-          .map(item => {
-            if (item.track.userRecitationId) {
-              const upload = useUploadsStore
-                .getState()
-                .recitations.find(r => r.id === item.track.userRecitationId);
-              if (upload) return createUserUploadTrack(upload);
-              return null;
-            }
-            const itemRewayatId =
-              item.track.rewayatId || item.reciter!.rewayat[0]?.id;
-            return {
-              id: `${item.reciter!.id}:${item.surah!.id}`,
-              url: generateSmartAudioUrl(
-                item.reciter!,
-                item.surah!.id.toString(),
-                itemRewayatId,
-              ),
-              title: item.surah!.name,
-              artist: item.reciter!.name,
-              reciterId: item.reciter!.id,
-              artwork: getReciterArtwork(item.reciter!),
-              surahId: item.surah!.id.toString(),
-              reciterName: item.reciter!.name,
-              rewayatId: itemRewayatId,
-            };
-          })
-          .filter((qt): qt is NonNullable<typeof qt> => qt !== null);
+        // Nothing to play for the tapped row (its upload was deleted).
+        // Starting the next row instead would play, and record in Continue
+        // Listening, something the user did not tap.
+        if (!rowTracks[selectedIndex]) return;
 
-        if (allTracks.length === 0) return;
+        // Keep the list's order and start at the tapped row. The queue used
+        // to be rotated to put that row first, so Previous could never reach
+        // the rows above it.
+        const queue = queueFromIndex(rowTracks, selectedIndex);
 
-        await updateQueue(allTracks, 0);
+        await updateQueue(queue.tracks, queue.startIndex);
+        // @ai-end
 
         const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
         startNewChain(reciter, surah, 0, 0, rewayatId);

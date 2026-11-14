@@ -35,6 +35,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {queueFromIndex} from '@/utils/queueFromIndex'; // @ai
 // @ai-end
 
 interface PlaylistTrack {
@@ -197,7 +198,8 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   }, [id, getPlaylist, getPlaylistItems]);
 
   const handleSurahPress = useCallback(
-    async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
+    // @ai The row is found by its id; the other two are kept for callers.
+    async (track: PlaylistTrack, _reciter: Reciter, _surah: Surah) => {
       try {
         const trackPromises = playlistData.map(async item => {
           if (!item.reciter || !item.surah) return null;
@@ -215,28 +217,28 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
           );
         });
 
-        const validTracks = (await Promise.all(trackPromises)).filter(
-          (vt): vt is NonNullable<typeof vt> => vt !== null,
+        // @ai-start
+        // One entry per row, null where a row cannot be played.
+        const rowTracks = await Promise.all(trackPromises);
+
+        // The tapped row is found by its own id. Matching on reciter and
+        // surah could pick another row of the same recitation.
+        const selectedIndex = playlistData.findIndex(
+          item => item.track.id === track.id,
         );
 
-        if (validTracks.length === 0) return;
+        // Nothing to play for this row (its upload was deleted). Starting
+        // the next row instead would play something the user did not tap.
+        if (selectedIndex === -1 || !rowTracks[selectedIndex]) return;
 
-        const selectedIndex = validTracks.findIndex(
-          vt =>
-            vt.reciterId === reciter.id &&
-            vt.surahId === surah.id.toString() &&
-            (track.rewayatId ? vt.rewayatId === track.rewayatId : true),
-        );
+        // Keep the playlist's order and start at the tapped row. The queue
+        // used to be rotated to put that row first, so Previous could never
+        // reach the rows above it.
+        const queue = queueFromIndex(rowTracks, selectedIndex);
 
-        if (selectedIndex === -1) return;
-
-        const reorderedTracks = [
-          ...validTracks.slice(selectedIndex),
-          ...validTracks.slice(0, selectedIndex),
-        ];
-
-        await updateQueue(reorderedTracks, 0);
+        await updateQueue(queue.tracks, queue.startIndex);
         await play();
+        // @ai-end
       } catch (error) {
         console.error('Error playing track:', error);
       }

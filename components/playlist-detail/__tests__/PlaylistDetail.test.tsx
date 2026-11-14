@@ -18,7 +18,10 @@ const mockBack = jest.fn();
 const mockGetPlaylist = jest.fn<Promise<UserPlaylist | null>, [string]>();
 const mockGetPlaylistItems = jest.fn<Promise<PlaylistItem[]>, [string]>();
 const mockRemoveFromPlaylist = jest.fn<Promise<void>, [string]>();
+const mockUpdateQueue = jest.fn();
+const mockPlay = jest.fn();
 let mockPlaylists: UserPlaylist[] = [];
+let mockUploads: Array<{id: string}> = [];
 
 jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({
@@ -47,9 +50,9 @@ jest.mock('@/hooks/usePlaylists', () => ({
 }));
 jest.mock('@/hooks/usePlayerActions', () => ({
   usePlayerActions: () => ({
-    updateQueue: jest.fn(),
+    updateQueue: mockUpdateQueue,
     addToQueue: jest.fn(),
-    play: jest.fn(),
+    play: mockPlay,
   }),
 }));
 jest.mock('@/services/dataService', () => {
@@ -61,11 +64,15 @@ jest.mock('@/services/dataService', () => {
   };
 });
 jest.mock('@/utils/track', () => ({
-  createTrack: jest.fn(),
-  createUserUploadTrack: jest.fn(),
+  createTrack: async (reciter: {id: string}, surah: {id: number}) => ({
+    id: `${reciter.id}-${surah.id}`,
+  }),
+  createUserUploadTrack: (upload: {id: string}) => ({
+    id: `upload-${upload.id}`,
+  }),
 }));
 jest.mock('@/store/uploadsStore', () => ({
-  useUploadsStore: {getState: () => ({recitations: []})},
+  useUploadsStore: {getState: () => ({recitations: mockUploads})},
 }));
 jest.mock('@/components/TrackItem', () => ({TrackItem: () => null}));
 jest.mock('@/components/sheets/options/surahOptions', () => ({
@@ -105,7 +112,11 @@ const playlist = (over: Partial<UserPlaylist> = {}): UserPlaylist => ({
   ...over,
 });
 
-const item = (id: string, surahId: string): PlaylistItem => ({
+const item = (
+  id: string,
+  surahId: string,
+  userRecitationId?: string,
+): PlaylistItem => ({
   id,
   playlistId: 'p1',
   surahId,
@@ -113,6 +124,7 @@ const item = (id: string, surahId: string): PlaylistItem => ({
   rewayatId: 'rw1',
   orderIndex: 0,
   addedAt: 1,
+  userRecitationId,
 });
 
 const flush = async () => {
@@ -158,6 +170,7 @@ afterEach(() => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUploads = [];
   mockPlaylists = [playlist()];
   mockGetPlaylist.mockResolvedValue(playlist());
   mockGetPlaylistItems.mockResolvedValue([]);
@@ -287,4 +300,80 @@ it('removing a surah drops its row in place', async () => {
   expect(rows(tree).map(row => row.props.surahId)).toEqual(['2']);
   expect(texts(tree)).not.toContain('Loading…');
   expect(listOf(tree)).toBe(list);
+});
+
+describe('tapping a surah', () => {
+  const queued = () =>
+    (mockUpdateQueue.mock.calls[0][0] as Array<{id: string}>).map(t => t.id);
+
+  it('queues the playlist in its own order and starts at the tapped row', async () => {
+    mockGetPlaylistItems.mockResolvedValue([
+      item('i1', '1'),
+      item('i2', '2'),
+      item('i3', '3'),
+      item('i4', '4'),
+    ]);
+    mockPlaylists = [playlist({itemCount: 4})];
+    const tree = await render();
+
+    await act(async () => {
+      await rows(tree)[2].props.onPress();
+    });
+
+    // Not rotated to 3, 4, 1, 2: Previous must reach surah 2.
+    expect(queued()).toEqual(['r1-1', 'r1-2', 'r1-3', 'r1-4']);
+    expect(mockUpdateQueue.mock.calls[0][1]).toBe(2);
+  });
+
+  it('starts at the right row when an earlier one cannot be played', async () => {
+    // Row 2 is an upload that has been deleted.
+    mockGetPlaylistItems.mockResolvedValue([
+      item('i1', '1'),
+      item('i2', '2', 'gone'),
+      item('i3', '3'),
+    ]);
+    mockPlaylists = [playlist({itemCount: 3})];
+    const tree = await render();
+
+    await act(async () => {
+      await rows(tree)[2].props.onPress();
+    });
+
+    expect(queued()).toEqual(['r1-1', 'r1-3']);
+    expect(mockUpdateQueue.mock.calls[0][1]).toBe(1);
+  });
+
+  it('plays the tapped row when two rows are the same reciter and surah', async () => {
+    mockUploads = [{id: 'u1'}];
+    mockGetPlaylistItems.mockResolvedValue([
+      item('i1', '2'),
+      item('i2', '2', 'u1'),
+    ]);
+    mockPlaylists = [playlist({itemCount: 2})];
+    const tree = await render();
+
+    await act(async () => {
+      await rows(tree)[1].props.onPress();
+    });
+
+    expect(queued()).toEqual(['r1-2', 'upload-u1']);
+    expect(mockUpdateQueue.mock.calls[0][1]).toBe(1);
+  });
+
+  it('does nothing for a row whose upload was deleted', async () => {
+    mockGetPlaylistItems.mockResolvedValue([
+      item('i1', '1', 'gone'),
+      item('i2', '2'),
+    ]);
+    mockPlaylists = [playlist({itemCount: 2})];
+    const tree = await render();
+
+    await act(async () => {
+      await rows(tree)[0].props.onPress();
+    });
+
+    // It used to fall through to another row.
+    expect(mockUpdateQueue).not.toHaveBeenCalled();
+    expect(mockPlay).not.toHaveBeenCalled();
+  });
 });
