@@ -76,6 +76,30 @@ class DatabaseService {
     return this.initPromise;
   }
 
+  // @ai-start
+  // Tail of the writes. withTransactionAsync is not exclusive: there is one
+  // connection, so a second transaction started while one is open fails at
+  // BEGIN, and its ROLLBACK then undoes the first one's work. Two saves in
+  // the same tick (a double tap) used to leave neither. Every write
+  // therefore starts once the one before it is done, as in
+  // VerseAnnotationDatabaseService.
+  private writeQueue: Promise<unknown> = Promise.resolve();
+
+  private serializeWrite<T>(write: () => Promise<T>): Promise<T> {
+    const result = this.writeQueue.then(write, write);
+    this.writeQueue = result.catch(() => undefined);
+    return result;
+  }
+
+  /** A transaction that waits its turn behind the writes issued before it. */
+  private writeTransaction(
+    db: SQLite.SQLiteDatabase,
+    task: () => Promise<void>,
+  ): Promise<void> {
+    return this.serializeWrite(() => db.withTransactionAsync(task));
+  }
+  // @ai-end
+
   // Create tables
   private async createTables(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
@@ -137,7 +161,8 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
 
     const db = this.db;
-    await db.withTransactionAsync(async () => {
+    await this.writeTransaction(db, async () => {
+      // @ai
       await db.runAsync(
         `INSERT INTO user_playlists (id, name, description, color, created_at, updated_at) 
          VALUES (?, ?, ?, ?, ?, ?)`,
@@ -158,9 +183,12 @@ class DatabaseService {
   async remapReciterId(fromId: string, toId: string): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    await this.db.runAsync(
-      `UPDATE playlist_items SET reciter_id = ? WHERE reciter_id = ?`,
-      [toId, fromId],
+    const db = this.db;
+    await this.serializeWrite(() =>
+      db.runAsync(
+        `UPDATE playlist_items SET reciter_id = ? WHERE reciter_id = ?`,
+        [toId, fromId],
+      ),
     );
   }
   // @ai-end
@@ -254,7 +282,8 @@ class DatabaseService {
         .filter(value => value !== undefined);
 
       const db = this.db;
-      await db.withTransactionAsync(async () => {
+      await this.writeTransaction(db, async () => {
+        // @ai
         await db.runAsync(
           `UPDATE user_playlists SET ${setClause} WHERE id = ?`,
           [...values, id],
@@ -268,7 +297,8 @@ class DatabaseService {
 
     try {
       const db = this.db;
-      await db.withTransactionAsync(async () => {
+      await this.writeTransaction(db, async () => {
+        // @ai
         // Delete associated items first (CASCADE should handle this, but be explicit)
         await db.runAsync(`DELETE FROM playlist_items WHERE playlist_id = ?`, [
           id,
@@ -295,7 +325,8 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
 
     const db = this.db;
-    await db.withTransactionAsync(async () => {
+    await this.writeTransaction(db, async () => {
+      // @ai
       await db.runAsync(
         `INSERT INTO playlist_items (id, playlist_id, surah_id, reciter_id, rewayat_id, order_index, added_at, user_recitation_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -337,7 +368,8 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
 
     const db = this.db;
-    await db.withTransactionAsync(async () => {
+    await this.writeTransaction(db, async () => {
+      // @ai
       await db.runAsync(`DELETE FROM playlist_items WHERE id = ?`, [itemId]);
     });
   }
@@ -350,7 +382,8 @@ class DatabaseService {
 
     const db = this.db;
     // Use a transaction to update all items at once
-    await db.withTransactionAsync(async () => {
+    await this.writeTransaction(db, async () => {
+      // @ai
       for (let i = 0; i < itemIds.length; i++) {
         const itemId = itemIds[i];
         if (itemId) {

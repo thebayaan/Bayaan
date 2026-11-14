@@ -7,6 +7,16 @@ import {
 // Re-export types for convenience
 export type {UserPlaylist, PlaylistItem};
 
+// @ai-start
+// The time alone repeats when two things are made in the same millisecond
+// (a double tap, or a new playlist and its first item). The second insert
+// then failed on the primary key and its save was lost.
+function uniqueId(prefix: string): string {
+  const random = Math.random().toString(36).slice(2, 10);
+  return `${prefix}_${Date.now()}_${random}`;
+}
+// @ai-end
+
 class PlaylistService {
   private initPromise: Promise<void> | null = null;
 
@@ -31,7 +41,7 @@ class PlaylistService {
     await this.initialize();
 
     const playlist: Omit<UserPlaylist, 'itemCount'> = {
-      id: `playlist_${Date.now()}`,
+      id: uniqueId('playlist'), // @ai
       name,
       description,
       color,
@@ -58,8 +68,36 @@ class PlaylistService {
     return await databaseService.getPlaylist(id);
   }
 
+  // @ai-start
+  // Tail of the adds. "Is it already in the playlist?" and the insert are
+  // two steps, so two adds of the same surah issued together (a double tap
+  // on a playlist row) both saw "no" and both inserted. Each add now starts
+  // once the one before it is done, and the second one finds the first.
+  private addQueue: Promise<unknown> = Promise.resolve();
+
   // Add item to playlist
-  async addToPlaylist(
+  addToPlaylist(
+    playlistId: string,
+    surahId: string,
+    reciterId: string,
+    rewayatId?: string,
+    userRecitationId?: string,
+  ): Promise<void> {
+    const add = () =>
+      this.addToPlaylistNow(
+        playlistId,
+        surahId,
+        reciterId,
+        rewayatId,
+        userRecitationId,
+      );
+    const result = this.addQueue.then(add, add);
+    this.addQueue = result.catch(() => undefined);
+    return result;
+  }
+  // @ai-end
+
+  private async addToPlaylistNow(
     playlistId: string,
     surahId: string,
     reciterId: string,
@@ -81,7 +119,7 @@ class PlaylistService {
 
     const orderIndex = await databaseService.getNextOrderIndex(playlistId);
     const item: PlaylistItem = {
-      id: `item_${Date.now()}`,
+      id: uniqueId('item'), // @ai
       playlistId,
       surahId,
       reciterId,

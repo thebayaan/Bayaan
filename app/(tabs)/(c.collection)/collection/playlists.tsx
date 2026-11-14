@@ -17,6 +17,7 @@ import {usePlaylists} from '@/hooks/usePlaylists';
 import {PlaylistIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
+import {showCreatePlaylistSheet} from '@/components/collection/showCreatePlaylistSheet'; // @ai
 // @ai-start
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
@@ -224,14 +225,14 @@ export default function PlaylistsScreen() {
         await deletePlaylist(item.id);
       },
       onEdit: async () => {
-        const result = await SheetManager.show('create-playlist', {
-          payload: {
-            existingColors,
-            isEditMode: true,
-            initialName: item.name,
-            initialColor: item.color || '#6366F1',
-          },
+        // @ai-start
+        const result = await showCreatePlaylistSheet({
+          existingColors,
+          isEditMode: true,
+          initialName: item.name,
+          initialColor: item.color || '#6366F1',
         });
+        // @ai-end
         if (result?.name && result?.color) {
           await updatePlaylist(item.id, {
             name: result.name,
@@ -254,9 +255,7 @@ export default function PlaylistsScreen() {
   // @ai-end
 
   const handleCreatePlaylist = useCallback(async () => {
-    const result = await SheetManager.show('create-playlist', {
-      payload: {existingColors},
-    });
+    const result = await showCreatePlaylistSheet({existingColors}); // @ai
     if (result?.name && result?.color) {
       await createPlaylist(result.name, result.color);
     }

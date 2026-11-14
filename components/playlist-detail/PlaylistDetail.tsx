@@ -36,6 +36,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useTranslation} from 'react-i18next';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {queueFromIndex} from '@/utils/queueFromIndex'; // @ai
+import {showCreatePlaylistSheet} from '@/components/collection/showCreatePlaylistSheet'; // @ai
 // @ai-end
 
 interface PlaylistTrack {
@@ -340,14 +341,14 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     const handleEditForThisPlaylist = async () => {
       shouldClearPlaylistRef.current = false;
 
-      const result = await SheetManager.show('create-playlist', {
-        payload: {
-          existingColors: existingPlaylistColors,
-          isEditMode: true,
-          initialName: playlist.name,
-          initialColor: playlist.color || '#6366F1',
-        },
+      // @ai-start
+      const result = await showCreatePlaylistSheet({
+        existingColors: existingPlaylistColors,
+        isEditMode: true,
+        initialName: playlist.name,
+        initialColor: playlist.color || '#6366F1',
       });
+      // @ai-end
 
       if (result?.name && result?.color) {
         try {
