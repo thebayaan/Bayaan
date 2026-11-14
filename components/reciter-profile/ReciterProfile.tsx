@@ -438,7 +438,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   // iOS: offset below transparent native header; Android: below custom sticky title
   const stickyPinOffset = isGlass ? headerHeight : stickyTitleHeight;
-  const {isLovedWithRewayat} = useLoved();
+  const {isLovedWithRewayat, lovedTracks} = useLoved();
   const {
     isDownloaded,
     isDownloadedWithRewayat,
@@ -534,7 +534,19 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     key: '',
     map: new Map(),
   });
-  const cacheKey = `${showLovedOnly}|${searchQuery}|${sortOption}`;
+  // @ai-start
+  // With the heart filter on, the lists are made of what is loved, so they
+  // have to be rebuilt when that changes. `isLovedWithRewayat` keeps its
+  // identity, so a surah un-loved from its options stayed in the list,
+  // without its heart, until the filter or the sort was toggled.
+  const lovedKey = showLovedOnly
+    ? lovedTracks
+        .filter(track => track.reciterId === currentReciterId)
+        .map(track => `${track.surahId}:${track.rewayatId}`)
+        .join(',')
+    : '';
+  const cacheKey = `${showLovedOnly}|${searchQuery}|${sortOption}|${lovedKey}`;
+  // @ai-end
   if (surahCacheRef.current.key !== cacheKey) {
     surahCacheRef.current = {key: cacheKey, map: new Map()};
   }
@@ -550,7 +562,9 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       cache.set(tabId, result);
       return result;
     },
-    [reciter, getFilteredSurahsForRewayat],
+    // `cacheKey`: once the cache is reset, `filteredSurahs` below has to
+    // read it again. @ai
+    [reciter, getFilteredSurahsForRewayat, cacheKey], // @ai
   );
 
   // Derived filteredSurahs for the active rewayat (used by playback handlers)
