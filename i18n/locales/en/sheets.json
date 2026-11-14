@@ -216,7 +216,8 @@
     "unnumbered": "Not a numbered verse in {{rewayah}}.",
     "loadFailed": "Couldn't load the {{rewayah}} text.",
     "loadingText": "Loading the {{rewayah}} text",
-    "irab": "I'rab"
+    "irab": "I'rab",
+    "wordStudy": "Word Study"
   },
   "mushafPlayer": {
     "title": "Playback Settings",
@@ -429,9 +430,7 @@
     "flagLine": "{{ref}}: {{message}}"
   },
   "irab": {
-    "tabWords": "Word analysis",
     "tabBooks": "I'rab books",
-    "tapWord": "Tap a word to see its i'rab",
     "showAll": "Whole verse",
     "showWord": "One word",
     "wordOf": "Word {{n}} of {{total}}",

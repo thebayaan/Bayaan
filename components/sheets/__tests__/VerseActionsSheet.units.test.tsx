@@ -48,9 +48,12 @@ jest.mock('../verse-actions/ThemeContent', () => ({
 jest.mock('../verse-actions/WBWContent', () => ({
   WBWContent: (props: Record<string, unknown>) => mockRecord('wbw', props),
 }));
-jest.mock('../verse-actions/IrabContent', () => ({
-  IrabContent: (props: Record<string, unknown>) => mockRecord('irab', props),
+// @ai-start
+jest.mock('../verse-actions/WordStudyContent', () => ({
+  WordStudyContent: (props: Record<string, unknown>) =>
+    mockRecord('words', props),
 }));
+// @ai-end
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: (props: Record<string, unknown>) =>
     mockRecord('reflections', props),
@@ -471,15 +474,54 @@ describe('Hafs (unchanged)', () => {
       ayahNumber: 255,
       unitStart: undefined,
     });
+    // @ai-start
     await openSheet(payload);
-    await press("I'rab");
-    expect(last('irab')).toMatchObject({
-      surahNumber: 2,
-      ayahNumber: 255,
-      rewayah: 'hafs',
-      unitStart: undefined,
+    await press('Word Study');
+    expect(last('words')).toMatchObject({
+      selection: {rewayah: 'hafs', keys: ['2:255'], units: null},
+      initialWord: undefined,
+    });
+    expect(texts()).toContain('Word Study');
+    // @ai-end
+  });
+
+  // @ai-start
+  it('offers Word Study for a range, after Translation, with every verse', async () => {
+    await openSheet({
+      ...payload,
+      verseKey: '2:1',
+      ayahNumber: 1,
+      verseKeys: ['2:1', '2:2'],
+    });
+    const shown = texts();
+    // The single-verse rows are gone; Word Study follows Translation.
+    expect(shown).not.toContain('Tafseer');
+    expect(shown.indexOf('Word Study')).toBe(shown.indexOf('Translation') + 1);
+    await press('Word Study');
+    expect(last('words')).toMatchObject({
+      selection: {keys: ['2:1', '2:2'], hafsKeys: ['2:1', '2:2']},
     });
   });
+
+  it('a word long-press payload opens Word Study first, on that word', async () => {
+    await openSheet({
+      ...payload,
+      initialScreen: 'words',
+      word: {verseKey: '2:255', position: 3},
+    });
+    expect(last('words')).toMatchObject({
+      selection: {keys: ['2:255']},
+      initialWord: {verseKey: '2:255', position: 3},
+    });
+    // The back row is titled Word Study and returns to the verse's actions.
+    expect(texts()).not.toContain('Copy');
+    await press('Word Study');
+    expect(texts()).toEqual(expect.arrayContaining(['Copy', '2:255']));
+    // The row opens it again on the first word.
+    await press('Word Study');
+    expect(last('words')).toMatchObject({initialWord: undefined});
+  });
+  // @ai-end
 });
 
 describe('Warsh verses in their own numbering', () => {
@@ -560,12 +602,32 @@ describe('Warsh verses in their own numbering', () => {
     expect((translation.unitStart as {unit: {key: string}}).unit.key).toBe(
       '1:7',
     );
+    // @ai-start
     await openSheet(warshUnitPayload(['1:7']));
-    await press("I'rab");
-    expect((last('irab').unitStart as {unit: {key: string}}).unit.key).toBe(
-      '1:7',
-    );
+    await press('Word Study');
+    expect(last('words')).toMatchObject({
+      selection: {rewayah: 'warsh', keys: ['1:7']},
+    });
+    expect(
+      (last('words').selection as {units: {key: string}[]}).units[0].key,
+    ).toBe('1:7');
+    // @ai-end
   });
+
+  // @ai-start
+  it('opens Word Study on a Warsh verse at the long-pressed Hafs word', async () => {
+    await openSheet(
+      warshUnitPayload(['1:7'], {
+        initialScreen: 'words',
+        word: {verseKey: '1:7', position: 6},
+      }),
+    );
+    expect(last('words')).toMatchObject({
+      selection: {rewayah: 'warsh', keys: ['1:7']},
+      initialWord: {verseKey: '1:7', position: 6},
+    });
+  });
+  // @ai-end
 
   // @ai-start
   it('repeats exactly the selected Warsh verse, as one verse', async () => {
@@ -784,6 +846,29 @@ describe('when the Warsh verses cannot be named', () => {
     expect(shown).toContain('Al-Fatihah');
     expect(shown.some(t => /\d+:\d+/.test(t))).toBe(false);
   });
+
+  // @ai-start
+  it('Word Study waits for the Warsh verses, as every screen does', async () => {
+    mockUnits.models = new Map();
+    mockUnits.status = new Map([['warsh', 'loading']]);
+    mockWords.state = new Map([
+      ['hafs', 'ready'],
+      ['warsh', 'loading'],
+    ]);
+    (
+      digitalKhattDataService.ensureRewayahLoaded as jest.Mock
+    ).mockImplementation(() => new Promise(() => undefined));
+    await openSheet(
+      warshUnitPayload(['1:7'], {
+        initialScreen: 'words',
+        word: {verseKey: '1:7', position: 6},
+      }),
+    );
+    expect(last('words')).toBeUndefined();
+    expect(texts()).toContain('Word Study');
+    expect(texts().some(t => /\d+:\d+/.test(t))).toBe(false);
+  });
+  // @ai-end
 
   it('copies nothing and says why when the units were refused', async () => {
     mockUnits.models = new Map();

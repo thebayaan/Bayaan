@@ -215,6 +215,14 @@ declare module 'react-native-actions-sheet' {
         // disclosure. Defaults to the mushaf's active rewayah.
         // Required with `unitKeys`: their numbering. @ai
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
+        // @ai-start
+        /** Open on this screen instead of the action list (Word Study). */
+        initialScreen?: 'words';
+        /** With initialScreen: the word to open on, as a Hafs verse key and
+         *  word-by-word position (the selection's first word when it is not
+         *  one of its words). */
+        word?: {verseKey: string; position: number};
+        // @ai-end
       };
     }>;
     'verse-note': SheetDefinition<{

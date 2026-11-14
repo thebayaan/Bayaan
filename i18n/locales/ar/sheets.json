@@ -240,7 +240,8 @@
     "unnumbered": "ليست آية مرقّمة في رواية {{rewayah}}.",
     "loadFailed": "تعذّر تحميل نص رواية {{rewayah}}.",
     "loadingText": "جارٍ تحميل نص رواية {{rewayah}}",
-    "irab": "الإعراب"
+    "irab": "الإعراب",
+    "wordStudy": "دراسة الكلمات"
   },
   "mushafPlayer": {
     "title": "إعدادات التشغيل",
@@ -477,9 +478,7 @@
     "flagLine": "{{ref}}: {{message}}"
   },
   "irab": {
-    "tabWords": "إعراب الكلمات",
     "tabBooks": "كتب الإعراب",
-    "tapWord": "اضغط على كلمة لعرض إعرابها",
     "showAll": "الآية كاملة",
     "showWord": "كلمة واحدة",
     "wordOf": "الكلمة {{n}} من {{total}}",

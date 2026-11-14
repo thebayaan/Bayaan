@@ -57,25 +57,6 @@ jest.mock('@/hooks/useTheme', () => ({
     },
   }),
 }));
-// IrabContent.tsx also holds the I'rab screen: keep its heavy imports out.
-jest.mock(
-  '@/components/player/v2/PlayerContent/QuranView/WBWVerseView',
-  () => ({WBWVerseView: () => null}),
-);
-jest.mock('react-native-actions-sheet', () => ({ScrollView: () => null}));
-jest.mock('@/services/mushaf/MushafPreloadService', () => ({
-  mushafPreloadService: {initialized: false},
-}));
-jest.mock('@/hooks/useMushafFontMgr', () => ({useMushafFontMgr: () => null}));
-jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
-  digitalKhattDataService: {},
-  getRewayahDataIdentityKey: () => null,
-}));
-jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
-  rewayahVerseUnitsService: {},
-}));
-jest.mock('@/services/wbw/WBWDataService', () => ({wbwDataService: {}}));
-jest.mock('@/services/irab/IrabDataService', () => ({irabDataService: {}}));
 
 import type {WordIrab} from '@/services/irab/irabFormat';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
