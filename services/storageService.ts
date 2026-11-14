@@ -16,6 +16,19 @@ export function getDownloadsStorage(): number {
   return totalSize;
 }
 
+// @ai-start
+// Folders in the cache directory that are in use while the app runs, so
+// "Clear cache" leaves them alone:
+// - com.apple.nsurlsessiond: where iOS keeps downloads that are in flight.
+//   Deleting it fails every surah being downloaded.
+// - io.sentry (iOS), sentry (Android): crash reports not sent yet.
+const IN_USE_CACHE_ENTRIES = new Set([
+  'com.apple.nsurlsessiond',
+  'io.sentry',
+  'sentry',
+]);
+// @ai-end
+
 export async function getCacheStorage(): Promise<number> {
   let totalSize = 0;
 
@@ -58,6 +71,7 @@ export async function clearCacheDirectory(): Promise<void> {
     );
 
     for (const file of files) {
+      if (IN_USE_CACHE_ENTRIES.has(file)) continue; // @ai
       const filePath = `${FileSystem.cacheDirectory}${file}`;
       const info = await FileSystem.getInfoAsync(filePath);
 

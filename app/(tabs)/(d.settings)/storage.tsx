@@ -8,6 +8,7 @@ import Color from 'color';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
+import {clearCacheDirectory} from '@/services/storageService'; // @ai
 import {Feather} from '@expo/vector-icons';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
@@ -124,6 +125,11 @@ export default function StorageScreen() {
         try {
           setIsClearing(true);
           await clearPlayerCache();
+          // "Clear cache" only reset the player: the cache folder, which is
+          // what the Cache figure above measures, was never emptied, so the
+          // figure did not move. The player is stopped first so nothing is
+          // reading from the folder while it is emptied.
+          await clearCacheDirectory();
           refresh();
           Alert.alert(t('storage.success'), t('storage.clearCacheSuccess'));
         } catch (cacheError) {
