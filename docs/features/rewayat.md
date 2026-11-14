@@ -127,6 +127,9 @@ How each of the 8 rewayat reads one Hafs word, for the word view's Readings sect
 - **Gates.** `build_readings_index.py --check` in `quran-data.yml`: row identity, partition, exact texts (never synthesised), silah, completeness, the reviewed groupings of `scripts/rewayah/reading_groups_cases.json`, the misprint entries and determinism, on a fresh build and on the committed rows, then a comparison with the committed index and review list.
 - **Review before release.** Grouping the differing rewayat among themselves is new. `scripts/rewayah/reading_review.md`, generated with the data, is the review list: the misprints, the open questions (`toConfirm`), the joins where one rewayah's general rule excused a difference, and every word with three or more readings. A qualified reader signs it off before release (it does not block merging); each decision becomes a group in `reading_groups_cases.json`.
 - **Rebuild** after any change to a words DB or diff: `build_readings_index.py`, then `node scripts/rewayah/gen-manifest.mjs`. The index records the sha256 of every input it was built from.
+- **Delivery.** `DigitalKhattDataService.readAuxDb('readings', read)` copies the index like the words DBs (content-addressed `dk_readings.<sha8>.db`, md5-checked once per session, deleted and re-imported once when unreadable, swept with them) and never touches the words caches. `WordReadingsService` reads one Hafs verse per query and keeps 64 verses; `useWordReadings(verseKey, wbwPosition)` serves the UI (the word-by-word `بَعْدَ مَا` of 2:181, 8:6 and 13:37 covers two DK slots).
+- **Fail closed.** The service checks the index's format, member order and the sha256 of the 8 words DBs against the bundled manifest once, and shows an error instead of readings built from other data; a malformed row hides that word's readings only. `services/mushaf/__tests__/dkReadingsIndex.alldbs.test.ts` checks every row and content slot against the words DBs and diffs.
+- **UI.** `WordReadingsSection` (`components/sheets/verse-actions/`), mounted in the word view's word card: Hafs's group first, the rewayah shown in the sheet marked Current, the Quran text drawn by `ReadingText` in the rewayah's DigitalKhatt font with its silah in colour.
 
 ## Runtime architecture
 
@@ -168,6 +171,7 @@ Blank slots contribute nothing (no separator) and a multi-token slot is one word
 | Share link URL | same | `?rewayah=<id>` query param when non-Hafs |
 | Player verse list | currently-playing track's rewayah | Reciter rewayat name already shown in TrackInfo |
 | Word-by-word view | **Hafs only**: WBW data is Hafs-aligned | "Word-by-word shown in Hafs" notice when context rewayah isn't Hafs |
+| Word view › Readings | all 8 rewayat for the selected Hafs word (`dk_readings.db`) | The sheet's rewayah marked Current; footer with the scope (8 rewayat, general rules not listed) and the source |
 | Verse bookmarks / notes / highlights | stamp rewayah at save time | Short label pill on list items; silent `switchRewayah` + toast on tap |
 
 ## User-generated content stamping
@@ -221,6 +225,8 @@ Per-riwayah official layouts (page / line / word from the KFGQPC data and print 
 
 - `scripts/rewayah/` (README, sources, builder, validator, render policy, highlight rules).
 - `scripts/rewayah/build_readings_index.py`, `reading_groups_cases.json`, `reading_upstream_issues.json`, `reading_review.md`; `data/mushaf/digitalkhatt/dk_readings.db`: the per-word readings index, its reviewed cases and its review list.
+- `services/mushaf/wordReadingsFormat.ts`, `services/mushaf/WordReadingsService.ts`, `hooks/useWordReadings.ts`: the readings index decoder, loader and hook.
+- `components/sheets/verse-actions/WordReadingsSection.tsx`, `ReadingText.tsx`, `wordReadingsLabels.ts`: the word view's Readings section.
 - `services/mushaf/DigitalKhattDataService.ts`: multi-rewayah words DB loading + side cache.
 - `services/mushaf/RewayahDiffService.ts`: diff JSON loader + render-time category queries.
 - `store/mushafSettingsStore.ts`: `RewayahId` union, active rewayah persistence.
