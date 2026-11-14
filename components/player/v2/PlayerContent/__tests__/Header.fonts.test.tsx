@@ -95,7 +95,7 @@ function render(): TestRenderer.ReactTestRenderer {
 
 function texts(renderer: TestRenderer.ReactTestRenderer): string[] {
   return renderer.root
-    .findAllByType(Text)
+    .findAll(node => (node.type as unknown) === Text)
     .map(node => String(node.props.children));
 }
 
