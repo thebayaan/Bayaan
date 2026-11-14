@@ -349,8 +349,15 @@ appInitializer.registerService({
   priority: 9,
   critical: false,
   initialize: async () => {
-    await timestampService.initialize();
-    useTimestampStore.getState().loadFollowAlongRegistry();
+    // @ai-start
+    // The registry of who has follow-along does not need the cache
+    // database: it loads even when the database could not be opened.
+    try {
+      await timestampService.initialize();
+    } finally {
+      useTimestampStore.getState().loadFollowAlongRegistry();
+    }
+    // @ai-end
   },
 });
 
