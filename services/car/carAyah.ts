@@ -1,4 +1,5 @@
 import {SURAHS} from '@/data/surahData';
+import i18n from '@/i18n'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import type {AyahTimestamp} from '@/types/timestamps';
@@ -25,7 +26,8 @@ export function ayahAt(
 }
 
 export function ayahLabel(ayah: number, versesCount: number): string {
-  return `Ayah ${ayah} of ${versesCount}`;
+  // @ai In the app's language, with its digits.
+  return i18n.t('player:car.ayahOf', {ayah, total: versesCount});
 }
 
 /** Timestamps exist per rewayah and surah; uploads have none. */

@@ -33,6 +33,13 @@ import i18n from '@/i18n';
 // @ai-start
 import {Asset} from 'expo-asset';
 import {getLocalReciterImage} from '@/utils/reciterImageLookup';
+import {SURAHS} from '@/data/surahData';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  getTrackArtistDisplay,
+  getTrackDisplayTitle,
+} from '@/i18n/format';
 
 /**
  * An artwork url that the native now-playing layers can load.
@@ -67,11 +74,17 @@ async function loadBundledArtwork(reciterName: string): Promise<string | null> {
 
 // @ai-start
 function surahNameOf(surah: number): string | null {
-  const surahData = require('@/data/surahData.json') as Array<{
-    id: number;
-    name: string;
-  }>;
-  return surahData.find(s => s.id === surah)?.name ?? null;
+  // The name the app shows: the Arabic one when the app is in Arabic.
+  const data = SURAHS.find(s => s.id === surah);
+  return data ? getSurahDisplayName(data) : null;
+}
+
+/**
+ * The Mushaf reciter as the app shows it. The store keeps the English name;
+ * in Arabic the lock screen showed it under an Arabic player bar.
+ */
+function mushafArtist(reciterName: string | null): string {
+  return reciterName ? getReciterDisplayName({name: reciterName}) : 'Quran';
 }
 
 /**
@@ -315,6 +328,11 @@ class LockScreenService {
     artist: string;
     artwork?: string;
     reciterName?: string; // @ai
+    // @ai-start
+    surahId?: string;
+    reciterId?: string;
+    isUserUpload?: boolean;
+    // @ai-end
   }): AudioMetadata {
     const label = this.carMode ? this.carAyahLabel : null;
     // @ai-start
@@ -327,10 +345,15 @@ class LockScreenService {
         : track.reciterName
           ? bundledArtwork.get(track.reciterName)
           : undefined;
+    // The names as the app shows them. Tracks are queued with the English
+    // surah and reciter names, so in Arabic the lock screen and notification
+    // said "Al-Baqarah" under a player that says "البقرة".
+    const title = getTrackDisplayTitle(track);
+    const artist = getTrackArtistDisplay(track);
     // @ai-end
     return {
-      title: track.title,
-      artist: label ? `${track.artist} · ${label}` : track.artist,
+      title, // @ai
+      artist: label ? `${artist} · ${label}` : artist, // @ai
       ...(artworkUrl ? {artworkUrl} : {}), // @ai
     };
   }
@@ -341,6 +364,11 @@ class LockScreenService {
     artist: string;
     artwork?: string;
     reciterName?: string; // @ai
+    // @ai-start
+    surahId?: string;
+    reciterId?: string;
+    isUserUpload?: boolean;
+    // @ai-end
     duration?: number;
   }): void {
     const player = expoAudioService.getPlayer();
@@ -541,7 +569,7 @@ class LockScreenService {
             this.lastMushafTitle ??
             surahNameOf(state.currentSurah) ??
             'Quran',
-          reciterName || 'Quran',
+          mushafArtist(reciterName),
         );
       }
       if (title && title !== this.lastMushafTitle) {
@@ -551,7 +579,7 @@ class LockScreenService {
           if (player) {
             player.updateLockScreenMetadata({
               title,
-              artist: reciterName || 'Quran',
+              artist: mushafArtist(reciterName),
             });
           }
         } catch {

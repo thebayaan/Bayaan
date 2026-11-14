@@ -18,6 +18,7 @@ import {
 } from '@/services/adhkar/playback/trackControls';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {startCarAyahTracker} from '@/services/car/carAyah';
+import {getTrackArtistDisplay, getTrackDisplayTitle} from '@/i18n/format'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
   RecentlyPlayedTrack,
@@ -93,9 +94,14 @@ export function toNowPlaying(
   const track = queue.tracks[queue.currentIndex];
   if (!track) return null;
   const surahId = surahNumber(track);
+  // @ai-start
+  // The names as the app shows them (Arabic when the app is in Arabic):
+  // tracks are queued with the English surah and reciter names.
+  const artist = getTrackArtistDisplay(track);
+  // @ai-end
   return {
-    title: track.title,
-    subtitle: ayahLabel ? `${track.artist} · ${ayahLabel}` : track.artist,
+    title: getTrackDisplayTitle(track), // @ai
+    subtitle: ayahLabel ? `${artist} · ${ayahLabel}` : artist, // @ai
     reciterId: track.reciterId || null,
     surahId,
     isPlaying: playback.state === 'playing',
@@ -106,8 +112,8 @@ export function toNowPlaying(
     isLoved,
     artwork: surahId !== null ? {kind: 'surah', surahId} : null,
     queue: queue.tracks.map(t => ({
-      title: t.title,
-      subtitle: t.artist,
+      title: getTrackDisplayTitle(t), // @ai
+      subtitle: getTrackArtistDisplay(t), // @ai
       surahId: surahNumber(t),
     })),
     currentIndex: queue.currentIndex,
