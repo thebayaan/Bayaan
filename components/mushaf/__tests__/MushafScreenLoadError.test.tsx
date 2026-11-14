@@ -39,9 +39,13 @@ jest.mock('@/components/mushaf/main', () => ({
   default: () => null,
 }));
 
+const mockDk = {initialized: false};
+
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {
-    initialized: false,
+    get initialized() {
+      return mockDk.initialized;
+    },
     rewayah: 'hafs',
     getSurahStartPages: () => ({}),
     switchRewayah: jest.fn(() => Promise.resolve()),
@@ -128,6 +132,7 @@ beforeEach(() => {
   mockPreload.listeners.clear();
   mockPreload.initialize.mockClear();
   mockPreload.startIfIdle.mockClear();
+  mockDk.initialized = false;
   // react-test-renderer prints a deprecation notice under React 19.
   errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -145,6 +150,22 @@ it('says the mushaf could not be loaded and retries the preload', async () => {
     'Check that your device has some free storage, then try again.',
     'Try again',
   ]);
+  expect(ofType(ActivityIndicator)).toHaveLength(0);
+
+  const retry = root().find(
+    node => node.props.accessibilityRole === 'button' && !!node.props.onPress,
+  );
+  await act(async () => {
+    retry.props.onPress();
+  });
+  expect(mockPreload.initialize).toHaveBeenCalledTimes(1);
+});
+
+// The data loaded and only the fonts failed: the pages would stay blank.
+it('fonts that fail: the error, and the retry runs the preload again', async () => {
+  mockDk.initialized = true;
+  render();
+  expect(texts()[0]).toBe("Couldn't load the mushaf");
   expect(ofType(ActivityIndicator)).toHaveLength(0);
 
   const retry = root().find(
