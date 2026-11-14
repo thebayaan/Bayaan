@@ -24,6 +24,34 @@ export interface ResumeRecentParams {
   ) => Promise<void>;
 }
 
+// @ai-start
+/**
+ * Moves the resumed entry to the front of the recents list.
+ *
+ * It is found by what it is, once the queue has loaded. By then a progress
+ * tick for the track that just started can already have moved it to the
+ * front, and the place it had when it was pressed belongs to another card:
+ * that card was the one promoted. The place it had is only used when the
+ * entry cannot be found by reciter, surah and rewayah.
+ */
+function promoteResumed(
+  reciterId: string,
+  surahId: number,
+  rewayatId: string | undefined,
+  pressedIndex: number,
+): void {
+  const {recentTracks, resumeChain} = useRecentlyPlayedStore.getState();
+  const index = recentTracks.findIndex(
+    t =>
+      !t.isUserUpload &&
+      t.reciter?.id === reciterId &&
+      t.surah?.id === surahId &&
+      (t.rewayatId || '') === (rewayatId || ''),
+  );
+  resumeChain(index !== -1 ? index : pressedIndex);
+}
+// @ai-end
+
 /**
  * Resumes a recently played (non upload) entry: queues the whole rewayah
  * starting at the surah, at the saved position, and moves the entry to the
@@ -77,7 +105,7 @@ export async function resumeRecent({
       return;
     }
     await updateQueue(track, 0, startPosition);
-    useRecentlyPlayedStore.getState().resumeChain(recentIndex);
+    promoteResumed(reciterId, surahId, rewayatId, recentIndex); // @ai
     return;
   }
 
@@ -102,5 +130,5 @@ export async function resumeRecent({
   }));
 
   await updateQueue(allTracks, 0, startPosition);
-  useRecentlyPlayedStore.getState().resumeChain(recentIndex);
+  promoteResumed(reciterId, surahId, rewayatId, recentIndex); // @ai
 }
