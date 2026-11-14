@@ -430,7 +430,7 @@
   },
   "irab": {
     "tabWords": "Word analysis",
-    "tabBooks": "Classical books",
+    "tabBooks": "I'rab books",
     "tapWord": "Tap a word to see its i'rab",
     "showAll": "Whole verse",
     "showWord": "One word",
@@ -478,6 +478,17 @@
     }
   },
   "wordView": {
+    "tabWords": "Words",
+    "tapWord": "Tap a word to study it",
+    "previous": "Previous",
+    "next": "Next",
+    "previousWord": "Previous word",
+    "nextWord": "Next word",
+    "announce": "{{word}}, word {{n}} of {{total}}",
+    "gridLabel": "Words of {{verse}}",
+    "gridHint": "Use Previous and Next to move between words",
+    "loadFailed": "Couldn't load the words.",
+    "noWords": "Word data isn't available for this verse.",
     "wordRef": "{{verse}} · word {{n}}",
     "hafsNote": "Meanings, audio, i'rab, morphology and rasm are for Hafs.",
     "hafsNoteReadings": "Meanings, audio, i'rab, morphology and rasm are for Hafs. Readings shows how {{rewayah}} reads it.",
