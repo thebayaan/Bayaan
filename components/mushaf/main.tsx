@@ -803,10 +803,25 @@ export default function MushafViewer({
 
   useRecitationFollowAlong(currentPage);
 
-  const currentSurahId =
+  // @ai-start
+  /** The surah known to be on the current page; none before the map loads. */
+  const knownSurahId: number | undefined =
     askedSurah && askedSurah.page === currentPage
-      ? askedSurah.surahId // @ai
-      : pageToSurah[currentPage] || 1;
+      ? askedSurah.surahId
+      : pageToSurah[currentPage];
+  const currentSurahId = knownSurahId || 1;
+
+  // Last-read is the page on screen together with the surah the header
+  // names for it, so "Continue reading" names the same surah. It used to
+  // save the page alone, and Home guessed the surah from it: the surah
+  // before, for every surah that starts on a shared page (open Ya-Sin, go
+  // back: "Continue reading: Fatir"). Saved on mount too, so a reader
+  // opened on a surah and closed without a page turn still counts.
+  useEffect(() => {
+    if (knownSurahId) mushafSessionStore.setLastRead(currentPage, knownSurahId);
+    else mushafSessionStore.setLastReadPage(currentPage);
+  }, [currentPage, knownSurahId]);
+  // @ai-end
 
   // @ai — load verse annotations for every surah on the current page.
   // Nothing in the horizontal paged pipeline loaded the store before, so
@@ -1051,7 +1066,6 @@ export default function MushafViewer({
           : spreadPageToKeep(first as Spread, currentPageRef.current); // @ai
       setCurrentPage(page);
       useMushafPlayerStore.setState({currentPage: page});
-      mushafSessionStore.setLastReadPage(page);
       trackPageChange(page);
       const surahId = digitalKhattDataService.initialized
         ? digitalKhattDataService.getPageToSurah()[page]
@@ -1286,11 +1300,7 @@ export default function MushafViewer({
   // Vertical mode callbacks — update the same state as horizontal FlatList
   const handleContinuousPageChange = useCallback(
     (page: number) => {
-      // Record last-read unconditionally so "Continue Reading" resumes
-      // correctly even when the viewer mounts on a fresh page (e.g.
-      // opened via a surah tap) and the user never scrolls away. The
-      // horizontal onViewableItemsChanged handler does the same.
-      mushafSessionStore.setLastReadPage(page);
+      // Last-read is saved by the effect on `currentPage`, with its surah. @ai
       if (page !== currentPage) {
         setCurrentPage(page);
         useMushafPlayerStore.setState({currentPage: page});
