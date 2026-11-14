@@ -90,7 +90,9 @@ export function SearchView({
   const bottomInset = useBottomInset();
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [, setLoading] = useState(true);
+  // The query `searchResults` were computed for.
+  const [searchedQuery, setSearchedQuery] = useState('');
+  const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
   const router = useRouter();
@@ -233,6 +235,7 @@ export function SearchView({
     if (!catalogSearch || !debouncedQuery.trim()) {
       setSearchResults([]);
       setSearching(false);
+      if (catalogSearch) setSearchedQuery(debouncedQuery);
       return;
     }
 
@@ -255,12 +258,20 @@ export function SearchView({
       setSearchResults([]);
     }
 
+    setSearchedQuery(debouncedQuery);
     setSearching(false);
   }, [debouncedQuery, catalogSearch]);
 
   useEffect(() => {
     performSearch();
   }, [performSearch]);
+
+  // Until the results are for what is typed (the query is debounced), and
+  // while the index is still being built on first use, an empty list means
+  // "not searched yet", not "nothing found". The first keystroke used to
+  // show "No results" until the results came in. If the index failed to
+  // load there is nothing to wait for.
+  const resultsPending = catalogSearch ? query !== searchedQuery : loading;
 
   const addToRecentSearches = useCallback(
     async (result: SearchResult) => {
@@ -541,7 +552,7 @@ export function SearchView({
                   keyboardShouldPersistTaps="handled"
                 />
               </View>
-            ) : (
+            ) : loading ? null : ( // not "none" while they are being read
               <View style={styles.emptyState}>
                 <Feather
                   name="search"
@@ -600,7 +611,7 @@ export function SearchView({
             keyboardShouldPersistTaps="handled"
             onScrollBeginDrag={() => Keyboard.dismiss()}
             ListHeaderComponent={
-              searching ? (
+              resultsPending && searchResults.length === 0 ? (
                 <View style={styles.loadingContainer}>
                   <LoadingIndicator size={24} />
                 </View>
