@@ -88,12 +88,17 @@ const mockEnsureRewayahLoaded = jest.fn(async (_rewayah: string) => undefined);
 const mockGetVerseText = jest.fn(
   (_key: string, _rewayah?: string) => 'ayah text',
 );
+const mockCacheListeners = new Set<() => void>();
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {
     initialized: true,
     getVerseText: (key: string, rewayah?: string) =>
       mockGetVerseText(key, rewayah),
     ensureRewayahLoaded: (rewayah: string) => mockEnsureRewayahLoaded(rewayah),
+    subscribeCacheChanges: (listener: () => void) => {
+      mockCacheListeners.add(listener);
+      return () => mockCacheListeners.delete(listener);
+    },
   },
 }));
 // A Hafs-numbered set: entry N is Hafs ayah N.
@@ -371,5 +376,26 @@ describe('syncLiveActivity', () => {
     // The ayah line is Hafs text, whatever rewayah the mushaf shows.
     expect(mockEnsureRewayahLoaded).toHaveBeenCalledWith('hafs');
     expect(mockGetVerseText).toHaveBeenCalledWith('18:1', 'hafs');
+  });
+
+  // RFC-023 step 1: the Mushaf data loads after the splash, so an ayah can
+  // show before its text. The cache signal brings the text.
+  it('reads the verse text again when the Mushaf data changes', async () => {
+    mockMode = 'ayah';
+    mockCacheListeners.clear();
+    const sync = loadModule();
+    const stop = sync.startLiveActivitySync();
+    sync.noteSnapshotForLiveActivity(
+      nowPlayingSnapshot({positionSec: 10}, Date.now()),
+    );
+    for (let i = 0; i < 10; i += 1) await sync.reconcileLiveActivity();
+    mockGetVerseText.mockClear();
+
+    expect(mockCacheListeners.size).toBe(1);
+    mockCacheListeners.forEach(listener => listener());
+    expect(mockGetVerseText).toHaveBeenCalledWith('18:1', 'hafs');
+
+    stop();
+    expect(mockCacheListeners.size).toBe(0);
   });
 });

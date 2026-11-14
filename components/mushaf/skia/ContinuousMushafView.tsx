@@ -144,36 +144,6 @@ function buildRenderConstants(metrics: MushafLayoutMetrics): RenderConstants {
 const TOTAL_PAGES = 604;
 const pages = Array.from({length: TOTAL_PAGES}, (_, i) => i + 1);
 
-// Reverse lookup: HAFS verseKey → page number (built lazily from the verse
-// map, rebuilt whenever the active rewayah or the DK words cache changes).
-// scrollToVerse callers (playback page turns, search) pass Hafs keys. @ai
-let verseToPageMap: Map<string, number> | null = null;
-let verseToPageMapRewayah: string | null = null;
-let verseToPageMapVersion = -1;
-
-function getPageForVerse(verseKey: string): number | null {
-  const rewayah = digitalKhattDataService.rewayah;
-  const version = digitalKhattDataService.getCacheVersion();
-  if (rewayah !== verseToPageMapRewayah || version !== verseToPageMapVersion) {
-    verseToPageMap = null;
-    verseToPageMapRewayah = rewayah;
-    verseToPageMapVersion = version;
-  }
-  if (!verseToPageMap) {
-    if (!digitalKhattDataService.initialized) return null;
-    verseToPageMap = new Map();
-    for (let page = 1; page <= 604; page++) {
-      const keys = mushafVerseMapService.getOrderedVerseKeysForPage(page);
-      for (const key of keys) {
-        if (!verseToPageMap.has(key)) {
-          verseToPageMap.set(key, page);
-        }
-      }
-    }
-  }
-  return verseToPageMap.get(verseKey) ?? null;
-}
-
 interface ParagraphInfo {
   paragraph: SkParagraph;
   xPos: number;
@@ -888,7 +858,9 @@ const ContinuousMushafView = forwardRef<
         // the page of its Hafs verse's start (verse-units invariant 8).
         const loc =
           verseKey.split(':').length === 3 ? parseAnchorKey(verseKey) : null;
-        const page = getPageForVerse(
+        // @ai The page of the Hafs verse's first word, with no word read.
+        // scrollToVerse callers (playback page turns, search) pass Hafs keys.
+        const page = digitalKhattDataService.getPageForVerse(
           loc ? `${loc.surah}:${loc.ayah}` : verseKey,
         );
         if (page) {
@@ -975,6 +947,14 @@ const ContinuousMushafView = forwardRef<
     );
 
     const keyExtractor = useCallback((item: number) => `page-${item}`, []);
+
+    // @ai-start
+    // An item with no fontMgr draws nothing and has no height, so a list mounted
+    // now would mount all 604 pages to fill the screen, then draw them all when
+    // the fonts arrive. The reader can open before them: they finish after the
+    // data.
+    if (!fontMgr) return null;
+    // @ai-end
 
     return (
       <FlashList

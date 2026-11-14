@@ -34,6 +34,10 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 
 jest.mock('expo-sqlite', () => {
+  // @ai the WordStore's queries (DigitalKhattDataService).
+  const {withWordStoreQueries} = jest.requireActual(
+    '@/services/mushaf/__fixtures__/wordStoreQueries',
+  );
   const state: FakeSqlite = {
     files: new Map(),
     open: new Map(),
@@ -62,7 +66,7 @@ jest.mock('expo-sqlite', () => {
       if (!state.files.has(name)) state.files.set(name, '');
       state.open.set(name, openCount(name) + 1);
       let closed = false;
-      return {
+      return withWordStoreQueries({
         async getFirstAsync(sql: string) {
           const base = state.files.get(name);
           if (!base) return null;
@@ -117,7 +121,7 @@ jest.mock('expo-sqlite', () => {
           state.open.set(name, openCount(name) - 1);
           if (openCount(name) <= 0) state.open.delete(name);
         },
-      };
+      });
     },
     async importDatabaseFromAssetAsync(name: string) {
       if (state.files.has(name)) return;

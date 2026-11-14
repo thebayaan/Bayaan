@@ -59,6 +59,7 @@ function numberingFor(mode: TimingNumberingMode) {
 function setup(
   load: jest.Mock = jest.fn(async () => TS),
   mode: TimingNumberingMode = 'hafs',
+  verseText: (key: string) => string = key => `v${key}`,
 ) {
   const published: Array<NowPlayingAyah | null> = [];
   const resolveNumbering = jest.fn(numberingFor(mode));
@@ -66,7 +67,7 @@ function setup(
     loadTimestamps: load,
     resolveNumbering,
     hafsVerseCount: surah => HAFS_COUNTS[surah] ?? 0,
-    verseText: key => `v${key}`,
+    verseText,
     setAyah: a => published.push(a),
     now: () => Date.now(),
   });
@@ -92,6 +93,35 @@ describe('createAyahTicker', () => {
     jest.advanceTimersByTime(8000);
     expect(published[2]?.number).toBe(3);
     expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('publishes an ayah again when its text arrives, and only then', async () => {
+    let text = '';
+    const {ticker, published} = setup(undefined, undefined, () => text);
+    ticker.onSnapshot(nowPlayingSnapshot({positionSec: 10}, START));
+    await settle();
+    expect(published).toEqual([{number: 1, count: 110, text: ''}]);
+
+    ticker.tick(); // No text yet: nothing new is shown.
+    expect(published).toHaveLength(1);
+
+    text = 'v18:1';
+    ticker.tick();
+    expect(published[1]).toEqual({number: 1, count: 110, text: 'v18:1'});
+    ticker.tick();
+    expect(published).toHaveLength(2);
+  });
+
+  it('publishes a new text for the same ayah', async () => {
+    let text = 'old';
+    const {ticker, published} = setup(undefined, undefined, () => text);
+    ticker.onSnapshot(nowPlayingSnapshot({positionSec: 10}, START));
+    await settle();
+    expect(published.at(-1)?.text).toBe('old');
+
+    text = 'new';
+    ticker.tick();
+    expect(published.at(-1)).toEqual({number: 1, count: 110, text: 'new'});
   });
 
   it('schedules nothing while paused', async () => {
