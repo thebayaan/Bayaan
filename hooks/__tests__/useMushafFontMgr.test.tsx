@@ -1,20 +1,19 @@
+// @ai-generated
 /**
- * The Mushaf font manager: a normal launch loads no fonts in this hook, and a
- * failed preload gets one shared provider for all callers.
+ * The Mushaf font manager hook reads the preload service's provider and loads
+ * no fonts. The service owns the load and the retry: see
+ * services/mushaf/__tests__/MushafPreloadService.fonts.test.tsx.
  */
 
 import React, {act} from 'react';
-import * as ReactNative from 'react-native';
 import TestRenderer from 'react-test-renderer';
+import {useMushafFontMgr} from '../useMushafFontMgr';
 
 type Listener = () => void;
 type FontMgr = object | null;
 
-const FONT_COUNT = 6;
-
 const mockService = {
-  initialized: false,
-  loadError: false,
+  state: 'idle',
   fontMgr: null as FontMgr,
   listeners: new Set<Listener>(),
   subscribe(listener: Listener) {
@@ -23,48 +22,34 @@ const mockService = {
       this.listeners.delete(listener);
     };
   },
-  finish(state: {fontMgr: FontMgr; loadError: boolean}) {
-    this.initialized = true;
-    this.fontMgr = state.fontMgr;
-    this.loadError = state.loadError;
+  finish(state: string, fontMgr: FontMgr) {
+    this.state = state;
+    this.fontMgr = fontMgr;
     for (const listener of this.listeners) listener();
   },
 };
 
 const mockFromURI = jest.fn();
-const mockMakeTypeface = jest.fn();
 const mockMakeProvider = jest.fn();
 
+// A getter: the hook module loads before `mockService` is set.
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
-  mushafPreloadService: mockService,
+  get mushafPreloadService() {
+    return mockService;
+  },
 }));
 
 jest.mock('@shopify/react-native-skia', () => ({
   Skia: {
-    Data: {fromURI: (uri: string) => mockFromURI(uri)},
-    Typeface: {
-      MakeFreeTypeFaceFromData: (data: unknown) => mockMakeTypeface(data),
-    },
+    Data: {fromURI: () => mockFromURI()},
     TypefaceFontProvider: {Make: () => mockMakeProvider()},
   },
 }));
 
-// The module keeps the shared provider, so each test gets a new copy. React
-// and React Native stay the instances that this file uses.
-function loadHook(): () => FontMgr {
-  let hook!: () => FontMgr;
-  jest.isolateModules(() => {
-    jest.doMock('react', () => React);
-    jest.doMock('react-native', () => ReactNative);
-    hook = require('../useMushafFontMgr').useMushafFontMgr;
-  });
-  return hook;
-}
-
-function mount(useHook: () => FontMgr) {
+function mount() {
   const probe = {current: null as FontMgr, renders: 0};
   function Probe(): null {
-    probe.current = useHook();
+    probe.current = useMushafFontMgr() as FontMgr;
     probe.renders += 1;
     return null;
   }
@@ -81,43 +66,23 @@ function mount(useHook: () => FontMgr) {
   };
 }
 
-// Lets the sequential font reads finish.
-async function settle(): Promise<void> {
-  await act(async () => {
-    await new Promise(resolve => setTimeout(resolve, 0));
-  });
-}
-
 describe('useMushafFontMgr', () => {
   beforeEach(() => {
-    mockService.initialized = false;
-    mockService.loadError = false;
+    mockService.state = 'idle';
     mockService.fontMgr = null;
     mockService.listeners.clear();
-    mockFromURI.mockReset().mockResolvedValue({});
-    mockMakeTypeface.mockReset().mockReturnValue({});
-    mockMakeProvider.mockReset().mockImplementation(() => ({
-      registerFont: jest.fn(),
-    }));
-    jest
-      .spyOn(ReactNative.Image, 'resolveAssetSource')
-      .mockReturnValue({uri: 'asset://font', width: 0, height: 0, scale: 1});
-    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockFromURI.mockReset();
+    mockMakeProvider.mockReset();
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('loads no fonts while the preload runs and after it succeeds', () => {
-    const useMushafFontMgr = loadHook();
+  it('loads no fonts, and returns the provider when the preload has it', () => {
     const preloaded = {name: 'preloaded'};
 
-    const first = mount(useMushafFontMgr);
+    const first = mount();
     expect(first.probe.current).toBeNull();
 
-    act(() => mockService.finish({fontMgr: preloaded, loadError: false}));
-    const second = mount(useMushafFontMgr);
+    act(() => mockService.finish('ready', preloaded));
+    const second = mount();
 
     expect(first.probe.current).toBe(preloaded);
     expect(second.probe.current).toBe(preloaded);
@@ -125,120 +90,39 @@ describe('useMushafFontMgr', () => {
     expect(mockMakeProvider).not.toHaveBeenCalled();
   });
 
-  it('does not render a caller again after a mount or a repeat notification', async () => {
-    const useMushafFontMgr = loadHook();
-    mockService.initialized = true;
+  it('stays null after a failed preload, and loads nothing', () => {
+    mockService.state = 'failed';
+
+    const {probe} = mount();
+    mount();
+
+    expect(probe.current).toBeNull();
+    expect(mockFromURI).not.toHaveBeenCalled();
+    expect(mockMakeProvider).not.toHaveBeenCalled();
+  });
+
+  it('returns the provider while the preload retries', () => {
+    mockService.state = 'loading';
+    mockService.fontMgr = {name: 'loaded before the retry'};
+
+    const {probe} = mount();
+
+    expect(probe.current).toBe(mockService.fontMgr);
+  });
+
+  it('does not render a caller again after a mount or a repeat notification', () => {
+    mockService.state = 'ready';
     mockService.fontMgr = {name: 'preloaded'};
 
-    const {probe} = mount(useMushafFontMgr);
-    await settle();
-    act(() =>
-      mockService.finish({fontMgr: mockService.fontMgr, loadError: false}),
-    );
+    const {probe} = mount();
+    mount();
+    act(() => mockService.finish('ready', mockService.fontMgr));
 
     expect(probe.renders).toBe(1);
   });
 
-  it('gives all callers one provider, loaded once, after the preload fails', async () => {
-    const useMushafFontMgr = loadHook();
-    const first = mount(useMushafFontMgr);
-    const second = mount(useMushafFontMgr);
-
-    act(() => mockService.finish({fontMgr: null, loadError: true}));
-    await settle();
-
-    expect(first.probe.current).not.toBeNull();
-    expect(second.probe.current).toBe(first.probe.current);
-    const late = mount(useMushafFontMgr);
-    await settle();
-    expect(late.probe.current).toBe(first.probe.current);
-    expect(mockMakeProvider).toHaveBeenCalledTimes(1);
-    expect(mockFromURI).toHaveBeenCalledTimes(FONT_COUNT);
-  });
-
-  it('starts the load for a component that mounts after the failure', async () => {
-    const useMushafFontMgr = loadHook();
-    mockService.initialized = true;
-    mockService.loadError = true;
-
-    const {probe} = mount(useMushafFontMgr);
-    await settle();
-
-    expect(probe.current).not.toBeNull();
-    expect(mockFromURI).toHaveBeenCalledTimes(FONT_COUNT);
-  });
-
-  it('registers each font under its family name, one read at a time', async () => {
-    const useMushafFontMgr = loadHook();
-    mockService.initialized = true;
-    mockService.loadError = true;
-    let reading = 0;
-    let mostAtOnce = 0;
-    mockFromURI.mockImplementation(async () => {
-      reading += 1;
-      mostAtOnce = Math.max(mostAtOnce, reading);
-      await Promise.resolve();
-      reading -= 1;
-      return {};
-    });
-
-    mount(useMushafFontMgr);
-    await settle();
-
-    expect(mostAtOnce).toBe(1);
-    const provider = mockMakeProvider.mock.results[0].value;
-    expect(
-      provider.registerFont.mock.calls.map(
-        ([, family]: [unknown, string]) => family,
-      ),
-    ).toEqual([
-      'DigitalKhattV1',
-      'DigitalKhattV2',
-      'DigitalKhattIndoPak',
-      'QuranCommon',
-      'SurahNameV4',
-      'SurahNameQCF',
-    ]);
-  });
-
-  it('stays null after a failed load, and the next mount tries again', async () => {
-    const useMushafFontMgr = loadHook();
-    mockService.initialized = true;
-    mockService.loadError = true;
-    mockMakeTypeface.mockReturnValueOnce(null);
-
-    const first = mount(useMushafFontMgr);
-    await settle();
-    expect(first.probe.current).toBeNull();
-    expect(mockFromURI).toHaveBeenCalledTimes(1);
-    expect(console.warn).toHaveBeenCalledTimes(1);
-
-    const second = mount(useMushafFontMgr);
-    await settle();
-
-    expect(second.probe.current).not.toBeNull();
-    expect(first.probe.current).toBe(second.probe.current);
-    expect(mockMakeProvider).toHaveBeenCalledTimes(2);
-  });
-
-  it('prefers the preloaded provider when a retry of the preload succeeds', async () => {
-    const useMushafFontMgr = loadHook();
-    mockService.initialized = true;
-    mockService.loadError = true;
-    const {probe} = mount(useMushafFontMgr);
-    await settle();
-    expect(probe.current).not.toBeNull();
-
-    const preloaded = {name: 'preloaded'};
-    act(() => mockService.finish({fontMgr: preloaded, loadError: false}));
-
-    expect(probe.current).toBe(preloaded);
-  });
-
   it('stops listening after an unmount', () => {
-    const useMushafFontMgr = loadHook();
-
-    const {unmount} = mount(useMushafFontMgr);
+    const {unmount} = mount();
     expect(mockService.listeners.size).toBe(1);
 
     unmount();

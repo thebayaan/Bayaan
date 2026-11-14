@@ -106,15 +106,6 @@ class MushafPreloadService {
     return this._state === 'ready' || this._state === 'failed';
   }
 
-  /**
-   * `true` if any step of `_doInit` rejected or `loadSkiaFonts` swallowed an
-   * error. Consumers (see `useMushafFontMgr`) can switch to a fallback render
-   * path to avoid a permanently-blank Mushaf when the preload fails.
-   */
-  get loadError(): boolean {
-    return this._state === 'failed';
-  }
-
   get state(): MushafPreloadState {
     return this._state;
   }
