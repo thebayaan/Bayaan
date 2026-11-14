@@ -13,8 +13,37 @@ import {
 } from './createSearchIndex';
 import {toSearchKey, tokenize} from './normalize';
 
-// "surah 36", "sura yasin", "سورة يس": the prefix word carries no meaning.
-const SURAH_PREFIX = /^(surah|surat|sura|soorah|سوره|سورت)\s+/;
+// @ai-start
+// "surah 36", "yasin surah", "chapter 36", "سورة يس": the surah word carries
+// no meaning wherever it sits. Directly after it, Urdu "e" ("surah e
+// yaseen") and "no" / "number" / "رقم" ("surah number 36") are link words.
+const SURAH_WORDS = new Set([
+  'surah',
+  'surat',
+  'sura',
+  'soorah',
+  'chapter',
+  'سوره',
+  'سورت',
+]);
+const SURAH_LINK_WORDS = new Set(['e', 'no', 'number', 'رقم']);
+
+/** Drops the surah word (and a link word after it) unless it is all there is. */
+function stripSurahWords(key: string): string {
+  const tokens = tokenize(key);
+  const kept = tokens.filter(
+    (token, i) =>
+      !SURAH_WORDS.has(token) &&
+      // Only when another word follows: "surah no" may still become "noor".
+      !(
+        SURAH_LINK_WORDS.has(token) &&
+        SURAH_WORDS.has(tokens[i - 1] ?? '') &&
+        i < tokens.length - 1
+      ),
+  );
+  return kept.length > 0 ? kept.join(' ') : key;
+}
+// @ai-end
 const FEATURED = new Set(FEATURED_RECITER_NAMES);
 
 export function createSurahSearch(
@@ -31,7 +60,7 @@ export function createSurahSearch(
   return {
     search(query: string, limit?: number): SearchHit<Surah>[] {
       const key = toSearchKey(query);
-      const unprefixed = key.replace(SURAH_PREFIX, '');
+      const unprefixed = stripSurahWords(key); // @ai
       if (/^\d+$/.test(unprefixed)) {
         const surah = surahs.find(item => item.id === Number(unprefixed));
         return surah ? [{item: surah, score: TIER.exact}] : [];

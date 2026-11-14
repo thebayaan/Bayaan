@@ -47,6 +47,28 @@ describe('rankSurahs', () => {
   it('keeps original objects for display', () => {
     expect(rankSurahs('ال عمران')[0]).toBe(SURAHS[2]);
   });
+
+  // @ai-start
+  it.each([
+    ['yasin surah', 36],
+    ['kahf surah', 18],
+    ['الفاتحة سورة', 1],
+    ['36 surah', 36],
+    ['surah number 36', 36],
+    ['surah no 36', 36],
+    ['chapter 36', 36],
+    ['سورة رقم ٣٦', 36],
+    ['surah e yaseen', 36],
+    ['surah-e-rahman', 55],
+  ])('ignores the surah word anywhere: %s', (query, id) => {
+    expect(rankSurahs(query)[0]?.id).toBe(id);
+  });
+
+  it('keeps a trailing link word that may still grow into a name', () => {
+    // "surah no" is half of "surah noor", not "surah number".
+    expect(rankSurahs('surah no').map(s => s.id)).toContain(71);
+  });
+  // @ai-end
 });
 
 describe('rankReciters', () => {
