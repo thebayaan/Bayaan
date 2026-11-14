@@ -112,6 +112,8 @@ function buildRenderConstants(metrics: MushafLayoutMetrics): RenderConstants {
   // On phone: centers the content within the view (legacy behavior).
   // On iPad: adds `pageOffsetX` so the (capped) page sits centered in the
   // full container width.
+  // @ai On an iOS phone in landscape, pageOffsetX is the left cutout inset
+  // and pageWidth leaves out both insets.
   const canvasMarginX = pageOffsetX + (metrics.pageWidth - contentWidth) / 2;
   // Decouple line-height from container-height for the continuous view so
   // each page's vertical footprint scales with its width (preserves the
