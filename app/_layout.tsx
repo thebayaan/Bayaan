@@ -352,8 +352,19 @@ function RootLayout() {
   }, [theme.colors.background, isDarkMode]);
 
   // Handle share intent (uploads from other apps)
+  // @ai-start
+  // One import per share. This effect re-runs on every render while a share
+  // is pending (resetShareIntent is a new function each render, and iOS
+  // re-sends the share when the app becomes active), and each run started
+  // another import of the same file: two uploads and two toasts.
+  const shareImportRunningRef = useRef(false);
+  // @ai-end
   useEffect(() => {
     if (!hasShareIntent || !appIsReady || !isPlayerReady) return;
+    // @ai-start
+    if (shareImportRunningRef.current) return;
+    shareImportRunningRef.current = true;
+    // @ai-end
 
     const handleShareIntent = async () => {
       try {
@@ -401,6 +412,8 @@ function RootLayout() {
         console.error('[ShareIntent] Import failed:', error);
         resetShareIntent();
         await SplashScreen.hideAsync();
+      } finally {
+        shareImportRunningRef.current = false; // @ai
       }
     };
 
