@@ -1,5 +1,6 @@
 // @ai-start
-import {createMMKV, type MMKV} from 'react-native-mmkv';
+import type {MMKV} from 'react-native-mmkv';
+import {openVersionedMMKV} from '@/utils/versionedMMKV';
 
 const SCHEMA_VERSION = 2;
 
@@ -24,13 +25,11 @@ class QCFLayoutCacheService {
   private memCache = new Map<string, QCFPageLayoutMetrics>();
 
   constructor() {
-    this.mmkv = createMMKV({id: 'qcf-layouts'});
-
-    const storedVersion = this.mmkv.getNumber('qcf_schema_version');
-    if (storedVersion !== SCHEMA_VERSION) {
-      this.mmkv.clearAll();
-      this.mmkv.set('qcf_schema_version', SCHEMA_VERSION);
-    }
+    this.mmkv = openVersionedMMKV({
+      id: 'qcf-layouts',
+      versionKey: 'qcf_schema_version',
+      version: SCHEMA_VERSION,
+    }).mmkv;
   }
 
   getPageLayout(

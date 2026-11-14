@@ -14,9 +14,10 @@
  *
  * This is a cache only. After any failure here, the line is measured again.
  */
-import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
-import {createMMKV, type MMKV} from 'react-native-mmkv';
+import type {MMKV} from 'react-native-mmkv';
+import {readVersionInfo} from '@/utils/appVersion';
+import {openVersionedMMKV} from '@/utils/versionedMMKV';
 
 /**
  * Change this when the fit pass (SkiaLine), JustificationService or a font
@@ -44,14 +45,8 @@ export interface StoredLineFit {
 /** The update id, or with updates off the build version; null without both. */
 function currentBundle(): string | null {
   if (Updates.updateId) return Updates.updateId;
-  const version: unknown = Constants.expoConfig?.extra?.version;
-  if (version == null || typeof version !== 'object') return null;
-  const {semanticVersion, buildNumber} = version as Record<string, unknown>;
-  if (typeof semanticVersion !== 'string') return null;
-  if (typeof buildNumber !== 'string' && typeof buildNumber !== 'number') {
-    return null;
-  }
-  return `${semanticVersion}-${buildNumber}`;
+  const version = readVersionInfo();
+  return version ? `${version.semanticVersion}-${version.buildNumber}` : null;
 }
 
 function openStore(): MMKV | null {
@@ -59,18 +54,12 @@ function openStore(): MMKV | null {
   if (__DEV__) return null;
   const bundle = currentBundle();
   if (!bundle) return null;
-  const version = `${LINE_FIT_FORMAT}:${bundle}`;
-  const kv = createMMKV({id: STORE_ID});
-  if (
-    kv.getString(VERSION_KEY) !== version ||
-    kv.length > LINE_FIT_STORE_LIMIT
-  ) {
-    // If the app stops between these two, the version key is gone, so the next
-    // launch clears again.
-    kv.clearAll();
-    kv.set(VERSION_KEY, version);
-  }
-  return kv;
+  return openVersionedMMKV({
+    id: STORE_ID,
+    versionKey: VERSION_KEY,
+    version: `${LINE_FIT_FORMAT}:${bundle}`,
+    maxKeys: LINE_FIT_STORE_LIMIT,
+  }).mmkv;
 }
 
 let store: MMKV | null | undefined;

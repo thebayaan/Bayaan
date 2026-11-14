@@ -66,6 +66,7 @@ import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
 import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {ConfirmationDialogHost} from '@/components/native/ConfirmationDialogHost'; // @ai
+import {readVersionInfo} from '@/utils/appVersion'; // @ai
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -91,18 +92,6 @@ SystemUI.setBackgroundColorAsync(
 
 const analyticsEnabled = process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
 
-// Narrows the `any`-typed expoConfig.extra.version without an `as` cast.
-function isVersionInfo(
-  value: unknown,
-): value is {semanticVersion: string; buildNumber: string | number} {
-  if (value == null || typeof value !== 'object') return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.semanticVersion === 'string' &&
-    (typeof v.buildNumber === 'string' || typeof v.buildNumber === 'number')
-  );
-}
-
 if (analyticsEnabled) {
   // Explicit release + dist tagging. Android events were landing with no
   // release (`release: None`), so crashes/ANRs couldn't be tied to a build.
@@ -111,8 +100,7 @@ if (analyticsEnabled) {
   // platforms, unlike Sentry's native auto-detection. `undefined` is a safe
   // no-op (Sentry falls back to auto-detect), so a missing manifest can't
   // regress the current behavior.
-  const rawVersion: unknown = Constants.expoConfig?.extra?.version;
-  const versionInfo = isVersionInfo(rawVersion) ? rawVersion : undefined;
+  const versionInfo = readVersionInfo(); // @ai
   const appId =
     Constants.expoConfig?.ios?.bundleIdentifier ??
     Constants.expoConfig?.android?.package;

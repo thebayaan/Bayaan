@@ -1,4 +1,4 @@
-import {createMMKV, type MMKV} from 'react-native-mmkv';
+import type {MMKV} from 'react-native-mmkv';
 
 import {
   digitalKhattDataService,
@@ -6,6 +6,7 @@ import {
 } from './DigitalKhattDataService';
 import {type JustResultByLine, replacer, reviver} from './JustificationService';
 import type {RewayahId} from '@/store/mushafSettingsStore';
+import {openVersionedMMKV} from '@/utils/versionedMMKV'; // @ai
 
 // Bump this when font files change or layout computation logic changes.
 // Incrementing invalidates all cached layouts and forces recomputation.
@@ -100,15 +101,16 @@ class MushafLayoutCacheService {
   private pruned = false;
 
   constructor() {
-    this.mmkv = createMMKV({id: 'mushaf-layouts'});
-
     // Invalidate on schema version change
-    const storedVersion = this.mmkv.getNumber(SCHEMA_VERSION_KEY);
-    if (storedVersion !== SCHEMA_VERSION) {
-      this.mmkv.clearAll();
-      this.mmkv.set(SCHEMA_VERSION_KEY, SCHEMA_VERSION);
-      this.pruned = true;
-    }
+    // @ai-start
+    const {mmkv, cleared} = openVersionedMMKV({
+      id: 'mushaf-layouts',
+      versionKey: SCHEMA_VERSION_KEY,
+      version: SCHEMA_VERSION,
+    });
+    this.mmkv = mmkv;
+    this.pruned = cleared;
+    // @ai-end
   }
 
   /**
