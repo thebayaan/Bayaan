@@ -49,6 +49,8 @@ module.exports = {
       infoPlist: {
         BayaanAppGroup: `group.${IOS_BUNDLE_ID}`,
         NSSupportsLiveActivities: true,
+        NSMicrophoneUsageDescription:
+          'Bayaan uses the microphone to follow along as you recite. Audio stays on your device.',
         NSAppleMusicUsageDescription:
           'This app uses Apple Music to play audio.',
         UILaunchStoryboardName: 'SplashScreen',
@@ -190,14 +192,14 @@ module.exports = {
         {supportedLocales: {ios: ['en', 'ar']}},
       ],
       '@bacons/apple-targets',
-      // Playback only: nothing records audio. microphonePermission: false
-      // removes NSMicrophoneUsageDescription (the plugin adds a default one
-      // otherwise); recordAudioAndroid: false leaves out RECORD_AUDIO.
+      // Playback only here: the mic belongs to react-native-audio-api, for
+      // recitation. No microphonePermission: false would remove the iOS usage
+      // string in infoPlist above, which recitation needs. recordAudioAndroid:
+      // false leaves out RECORD_AUDIO while recitation is hidden on Android.
       [
         'expo-audio',
         {
           enableBackgroundPlayback: true,
-          microphonePermission: false,
           recordAudioAndroid: false,
         },
       ],
@@ -208,6 +210,17 @@ module.exports = {
       'expo-sharing',
       'expo-status-bar',
       'expo-web-browser',
+      [
+        'react-native-audio-api',
+        {
+          iosBackgroundMode: false,
+          androidForegroundService: false,
+          // RECORD_AUDIO comes back with recitation on Android, after a device
+          // pass (services/recitation/recitationAvailability.ts).
+          androidPermissions: [],
+          disableFFmpeg: true,
+        },
+      ],
       [
         'expo-splash-screen',
         {

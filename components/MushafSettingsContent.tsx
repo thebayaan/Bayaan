@@ -1,4 +1,4 @@
-import React, {useMemo, useCallback, useState} from 'react';
+import React, {useMemo, useCallback, useEffect, useState} from 'react';
 import {
   ActivityIndicator, // @ai
   Alert,
@@ -67,6 +67,15 @@ import {
   type MushafAllahNameHighlightColor,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
+import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
+import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability';
+import {
+  recitationModelOnPhone,
+  removeRecitationModel,
+} from '@/services/recitation/RecitationTrackingService';
+import {recitationLogDatabase} from '@/services/recitation/RecitationLogDatabase';
+import {RECITATION_DOWNLOAD_MB} from '@/constants/recitation';
+import {formatNumber} from '@/i18n/format';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
@@ -545,6 +554,147 @@ const TextWeightControl: React.FC<TextWeightControlProps> = ({
 };
 // @ai-end
 
+interface RecitationModelControlProps {
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+}
+
+// Follow my recitation is always on; this only shows the downloaded model's
+// state so it can be removed to free space.
+const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
+  styles,
+  theme,
+}) => {
+  const {t} = useTranslation(['settings', 'common']);
+  const status = useRecitationTrackingStore(s => s.status);
+  const progress = useRecitationTrackingStore(s => s.downloadProgress);
+  const [downloaded, setDownloaded] = useState<boolean | null>(null);
+  const [sizeMb, setSizeMb] = useState(RECITATION_DOWNLOAD_MB);
+  const size = formatNumber(sizeMb);
+
+  useEffect(() => {
+    let cancelled = false;
+    recitationModelOnPhone().then(onPhone => {
+      if (cancelled) return;
+      setDownloaded(onPhone.downloaded);
+      setSizeMb(onPhone.sizeMb);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
+
+  function confirmRemove(): void {
+    Alert.alert(
+      t('mushafSettings.recitation.removeTitle'),
+      t('mushafSettings.recitation.removeMessage', {size}),
+      [
+        {text: t('common:actions.cancel'), style: 'cancel'},
+        {
+          text: t('common:actions.remove'),
+          style: 'destructive',
+          onPress: () => {
+            removeRecitationModel().then(() => {
+              setDownloaded(false);
+              setSizeMb(RECITATION_DOWNLOAD_MB);
+            });
+          },
+        },
+      ],
+    );
+  }
+
+  const modelLabel =
+    status === 'downloading'
+      ? t('mushafSettings.recitation.modelDownloading', {
+          percent: localizeDigits(Math.round(progress * 100)),
+        })
+      : downloaded
+        ? t('mushafSettings.recitation.modelDownloaded', {size})
+        : t('mushafSettings.recitation.modelNotDownloaded', {size});
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.optionRow}>
+        <Text style={styles.optionLabel}>
+          {t('mushafSettings.recitation.modelLabel')}
+        </Text>
+        <View style={styles.recitationModelState}>
+          {status === 'downloading' && (
+            <ActivityIndicator size="small" color={theme.colors.text} />
+          )}
+          <Text style={styles.recitationModelLabel}>{modelLabel}</Text>
+          {downloaded && status !== 'downloading' && (
+            <Pressable
+              onPress={confirmRemove}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('mushafSettings.recitation.removeModel')}>
+              <Feather
+                name="minus-circle"
+                size={moderateScale(18)}
+                color={Color(theme.colors.text).alpha(0.6).toString()}
+              />
+            </Pressable>
+          )}
+        </View>
+      </View>
+      <Text style={styles.helperText}>
+        {t('mushafSettings.recitation.modelHelper')}
+      </Text>
+      <RecitationHistoryRow styles={styles} />
+    </View>
+  );
+};
+
+// The recitation log (services/recitation/RecitationLogDatabase) can be
+// cleared here; it never leaves the phone.
+const RecitationHistoryRow: React.FC<{
+  styles: ReturnType<typeof createStyles>;
+}> = ({styles}) => {
+  const {t} = useTranslation(['settings', 'common']);
+
+  function confirmClear(): void {
+    Alert.alert(
+      t('mushafSettings.recitation.historyConfirmTitle'),
+      t('mushafSettings.recitation.historyConfirmMessage'),
+      [
+        {text: t('common:actions.cancel'), style: 'cancel'},
+        {
+          text: t('common:actions.clear'),
+          style: 'destructive',
+          onPress: () => {
+            recitationLogDatabase.clearHistory().catch(error => {
+              console.warn('[recitation] could not clear the history', error);
+            });
+          },
+        },
+      ],
+    );
+  }
+
+  return (
+    <>
+      <View style={styles.optionRow}>
+        <Text style={styles.optionLabel}>
+          {t('mushafSettings.recitation.historyLabel')}
+        </Text>
+        <Pressable
+          onPress={confirmClear}
+          hitSlop={8}
+          accessibilityRole="button">
+          <Text style={styles.recitationModelLabel}>
+            {t('common:actions.clear')}
+          </Text>
+        </Pressable>
+      </View>
+      <Text style={styles.helperText}>
+        {t('mushafSettings.recitation.historyHelper')}
+      </Text>
+    </>
+  );
+};
+
 interface AllahNameColorControlProps {
   value: MushafAllahNameHighlightColor;
   onChange: (value: MushafAllahNameHighlightColor) => void;
@@ -643,6 +793,10 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     toggleAllahNameHighlight,
     toggleThemes,
     toggleCommunityReflections,
+    recitationCheckMistakes,
+    recitationMistakeHaptics,
+    toggleRecitationCheckMistakes,
+    toggleRecitationMistakeHaptics,
     lightThemeId,
     darkThemeId,
     rewayah,
@@ -1182,6 +1336,42 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             </Text>
           </View>
         )}
+
+      {RECITATION_AVAILABLE && context !== 'player' && (
+        <>
+          <Text style={styles.sectionHeader}>
+            {t('mushafSettings.recitationHeader')}
+          </Text>
+          <View style={styles.card}>
+            <View style={styles.optionRow}>
+              <Text style={styles.optionLabel}>
+                {t('mushafSettings.recitation.checkLabel')}
+              </Text>
+              <NativeSwitch
+                onValueChange={toggleRecitationCheckMistakes}
+                value={recitationCheckMistakes}
+                style={styles.switchStyle}
+              />
+            </View>
+            <Text style={styles.helperText}>
+              {t('mushafSettings.recitation.checkHelper')}
+            </Text>
+            {recitationCheckMistakes && (
+              <View style={styles.optionRow}>
+                <Text style={styles.optionLabel}>
+                  {t('mushafSettings.recitation.hapticsLabel')}
+                </Text>
+                <NativeSwitch
+                  onValueChange={toggleRecitationMistakeHaptics}
+                  value={recitationMistakeHaptics}
+                  style={styles.switchStyle}
+                />
+              </View>
+            )}
+          </View>
+          <RecitationModelControl styles={styles} theme={theme} />
+        </>
+      )}
 
       {/* FONT Section */}
       <Text style={styles.sectionHeader}>{t('mushafSettings.fontHeader')}</Text>
@@ -1738,6 +1928,16 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: verticalScale(8),
+    },
+    recitationModelState: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+    },
+    recitationModelLabel: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
     },
     optionLabel: {
       fontSize: moderateScale(13.5),

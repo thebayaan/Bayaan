@@ -57,3 +57,45 @@ the only user):
 Metro reads the package's `src` (its `react-native` field), so only `src` is
 patched. When upgrading the library, check whether these are fixed upstream
 before regenerating the patch.
+
+# @tilawa/core recitation engine
+
+`@tilawa+core+0.4.0.patch` changes the package's `dist` only. What each change is
+for is said beside it in the code. Beyond the earlier speed and flag fixes it adds:
+
+- `recitation/junction.js`: did the reader say an ayah's last word? Runs in
+  correction mode when the session is given `junction`.
+- `gapReport` in the engine config: extra sounds heard between two words, reported
+  as `gap` on the right word's verdict, for the added-word mark.
+- `recitation/melFrames.js` and `session.readMelFrames`: the last 10 s or so of the
+  stream's log-mel frames, so a second model needs no second FFT.
+- `session.wordFrames`: a word's first and last tracker frames as known now. Both of
+  these count on one clock for the whole take. The decoder starts from 0 again when the
+  engine goes idle or finishes a surah; these do not.
+- `tracer.verdicts`: the last stretch is aligned once a chunk, not on each of the 4 or 5
+  calls, with two rows of costs in memory. The verdicts are the same. The gap report runs
+  only on the call that reads it.
+- `cutAtJump` in the engine config: a forward jump of more than this many places in the
+  text starts a new stretch of alignment. Off when left out. It changes verdicts near
+  such a jump.
+- The structural rules (skipped and look-alike ayahs) at the end of a take: they ran in
+  one piece and held the JS thread for 7.5 s on a 111 s take at 2:215 with a voice behind
+  (Hermes on a Mac). They now run in slices of about 12 ms with a pause between them, and
+  do less: only the look-alike candidates the pick can choose are timed (in each ayah by
+  falling margin until one passes, and never one whose best fit anywhere in the take
+  already fails), each one's alignment is read from its own ayah on, and the edit-cost
+  steps read each char's costs once. The flags are the same. On that take the stop takes
+  2 s, no piece over 50 ms, and its peak memory fell from about 800 MB to 290 MB. Hermes
+  runs code in a generator's own body slowly, so the step generators only loop over units
+  and yield; the work is in plain functions.
+
+With none of `junction`, `gapReport` and `cutAtJump` passed, the engine behaves as it
+did before them. Their numbers were tuned on the model's output, so the patch holds none: the
+caller passes them from `services/recitation/followerConstants.npl.json`.
+
+To change the patch, make the new `dist` on a copy, then diff it against the
+published package in a scratch git repo laid out as `node_modules/@tilawa/core`:
+`git diff --cached --no-color --ignore-space-at-eol --no-ext-diff --src-prefix=a/
+--dst-prefix=b/`, which is what patch-package writes. Do not reinstall the package
+in the repo to do this: its `prepare` script rebuilds it from source that is not
+there. Check the result on a clean copy with `patch-package --error-on-fail`.
