@@ -6,7 +6,9 @@
  * restores the rewayah when the data is ready, and then opens the page of
  * the verse. Before, the list looked the page up at the tap: with no data the
  * reader opened at page 1, and a wait for the data held the tap for seconds.
- * The options of the player's Repeat wait for the same point.
+ * The options of the player's Repeat wait for the same point. The page is
+ * worked out once: a rewayah switch in the reader later keeps it and the
+ * reader's selection. A /quran link opens the same way, with no page.
  * Lives outside app/ because every file there is bundled as a route.
  */
 import React, {act} from 'react';
@@ -303,5 +305,56 @@ describe('the player options', () => {
     open(HAFS_BOOKMARK);
     await dataReady();
     expect(optionsShown()).toEqual([]);
+  });
+});
+
+describe('the opened page after mount', () => {
+  it('a rewayah switch in the reader keeps the selection and the page', async () => {
+    open({surah: '2', ayah: '255'});
+    await dataReady();
+    expect(shownPage()).toBe(42);
+    expect(selectedKeys()).toEqual(['2:255']);
+    act(() => {
+      jest.advanceTimersByTime(3100); // the 3 s flash ends
+    });
+    expect(selectedKeys()).toEqual([]);
+    // The reader picks another verse, then switches rewayah in the reader.
+    act(() => {
+      useMushafVerseSelectionStore.getState().selectVerse('2:260', 43);
+    });
+    await act(async () => {
+      mockDk.rewayah = 'warsh';
+      mockNotify();
+    });
+    // The flash does not run again: the reader's selection stays.
+    expect(selectedKeys()).toEqual(['2:260']);
+    // The page was worked out once and kept: it does not follow the verse to
+    // its page in the new rewayah (43).
+    expect(shownPage()).toBe(42);
+  });
+});
+
+const initialSurahId = () =>
+  (mockViewer.props as {initialSurahId?: number} | null)?.initialSurahId;
+
+// What /quran/{surah}?ayah=N sends: no page, and no wait of its own. The
+// reader resolves the page.
+describe('/quran link handed straight to the reader', () => {
+  it('cold start: the ayah page once the data is ready', async () => {
+    open({surah: '2', ayah: '255'});
+    expect(shownPage()).toBeNull(); // loading view
+    await dataReady();
+    expect(shownPage()).toBe(42);
+    expect(initialSurahId()).toBe(2);
+  });
+  it('an ayah with no page falls back to the surah start', async () => {
+    open({surah: '2', ayah: '999'});
+    await dataReady();
+    expect(shownPage()).toBe(2);
+  });
+  it('a surah-only link opens the surah start', async () => {
+    open({surah: '2'});
+    await dataReady();
+    expect(shownPage()).toBe(2);
   });
 });

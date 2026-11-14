@@ -1,19 +1,10 @@
 // @ai-generated
 /**
- * Repro for review finding 1 on PR #487 (part B).
- *
- * What it shows: a QCF (Mushaf 1440) page that mounts after the data but
- * before the fonts, which is the state useMushafData calls 'ready' in this
- * PR, never draws its surah header, even after the fonts arrive. QCFPage
- * memoises surahHeaderFonts on [CONTENT_WIDTH] only, so the first render
- * caches {dividerFont: null} for good. The test renders the real QCFPage.
- *
- * Expected: the control test (mounted after the fonts) draws the header,
- * and so does a page mounted before the fonts once they arrive.
- *
- * On the PR head: the control passes. The second test fails at the last
- * assertion: the page draws its ayah lines but SkiaSurahHeader is never
- * rendered (count stays 0).
+ * A QCF (Mushaf 1440) page that mounts before the fonts draws its surah
+ * header once they arrive. QCFPage memoised the header font on the content
+ * width only, so a first render with no fonts kept {dividerFont: null} for
+ * good. The test renders the real QCFPage: the control mounts after the
+ * fonts.
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -251,7 +242,6 @@ it('mounted after the data but before the fonts, the header draws once the fonts
   // The page itself drew its lines after the fonts arrived ...
   expect(r.toJSON()).not.toBeNull();
   expect(mockHeaders.lines).toBeGreaterThan(0);
-  // ... so the surah header should be there too. On the PR head the cached
-  // {dividerFont: null} keeps it off for good and the count stays 0.
+  // ... so the surah header is there too.
   expect(mockHeaders.count).toBeGreaterThan(0);
 });

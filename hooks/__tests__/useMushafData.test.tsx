@@ -1,19 +1,9 @@
 // @ai-generated
 /**
- * Repro for review finding 1 on PR #487 (part A).
- *
- * What it shows: useMushafData() reports 'ready' as soon as the Digital
- * Khatt data is loaded, while MushafPreloadService is still loading the Skia
- * fonts. The test uses the real MushafPreloadService and holds the font
- * loads open, so the data finishes first, as it does on a cold start.
- *
- * Expected: while the fonts are still loading (preload state 'loading',
- * fontMgr and quranCommonTypeface null, and the codebase's own predicate
- * mushafPreloadService.initialized && digitalKhattDataService.initialized
- * false), useMushafData() is not 'ready'. Once the fonts arrive it is.
- *
- * On the PR head: useMushafData() is already 'ready' in that window, so the
- * test fails at the "not ready before the fonts" assertion.
+ * useMushafData() is not 'ready' while MushafPreloadService still loads the
+ * Skia fonts, only once the data and the fonts are both loaded. The test uses
+ * the real MushafPreloadService and holds the font loads open, so the data
+ * finishes first, as it does on a cold start.
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -109,7 +99,7 @@ it('useMushafData is not ready while the fonts are still loading', async () => {
     mushafPreloadService.initialized && digitalKhattDataService.initialized,
   ).toBe(false);
 
-  // Expected: the reader's hook agrees. On the PR head it says 'ready'.
+  // The reader's hook agrees.
   expect(seen[seen.length - 1]).not.toBe('ready');
 
   await act(async () => {
