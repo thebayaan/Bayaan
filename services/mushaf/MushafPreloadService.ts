@@ -94,6 +94,15 @@ class MushafPreloadService {
     return this._state;
   }
 
+  /**
+   * Starts the load if nothing started it yet. The boot starts it after the
+   * splash hides; a screen that needs it sooner starts it itself. A failed
+   * load waits for an explicit retry.
+   */
+  startIfIdle(): void {
+    if (this._state === 'idle') this.initialize().catch(() => undefined);
+  }
+
   get fontMgr(): SkTypefaceFontProvider | null {
     return this._fontMgr;
   }
