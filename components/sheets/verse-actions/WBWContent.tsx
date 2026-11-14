@@ -24,6 +24,7 @@ import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {wbwParts, type UnitStart} from './verseUnitScreens'; // @ai
+import type {WordRef} from './wordStudy'; // @ai
 
 interface WBWContentProps {
   surahNumber: number;
@@ -35,6 +36,9 @@ interface WBWContentProps {
   /** Another rewayah's verse: one view per Hafs verse holding its words.
    *  Absent for Hafs (unchanged). */
   unitStart?: UnitStart;
+  /** A long-press on a word studies it (Word Study, at its Hafs verse and
+   *  word-by-word position). Absent: it lifts the word, as before. */
+  onOpenWord?: (word: WordRef) => void;
   // @ai-end
   onBack: () => void;
 }
@@ -45,6 +49,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   ayahNumber,
   rewayah, // @ai
   unitStart, // @ai
+  onOpenWord, // @ai
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -114,14 +119,16 @@ export const WBWContent: React.FC<WBWContentProps> = ({
         parts.map(part => [
           part.verseKey,
           (position: number) =>
-            setSelectedWord(prev =>
-              prev?.verseKey === part.verseKey && prev.position === position
-                ? null
-                : {verseKey: part.verseKey, position},
-            ),
+            onOpenWord
+              ? onOpenWord({verseKey: part.verseKey, position})
+              : setSelectedWord(prev =>
+                  prev?.verseKey === part.verseKey && prev.position === position
+                    ? null
+                    : {verseKey: part.verseKey, position},
+                ),
         ]),
       ),
-    [parts],
+    [parts, onOpenWord],
   );
   // @ai-end
 

@@ -502,16 +502,46 @@ describe('word by word: a Hafs grid per Hafs verse, cut to the row', () => {
     ]);
   });
 
-  it('a word opens the word detail of its Hafs verse', () => {
+  // @ai-start
+  it("a word opens Word Study of the row's verse at the word of its Hafs verse", () => {
     // The sheet stays open: the word stays highlighted.
     mockSheetShow.mockImplementationOnce(() => new Promise(() => undefined));
     render(row(fatihah, '1:7'), {showWBW: true});
     act(() => mockHandlers.onWordPress?.(6));
     expect(mockSheetShow.mock.calls).toEqual([
-      ['word-detail', {payload: {verseKey: '1:7', position: 6}}],
+      [
+        'verse-actions',
+        {
+          payload: {
+            verseKey: '1:7',
+            surahNumber: 1,
+            ayahNumber: 7,
+            source: 'player',
+            rewayah: 'warsh',
+            unitKeys: ['1:7'],
+            initialScreen: 'words',
+            word: {verseKey: '1:7', position: 6},
+          },
+        },
+      ],
+    ]);
+    // The verse is selected, as a long press selects it.
+    const sel = useVerseSelectionStore.getState();
+    expect([sel.selectedVerseKey, sel.selectedRewayah]).toEqual([
+      '1:7',
+      'warsh',
     ]);
     expect(last('WBWVerseView').selectedWordPosition).toBe(6);
   });
+
+  it('the word is let go when the sheet closes', async () => {
+    render(row(fatihah, '1:7'), {showWBW: true});
+    await act(async () => {
+      mockHandlers.onWordPress?.(6);
+    });
+    expect(last('WBWVerseView').selectedWordPosition).toBeNull();
+  });
+  // @ai-end
 });
 
 describe('the unnumbered Fatiha basmala (Madani count)', () => {
@@ -533,4 +563,14 @@ describe('the unnumbered Fatiha basmala (Madani count)', () => {
     expect(mockHaptics).not.toHaveBeenCalled();
     expect(useVerseSelectionStore.getState().selectedVerseKey).toBeNull();
   });
+
+  // @ai-start
+  it('its words open no sheet either (no verse to study them in)', () => {
+    render(basmala, {showWBW: true});
+    act(() => mockHandlers.onWordPress?.(2));
+    expect(mockSheetShow).not.toHaveBeenCalled();
+    expect(last('WBWVerseView').selectedWordPosition).toBeNull();
+    expect(useVerseSelectionStore.getState().selectedVerseKey).toBeNull();
+  });
+  // @ai-end
 });
