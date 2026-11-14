@@ -1,7 +1,7 @@
 // @ai-generated
 import {SURAHS, type Surah} from '@/data/surahData';
 import {RECITERS, getRecitersVersion, type Reciter} from '@/data/reciterData';
-import {SURAH_ALIASES} from '@/data/searchAliases';
+import {SURAH_ALIASES, SURAH_NAME_SPELLINGS} from '@/data/searchAliases'; // @ai
 import {FEATURED_RECITER_NAMES} from '@/data/featuredReciters';
 import {getReciterDisplayName} from '@/i18n/format';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
@@ -79,6 +79,7 @@ export function createSurahSearch(
       {get: surah => surah.name_arabic, weight: 1},
       {get: surah => surah.translated_name_english, weight: 0.8},
       {get: surah => SURAH_ALIASES[surah.id] ?? [], weight: 0.9},
+      {get: surah => SURAH_NAME_SPELLINGS[surah.id] ?? [], weight: 1}, // @ai
     ],
   });
   return {

@@ -122,6 +122,31 @@ describe('createCatalogSearch (Home)', () => {
   });
 
   // @ai-start
+  it('ranks Ya-Sin first for its Arabic spelling ياسين', () => {
+    for (const query of ['ياسين', 'سورة ياسين']) {
+      expect(search.search(query)[0]?.item).toBe(SURAHS[35]);
+    }
+    // Reciters who carry the word are still listed.
+    expect(search.search('ياسين').length).toBeGreaterThan(1);
+  });
+
+  it.each([
+    ['kausar', 108],
+    ['zariyat', 51],
+    ['dhuha', 93],
+    ['mudassir', 74],
+    ['inshirah', 94],
+    ['jasiya', 45],
+    ['takasur', 102],
+    ['waqiya', 56],
+    ['ambiya', 21],
+    ['iqra', 96],
+  ])('finds the regional spelling %s', (query, id) => {
+    expect((search.search(query)[0]?.item as Surah | undefined)?.id).toBe(id);
+  });
+  // @ai-end
+
+  // @ai-start
   it.each([
     ['al nur', 24],
     ['al nas', 114],
