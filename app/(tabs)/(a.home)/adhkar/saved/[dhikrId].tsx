@@ -12,6 +12,8 @@ import {
   FlatList,
   type ListViewToken,
   type LayoutChangeEvent,
+  type NativeScrollEvent, // @ai
+  type NativeSyntheticEvent, // @ai
 } from 'react-native';
 import {
   useLocalSearchParams,
@@ -26,6 +28,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {DhikrReader} from '@/components/adhkar/DhikrReader';
 import {resolveViewableChange} from '@/components/adhkar/playAllScrollGuard';
+import {useSwipeSettle} from '@/components/adhkar/swipeSettle'; // @ai
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
@@ -262,6 +265,23 @@ const SavedDhikrReaderScreen: React.FC = () => {
     [toggleSaved],
   );
 
+  // Play All follows the page the pager shows.
+  const moveSessionTo = useCallback(
+    (page: {index: number; dhikrId: string}) => {
+      if (!isThisAllSession || page.index === sessionIndex) return;
+      dispatch({type: 'swipedTo', listId: 'saved', dhikrId: page.dhikrId});
+    },
+    [isThisAllSession, sessionIndex, dispatch],
+  );
+
+  // The page at least half visible, as viewability last reported it.
+  const shownPage = useRef<{index: number; dhikrId: string} | null>(null);
+  // A swipe moves the session once it has come to rest, not while the next
+  // page is merely half visible under the finger (see swipeSettle).
+  const swipe = useSwipeSettle(() => {
+    if (shownPage.current) moveSessionTo(shownPage.current);
+  });
+
   // The first viewability report is the page the reader opened on, not a
   // user swipe.
   const sawFirstViewable = useRef(false);
@@ -270,44 +290,43 @@ const SavedDhikrReaderScreen: React.FC = () => {
       if (viewableItems.length > 0 && viewableItems[0].index != null) {
         const newIndex = viewableItems[0].index;
         setCurrentIndex(newIndex);
+        const page = {index: newIndex, dhikrId: viewableItems[0].item.id};
+        shownPage.current = page;
         if (!sawFirstViewable.current) {
           sawFirstViewable.current = true;
           return;
         }
 
-        // Move the session when the user manually swipes (not from Play All
-        // auto-scroll, which may pass several rows before it lands)
+        // A Play All auto-scroll may pass several rows before it lands;
+        // those are not the user's doing.
         const change = resolveViewableChange(
           playAllScrollTarget.current,
           newIndex,
         );
         playAllScrollTarget.current = change.target;
-        if (
-          isThisAllSession &&
-          newIndex !== sessionIndex &&
-          change.isUserSwipe
-        ) {
-          dispatch({
-            type: 'swipedTo',
-            listId: 'saved',
-            dhikrId: viewableItems[0].item.id,
-          });
-        }
+        // Mid-swipe the page can still go back, so a swipe moves the session
+        // once it has settled (useSwipeSettle above). Anything else that
+        // changes the page (a row leaving the list, a report that arrives
+        // after the swipe settled) moves it now.
+        if (swipe.isSwiping()) return;
+        if (change.isUserSwipe) moveSessionTo(page);
       }
     },
-    [isThisAllSession, sessionIndex, dispatch],
+    [moveSessionTo, swipe],
   );
 
   // A drag is the user taking over, even mid auto-scroll.
   const handleScrollBeginDrag = useCallback(() => {
     playAllScrollTarget.current = null;
-  }, []);
+    swipe.onScrollBeginDrag();
+  }, [swipe]);
 
   // Any scroll that comes to rest ends the auto-scroll, even one that moved
   // nothing.
   const handleMomentumScrollEnd = useCallback(() => {
     playAllScrollTarget.current = null;
-  }, []);
+    swipe.onMomentumScrollEnd();
+  }, [swipe]);
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
@@ -338,6 +357,14 @@ const SavedDhikrReaderScreen: React.FC = () => {
       animated: false,
     });
   }, [pageWidth]);
+
+  // The finger lifted: the swipe settles here, or after the snap.
+  const handleScrollEndDrag = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      swipe.onScrollEndDrag(e.nativeEvent.contentOffset.x, pageWidth);
+    },
+    [swipe, pageWidth],
+  );
 
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({
@@ -413,6 +440,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
               getItemLayout={getItemLayout}
               onViewableItemsChanged={onViewableItemsChanged}
               onScrollBeginDrag={handleScrollBeginDrag}
+              onScrollEndDrag={handleScrollEndDrag}
               onMomentumScrollEnd={handleMomentumScrollEnd}
               viewabilityConfig={viewabilityConfig}
               windowSize={3}
