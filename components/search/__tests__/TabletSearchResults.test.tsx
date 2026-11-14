@@ -2,10 +2,18 @@
 import React from 'react';
 import {StyleSheet, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
-import {TabletSearchResults, groupResults} from '../TabletSearchResults';
+import {
+  TabletSearchResults,
+  groupResults,
+  previewQuranRows, // @ai
+} from '../TabletSearchResults';
 import type {CatalogSearchResult} from '@/utils/search/catalog';
 import type {Surah} from '@/data/surahData';
 import type {Reciter} from '@/data/reciterData';
+// @ai-start
+import type {QuranResultRow} from '@/components/search/quran/quranResultRows';
+import type {QuranResultRowViewProps} from '@/components/search/quran/QuranResultRowView';
+// @ai-end
 
 let mockWindowWidth = 1032;
 jest.mock('@/hooks/useResponsive', () => ({
@@ -42,6 +50,19 @@ jest.mock('@/i18n/format', () => ({
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({t: (key: string) => key}),
 }));
+// @ai-start
+// Quran rows render their key; a verse row is "inset" when asked.
+jest.mock('@/components/search/quran/QuranResultRowView', () => {
+  const {Text: MockText} = jest.requireActual('react-native');
+  return {
+    QuranResultRowView: ({row, inset}: QuranResultRowViewProps) => (
+      <MockText testID="quran-row" accessibilityHint={String(inset)}>
+        {row.key}
+      </MockText>
+    ),
+  };
+});
+// @ai-end
 
 const surah = (id: number): CatalogSearchResult => ({
   type: 'surah',
@@ -287,3 +308,193 @@ describe('TabletSearchResults', () => {
     expect(surahRows(renderer)).toHaveLength(6);
   });
 });
+
+// @ai-start
+const verseRow = (ayah: number): QuranResultRow => ({
+  type: 'quran-verse',
+  key: `quran-verse-1:${ayah}`,
+  hit: {
+    verseIndex: ayah - 1,
+    verseKey: `1:${ayah}`,
+    matches: [{position: 1, length: 1}],
+    score: 100,
+  },
+});
+
+const QURAN_ROWS: QuranResultRow[] = [
+  {
+    type: 'quran-header',
+    key: 'quran-header',
+    ayahCount: 6,
+    matchCount: 7,
+    note: 'allWords',
+  },
+  ...[1, 2, 3, 4, 5, 6].map(verseRow),
+];
+
+function renderWithAyahs(
+  catalogue: readonly CatalogSearchResult[],
+  quranRows: readonly QuranResultRow[] = QURAN_ROWS,
+) {
+  let renderer!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    renderer = TestRenderer.create(
+      <TabletSearchResults
+        results={catalogue}
+        onResultPress={jest.fn()}
+        onSurahPlay={jest.fn()}
+        onSurahOptions={jest.fn()}
+        quranRows={quranRows}
+        onQuranRowAction={{
+          onVersePress: jest.fn(),
+          onRootPress: jest.fn(),
+          onLemmaPress: jest.fn(),
+          onShowMore: jest.fn(),
+        }}
+        bottomPadding={0}
+      />,
+    );
+  });
+  return renderer;
+}
+
+function quranRowKeys(renderer: TestRenderer.ReactTestRenderer) {
+  return renderer.root
+    .findAll(n => n.props.testID === 'quran-row' && typeof n.type !== 'string')
+    .map(n => n.props.children);
+}
+
+/** The scope chips: label and count. */
+function chips(renderer: TestRenderer.ReactTestRenderer) {
+  return renderer.root
+    .findAll(
+      n =>
+        n.props.accessibilityRole === 'tab' &&
+        typeof n.props.onPress === 'function' &&
+        typeof n.type !== 'string',
+    )
+    .map(tab =>
+      tab
+        .findAll(c => typeof c.props.children === 'string')
+        .map(c => c.props.children)
+        .filter((s, i, all) => all.indexOf(s) === i)
+        .join(' '),
+    );
+}
+
+describe('previewQuranRows', () => {
+  it('keeps four ayahs and asks for See all', () => {
+    const preview = previewQuranRows(QURAN_ROWS);
+    expect(preview.rows.map(r => r.key)).toEqual([
+      'quran-verse-1:1',
+      'quran-verse-1:2',
+      'quran-verse-1:3',
+      'quran-verse-1:4',
+    ]);
+    expect(preview.more).toBe(true);
+  });
+
+  it('needs no See all for four ayahs or fewer', () => {
+    const preview = previewQuranRows(QURAN_ROWS.slice(0, 3));
+    expect(preview.rows).toHaveLength(2);
+    expect(preview.more).toBe(false);
+  });
+});
+
+describe('TabletSearchResults: Ayahs', () => {
+  it('adds no Ayahs scope without Quran rows', () => {
+    expect(chips(render())).toEqual([
+      'search.all',
+      'common:terms.reciters 2',
+      'common:terms.surahs 6',
+    ]);
+  });
+
+  it('shows the ayah count on the Ayahs chip', () => {
+    expect(chips(renderWithAyahs(results))).toEqual([
+      'search.all',
+      'common:terms.reciters 2',
+      'common:terms.surahs 6',
+      'common:terms.ayahs 6',
+    ]);
+  });
+
+  it('shows four ayahs in All, with the note and See all', () => {
+    const renderer = renderWithAyahs(results);
+    expect(texts(renderer)).toContain('search.topResult');
+    expect(texts(renderer)).toContain('reader:quranSearch.allWordsNote');
+    expect(quranRowKeys(renderer)).toEqual([
+      'quran-verse-1:1',
+      'quran-verse-1:2',
+      'quran-verse-1:3',
+      'quran-verse-1:4',
+    ]);
+    // The pane pads the rows already.
+    expect(
+      renderer.root
+        .findAll(
+          n => n.props.testID === 'quran-row' && typeof n.type !== 'string',
+        )
+        .every(n => n.props.accessibilityHint === 'false'),
+    ).toBe(true);
+
+    // See all in the Ayahs section opens the Ayahs scope.
+    const sections = renderer.root.findAll(
+      n =>
+        (n.type as unknown) === 'View' &&
+        n.findAll(
+          c =>
+            c.props.accessibilityRole === 'header' &&
+            c.props.children === 'common:terms.ayahs',
+        ).length > 0,
+    );
+    const ayahSection = sections[sections.length - 1];
+    const seeAll = ayahSection.findAll(
+      n =>
+        typeof n.props.onPress === 'function' &&
+        n.findAll(c => c.props.children === 'common:actions.seeAll').length > 0,
+    );
+    act(() => seeAll[0].props.onPress());
+    expect(texts(renderer)).not.toContain('search.topResult');
+    expect(quranRowKeys(renderer)).toHaveLength(QURAN_ROWS.length);
+  });
+
+  it('lists every row in the Ayahs scope, in the reading column', () => {
+    const renderer = renderWithAyahs(results);
+    pressTab(renderer, 'common:terms.ayahs');
+    expect(quranRowKeys(renderer)).toEqual(QURAN_ROWS.map(r => r.key));
+    expect(surahRows(renderer)).toHaveLength(0);
+    const column = renderer.root.findAll(
+      n =>
+        (n.type as unknown) === 'View' &&
+        StyleSheet.flatten(n.props.style)?.maxWidth === 680,
+    );
+    expect(column).toHaveLength(1);
+  });
+
+  it('shows the Ayahs section alone when the catalogue has no match', () => {
+    const renderer = renderWithAyahs([]);
+    expect(texts(renderer)).not.toContain('search.topResult');
+    expect(quranRowKeys(renderer)).toHaveLength(4);
+  });
+
+  it('falls back to All once the Quran rows are gone', () => {
+    const renderer = renderWithAyahs(results);
+    pressTab(renderer, 'common:terms.ayahs');
+    act(() => {
+      renderer.update(
+        <TabletSearchResults
+          results={results}
+          onResultPress={jest.fn()}
+          onSurahPlay={jest.fn()}
+          onSurahOptions={jest.fn()}
+          quranRows={[]}
+          bottomPadding={0}
+        />,
+      );
+    });
+    expect(texts(renderer)).toContain('search.topResult');
+    expect(quranRowKeys(renderer)).toHaveLength(0);
+  });
+});
+// @ai-end
