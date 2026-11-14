@@ -36,11 +36,24 @@ import {
   localizeDigits,
 } from '@/i18n/format';
 import type {Theme} from '@/utils/themeUtils';
+// @ai-start
+import type {QuranResultRow} from '@/components/search/quran/quranResultRows';
+import {
+  QuranResultRowView,
+  type QuranResultRowViewProps,
+} from '@/components/search/quran/QuranResultRowView';
+// @ai-end
 
-export type SearchScope = 'all' | 'reciters' | 'surahs';
+export type SearchScope = 'all' | 'reciters' | 'surahs' | 'ayahs'; // @ai: ayahs
 
 /** Surahs listed beside the top result in the All scope. */
 const ALL_SURAH_COUNT = 4;
+// @ai-start
+/** Ayahs in the All scope before "See all". */
+const ALL_AYAH_COUNT = 4;
+/** The Ayahs scope keeps the verses in the reading column (ipad-standards §4.2). */
+const AYAH_COLUMN_MAX_WIDTH = 680;
+// @ai-end
 /** Reciters in the All scope's shelf before "See all". */
 const ALL_RECITER_COUNT = 12;
 /**
@@ -82,6 +95,46 @@ export function groupResults(
   };
 }
 
+// @ai-start
+/**
+ * The Quran rows the All scope shows: the first ayahs, plus any status and
+ * root suggestion rows, without the header (the section title stands for
+ * it) and "Show more". `more` asks for "See all".
+ */
+export function previewQuranRows(rows: readonly QuranResultRow[]): {
+  rows: QuranResultRow[];
+  more: boolean;
+} {
+  const preview: QuranResultRow[] = [];
+  let verses = 0;
+  let more = false;
+  for (const row of rows) {
+    if (row.type === 'quran-header') continue;
+    if (row.type === 'quran-more') {
+      more = true;
+      continue;
+    }
+    if (row.type === 'quran-verse') {
+      if (verses === ALL_AYAH_COUNT) {
+        more = true;
+        continue;
+      }
+      verses++;
+    }
+    preview.push(row);
+  }
+  return {rows: preview, more};
+}
+
+const NO_QURAN_ROWS: readonly QuranResultRow[] = [];
+const NO_QURAN_ACTION: Omit<QuranResultRowViewProps, 'row'> = {
+  onVersePress: () => undefined,
+  onRootPress: () => undefined,
+  onLemmaPress: () => undefined,
+  onShowMore: () => undefined,
+};
+// @ai-end
+
 interface TabletSearchResultsProps {
   results: readonly CatalogSearchResult[];
   /** Opens a result: the reciter's profile, or the surah in the Mushaf. */
@@ -90,6 +143,11 @@ interface TabletSearchResultsProps {
   onSurahPlay: (result: CatalogSearchResult) => void;
   /** Opens the surah options menu. */
   onSurahOptions: (result: CatalogSearchResult) => void;
+  // @ai-start
+  /** The Quran results (the Ayahs scope and the All scope's Ayahs section). */
+  quranRows?: readonly QuranResultRow[];
+  onQuranRowAction?: Omit<QuranResultRowViewProps, 'row'>;
+  // @ai-end
   bottomPadding: number;
   style?: StyleProp<ViewStyle>;
 }
@@ -98,23 +156,47 @@ interface TabletSearchResultsProps {
  * Search results on iPad (mockup L7): All / Reciters / Surahs scopes, and in
  * All a top result card beside the first surah matches, then a reciters
  * shelf. Surah rows carry visible play and options buttons so audio is never
- * long-press only.
+ * long-press only. Quran text matches add an Ayahs scope and, in All, an
+ * Ayahs section after the surahs (@ai).
  */
 export function TabletSearchResults({
   results,
   onResultPress,
   onSurahPlay,
   onSurahOptions,
+  // @ai-start
+  quranRows = NO_QURAN_ROWS,
+  onQuranRowAction = NO_QURAN_ACTION,
+  // @ai-end
   bottomPadding,
   style,
 }: TabletSearchResultsProps) {
   const {theme} = useTheme();
-  const {t} = useTranslation(['home', 'common']);
+  const {t} = useTranslation(['home', 'common', 'reader']); // @ai: reader
   const {width} = useResponsive();
   const twoColumn = width >= TWO_COLUMN_MIN_WIDTH;
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [scope, setScope] = useState<SearchScope>('all');
+  const [scopeChoice, setScope] = useState<SearchScope>('all'); // @ai
   const grouped = useMemo(() => groupResults(results), [results]);
+  // @ai-start
+  const hasAyahs = quranRows.length > 0;
+  // The Ayahs scope falls back to All once a query has no Quran rows.
+  const scope: SearchScope =
+    scopeChoice === 'ayahs' && !hasAyahs ? 'all' : scopeChoice;
+  const quranHeader = quranRows.find(
+    (row): row is Extract<QuranResultRow, {type: 'quran-header'}> =>
+      row.type === 'quran-header',
+  );
+  const ayahPreview = useMemo(() => previewQuranRows(quranRows), [quranRows]);
+  const quranRow = (row: QuranResultRow) => (
+    <QuranResultRowView
+      key={row.key}
+      row={row}
+      {...onQuranRowAction}
+      inset={false}
+    />
+  );
+  // @ai-end
   // The Reciters scope sizes its tiles to fill each row of the grid.
   const [gridWidth, setGridWidth] = useState<number | null>(null);
   const handleGridLayout = useCallback((e: LayoutChangeEvent) => {
@@ -146,6 +228,15 @@ export function TabletSearchResults({
       count: grouped.surahs.length,
     },
   ];
+  // @ai-start
+  if (hasAyahs) {
+    scopes.push({
+      key: 'ayahs',
+      label: t('common:terms.ayahs'),
+      count: quranHeader?.ayahCount,
+    });
+  }
+  // @ai-end
 
   const surahRow = (result: SurahResult) => (
     <SurahResultRow
@@ -184,6 +275,27 @@ export function TabletSearchResults({
       )}
     </View>
   );
+
+  // @ai-start
+  // All: the first ayahs after the top result and the surahs.
+  const ayahSection = hasAyahs && (
+    <View style={styles.section}>
+      {sectionHeader(
+        t('common:terms.ayahs'),
+        ayahPreview.more ? 'ayahs' : undefined,
+      )}
+      {quranHeader?.note === 'hafs' && (
+        <Text style={styles.ayahNote}>{t('reader:quranSearch.hafsNote')}</Text>
+      )}
+      {quranHeader?.note === 'allWords' && (
+        <Text style={styles.ayahNote}>
+          {t('reader:quranSearch.allWordsNote')}
+        </Text>
+      )}
+      {ayahPreview.rows.map(quranRow)}
+    </View>
+  );
+  // @ai-end
 
   const topSurahs = grouped.surahs
     .filter(r => r !== grouped.top)
@@ -258,6 +370,7 @@ export function TabletSearchResults({
               </View>
             )}
           </View>
+          {ayahSection /* @ai */}
           {shelfReciters.length > 0 && (
             <View style={styles.section}>
               {sectionHeader(
@@ -278,6 +391,7 @@ export function TabletSearchResults({
           )}
         </>
       )}
+      {scope === 'all' && !grouped.top && ayahSection /* @ai */}
 
       {scope === 'surahs' && (
         // Wide windows flow the rows into two columns so the play and
@@ -308,6 +422,14 @@ export function TabletSearchResults({
             grouped.reciters.map(r => reciterTile(r, reciterTileWidth))}
         </View>
       )}
+
+      {/* @ai-start */}
+      {scope === 'ayahs' && (
+        <View style={[styles.section, styles.ayahColumn]}>
+          {quranRows.map(quranRow)}
+        </View>
+      )}
+      {/* @ai-end */}
     </ScrollView>
   );
 }
@@ -836,5 +958,18 @@ const createStyles = (theme: Theme) => {
       color: theme.colors.text,
       textAlign: 'center',
     },
+    // @ai-start
+    ayahNote: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.text,
+      marginBottom: moderateScale(8),
+    },
+    ayahColumn: {
+      width: '100%',
+      maxWidth: AYAH_COLUMN_MAX_WIDTH,
+      alignSelf: 'center',
+    },
+    // @ai-end
   });
 };
