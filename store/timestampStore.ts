@@ -1,4 +1,6 @@
 import {create} from 'zustand';
+import {persist} from 'zustand/middleware'; // @ai
+import {persistStorage} from '@/utils/storage'; // @ai
 import type {AyahTimestamp, AyahTrackingState} from '@/types/timestamps';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import {timestampFetchService} from '@/services/timestamps/TimestampFetchService'; // @ai
@@ -76,6 +78,27 @@ interface TimestampState {
   toggleFollowAlong: () => void;
 }
 
+// @ai-start
+interface FollowAlongChoice {
+  followAlongEnabled: boolean;
+}
+
+/**
+ * Whether the user has Follow Along on, and the only timestamp state that is
+ * saved. It was not saved at all, so switching it off lasted until the app
+ * was closed. Kept apart from useTimestampStore, which changes with every
+ * verse recited and would be written to storage each time.
+ * Exported for the foreground retry (services/persistedStores); the app
+ * reads the choice through useTimestampStore.
+ */
+export const useFollowAlongChoice = create<FollowAlongChoice>()(
+  persist((): FollowAlongChoice => ({followAlongEnabled: true}), {
+    name: 'follow-along-store',
+    storage: persistStorage(),
+  }),
+);
+// @ai-end
+
 export const useTimestampStore = create<TimestampState>()((set, get) => ({
   currentAyah: null,
   currentSurahTimestamps: null,
@@ -90,7 +113,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
   supportedRewayatIds: new Set<string>(),
   supportedReciterIds: new Set<string>(),
   registryLoaded: false,
-  followAlongEnabled: true,
+  followAlongEnabled: useFollowAlongChoice.getState().followAlongEnabled, // @ai
 
   setIsLocked: isLocked => set({isLocked}),
 
@@ -206,9 +229,26 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
     });
   },
 
-  toggleFollowAlong: () =>
-    set(state => ({followAlongEnabled: !state.followAlongEnabled})),
+  // @ai-start
+  toggleFollowAlong: () => {
+    const followAlongEnabled = !get().followAlongEnabled;
+    set({followAlongEnabled});
+    useFollowAlongChoice.setState({followAlongEnabled}); // saved
+  },
+  // @ai-end
 }));
+
+// @ai-start
+// The saved choice arriving from storage, at launch or on a later retry of a
+// read that failed. Only a change counts: storage with nothing saved also
+// reports back, and must not undo what the store holds.
+useFollowAlongChoice.subscribe(({followAlongEnabled}, previous) => {
+  if (followAlongEnabled === previous.followAlongEnabled) return;
+  if (useTimestampStore.getState().followAlongEnabled !== followAlongEnabled) {
+    useTimestampStore.setState({followAlongEnabled});
+  }
+});
+// @ai-end
 
 // @ai-start
 /**
