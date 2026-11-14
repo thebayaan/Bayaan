@@ -19,6 +19,7 @@ import {
   useVerseAnnotationsStore,
 } from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {HIGHLIGHT_COLORS} from '@/types/verse-annotations'; // @ai
 import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
@@ -246,6 +247,24 @@ export const VerseItem = memo<VerseItemProps>(
         [verseKey, unitRow],
       ),
     );
+    // @ai-start
+    // The verse's colour highlight. The rows showed bookmark and note marks
+    // but never the colour, so a highlight picked in the verse sheet left
+    // no trace in the list (the sheet then offered "Remove highlight").
+    const highlightColor = useVerseAnnotationsStore(
+      useCallback(
+        s =>
+          unitRow
+            ? unitRow.unit !== null
+              ? selectUnitAnnotations(s, unitRow.units).highlightColors[
+                  unitRow.unit.key
+                ]
+              : undefined
+            : s.highlights[verseKey],
+        [verseKey, unitRow],
+      ),
+    );
+    // @ai-end
     // Fetch tajweed data directly from store — granular selector means only
     // the ~10 visible VerseItems re-render when tajweed finishes loading
     const processedTajweedAyahData = useTajweedStore(
@@ -498,7 +517,20 @@ export const VerseItem = memo<VerseItemProps>(
     const containerStyle = useMemo(
       () => [
         styles.container,
-        {borderBottomColor: borderColor},
+        {
+          borderBottomColor: borderColor,
+          // @ai-start
+          // The colour highlight: below the follow-along and selection
+          // tints, as on the pages. Spread so an unhighlighted row's style
+          // is exactly as before.
+          ...(highlightColor
+            ? {
+                backgroundColor: HIGHLIGHT_COLORS[highlightColor],
+                borderRadius: moderateScale(8),
+              }
+            : null),
+          // @ai-end
+        },
         isActive && {
           backgroundColor: derivedColors.activeBg,
           borderRadius: moderateScale(8),
@@ -510,6 +542,7 @@ export const VerseItem = memo<VerseItemProps>(
       ],
       [
         borderColor,
+        highlightColor, // @ai
         isActive,
         derivedColors.activeBg,
         isSelected,

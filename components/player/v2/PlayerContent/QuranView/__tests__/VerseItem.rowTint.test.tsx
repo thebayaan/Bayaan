@@ -3,7 +3,7 @@
  * The row's background in the verse lists: the verse the list's own
  * selection holds, or the verse the mushaf's list modes pass as `selected`
  * (the verse a jump took the reader to, held in the mushaf's selection
- * store, which the row does not read).
+ * store, which the row does not read), and the verse's colour highlight.
  */
 
 import React, {act} from 'react';
@@ -78,6 +78,8 @@ jest.mock('@/store/verseSelectionStore', () => {
 import {VerseItem} from '../VerseItem';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -140,6 +142,7 @@ beforeEach(() => {
     selectedVerseKey: null,
     selectedRewayah: null,
   });
+  useVerseAnnotationsStore.setState({highlights: {}} as never);
 });
 
 afterEach(() => {
@@ -173,5 +176,49 @@ describe('selection', () => {
     act(() => renderer?.unmount());
     render({isActive: true});
     expect(rowBackground()).toBe(ACTIVE_BG);
+  });
+});
+
+describe('colour highlight', () => {
+  it('tints the row in the colour picked in the verse sheet', () => {
+    useVerseAnnotationsStore.setState({
+      highlights: {'2:255': 'yellow'},
+    } as never);
+    render();
+    expect(rowBackground()).toBe(HIGHLIGHT_COLORS.yellow);
+  });
+
+  it("another verse's highlight leaves the row plain", () => {
+    useVerseAnnotationsStore.setState({
+      highlights: {'2:256': 'green'},
+    } as never);
+    render();
+    expect(rowBackground()).toBeUndefined();
+  });
+
+  it('follows the store: recoloured and removed', () => {
+    useVerseAnnotationsStore.setState({
+      highlights: {'2:255': 'yellow'},
+    } as never);
+    render();
+    act(() =>
+      useVerseAnnotationsStore.setState({
+        highlights: {'2:255': 'purple'},
+      } as never),
+    );
+    expect(rowBackground()).toBe(HIGHLIGHT_COLORS.purple);
+    act(() => useVerseAnnotationsStore.setState({highlights: {}} as never));
+    expect(rowBackground()).toBeUndefined();
+  });
+
+  it('lies below the follow-along and selection tints, as on the pages', () => {
+    useVerseAnnotationsStore.setState({
+      highlights: {'2:255': 'yellow'},
+    } as never);
+    render({isActive: true});
+    expect(rowBackground()).toBe(ACTIVE_BG);
+    act(() => renderer?.unmount());
+    render({selected: true});
+    expect(rowBackground()).toBe(SELECTED_BG);
   });
 });
