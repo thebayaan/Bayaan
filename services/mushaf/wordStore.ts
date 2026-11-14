@@ -96,7 +96,12 @@ export async function readVerseIndex(
   ) {
     throw new Error('words table has a malformed row');
   }
-  return buildVerseIndex(rows);
+  const index = buildVerseIndex(rows);
+  // Ids 1..n with no gaps: else the first chunk read of a page fails.
+  if (index.last[index.keys.length - 1] !== counts.n) {
+    throw new Error(`words table ids are not 1..${counts.n}`);
+  }
+  return index;
 }
 
 function buildVerseIndex(rows: readonly VerseRangeRow[]): VerseIndex {
@@ -117,7 +122,8 @@ function buildVerseIndex(rows: readonly VerseRangeRow[]): VerseIndex {
       !isWholeNumber(row.ayah) ||
       !isWholeNumber(row.first) ||
       !isWholeNumber(row.last) ||
-      row.first <= previousLast ||
+      // Each verse starts right after the last one, and the first at id 1.
+      row.first !== previousLast + 1 ||
       row.last < row.first
     ) {
       throw new Error(`words table has a malformed verse (row ${i})`);
