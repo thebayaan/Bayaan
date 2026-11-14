@@ -31,10 +31,12 @@ jest.mock('@/hooks/useResponsive', () => ({
 
 import HomeBrowseScreen from '@/app/(tabs)/(a.home)/reciter/browse';
 import SearchBrowseScreen from '@/app/(tabs)/(b.search)/reciter/browse';
+import SurahsBrowseScreen from '@/app/(tabs)/(b.surahs)/reciter/browse';
 
 describe.each([
   ['Home', HomeBrowseScreen],
   ['Search', SearchBrowseScreen],
+  ['Surahs', SurahsBrowseScreen],
 ])('%s tab browse route', (_tab, Screen) => {
   function open(surahId?: string) {
     mockParams = surahId === undefined ? {} : {surahId};

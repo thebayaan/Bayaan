@@ -364,9 +364,7 @@ export function SearchView({
           });
           break;
         default:
-          SheetManager.show('select-reciter', {
-            payload: {surahId, source: 'search'},
-          });
+          SheetManager.show('select-reciter', {payload: {surahId}});
       }
       // @ai-end
     },

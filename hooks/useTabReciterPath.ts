@@ -27,18 +27,22 @@ export function reciterProfilePathname(
 
 export type ReciterBrowsePathname =
   | '/(tabs)/(a.home)/reciter/browse'
+  | '/(tabs)/(b.surahs)/reciter/browse'
   | '/(tabs)/(b.search)/reciter/browse';
 
 /**
  * "Browse reciters" route in the tab the user is on, so choosing a reciter
- * for a surah from Search stays in Search. Only tabs that declare a
- * `reciter/browse` screen are listed; the others fall back to Home.
+ * for a surah from Search or Surahs stays in that tab. Only tabs that
+ * declare a `reciter/browse` screen are listed; the others fall back to
+ * Home.
  */
 export function reciterBrowsePathname(
   segments: readonly string[],
 ): ReciterBrowsePathname {
   const tab = segments[0] === '(tabs)' ? segments[1] : undefined;
-  if (tab === '(b.search)') return '/(tabs)/(b.search)/reciter/browse';
+  if (tab === '(b.search)' || tab === '(b.surahs)') {
+    return `/(tabs)/${tab}/reciter/browse`;
+  }
   return '/(tabs)/(a.home)/reciter/browse';
 }
 

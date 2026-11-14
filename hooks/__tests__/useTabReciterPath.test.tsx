@@ -47,6 +47,7 @@ describe('reciterBrowsePathname', () => {
   const cases: [string[], string][] = [
     [['(tabs)', '(a.home)', 'browse-all-surahs'], '(a.home)'],
     [['(tabs)', '(b.search)', 'browse-all-surahs'], '(b.search)'],
+    [['(tabs)', '(b.surahs)'], '(b.surahs)'],
     // Tabs without a browse screen, and routes outside the tabs.
     [['(tabs)', '(c.collection)', 'collection', 'loved'], '(a.home)'],
     [['(tabs)', '(d.settings)'], '(a.home)'],
