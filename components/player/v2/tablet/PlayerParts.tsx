@@ -37,7 +37,7 @@ import {
   SeekForwardIcon,
   TimerIcon,
 } from '@/components/Icons';
-import {localizeDigits} from '@/i18n/format';
+import {decimalSeparator, localizeDigits} from '@/i18n/format'; // @ai
 import {forceLTR} from '@/utils/rtl';
 import {SEEK_INTERVAL, type PlayerTransport} from './usePlayerTransport';
 import {
@@ -413,7 +413,10 @@ export function useListeningTools(
         {...a11y.speed(playbackRate)}>
         {color => (
           <Text style={[styles.toolLabel, {color}]}>
-            {localizeDigits(`${playbackRate}x`)}
+            {/* Arabic shows ١٫٢٥, not ١.٢٥: the dot needs localizing too. */}
+            {localizeDigits(
+              `${String(playbackRate).replace('.', decimalSeparator())}x`,
+            )}
           </Text>
         )}
       </ToolButton>

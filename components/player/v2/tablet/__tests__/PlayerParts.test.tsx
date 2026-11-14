@@ -68,6 +68,18 @@ jest.mock('@/components/popovers/ToolPopovers', () => {
   return {AmbientPopover: fallback, ReadingSettingsPopover: fallback};
 });
 
+// Lets a test render in Arabic; the module default is English. @ai
+let mockLanguage: 'en' | 'ar' = 'en';
+jest.mock('@/i18n/format', () => {
+  const actual = jest.requireActual('@/i18n/format');
+  return {
+    ...actual,
+    localizeDigits: (value: string | number) =>
+      actual.localizeDigits(value, mockLanguage),
+    decimalSeparator: () => actual.decimalSeparator(mockLanguage),
+  };
+});
+
 import {
   PaneSwitcher,
   ReadingTools,
@@ -212,6 +224,16 @@ describe('useListeningTools', () => {
       StyleSheet.flatten(p.props.style({pressed: false})).backgroundColor;
     expect(fill(speed)).not.toBe('transparent');
     expect(fill(repeat)).toBe('transparent');
+  });
+
+  it('writes the speed with the Arabic decimal separator in Arabic', () => {
+    mockLanguage = 'ar';
+    try {
+      const r = mount(<Tools t={transport({playbackRate: 1.25})} />);
+      expect(textOf(toolButtons(r)[0])).toBe('\u0661\u066B\u0662\u0665x');
+    } finally {
+      mockLanguage = 'en';
+    }
   });
 
   it('cycles repeat from its button', () => {
