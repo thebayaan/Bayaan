@@ -214,7 +214,8 @@
     "loadFailed": "Couldn't load the {{rewayah}} text.",
     "loadingText": "Loading the {{rewayah}} text",
     "irab": "I'rab",
-    "wordStudy": "Word Study"
+    "wordStudy": "Word Study",
+    "rootSearch": "Root search"
   },
   "mushafPlayer": {
     "title": "Playback Settings",

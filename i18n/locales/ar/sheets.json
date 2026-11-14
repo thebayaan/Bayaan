@@ -238,7 +238,8 @@
     "loadFailed": "تعذّر تحميل نص رواية {{rewayah}}.",
     "loadingText": "جارٍ تحميل نص رواية {{rewayah}}",
     "irab": "الإعراب",
-    "wordStudy": "دراسة الكلمات"
+    "wordStudy": "دراسة الكلمات",
+    "rootSearch": "البحث بالجذر"
   },
   "mushafPlayer": {
     "title": "إعدادات التشغيل",
