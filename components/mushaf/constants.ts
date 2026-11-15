@@ -167,7 +167,7 @@ export interface MushafLayoutOpts {
   /**
    * The left and right insets the page keeps clear of. Only phone landscape
    * reads them. The caller decides which insets count: main.tsx passes the
-   * iOS cutout (the sensor housing) and nothing on Android.
+   * safe-area side insets (the cutout, and the Android navigation bar).
    */
   sideInsets?: {left: number; right: number};
   // @ai-end

@@ -3,9 +3,9 @@
 // the iOS cutout, pages 1-2, and the page-label gutters.
 //
 // UIKit reports landscape horizontal insets on both sides (59/59 on a
-// Dynamic Island phone, 44/44 on a notch phone). Android reports its
-// navigation bar through the same fields, so main.tsx passes them as
-// `sideInsets` on iOS only.
+// Dynamic Island phone, 44/44 on a notch phone). main.tsx passes the side
+// insets as `sideInsets` on both platforms; on Android they carry the
+// display cutout and the navigation bar.
 
 import {
   calculateLineYPositions,
@@ -45,13 +45,12 @@ const insets = (left: number, right: number) => ({
   right,
 });
 
-// What main.tsx passes: on iOS the side insets are the cutout, and on
-// Android it passes none.
+// What main.tsx passes: the side insets, also as `sideInsets`.
 const ios = (left: number, right: number) => ({
   insets: insets(left, right),
   sideInsets: {left, right},
 });
-const android = (left: number, right: number) => ({
+const noSideInsets = (left: number, right: number) => ({
   insets: insets(left, right),
 });
 
@@ -149,10 +148,12 @@ describe('getMushafLayout — phone landscape display cutout', () => {
 });
 
 describe('getMushafLayout — only sideInsets move the page', () => {
-  it('never reads insets.left / insets.right (Android: no side insets)', () => {
-    // Edge to edge, a landscape inset on Android is the navigation bar, not a
-    // cutout, and main.tsx passes no side insets there.
-    const withNavBar = getMushafLayout({...baseOpts, ...android(NAV_BAR, 0)});
+  it('never reads insets.left / insets.right', () => {
+    // main.tsx decides which insets the page keeps clear of.
+    const withNavBar = getMushafLayout({
+      ...baseOpts,
+      ...noSideInsets(NAV_BAR, 0),
+    });
     const withNothing = getMushafLayout({...baseOpts, insets: insets(0, 0)});
 
     expect(withNavBar).toEqual(withNothing);
