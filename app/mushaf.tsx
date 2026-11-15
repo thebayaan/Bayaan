@@ -68,11 +68,9 @@ export type MushafScreenParams = {
 
 export default function MushafScreen() {
   const params = useLocalSearchParams<MushafScreenParams>(); // @ai
-  const {theme} = useTheme();
-  const {t} = useTranslation(['reader', 'common']); // @ai
   // @ai-start
   // The data loads after the splash, so this screen can open first. The reader
-  // mounts when the data, the fonts and its page are ready.
+  // mounts when the data, the fonts and its page are ready, and then stays.
   const open = useMushafOpenTarget(params);
   // @ai-end
 
@@ -96,50 +94,73 @@ export default function MushafScreen() {
 
   // @ai-start
   if (open.state === 'ready') {
+    // A load that fails later shows over the reader, which keeps its page.
     return (
-      <MushafReader
-        target={open.target}
-        playerOptions={params.playerOptions === '1'}
-      />
+      <>
+        <MushafReader
+          target={open.target}
+          playerOptions={params.playerOptions === '1'}
+        />
+        {open.data !== 'ready' && (
+          <View style={StyleSheet.absoluteFill}>
+            {open.data === 'failed' ? (
+              <MushafLoadFailed retry={open.retry} />
+            ) : (
+              <MushafLoading />
+            )}
+          </View>
+        )}
+      </>
     );
   }
-
-  // When the mushaf text cannot be loaded (e.g. no storage left to copy it
-  // to the device), say so and offer a retry, not an endless spinner.
-  if (open.state === 'failed') {
-    return (
-      <View
-        style={[styles.loading, {backgroundColor: theme.colors.background}]}
-        accessibilityRole="alert">
-        <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
-          {t('reader:mushaf.loadFailedTitle')}
-        </Text>
-        <Text style={[styles.errorBody, {color: theme.colors.text}]}>
-          {t('reader:mushaf.loadFailedBody')}
-        </Text>
-        <Pressable
-          onPress={open.retry}
-          accessibilityRole="button"
-          hitSlop={8}
-          style={({pressed}) => [
-            styles.retryButton,
-            {borderColor: theme.colors.text},
-            pressed && styles.retryButtonPressed,
-          ]}>
-          <Text style={[styles.retryText, {color: theme.colors.text}]}>
-            {t('common:actions.tryAgain')}
-          </Text>
-        </Pressable>
-      </View>
-    );
-  }
+  if (open.state === 'failed') return <MushafLoadFailed retry={open.retry} />;
+  return <MushafLoading />;
   // @ai-end
+}
+
+// @ai-start
+function MushafLoading() {
+  const {theme} = useTheme();
   return (
     <View style={[styles.loading, {backgroundColor: theme.colors.background}]}>
       <ActivityIndicator size="large" color={theme.colors.text} />
     </View>
   );
 }
+
+// When the mushaf text cannot be loaded (e.g. no storage left to copy it
+// to the device), say so and offer a retry, not an endless spinner.
+function MushafLoadFailed({retry}: {retry: () => void}) {
+  const {theme} = useTheme();
+  const {t} = useTranslation(['reader', 'common']);
+  return (
+    <View
+      style={[styles.loading, {backgroundColor: theme.colors.background}]}
+      accessibilityRole="alert"
+      accessibilityViewIsModal>
+      <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
+        {t('reader:mushaf.loadFailedTitle')}
+      </Text>
+      <Text style={[styles.errorBody, {color: theme.colors.text}]}>
+        {t('reader:mushaf.loadFailedBody')}
+      </Text>
+      <Pressable
+        onPress={retry}
+        accessibilityRole="button"
+        hitSlop={8}
+        style={({pressed}) => [
+          styles.retryButton,
+          {borderColor: theme.colors.text},
+          pressed && styles.retryButtonPressed,
+        ]}>
+        <Text style={[styles.retryText, {color: theme.colors.text}]}>
+          {t('common:actions.tryAgain')}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+// @ai-end
 
 // @ai-start
 // The reader at its open target. The target is fixed, so each effect here runs
