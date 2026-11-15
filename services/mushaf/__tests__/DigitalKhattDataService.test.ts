@@ -1308,9 +1308,12 @@ describe('chunk reads (WordStore)', () => {
       expect(service.rewayah).toBe('hafs');
       expect(service.getWordText(1)).toBe('H1');
       expect(service.getRewayahLoadState('warsh')).toBe('error');
+      expect(fake.files.has(N.warsh)).toBe(false); // its copy went
       expect(fake.violations).toEqual([]);
 
+      fake.log.length = 0;
       await service.switchRewayah('warsh');
+      expect(count(`import:${N.warsh}`)).toBe(1);
       expect(service.rewayah).toBe('warsh');
       expect(service.getWordText(1)).toBe('W1');
       expect(service.getLayoutIdentityKey()).not.toBeNull();
