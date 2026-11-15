@@ -191,6 +191,10 @@ Morphology, Arabic meaning (`word-study/GharibSection`) and Rasm
 books. It opens from the Explore card's Word Study row, from a word
 long-press in a list or player word-by-word grid (payload `initialScreen:
 'words'` with the `word`), and from a long-press in the Word by Word screen.
+A word of al-Fatiha's unnumbered basmala row (Warsh, Qalun, al-Duri,
+al-Susi), which is no verse there, opens Word Study alone (payload
+`wordStudyOnly`): Hafs 1:1's words, shown as another rewayah's verse is,
+with no verse selected and no action list; back closes the sheet.
 
 `components/browse/FilterModal.tsx` is a modal outside the sheet registry.
 `components/BottomSheetModal.tsx`, `components/modals/WhatsNewModal.tsx` and

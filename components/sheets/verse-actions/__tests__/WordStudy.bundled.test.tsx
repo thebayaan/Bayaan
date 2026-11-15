@@ -117,6 +117,7 @@ import {useDatabaseDir, resetDatabases} from '@/test-utils/mockExpoSqlite';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore'; // @ai
 import {WordStudyContent} from '../WordStudyContent';
 import type {WordRef} from '../wordStudy';
+import {selectionWordParts, type WordStudySubject} from '../verseUnitScreens'; // @ai
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -155,7 +156,8 @@ afterEach(() => {
   renderer = null;
 });
 
-function hafs(...verseKeys: string[]) {
+// The words of these Hafs verses, as the sheet gives them to Word Study. @ai
+function hafs(...verseKeys: string[]): WordStudySubject {
   const [surahNumber, ayahNumber] = verseKeys[0].split(':').map(Number);
   const selection = selectVerses(
     {
@@ -169,14 +171,14 @@ function hafs(...verseKeys: string[]) {
     'ready',
   );
   if (selection.status !== 'ready') throw new Error('not ready');
-  return selection;
+  return {rewayah: 'hafs', parts: selectionWordParts(selection)}; // @ai
 }
 
 async function open(verseKeys: string[], initialWord?: WordRef) {
   act(() => {
     renderer = TestRenderer.create(
       <WordStudyContent
-        selection={hafs(...verseKeys)}
+        study={hafs(...verseKeys)} // @ai
         initialWord={initialWord}
       />,
     );

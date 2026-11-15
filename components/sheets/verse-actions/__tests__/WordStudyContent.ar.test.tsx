@@ -89,6 +89,7 @@ import {
 import {unitSelection} from '@/components/share/rewayahVerseSelection';
 import {currentLanguage} from '@/i18n/language';
 import {WordStudyContent} from '../WordStudyContent';
+import {selectionWordParts} from '../verseUnitScreens'; // @ai
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -136,7 +137,13 @@ it('speaks Arabic, with Arabic-Indic digits in the counter and the chips', async
   if (!unit) throw new Error('no Warsh 103:1');
   act(() => {
     renderer = TestRenderer.create(
-      <WordStudyContent selection={unitSelection(warsh, [unit])} />,
+      <WordStudyContent
+        // @ai
+        study={{
+          rewayah: 'warsh',
+          parts: selectionWordParts(unitSelection(warsh, [unit])),
+        }}
+      />,
     );
   });
   for (let i = 0; i < 6; i++) {

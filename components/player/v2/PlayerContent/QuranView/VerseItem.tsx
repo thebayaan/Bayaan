@@ -29,7 +29,11 @@ import type {RewayahWordsStatus} from '@/hooks/useRewayahWords'; // @ai
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
 // @ai-start
-import {unitVerseActionsPayload, type VerseUnitRow} from './verseUnitRows';
+import {
+  unitVerseActionsPayload,
+  unnumberedWordStudyPayload,
+  type VerseUnitRow,
+} from './verseUnitRows';
 import {
   UnitRowTranslations,
   UnitRowWordByWord,
@@ -117,7 +121,8 @@ interface VerseItemProps {
    * label, text, selection, bookmark / note dots and verse-actions payload
    * follow the rewayah's own verse, and its translation, notes and word by
    * word come per Hafs verse it holds. The basmala row has no number and no
-   * actions. Omitted: a Hafs verse row, exactly as before.
+   * verse actions; a word of its grid opens Word Study alone. Omitted: a
+   * Hafs verse row, exactly as before.
    */
   unitRow?: VerseUnitRow;
   // @ai-end
@@ -455,17 +460,26 @@ export const VerseItem = memo<VerseItemProps>(
 
     // A verse row's word-by-word word: Word Study of the rewayah verse, at
     // the word of its HAFS verse (word by word is Hafs data, keyed by Hafs
-    // verse and word position). The unnumbered basmala has no sheet.
+    // verse and word position). A word of the unnumbered basmala, which is
+    // no verse here: Word Study alone at that word (Hafs 1:1's words, shown
+    // for the row's rewayah as its verses' are), with no verse selected.
+    // The word stays lifted until the sheet closes.
     const handleUnitWordPress = useCallback(
       (word: UnitRowWord) => {
-        const shown = openUnitActions(false, word);
+        const basmala =
+          unitRow && !unitRow.unit
+            ? unnumberedWordStudyPayload(unitRow, word, source ?? 'player')
+            : null;
+        const shown = basmala
+          ? SheetManager.show('verse-actions', {payload: basmala})
+          : openUnitActions(false, word);
         if (!shown) return;
         setSelectedUnitWord(word);
         shown.then(() => {
           setSelectedUnitWord(null);
         });
       },
-      [openUnitActions],
+      [unitRow, source, openUnitActions],
     );
     // @ai-end
 

@@ -571,7 +571,7 @@ None of these keys is a plural key. Quran text is never stored in locale files; 
 | P4 / 1:2 | 9:100:17 (differs); 37:130:3; 72:16:1 | Text as stored; `w` | `writtenApart` (72:16) |
 | Inline `۝N` | 57–67 per rewayah | Stripped; `v` | `verseEndHere` |
 | Blank Hafs marker slot | 76–83 per rewayah | `v: 0` on the word before | `noVerseEndHere` |
-| Fatiha basmala, Madani/Basri counts | 1:1:5 blank in 4 DBs; untinted by design | `u` | `basmalaUnnumbered`. Not reachable from a Warsh mushaf, because it belongs to no unit (RewayahVerseUnits.ts:389-394) |
+| Fatiha basmala, Madani/Basri counts | 1:1:5 blank in 4 DBs; untinted by design | `u` | `basmalaUnnumbered`. The basmala belongs to no unit (RewayahVerseUnits.ts:389-394), so no verse selection reaches it; a basmala word in the list view or the player's word grid opens Word Study alone (`wordStudyOnly`) and shows it. The Mushaf page view does not: a basmala long-press there opens nothing |
 | Marker slots as words | — | Never stored | Not selectable |
 | WBW `بَعْدَ مَا` (2:181:3, 8:6:4, 13:37:8) | One WBW word = two DK slots | — | `dkPositionsForWbwWord` → `combineReadings` |
 | Suspected misprints | 4 texts | `q` | `questioned` note |

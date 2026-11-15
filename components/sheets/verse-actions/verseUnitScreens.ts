@@ -22,6 +22,7 @@ import {
   type VerseUnit,
 } from '@/services/mushaf/RewayahVerseUnits';
 import type {TafseerResult} from '@/services/tafseer/TafseerDbService';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity'; // @ai
 import {
   selectionTranslationParts,
   unitSelection,
@@ -199,8 +200,7 @@ export function selectionWordParts(
 ): WordStudyPart[] {
   const {units, model} = selection;
   if (!units || !model || units.length === 0) {
-    const caption = selection.hafsKeys.length > 1 ? 'verse' : 'none';
-    return selection.hafsKeys.map(verseKey => ({verseKey, caption}));
+    return hafsVerseWordParts(selection.hafsKeys, 'hafs');
   }
   const firstId = units[0].firstWordId;
   const lastId = units[units.length - 1].lastWordId;
@@ -229,6 +229,36 @@ export function selectionWordParts(
     parts.push(part);
   }
   return parts;
+}
+
+/**
+ * Word Study's parts for whole Hafs verses shown in `rewayah`, captioned as
+ * selectionWordParts captions a selection's parts: Hafs as a Hafs selection
+ * ('verse' when there are several); another rewayah always 'hafsVerse'
+ * ("Hafs 1:1"). This is what the verse actions sheet's Word Study only mode
+ * studies (its payload's `wordStudyOnly`): words that are no verse of the
+ * rewayah, the unnumbered Fatiha basmala of the Madani and Basri counts
+ * (Warsh, Qalun, al-Duri, al-Susi). They have no number of the rewayah's
+ * own, so their Hafs reference is always named as Hafs.
+ */
+export function hafsVerseWordParts(
+  hafsKeys: readonly string[],
+  rewayah: RewayahId,
+): WordStudyPart[] {
+  const caption: WordPartCaption =
+    rewayah !== 'hafs' ? 'hafsVerse' : hafsKeys.length > 1 ? 'verse' : 'none';
+  return hafsKeys.map(verseKey => ({verseKey, caption}));
+}
+
+/** What Word Study studies: Hafs verses' words, in the rewayah shown. */
+export interface WordStudySubject {
+  /**
+   * The rewayah the sheet shows: the grid's, the card's Hafs chip and note,
+   * and the reading Readings marks Current.
+   */
+  rewayah: RewayahId;
+  /** selectionWordParts() of a selection, or hafsVerseWordParts(). */
+  parts: readonly WordStudyPart[];
 }
 // @ai-end
 

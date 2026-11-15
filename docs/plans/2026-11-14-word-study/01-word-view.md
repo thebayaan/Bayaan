@@ -9,7 +9,7 @@ The I'rab screen grows into the word view: a `words` screen of VerseActionsSheet
 Words tab: the grid of the current verse (cut to the selection's own words for another rewayah), with a fixed bottom bar (Previous / Next) that steps through every word of the selection, across verses. The bar follows the Quran's reading direction. Selections that span several verses also get verse chips.
 Word card, top to bottom: header (the mushaf's own word, transliteration, English meaning, Play, reference), then Readings (all 8 rewayat grouped by reader, open by default when any differs, the selection's rewayah marked Current), I'rab, Morphology (a root chip that opens root search, the lemma, Show more), Arabic meaning, Rasm. A section with no data for the word is not drawn.
 Another rewayah: all word data stays Hafs and is labelled with a Hafs chip and note; the Readings section shows how the selected rewayah reads the word.
-WordDetailSheet is deleted. Long-pressing a word in a list or player word-by-word grid selects its verse and opens the verse sheet on that word (payload `initialScreen: 'words'` plus `word`).
+WordDetailSheet is deleted. Long-pressing a word in a list or player word-by-word grid selects its verse and opens the verse sheet on that word (payload `initialScreen: 'words'` plus `word`). A word of the unnumbered Fatiha basmala row (Madani and Basri counts), which is no verse, selects nothing and opens Word Study alone (`wordStudyOnly`).
 A shared alignment between the mushaf's (DigitalKhatt) words and the word-by-word words gives each word its slot locations for the readings lookup. It also fixes today's mispaired grids in 25:42 and 27:26. Readings, gharib and rasm come through null-returning ports, so their sections stay hidden until the data lands.
 Plan: 3 PRs and 12 tasks (2 optional), each with unit and component tests. The VerseItem Hafs golden file changes on purpose.
 
@@ -70,7 +70,7 @@ Plan: 3 PRs and 12 tasks (2 optional), each with unit and component tests. The V
 | (a) Where | The I'rab screen becomes the word view. It is a `words` screen of `VerseActionsSheet`: the row and title are **Word Study / دراسة الكلمات**. It is offered for one verse **and** for multi-verse selections. Tabs: **Words / الكلمات** (the word view) and **I'rab books / كتب الإعراب** (today's Books tab). There is no new sheet and no new gesture on the mushaf page. |
 | (b) Stepping | Tap a word in the grid, as today, or use a fixed bottom bar (Previous / Next) that walks every word of the whole selection in reading order, across verses. The grid shows the verse holding the current word; a selection of several verses also gets verse chips. **Another rewayah:** the Hafs words of the selected verses only, with all word data marked as Hafs; Readings marks the selection's rewayah. |
 | (c) Layout | Header (word, transliteration, English meaning, Play, reference), then Readings, I'rab, Morphology (root chip, lemma, Show more), Arabic meaning, Rasm. Empty sections are not drawn. Whole-verse mode is today's list of every word's i'rab, each card headed by its word and meaning. |
-| (d) WordDetailSheet | Deleted. Long-pressing a word in a list or player word-by-word grid opens `verse-actions` on the Word Study screen at that word, with the verse selected. |
+| (d) WordDetailSheet | Deleted. Long-pressing a word in a list or player word-by-word grid opens `verse-actions` on the Word Study screen at that word, with the verse selected. The unnumbered Fatiha basmala row has no verse: its words open Word Study alone (payload `wordStudyOnly`), with nothing selected. |
 | (e) States | Loading and error states per section; a section with no data is hidden. The step bar follows the Quran's direction. 44pt targets; every control has a role, a label and a state. The iPad card uses the phone layout. |
 | (f) i18n | `verseActions.wordStudy` plus a `wordView.*` block (§7). `wordDetail.context`, `irab.tabWords` and `irab.tapWord` are removed. |
 | (g) Tests | Pure model and alignment (including a test over the bundled databases), the data hooks, two component suites, updated sheet and VerseItem tests, and the intended change to the Hafs golden file. |
@@ -208,6 +208,7 @@ Plan: 3 PRs and 12 tasks (2 optional), each with unit and component tests. The V
   - Then `SheetManager.show('verse-actions', {payload: {...the long-press payload (:372-383), initialScreen: 'words', word: {verseKey, position}}})` with `.then(() => setSelectedWordPosition(null))`.
   - Build the long-press payload in one local helper so the long-press and options payloads stay byte-identical (golden file).
 - **`VerseItem.tsx`, rewayah rows** (`handleUnitWordPress`, :443-450): `unitVerseActionsPayload(unitRow, source)` (`verseUnitRows.ts:415-430`) plus `initialScreen` and `word: {verseKey: word.hafsKey, position: word.position}`, with the selection as in `openUnitActions` (:343-358).
+- **The unnumbered Fatiha basmala row** (Warsh, Qalun, al-Duri, al-Susi) has no unit, so no verse to select. Its words send `unnumberedWordStudyPayload` (`verseUnitRows.ts`): Hafs 1:1, the word, the row's rewayah and `wordStudyOnly: true`. In that mode the sheet builds Word Study's parts from the payload alone (`hafsVerseWordParts`, captioned "Hafs 1:1"), never waits for a selection or shows the action list, and its back row and Android back close it from Word Study (root search still returns to Word Study). Android's back reaches the sheet (a Modal) only through `onRequestClose`; BackHandler never hears it while the sheet is up. In every mode, a screen with somewhere to go back to steps back and returns `false`, so the sheet stays open.
 - **Deleted:**
   - `components/sheets/WordDetailSheet.tsx`;
   - its import, `registerSheet` call and payload type (`sheets.tsx:42, :90, :271-276`);
@@ -219,7 +220,7 @@ Plan: 3 PRs and 12 tasks (2 optional), each with unit and component tests. The V
 
 | State | Shown |
 |---|---|
-| Another rewayah's verses are loading, refused or unnumbered | existing `SelectionPendingView` (`VerseActionsSheet.tsx:824-829`) |
+| Another rewayah's verses are loading, refused or unnumbered | existing `SelectionPendingView` (`VerseActionsSheet.tsx:824-829`); a basmala word's Word Study only (`wordStudyOnly`) never waits |
 | Verse words loading (word by word, Hafs DigitalKhatt, i'rab) | centered `ActivityIndicator` under the tabs (as `IrabContent.tsx:274-275`); no step bar |
 | Word-by-word or Hafs words failed | `wordView.loadFailed` + `common:actions.tryAgain` |
 | A part with no word-by-word words | `wordView.noWords` in place of its grid and card |

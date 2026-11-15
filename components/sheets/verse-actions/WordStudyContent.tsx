@@ -15,7 +15,9 @@
  * Another rewayah's selection steps through the Hafs words of its verses
  * (word-by-word, i'rab, gharib, rasm and word audio are Hafs data), cut to
  * the words the selection holds; the card's Readings show how the rewayah
- * reads each word.
+ * reads each word. Words that are no verse of the rewayah (the unnumbered
+ * Fatiha basmala of the Madani and Basri counts) are shown the same way,
+ * as the words of Hafs 1:1 (verseUnitScreens.ts, hafsVerseWordParts).
  *
  * Navigation over the Quran text follows the text in both app languages:
  * the bar's Next is on the physical left, as the reader's arrow keys
@@ -49,7 +51,6 @@ import {useTranslation} from 'react-i18next';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {WBWVerseView} from '@/components/player/v2/PlayerContent/QuranView/WBWVerseView';
-import type {ReadyVerseSelection} from '@/components/share/rewayahVerseSelection';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {useHover} from '@/hooks/useHover';
 import {useKeyCommands} from '@/hooks/useKeyCommands';
@@ -78,7 +79,7 @@ import {
   useWordStudyData,
   type PartData,
 } from './useWordStudyData';
-import {selectionWordParts, type WordStudyPart} from './verseUnitScreens';
+import type {WordStudyPart, WordStudySubject} from './verseUnitScreens';
 import {
   CompactWordCard,
   DEFAULT_CARD_SECTIONS,
@@ -88,7 +89,15 @@ import {
 import {indexOfWord, type StudyWord, type WordRef} from './wordStudy';
 
 export interface WordStudyContentProps {
-  selection: ReadyVerseSelection;
+  // @ai-start
+  /**
+   * The words to study and the rewayah the sheet shows: a selection's
+   * selectionWordParts() and its rewayah, or the Hafs verses of words that
+   * are no verse of the rewayah (hafsVerseWordParts(), the unnumbered
+   * Fatiha basmala). Keep it the same object while it means the same words.
+   */
+  study: WordStudySubject;
+  // @ai-end
   /**
    * The word to open on (the payload's word, or a long-press in Word by
    * Word); the first word when it is not in the selection.
@@ -122,7 +131,7 @@ function partLabel(
 }
 
 export const WordStudyContent: React.FC<WordStudyContentProps> = ({
-  selection,
+  study: {rewayah, parts}, // @ai
   initialWord,
   onRootPress,
 }) => {
@@ -137,7 +146,6 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
   const irabStyles = useMemo(() => createIrabStyles(theme), [theme]);
   const reduceMotion = useReducedMotion();
 
-  const parts = useMemo(() => selectionWordParts(selection), [selection]);
   const data = useWordStudyData(parts);
   const verseKeys = useMemo(() => parts.map(p => p.verseKey), [parts]);
 
@@ -165,7 +173,7 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
     () => sequence.filter(w => w.part === partIndex),
     [sequence, partIndex],
   );
-  const study = useVerseWordStudy(current?.verseKey ?? null);
+  const verseStudy = useVerseWordStudy(current?.verseKey ?? null); // @ai
 
   const textByVerse = useMemo(
     () => new Map(ready?.parts.map(p => [p.part.verseKey, p.wordText]) ?? []),
@@ -410,7 +418,7 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
                 key={`${part.verseKey}:${hafsWordsReady ? 'ready' : 'loading'}`}
                 verseKey={part.verseKey}
                 wordRange={part.wordRange}
-                rewayah={selection.rewayah}
+                rewayah={rewayah} // @ai
                 textColor={theme.colors.text}
                 arabicFontSize={arabicFontSize}
                 dkFontFamily={getDkFontFamily(mushafRenderer, 'hafs')}
@@ -474,8 +482,8 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
                       ? null
                       : partData.irab.find(w => w.position === current.position)
                   }
-                  rewayah={selection.rewayah}
-                  study={study}
+                  rewayah={rewayah} // @ai
+                  study={verseStudy} // @ai
                   wordTextOf={wordTextOf}
                   canOpen={canOpen}
                   onRef={onRef}

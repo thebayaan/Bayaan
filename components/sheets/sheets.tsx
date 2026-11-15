@@ -224,6 +224,18 @@ declare module 'react-native-actions-sheet' {
          *  word-by-word position (the selection's first word when it is not
          *  one of its words). */
         word?: {verseKey: string; position: number};
+        /**
+         * Word Study only, for words that are no verse of `rewayah`: the
+         * unnumbered Fatiha basmala of the Madani and Basri counts (Warsh,
+         * Qalun, al-Duri, al-Susi), whose words are Hafs 1:1's. The sheet
+         * opens on Word Study at `word` over the words of the Hafs verse(s)
+         * verseKey / verseKeys name (captioned "Hafs 1:1", as another
+         * rewayah's verse is). It selects no verse, never waits for one
+         * and never shows the verse menu, whose actions act on verses; back
+         * from Word Study closes the sheet (from root search it returns to
+         * Word Study). unitKeys are not read.
+         */
+        wordStudyOnly?: boolean;
         // @ai-end
       };
     }>;

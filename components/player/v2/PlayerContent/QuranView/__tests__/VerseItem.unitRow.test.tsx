@@ -4,7 +4,8 @@
  * the rewayah's OWN verse. Its pill, text, selection, bookmark / note dots
  * and verse-actions payload follow that verse in the rewayah's numbering;
  * its translations, notes, word by word and reflections come per Hafs verse
- * it holds; the unnumbered Fatiha basmala has no number and no actions.
+ * it holds; the unnumbered Fatiha basmala has no number and no verse
+ * actions, and its words open Word Study alone.
  * Real slots (the verse-units fixture): Warsh al-Fatihah (Hafs 1:7 split
  * into Warsh 1:6 and 1:7) and al-‘Asr (Warsh 103:1 = Hafs 103:1 + 103:2).
  * Hafs rows: VerseItem.hafsGolden.test.tsx.
@@ -565,12 +566,43 @@ describe('the unnumbered Fatiha basmala (Madani count)', () => {
   });
 
   // @ai-start
-  it('its words open no sheet either (no verse to study them in)', () => {
-    render(basmala, {showWBW: true});
+  it('a word opens Word Study alone at that word of Hafs 1:1, selecting no verse', () => {
+    // The sheet stays open: the word stays lifted.
+    mockSheetShow.mockImplementationOnce(() => new Promise(() => undefined));
+    render(basmala, {showWBW: true, source: 'mushaf'});
     act(() => mockHandlers.onWordPress?.(2));
-    expect(mockSheetShow).not.toHaveBeenCalled();
+    expect(mockSheetShow.mock.calls).toEqual([
+      [
+        'verse-actions',
+        {
+          payload: {
+            verseKey: '1:1',
+            surahNumber: 1,
+            ayahNumber: 1,
+            source: 'mushaf',
+            rewayah: 'warsh',
+            initialScreen: 'words',
+            word: {verseKey: '1:1', position: 2},
+            wordStudyOnly: true,
+          },
+        },
+      ],
+    ]);
+    // No verse: nothing selected, so no row lights up as selected.
+    const sel = useVerseSelectionStore.getState();
+    expect([sel.selectedVerseKey, sel.selectedRewayah]).toEqual([null, null]);
+    expect(last('WBWVerseView').selectedWordPosition).toBe(2);
+    // The grid buzzes for the word itself; the row adds nothing.
+    expect(mockHaptics).not.toHaveBeenCalled();
+  });
+
+  it('the basmala word is let go when the sheet closes', async () => {
+    render(basmala, {showWBW: true});
+    await act(async () => {
+      mockHandlers.onWordPress?.(4);
+    });
+    expect(mockSheetShow).toHaveBeenCalledTimes(1);
     expect(last('WBWVerseView').selectedWordPosition).toBeNull();
-    expect(useVerseSelectionStore.getState().selectedVerseKey).toBeNull();
   });
   // @ai-end
 });

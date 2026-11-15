@@ -151,6 +151,8 @@ const mockPlayer = {
 jest.mock('@/store/mushafPlayerStore', () => ({
   useMushafPlayerStore: {getState: () => mockPlayer, setState: jest.fn()},
 }));
+// One setSheetMode across getState() calls, so a collapse is seen.
+const mockMainPlayer = {setSheetMode: jest.fn()}; // @ai
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: {
     getState: () => ({
@@ -160,7 +162,7 @@ jest.mock('@/services/player/store/playerStore', () => ({
       },
       playback: {state: 'paused'},
       pause: jest.fn(),
-      setSheetMode: jest.fn(),
+      setSheetMode: mockMainPlayer.setSheetMode, // @ai
     }),
   },
 }));
@@ -225,6 +227,11 @@ import {qulDataService} from '@/services/mushaf/QulDataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+// @ai-start
+import {SheetManager} from 'react-native-actions-sheet';
+import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+// @ai-end
 import {setStoredRows as setRows} from '../verse-actions/__fixtures__/storedRows';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
@@ -310,6 +317,34 @@ const last = (name: string) => {
   const calls = mockScreens[name] ?? [];
   return calls[calls.length - 1];
 };
+
+// @ai-start
+// react-native-actions-sheet's CloseRequestType (its entry does not export
+// it): why the sheet is asked to close.
+const SWIPE = 0;
+const BACK_PRESS = 1; // Android's back button or back gesture
+const TOUCH_BACKDROP = 2;
+
+/**
+ * The sheet's onRequestClose as the library got it now (call it right after
+ * openSheet for the first render's: the library memoizes its back handler
+ * without it, so it can keep calling that one). Resolves true when the
+ * sheet may close; false keeps it open.
+ */
+function closeRequests(): (type: number) => Promise<boolean> {
+  const sheet = root().find(n => typeof n.props.onRequestClose === 'function');
+  const onRequestClose = sheet.props.onRequestClose as (
+    type: number,
+  ) => boolean;
+  return async type => {
+    let closes = true;
+    await act(async () => {
+      closes = onRequestClose(type);
+    });
+    return closes;
+  };
+}
+// @ai-end
 
 /** A Warsh payload as a unit producer builds it (contract 4.1). */
 function warshUnitPayload(unitKeys: string[], extra: Partial<Payload> = {}) {
@@ -482,7 +517,7 @@ describe('Hafs (unchanged)', () => {
     await openSheet(payload);
     await press('Word Study');
     expect(last('words')).toMatchObject({
-      selection: {rewayah: 'hafs', keys: ['2:255'], units: null},
+      study: {rewayah: 'hafs', parts: [{verseKey: '2:255', caption: 'none'}]},
       initialWord: undefined,
     });
     expect(texts()).toContain('Word Study');
@@ -503,7 +538,13 @@ describe('Hafs (unchanged)', () => {
     expect(shown.indexOf('Word Study')).toBe(shown.indexOf('Translation') + 1);
     await press('Word Study');
     expect(last('words')).toMatchObject({
-      selection: {keys: ['2:1', '2:2'], hafsKeys: ['2:1', '2:2']},
+      study: {
+        rewayah: 'hafs',
+        parts: [
+          {verseKey: '2:1', caption: 'verse'},
+          {verseKey: '2:2', caption: 'verse'},
+        ],
+      },
     });
   });
 
@@ -514,7 +555,7 @@ describe('Hafs (unchanged)', () => {
       word: {verseKey: '2:255', position: 3},
     });
     expect(last('words')).toMatchObject({
-      selection: {keys: ['2:255']},
+      study: {parts: [{verseKey: '2:255'}]},
       initialWord: {verseKey: '2:255', position: 3},
     });
     // The back row is titled Word Study and returns to the verse's actions.
@@ -550,6 +591,40 @@ describe('Hafs (unchanged)', () => {
     expect(texts()).toContain('Word Study');
   });
 
+  it("Android's back steps back a screen; from the menu it closes the sheet", async () => {
+    // The sheet is a Modal: Android's back reaches it only as
+    // onRequestClose (BackHandler never hears it while the sheet is up).
+    await openSheet(payload);
+    const request = closeRequests();
+    expect(await request(BACK_PRESS)).toBe(true);
+    await press('Translation');
+    // A swipe or a backdrop tap closes it from any screen, as before.
+    expect(await request(SWIPE)).toBe(true);
+    expect(await request(TOUCH_BACKDROP)).toBe(true);
+    expect(texts()).not.toContain('Copy');
+    // Back returns to the verse's actions and keeps the sheet open.
+    expect(await request(BACK_PRESS)).toBe(false);
+    expect(texts()).toEqual(expect.arrayContaining(['Copy', '2:255']));
+    // Root search goes back to Word Study, Word Study to the actions.
+    await press('Word Study');
+    const onRootPress = last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+    await act(async () =>
+      onRootPress('ء ل ه', null, {verseKey: '2:255', position: 1}),
+    );
+    expect(await request(BACK_PRESS)).toBe(false);
+    expect(texts()).toContain('Word Study');
+    expect(last('words')).toMatchObject({
+      initialWord: {verseKey: '2:255', position: 1},
+    });
+    expect(await request(BACK_PRESS)).toBe(false);
+    expect(texts()).toContain('Copy');
+    expect(SheetManager.hide).not.toHaveBeenCalled();
+  });
+
   it('an ayah of the root opens the Mushaf on its words', async () => {
     await openSheet(payload);
     await press('Word Study');
@@ -582,13 +657,44 @@ describe('Hafs (unchanged)', () => {
     });
   });
 
+  it('from the player, an ayah of the root collapses the player before the Mushaf opens', async () => {
+    // The open player is drawn above every route: pushed behind it, the
+    // Mushaf would open out of sight.
+    await openSheet({...payload, source: 'player'});
+    await press('Word Study');
+    const onRootPress = last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+    await act(async () =>
+      onRootPress('ر ح م', null, {verseKey: '1:1', position: 3}),
+    );
+    const onVersePress = last('root').onVersePress as (hit: unknown) => void;
+    await act(async () =>
+      onVersePress({
+        verseIndex: 0,
+        verseKey: '1:3',
+        matches: [{position: 1, length: 1}],
+        score: 1,
+      }),
+    );
+    expect(SheetManager.hide).toHaveBeenCalledWith('verse-actions');
+    expect(mockMainPlayer.setSheetMode).toHaveBeenCalledWith('hidden');
+    expect(router.push).toHaveBeenCalledTimes(1);
+    const push = router.push as jest.Mock;
+    expect(
+      mockMainPlayer.setSheetMode.mock.invocationCallOrder[0],
+    ).toBeLessThan(push.mock.invocationCallOrder[0]);
+  });
+
   it('a long-press in Word by Word studies that word', async () => {
     await openSheet(payload);
     await press('Word by Word');
     const onOpenWord = last('wbw').onOpenWord as (word: unknown) => void;
     await act(async () => onOpenWord({verseKey: '2:255', position: 5}));
     expect(last('words')).toMatchObject({
-      selection: {keys: ['2:255']},
+      study: {parts: [{verseKey: '2:255'}]},
       initialWord: {verseKey: '2:255', position: 5},
     });
     expect(texts()).toContain('Word Study');
@@ -677,12 +783,19 @@ describe('Warsh verses in their own numbering', () => {
     // @ai-start
     await openSheet(warshUnitPayload(['1:7']));
     await press('Word Study');
+    // Warsh 1:7's own words: Hafs 1:7 from its fifth slot.
     expect(last('words')).toMatchObject({
-      selection: {rewayah: 'warsh', keys: ['1:7']},
+      study: {
+        rewayah: 'warsh',
+        parts: [
+          {
+            verseKey: '1:7',
+            caption: 'hafsVerse',
+            wordRange: {first: 5, last: 10},
+          },
+        ],
+      },
     });
-    expect(
-      (last('words').selection as {units: {key: string}[]}).units[0].key,
-    ).toBe('1:7');
     // @ai-end
   });
 
@@ -695,7 +808,10 @@ describe('Warsh verses in their own numbering', () => {
       }),
     );
     expect(last('words')).toMatchObject({
-      selection: {rewayah: 'warsh', keys: ['1:7']},
+      study: {
+        rewayah: 'warsh',
+        parts: [{verseKey: '1:7', wordRange: {first: 5, last: 10}}],
+      },
       initialWord: {verseKey: '1:7', position: 6},
     });
   });
@@ -976,3 +1092,204 @@ describe('when the Warsh verses cannot be named', () => {
     );
   });
 });
+
+// @ai-start
+describe("Word Study only: a word of Warsh's unnumbered Fatiha basmala", () => {
+  // As the list and the player send it for a word of the basmala row
+  // (verseUnitRows.unnumberedWordStudyPayload): no verse of Warsh holds it.
+  const basmalaWord = (position: number): NonNullable<Payload> => ({
+    verseKey: '1:1',
+    surahNumber: 1,
+    ayahNumber: 1,
+    source: 'player',
+    rewayah: 'warsh',
+    initialScreen: 'words',
+    word: {verseKey: '1:1', position},
+    wordStudyOnly: true,
+  });
+  // The verse menu's actions: they act on verses, so never offered.
+  const MENU = [
+    'Play from Here',
+    'Repeat',
+    'Bookmark',
+    'Highlight',
+    'Add Note',
+    'Translation',
+    'Copy',
+    'Share',
+  ];
+  const rootPress = () =>
+    last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+
+  it('opens on Word Study over the words of Hafs 1:1 in Warsh, with no verse', async () => {
+    await openSheet(basmalaWord(2));
+    expect(last('words')).toMatchObject({
+      study: {
+        rewayah: 'warsh',
+        parts: [{verseKey: '1:1', caption: 'hafsVerse'}],
+      },
+      initialWord: {verseKey: '1:1', position: 2},
+    });
+    const shown = texts();
+    expect(shown).toContain('Word Study');
+    for (const action of MENU) expect(shown).not.toContain(action);
+    // No verse header, no number, no "not a numbered verse" in its place.
+    expect(shown).not.toContain('Al-Fatihah');
+    expect(shown.some(t => /\d+:\d+/.test(t))).toBe(false);
+    expect(shown.some(t => t.includes('numbered verse'))).toBe(false);
+    expect(qulDataService.hasSimilarVerses).not.toHaveBeenCalled();
+  });
+
+  it('never waits for the Warsh verses, which hold no basmala', async () => {
+    mockUnits.models = new Map();
+    mockUnits.status = new Map([['warsh', 'loading']]);
+    mockWords.state = new Map([
+      ['hafs', 'ready'],
+      ['warsh', 'loading'],
+    ]);
+    (
+      digitalKhattDataService.ensureRewayahLoaded as jest.Mock
+    ).mockImplementation(() => new Promise(() => undefined));
+    await openSheet(basmalaWord(4));
+    expect(last('words')).toMatchObject({
+      study: {rewayah: 'warsh', parts: [{verseKey: '1:1'}]},
+      initialWord: {verseKey: '1:1', position: 4},
+    });
+  });
+
+  it('the back row closes the sheet: there is no verse menu to go back to', async () => {
+    await openSheet(basmalaWord(2));
+    await press('Word Study');
+    expect(SheetManager.hide).toHaveBeenCalledTimes(1);
+    expect(SheetManager.hide).toHaveBeenCalledWith('verse-actions');
+    const shown = texts();
+    expect(shown).toContain('Word Study');
+    for (const action of MENU) expect(shown).not.toContain(action);
+  });
+
+  it("root search's back returns to Word Study at the same word", async () => {
+    await openSheet(basmalaWord(2));
+    await act(async () =>
+      rootPress()('ر ح م', null, {verseKey: '1:1', position: 3}),
+    );
+    expect(last('root')).toMatchObject({root: 'ر ح م'});
+    await press('Root search');
+    expect(SheetManager.hide).not.toHaveBeenCalled();
+    expect(last('words')).toMatchObject({
+      study: {rewayah: 'warsh', parts: [{verseKey: '1:1'}]},
+      initialWord: {verseKey: '1:1', position: 3},
+    });
+    // Back again, from Word Study: the sheet closes.
+    await press('Word Study');
+    expect(SheetManager.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("Android's back: root search returns to Word Study, Word Study closes", async () => {
+    // Android's back reaches the sheet (a Modal) only as onRequestClose.
+    await openSheet(basmalaWord(2));
+    const request = closeRequests();
+    await act(async () =>
+      rootPress()('ر ح م', null, {verseKey: '1:1', position: 3}),
+    );
+    expect(await request(BACK_PRESS)).toBe(false);
+    expect(texts()).toContain('Word Study');
+    expect(last('words')).toMatchObject({
+      initialWord: {verseKey: '1:1', position: 3},
+    });
+    // From Word Study the sheet may close: no verse menu is behind it.
+    expect(await request(BACK_PRESS)).toBe(true);
+    expect(texts()).toContain('Word Study');
+    for (const action of MENU) expect(texts()).not.toContain(action);
+    expect(SheetManager.hide).not.toHaveBeenCalled();
+  });
+
+  it('the back row says when it closes the sheet', async () => {
+    // Named by its screen in every mode; the hint is only where it closes.
+    const backRow = (title: string) => {
+      const row = root()
+        .findAll(
+          n =>
+            typeof n.props.onPress === 'function' &&
+            n.props.accessibilityRole === 'button',
+        )
+        .find(n => n.findAll(c => c.props.children === title).length > 0);
+      if (!row) throw new Error(`no back row titled ${title}`);
+      return row;
+    };
+    await openSheet(basmalaWord(2));
+    expect(backRow('Word Study').props.accessibilityHint).toBe('Close');
+    await act(async () =>
+      rootPress()('ر ح م', null, {verseKey: '1:1', position: 3}),
+    );
+    expect(backRow('Root search').props.accessibilityHint).toBeUndefined();
+    // A verse's Word Study goes back to its actions: no hint.
+    await openSheet({...basmalaWord(2), rewayah: 'hafs', wordStudyOnly: false});
+    expect(backRow('Word Study').props.accessibilityHint).toBeUndefined();
+  });
+
+  it('an ayah of the root collapses the player and opens the Mushaf', async () => {
+    // The scenario: Word by Word on in the full player, a basmala word,
+    // its root, an ayah. The open player covers every route.
+    await openSheet(basmalaWord(2));
+    await act(async () =>
+      rootPress()('ر ح م', null, {verseKey: '1:1', position: 3}),
+    );
+    const onVersePress = last('root').onVersePress as (hit: unknown) => void;
+    await act(async () =>
+      onVersePress({
+        verseIndex: 0,
+        verseKey: '1:3',
+        matches: [{position: 1, length: 1}],
+        score: 1,
+      }),
+    );
+    expect(SheetManager.hide).toHaveBeenCalledWith('verse-actions');
+    expect(mockMainPlayer.setSheetMode).toHaveBeenCalledWith('hidden');
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/mushaf',
+      params: expect.objectContaining({surah: '1', ayah: '3', words: '1'}),
+    });
+    const push = router.push as jest.Mock;
+    expect(
+      mockMainPlayer.setSheetMode.mock.invocationCallOrder[0],
+    ).toBeLessThan(push.mock.invocationCallOrder[0]);
+  });
+
+  it('looks up no QUL data, which is per verse, even for a Hafs payload', async () => {
+    // No producer sends a Hafs one (Hafs numbers the basmala), but Hafs
+    // could name the verse: without the guard its QUL data would be asked.
+    await openSheet({...basmalaWord(2), rewayah: 'hafs'});
+    expect(last('words')).toMatchObject({
+      study: {rewayah: 'hafs', parts: [{verseKey: '1:1', caption: 'none'}]},
+    });
+    expect(qulDataService.hasSimilarVerses).not.toHaveBeenCalled();
+    expect(qulDataService.hasSharedPhrases).not.toHaveBeenCalled();
+  });
+
+  it('closing leaves the screen and any selection it did not make', async () => {
+    // A verse another surface selected (the reader's 3 s flash, say).
+    useVerseSelectionStore.getState().selectVerse('2:255', 2, 255);
+    useMushafVerseSelectionStore.getState().selectVerse('2:255', 42);
+    try {
+      await openSheet(basmalaWord(2));
+      const sheet = root().find(n => typeof n.props.onClose === 'function');
+      await act(async () => sheet.props.onClose());
+      // Still Word Study while the sheet leaves (back to no screen would
+      // draw nothing here: no header, no menu), never the verse menu.
+      expect(texts()).toContain('Word Study');
+      expect(texts()).not.toContain('Copy');
+      expect(useVerseSelectionStore.getState().selectedVerseKey).toBe('2:255');
+      expect(useMushafVerseSelectionStore.getState().selectedVerseKey).toBe(
+        '2:255',
+      );
+    } finally {
+      useVerseSelectionStore.getState().clearSelection();
+      useMushafVerseSelectionStore.getState().clearSelection();
+    }
+  });
+});
+// @ai-end

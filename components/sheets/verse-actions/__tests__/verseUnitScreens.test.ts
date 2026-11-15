@@ -32,6 +32,7 @@ import {
   unitPagerPage,
   wbwParts,
   selectionWordParts, // @ai
+  hafsVerseWordParts, // @ai
 } from '../verseUnitScreens';
 // @ai-start
 import {
@@ -299,6 +300,22 @@ describe('Word Study parts', () => {
       {verseKey: '112:1', caption: 'hafsVerse'},
       {verseKey: '112:2', caption: 'hafsVerse'},
     ]);
+  });
+
+  it('words that are no verse of the rewayah (the Warsh basmala) are named as Hafs', () => {
+    // Warsh numbers no verse with Hafs 1:1's words: never 'none', even
+    // though it is one whole Hafs verse.
+    expect(warsh.unitsForHafsKey('1:1')).toEqual([]);
+    expect(hafsVerseWordParts(['1:1'], 'warsh')).toEqual([
+      {verseKey: '1:1', caption: 'hafsVerse'},
+    ]);
+    // Hafs is captioned as a Hafs selection is.
+    expect(hafsVerseWordParts(['1:1'], 'hafs')).toEqual(
+      selectionWordParts(hafsSelection(['1:1'])),
+    );
+    expect(hafsVerseWordParts(['1:6', '1:7'], 'hafs')).toEqual(
+      selectionWordParts(hafsSelection(['1:6', '1:7'])),
+    );
   });
 });
 // @ai-end

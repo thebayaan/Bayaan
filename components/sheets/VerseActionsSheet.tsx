@@ -1,11 +1,10 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'; // @ai
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
   useWindowDimensions, // @ai
-  BackHandler,
   Platform,
   LayoutAnimation,
   UIManager,
@@ -17,7 +16,9 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
-import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import ActionSheet, {
+  type AdaptiveActionSheetProps, // @ai
+} from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
@@ -61,6 +62,7 @@ import {
   formatVerseCopyText,
   joinTranslationParts,
   qulVerseKey,
+  requestHafsKeys, // @ai
   resolveSelectionTexts,
   selectionPlaybackKeys,
   selectionTranslationParts,
@@ -97,6 +99,11 @@ import {quranHitLinkParams} from '@/utils/quranLink';
 import {matchedPositions, type QuranVerseHit} from '@/utils/search/quranSearch';
 // @ai-end
 import type {WordRef} from './verse-actions/wordStudy';
+import {
+  hafsVerseWordParts,
+  selectionWordParts,
+  type WordStudySubject,
+} from './verse-actions/verseUnitScreens';
 // @ai-end
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -145,6 +152,14 @@ const SCREEN_TITLE_KEYS = {
 // Read from useWindowDimensions at render, not once at import: the Mushaf
 // rotates, and a portrait height overflows the screen in landscape.
 const SHEET_HEIGHT_FRACTION = 0.85;
+
+// Why the sheet is asked to close (the library's CloseRequestType, which its
+// package entry does not export): a swipe, a backdrop tap, or BACK_PRESS:
+// Android's back button, its back gesture or a hardware keyboard's Escape.
+type CloseRequest = Parameters<
+  NonNullable<AdaptiveActionSheetProps['onRequestClose']>
+>[0];
+const BACK_PRESS = 1 as CloseRequest;
 // @ai-end
 
 // Enable LayoutAnimation on Android
@@ -216,10 +231,17 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // @ai-start
+  // Word Study only (payload.wordStudyOnly): the words of something that is
+  // no verse of the sheet's rewayah (the unnumbered Fatiha basmala of the
+  // Madani and Basri counts). The sheet shows Word Study and root search
+  // alone: no verse is selected or waited for, the verse menu (whose
+  // actions act on verses) is never shown, and back from Word Study closes
+  // the sheet.
+  const wordStudyOnly = props.payload?.wordStudyOnly === true;
   // A word long-press opens the sheet on Word Study at that word. The sheet
   // unmounts when hidden, so this runs on every show.
   const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(
-    props.payload?.initialScreen === 'words' ? 'words' : null,
+    props.payload?.initialScreen === 'words' || wordStudyOnly ? 'words' : null,
   );
   // The word Word Study opens on (Hafs verse + word-by-word position).
   const [wordTarget, setWordTarget] = useState<WordRef | undefined>(
@@ -277,6 +299,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     }),
     [resolvedRewayah, verseKey, surahNumber, ayahNumber, verseKeys, unitKeys],
   );
+  // Word Study only selects nothing: in that mode this selection and the
+  // texts below are never read (for the basmala, which is no verse, they
+  // never become ready). The hooks still run, as hooks do; what they load
+  // is the rewayah's verse units and words, which the basmala row was drawn
+  // from.
   const selection = useVerseSelection(selectionRequest);
   const readySelection = selection.status === 'ready' ? selection : null;
   const isRange = readySelection
@@ -352,6 +379,28 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         : undefined,
     [readySelection],
   );
+
+  // What Word Study studies: the selected verses' words (another rewayah's
+  // cut to its own words), or in Word Study only mode the payload's Hafs
+  // verses (the basmala: Hafs 1:1), from the payload alone and captioned
+  // as another rewayah's are ("Hafs 1:1"): no selection can name them.
+  const wordStudy = useMemo<WordStudySubject | null>(() => {
+    if (wordStudyOnly) {
+      return {
+        rewayah: resolvedRewayah,
+        parts: hafsVerseWordParts(
+          requestHafsKeys(selectionRequest),
+          resolvedRewayah,
+        ),
+      };
+    }
+    return readySelection
+      ? {
+          rewayah: readySelection.rewayah,
+          parts: selectionWordParts(readySelection),
+        }
+      : null;
+  }, [wordStudyOnly, resolvedRewayah, selectionRequest, readySelection]);
   // @ai-end
 
   const handleToggleBookmark = useCallback(async () => {
@@ -515,8 +564,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   // @ai-start
   // QUL data is per Hafs verse: offered for a single verse that is exactly
-  // one whole Hafs verse (Hafs: the payload's verse, as before).
-  const qulKey = qulVerseKey(selection, {surahNumber, ayahNumber});
+  // one whole Hafs verse (Hafs: the payload's verse, as before). Word Study
+  // only has no verse, so nothing to look up.
+  const qulKey = wordStudyOnly
+    ? null
+    : qulVerseKey(selection, {surahNumber, ayahNumber});
 
   useEffect(() => {
     if (!qulKey) return;
@@ -768,10 +820,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   );
 
   // An ayah of the root opens in the Mushaf on its matched words, as the
-  // Search tab does.
+  // Search tab does. The open player is drawn above every route
+  // (app/_layout.tsx renders PlayerHost after the Stack), so it collapses
+  // first, as Repeat and the translation settings do; otherwise the Mushaf
+  // would open out of sight behind it. Already collapsed, this does nothing.
   const handleRootVersePress = useCallback(
     async (hit: QuranVerseHit) => {
       await SheetManager.hide(props.sheetId);
+      usePlayerStore.getState().setSheetMode('hidden');
       router.push({
         pathname: '/mushaf',
         params: quranHitLinkParams(
@@ -786,28 +842,52 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   );
   // @ai-end
 
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !activeScreen) return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setActiveScreen(activeScreen === 'root' ? 'words' : null); // @ai
-      return true;
-    });
-    return () => sub.remove();
-  }, [activeScreen, setActiveScreen]);
+  // @ai-start
+  // Back from a screen (the back row and Android's back button): root
+  // search returns to Word Study; any other screen to the verse menu, or,
+  // in Word Study only mode (no verse, so no menu), closes the sheet.
+  const handleBack = useCallback(() => {
+    if (activeScreen === 'root') setActiveScreen('words');
+    else if (wordStudyOnly) hideCurrentSheet();
+    else setActiveScreen(null);
+  }, [activeScreen, wordStudyOnly, setActiveScreen, hideCurrentSheet]);
+  // Back closes the sheet from the verse menu, and from Word Study in Word
+  // Study only mode; anywhere else it steps back a screen.
+  const backCloses =
+    !activeScreen || (wordStudyOnly && activeScreen === 'words');
+
+  // Android's back button and back gesture. The sheet is a Modal, which
+  // takes the back press itself (BackHandler never hears it while the sheet
+  // is up) and asks onRequestClose whether to close: a screen steps back
+  // instead (false). A swipe or a backdrop tap still closes the sheet from
+  // any screen. The library memoizes its back handler without
+  // onRequestClose among its dependencies, so it can call an older one:
+  // this one never changes and reads the latest render.
+  const backRef = useRef({backCloses, handleBack});
+  backRef.current = {backCloses, handleBack};
+  const handleRequestClose = useCallback((type: CloseRequest) => {
+    const {backCloses: closes, handleBack: back} = backRef.current;
+    if (type !== BACK_PRESS || closes) return true;
+    back();
+    return false;
+  }, []);
+  // @ai-end
 
   const handleOnClose = useCallback(() => {
+    // @ai-start
+    // Word Study only selected no verse and has no menu to return to: the
+    // screen stays as it is while the sheet leaves, and a selection another
+    // surface made is left alone.
+    if (wordStudyOnly) return;
+    // @ai-end
     setActiveScreen(null);
     useVerseSelectionStore.getState().clearSelection();
     useMushafVerseSelectionStore.getState().clearSelection();
-  }, []);
+  }, [wordStudyOnly, setActiveScreen]); // @ai
 
   const handleDismiss = useCallback(() => {
     hideCurrentSheet();
   }, [hideCurrentSheet]);
-
-  const handleBack = useCallback(() => {
-    setActiveScreen(activeScreen === 'root' ? 'words' : null); // @ai
-  }, [activeScreen, setActiveScreen]);
 
   if (!payload) return null;
 
@@ -830,14 +910,17 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       ]}
       indicatorStyle={activeScreen ? {height: 0} : styles.indicator}
       gestureEnabled={true}
+      onRequestClose={handleRequestClose} // @ai
       onClose={handleOnClose}>
       <View style={[styles.container, activeScreen && {flex: 1}]}>
-        {!activeScreen && (
+        {/* @ai-start: Word Study only names no verse: no header, no menu */}
+        {!activeScreen && !wordStudyOnly && (
           <View style={styles.header}>
             <Text style={styles.surahName}>{surahName}</Text>
             <Text style={styles.verseRef}>{localizeDigits(verseRefText)}</Text>
           </View>
         )}
+        {/* @ai-end */}
 
         {activeScreen ? (
           <>
@@ -845,6 +928,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <Pressable
                 onPress={handleBack}
                 accessibilityRole="button" // @ai
+                // @ai-start: named by its screen; says so when it closes the sheet
+                accessibilityHint={
+                  backCloses ? t('common:actions.close') : undefined
+                }
+                // @ai-end
                 style={({pressed}) => [
                   styles.backRow,
                   pressed && {opacity: 0.6},
@@ -891,8 +979,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             {/* Every screen acts on the selected verses; until another
                 rewayah's verses can be named, a screen shows why instead
                 (never Hafs numbers under that rewayah's name). Hafs is
-                always ready. */}
-            {pendingSelection ? (
+                always ready. Word Study only studies words no verse holds:
+                it never waits for a selection. */}
+            {pendingSelection && !wordStudyOnly ? (
               <SelectionPendingView
                 selection={pendingSelection}
                 theme={theme}
@@ -938,11 +1027,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 )}
                 {/* @ai-start */}
                 {/* The selected verses' words, in the sheet's rewayah
-                    (another rewayah steps through its Hafs words). A root
-                    opens root search below. */}
-                {activeScreen === 'words' && readySelection && (
+                    (another rewayah steps through its Hafs words), or Word
+                    Study only's words. A root opens root search below. */}
+                {activeScreen === 'words' && wordStudy && (
                   <WordStudyContent
-                    selection={readySelection}
+                    study={wordStudy}
                     initialWord={wordTarget}
                     onRootPress={handleRootPress}
                   />
@@ -1009,7 +1098,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             ) : null}
             {/* @ai-end */}
           </>
-        ) : (
+        ) : wordStudyOnly ? null /* @ai — never the verse menu */ : (
           <ScrollView
             showsVerticalScrollIndicator={false}
             bounces={false}

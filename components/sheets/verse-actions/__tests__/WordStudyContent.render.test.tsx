@@ -146,6 +146,13 @@ import {
 } from '@/services/keyboard/keyCommands';
 import {WordStudyContent} from '../WordStudyContent';
 import type {WordRef} from '../wordStudy';
+// @ai-start
+import {
+  hafsVerseWordParts,
+  selectionWordParts,
+  type WordStudySubject,
+} from '../verseUnitScreens';
+// @ai-end
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -196,7 +203,14 @@ const warsh = buildRewayahVerseUnits(
   'warsh@test',
 );
 
-function hafs(...verseKeys: string[]): ReadyVerseSelection {
+// @ai-start
+/** A selection's words, as the verse actions sheet gives them. */
+function studyOf(selection: ReadyVerseSelection): WordStudySubject {
+  return {rewayah: selection.rewayah, parts: selectionWordParts(selection)};
+}
+// @ai-end
+
+function hafs(...verseKeys: string[]): WordStudySubject {
   const [surahNumber, ayahNumber] = verseKeys[0].split(':').map(Number);
   const selection = selectVerses(
     {
@@ -210,19 +224,31 @@ function hafs(...verseKeys: string[]): ReadyVerseSelection {
     'ready',
   );
   if (selection.status !== 'ready') throw new Error('not ready');
-  return selection;
+  return studyOf(selection); // @ai
 }
 
-function warshVerses(...keys: string[]): ReadyVerseSelection {
-  return unitSelection(
-    warsh,
-    keys.map(key => {
-      const unit = warsh.unitByKey(key);
-      if (!unit) throw new Error(`no Warsh ${key}`);
-      return unit;
-    }),
+function warshVerses(...keys: string[]): WordStudySubject {
+  return studyOf(
+    unitSelection(
+      warsh,
+      keys.map(key => {
+        const unit = warsh.unitByKey(key);
+        if (!unit) throw new Error(`no Warsh ${key}`);
+        return unit;
+      }),
+    ),
   );
 }
+
+// @ai-start
+/**
+ * Warsh's unnumbered Fatiha basmala (no verse of Warsh), as the sheet's
+ * Word Study only mode gives it: the words of Hafs 1:1.
+ */
+function warshBasmala(): WordStudySubject {
+  return {rewayah: 'warsh', parts: hafsVerseWordParts(['1:1'], 'warsh')};
+}
+// @ai-end
 
 let renderer: TestRenderer.ReactTestRenderer | null = null;
 
@@ -240,13 +266,13 @@ async function settle() {
 }
 
 async function open(
-  selection: ReadyVerseSelection,
+  study: WordStudySubject, // @ai
   initialWord?: WordRef,
 ): Promise<void> {
   if (renderer) act(() => renderer?.unmount());
   act(() => {
     renderer = TestRenderer.create(
-      <WordStudyContent selection={selection} initialWord={initialWord} />,
+      <WordStudyContent study={study} initialWord={initialWord} />, // @ai
     );
   });
   await settle();
@@ -565,6 +591,54 @@ describe('another rewayah (Warsh)', () => {
     expect(texts()).toContain('Whole verse');
   });
 });
+
+// @ai-start
+describe("Warsh's unnumbered Fatiha basmala (Word Study only)", () => {
+  it('steps through the words of Hafs 1:1 as another rewayah verse is shown', async () => {
+    await open(warshBasmala(), {verseKey: '1:1', position: 2});
+    expect(last('grid')).toMatchObject({
+      verseKey: '1:1',
+      wordRange: undefined,
+      rewayah: 'warsh',
+      selectedWordPosition: 2,
+    });
+    // Named as Hafs, as Warsh's verses are; one verse: no chips.
+    expect(texts()).toEqual(
+      expect.arrayContaining(['Hafs 1:1', 'Word 2 of 4']),
+    );
+    expect(withRole('tab')).toHaveLength(2);
+    // The card is Warsh's: its Hafs chip and note, Warsh Current in Readings.
+    expect(last('card')).toMatchObject({
+      rewayah: 'warsh',
+      word: {verseKey: '1:1', position: 2},
+    });
+    await press('Next word');
+    await press('Next word');
+    expect(cardWord()).toBe('1:1:4');
+    // The verse-end marker is no word: the basmala ends here.
+    expect(control('Next word').props.accessibilityState).toEqual({
+      disabled: true,
+    });
+  });
+
+  it("the books tab shows Hafs 1:1's passages, named as Hafs", async () => {
+    (irabDataService.getBooks as jest.Mock).mockImplementationOnce(async () => [
+      {
+        bookId: 1,
+        nameAr: 'كتاب',
+        authorAr: 'مؤلف',
+        passages: [{text: 'نص', part: '1', page: '2'}],
+      },
+    ]);
+    await open(warshBasmala());
+    await press("I'rab books");
+    await settle();
+    expect(irabDataService.getBooks).toHaveBeenCalledTimes(1);
+    expect(irabDataService.getBooks).toHaveBeenCalledWith('1:1');
+    expect(texts()).toEqual(expect.arrayContaining(['Hafs 1:1', 'كتاب', 'نص']));
+  });
+});
+// @ai-end
 
 describe('arrow keys on iPad', () => {
   it('← is the next word and → the previous, as in the reader', async () => {
