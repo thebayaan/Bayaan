@@ -1,8 +1,10 @@
 import {timestampDatabaseService} from './TimestampDatabaseService';
+// @ai-start
 import {
-  TIMESTAMP_DATA_VERSION, // @ai
+  TIMESTAMP_DATA_VERSION,
   timestampFetchService,
 } from './TimestampFetchService';
+// @ai-end
 import type {AyahTimestamp} from '@/types/timestamps';
 
 class TimestampService {
