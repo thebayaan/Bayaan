@@ -27,7 +27,7 @@ import {
 } from '@/services/mushaf/MushafVerseMapService';
 // @ai-end
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
-import {ReaderRestoreContext} from '@/services/mushaf/readerRestoreState'; // @ai
+import {ReaderRestoreContext} from '@/hooks/readerRestoreState'; // @ai
 import {
   formatPlaybackInfo, // @ai
   getPlaybackNotice, // @ai

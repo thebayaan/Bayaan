@@ -121,7 +121,7 @@ import {
   holdsSplash,
   readerRestoreReducer,
   type ReaderRestorePhase,
-} from '@/services/mushaf/readerRestoreState';
+} from '@/hooks/readerRestoreState';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;

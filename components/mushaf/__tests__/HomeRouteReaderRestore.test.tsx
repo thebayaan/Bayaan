@@ -24,7 +24,7 @@ jest.mock('expo-router', () => ({
 jest.mock('@/data/reciterData', () => ({}));
 
 import HomeScreen from '@/app/(tabs)/(a.home)/index';
-import {HomeHeldContext} from '@/services/mushaf/readerRestoreState';
+import {HomeHeldContext} from '@/hooks/readerRestoreState';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;

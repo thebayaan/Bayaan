@@ -80,7 +80,7 @@ import {
   holdsSplash,
   readerRestoreReducer,
   type ReaderRestorePhase,
-} from '@/services/mushaf/readerRestoreState';
+} from '@/hooks/readerRestoreState';
 // @ai-end
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
@@ -201,7 +201,7 @@ function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   // @ai-start
-  // The restore of this launch (services/mushaf/readerRestoreState.ts). It
+  // The restore of this launch (hooks/readerRestoreState.ts). It
   // reads the reader's flag once, before any route mounts: the reader writes
   // it. Each phase has at most one timer.
   const [restorePhase, dispatchRestore] = useReducer(

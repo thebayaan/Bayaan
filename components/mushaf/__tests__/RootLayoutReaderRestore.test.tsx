@@ -4,7 +4,7 @@
  * pushes the reader once, hides the splash once (at the reader's first content
  * or at the deadline), and keeps today's conditions: a deep link does not
  * restore, and a share intent holds the push until it ends. The timing rules
- * themselves are in services/mushaf/__tests__/readerRestoreState.test.ts.
+ * themselves are in hooks/__tests__/readerRestoreState.test.ts.
  *
  * The cases F1a, F1b, F2 and F2b come from the review of the step 5 PR: before
  * the state moved into the layout, the splash was hidden twice, and the safety
@@ -48,8 +48,8 @@ const mockRoutes = {
 jest.mock('expo-router', () => {
   const {useContext} = jest.requireActual<typeof import('react')>('react');
   const restore = jest.requireActual<
-    typeof import('@/services/mushaf/readerRestoreState')
-  >('@/services/mushaf/readerRestoreState');
+    typeof import('@/hooks/readerRestoreState')
+  >('@/hooks/readerRestoreState');
   function Stack() {
     mockRoutes.homeHeld = useContext(restore.HomeHeldContext);
     mockRoutes.report = useContext(restore.ReaderRestoreContext);
@@ -214,7 +214,7 @@ import {
   HOME_AFTER_SHOWN_MS,
   RESTORE_SAFETY_LIMIT_MS,
   SPLASH_DEADLINE_MS,
-} from '@/services/mushaf/readerRestoreState';
+} from '@/hooks/readerRestoreState';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;

@@ -7,7 +7,7 @@ import {View} from 'react-native'; // @ai
 import {useRouter, useNavigation} from 'expo-router';
 import RecitersView from '@/components/RecitersView';
 import {Reciter} from '@/data/reciterData';
-import {HomeHeldContext} from '@/services/mushaf/readerRestoreState'; // @ai
+import {HomeHeldContext} from '@/hooks/readerRestoreState'; // @ai
 
 function HomeScreen() {
   const router = useRouter();
