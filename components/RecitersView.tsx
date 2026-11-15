@@ -488,7 +488,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   const bottomInset = useBottomInset();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {recentTracks} = useRecentlyPlayedStore();
+  const recentTracks = useRecentlyPlayedStore(s => s.recentTracks);
   const showAdhkarTile = useHasAdhkarSession();
   const {favoriteReciters} = useFavoriteReciters();
   const {lovedTracks} = useLoved();

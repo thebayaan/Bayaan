@@ -56,6 +56,7 @@ const CATALOG = [NOREEN, SUDAIS, MISHARY];
 
 type App = {
   store: typeof import('../reciterStore').useReciterStore;
+  pick: typeof import('../reciterStore').useDefaultReciterPick;
   RECITERS: Reciter[];
 };
 
@@ -65,6 +66,7 @@ function launch(): App {
   jest.isolateModules(() => {
     app = {
       store: require('../reciterStore').useReciterStore,
+      pick: require('../reciterStore').useDefaultReciterPick,
       RECITERS: require('@/data/reciterData').RECITERS,
     };
   });
@@ -191,6 +193,33 @@ it('still resolves a default when storage cannot be read', async () => {
   await settle();
   loadCatalog(app);
   expect(defaultId(app)).toBe(MISHARY_ID);
+});
+
+it('takes the saved pick when a failed read is retried', async () => {
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  savePick({defaultReciterId: 'sudais'}, 1);
+  mockReadError = new Error('read failed');
+  const app = launch();
+  await settle();
+  loadCatalog(app);
+  expect(app.pick.persist.hasHydrated()).toBe(false);
+  expect(defaultId(app)).toBe(MISHARY_ID);
+
+  // A pick made while the key is read-only does not reach the saved pick.
+  app.store.getState().setDefaultReciter(NOREEN);
+  await settle();
+  expect(savedPick().state.defaultReciterId).toBe('sudais');
+
+  mockReadError = null;
+  await app.pick.persist.rehydrate();
+  expect(app.pick.persist.hasHydrated()).toBe(true);
+  expect(defaultId(app)).toBe('sudais');
+
+  // The key is writable again.
+  app.store.getState().setDefaultReciter(NOREEN);
+  await settle();
+  expect(savedPick().state.defaultReciterId).toBe('noreen');
+  warn.mockRestore();
 });
 
 it('ships the built-in default in the bundled catalog with Hafs', () => {

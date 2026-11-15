@@ -239,8 +239,10 @@ export function loadAudioInBackground(
   restoreLoad = load;
   // Use setTimeout to defer off the critical startup path
   setTimeout(async () => {
-    if (hasCarReplacedQueue()) return;
     try {
+      // @ai Inside the try, so the finally below still settles
+      // pendingRestoreLoad() when a car request took the queue first.
+      if (hasCarReplacedQueue()) return;
       if (currentPlayOpId() !== opId) return;
       await expoAudioService.loadTrack(url);
       if (currentPlayOpId() !== opId) return;

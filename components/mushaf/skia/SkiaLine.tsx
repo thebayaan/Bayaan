@@ -1,8 +1,12 @@
 import React, {useMemo, useEffect} from 'react';
+import type {LineHighlight} from './verseHighlightLayers';
 import {
+  DashPathEffect,
+  Line,
   Paragraph,
   Group,
   RoundedRect,
+  vec,
   Skia,
   TextHeightBehavior,
   TextDirection,
@@ -51,6 +55,10 @@ const lineParStyle = {
   textDirection: TextDirection.RTL,
 };
 
+// The caret of an added mark, as shares of the font size.
+const CARET_HALF_WIDTH = 0.1;
+const CARET_HEIGHT = 0.28;
+
 interface SkiaLineProps {
   pageNumber: number;
   lineIndex: number;
@@ -77,7 +85,7 @@ interface SkiaLineProps {
     xPos: number,
   ) => void;
   onParagraphDisposed?: (lineIndex: number) => void;
-  backgroundHighlights?: Array<{start: number; end: number; color: string}>;
+  backgroundHighlights?: readonly LineHighlight[];
 }
 
 const SkiaLine: React.FC<SkiaLineProps> = ({
@@ -388,6 +396,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       width: number;
       height: number;
       color: string;
+      style: LineHighlight['style'];
     }> = [];
 
     // @ai-start
@@ -433,8 +442,30 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
             hlBand,
           ),
         );
+        if (hl.style === 'caret') {
+          if (clamped.length === 0) continue;
+          // The middle of the space before the word. A word that starts its line
+          // has none: just past its start. The line reads right to left, so a
+          // word starts at its right edge.
+          const start = Math.max(...clamped.map(r => r.x + r.width));
+          const [space] =
+            hl.start > 0
+              ? paragraph.getRectsForRange(hl.start - 1, hl.start)
+              : [];
+          rects.push({
+            x: space
+              ? space.x + space.width / 2
+              : start + fontSize * CARET_HALF_WIDTH * 1.5,
+            y: clamped[0].y,
+            width: 0,
+            height: clamped[0].height,
+            color: hl.color,
+            style: 'caret',
+          });
+          continue;
+        }
         for (const rect of mergeTouchingRects(clamped)) {
-          rects.push({...rect, color: hl.color});
+          rects.push({...rect, color: hl.color, style: hl.style});
         }
         // @ai-end
       } catch {
@@ -451,24 +482,28 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     yPos,
     adjustedYPos,
     lineHeight,
+    fontSize,
   ]); // @ai
 
   if (!paragraph) return null;
 
   if (bgRects) {
+    const dotWidth = Math.max(1.5, fontSize * 0.07);
     return (
       <Group>
-        {bgRects.map((rect, i) => (
-          <RoundedRect
-            key={i}
-            x={xPos + rect.x}
-            y={adjustedYPos + rect.y}
-            width={rect.width}
-            height={rect.height}
-            r={4}
-            color={rect.color}
-          />
-        ))}
+        {bgRects.map((rect, i) =>
+          rect.style === 'underline' || rect.style === 'caret' ? null : (
+            <RoundedRect
+              key={i}
+              x={xPos + rect.x}
+              y={adjustedYPos + rect.y}
+              width={rect.width}
+              height={rect.height}
+              r={4}
+              color={rect.color}
+            />
+          ),
+        )}
         {strokeParagraph && (
           <Paragraph
             paragraph={strokeParagraph}
@@ -483,6 +518,41 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
           y={adjustedYPos}
           width={maxWidth}
         />
+        {bgRects.map((rect, i) => {
+          if (rect.style === 'caret') {
+            // A small caret on the bottom of the words' band, in the gap.
+            const half = fontSize * CARET_HALF_WIDTH;
+            const x = Math.min(xPos + rect.x, pageWidth - half);
+            const bottom = adjustedYPos + rect.y + rect.height;
+            const top = vec(x, bottom - fontSize * CARET_HEIGHT);
+            return [-half, half].map(side => (
+              <Line
+                key={`c${i}${side}`}
+                p1={top}
+                p2={vec(x + side, bottom)}
+                color={rect.color}
+                style="stroke"
+                strokeWidth={dotWidth}
+                strokeCap="round"
+              />
+            ));
+          }
+          if (rect.style !== 'underline') return null;
+          // A dotted line along the bottom of the words' band.
+          const y = adjustedYPos + rect.y + rect.height - dotWidth / 2;
+          return (
+            <Line
+              key={`u${i}`}
+              p1={vec(xPos + rect.x + dotWidth, y)}
+              p2={vec(xPos + rect.x + rect.width - dotWidth, y)}
+              color={rect.color}
+              style="stroke"
+              strokeWidth={dotWidth}
+              strokeCap="round">
+              <DashPathEffect intervals={[0.01, dotWidth * 2.2]} />
+            </Line>
+          );
+        })}
       </Group>
     );
   }

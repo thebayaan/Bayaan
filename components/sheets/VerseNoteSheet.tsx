@@ -55,7 +55,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     RewayahId | undefined
   >(undefined);
   // The saved note's own anchors (notes.verse_keys of a note on several
-  // verses; the Notes list sends only verse_key).
+  // verses). The Notes list also sends them as verseKeys; the stored note
+  // still names its verses when a payload has only verse_key.
   const [savedNoteKeys, setSavedNoteKeys] = useState<string[] | undefined>(
     undefined,
   );

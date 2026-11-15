@@ -47,7 +47,9 @@
     "noRecentHint": "سيظهر سجل البحث هنا",
     "noResultsHint": "جرّب كلمات أخرى أو تحقّق من الإملاء",
     "all": "الكل",
-    "topResult": "أفضل نتيجة"
+    "topResult": "أفضل نتيجة",
+    "reciteToSearch": "ابحث بالتلاوة",
+    "reciteToSearchHint": "اتلُ بضع كلمات ويجد بيان الآية."
   },
   "systemPlaylist": {
     "invalidId": "معرّف قائمة التشغيل غير صالح",
@@ -203,7 +205,8 @@
     "backendUnreachable": "تعذّر الوصول إلى الخادم"
   },
   "errorBoundary": {
-    "message": "عذرًا، حدث خطأ"
+    "message": "واجه تطبيق {{appName}} خطأً غير متوقع في هذه الشاشة. تنزيلاتك والعناصر المحفوظة في أمان.",
+    "repeat": "يواجه تطبيق {{appName}} أخطاءً متكررة. يُرجى إغلاق التطبيق تمامًا ثم فتحه من جديد."
   },
   "input": {
     "characterCount": "{{current}}/{{max}} حرف"

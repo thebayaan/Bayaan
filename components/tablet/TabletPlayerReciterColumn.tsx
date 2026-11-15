@@ -95,7 +95,7 @@ export const TabletPlayerReciterColumn: React.FC<{
   const topInset = embedded ? 0 : insets.top;
   const {updateQueue} = usePlayerActions();
   const {navigateToReciterProfile} = useReciterNavigation();
-  const {startNewChain} = useRecentlyPlayedStore();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
 

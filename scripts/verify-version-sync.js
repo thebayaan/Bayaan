@@ -84,7 +84,11 @@ function readVersionFromGenerator() {
   const out = execFileSync(
     'node',
     [path.join(__dirname, 'generate-version.js'), '--json-only'],
-    {encoding: 'utf8'},
+    // @ai-start
+    // The native files come from REPO; derive the version from REPO too, not
+    // from the caller's cwd (generate-version.js also runs git with -C).
+    {encoding: 'utf8', cwd: REPO},
+    // @ai-end
   );
   const json = JSON.parse(out);
   return {

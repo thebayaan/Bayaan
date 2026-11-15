@@ -43,6 +43,11 @@ export interface LineHighlight {
   start: number;
   end: number;
   color: string;
+  /**
+   * 'band' (default): behind the words. 'underline': a dotted line under them.
+   * 'caret': a small mark in the gap before the run's first word.
+   */
+  style?: 'band' | 'underline' | 'caret';
 }
 
 export type LineHighlightMap = Map<number, LineHighlight[]>;
