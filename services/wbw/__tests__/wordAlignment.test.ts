@@ -3,9 +3,10 @@
  * The DigitalKhatt / word-by-word word pairing (services/wbw/wordAlignment.ts)
  * on the shapes of the bundled data: verses paired 1:1, بَعْدَ مَا written as
  * two slots (2:181), and damaged word-by-word texts that used to shift the
- * pairing (25:42: U+FFFD; 27:26: ۩ and U+200F). The invisible characters are
- * written as escapes. wordAlignment.database.test.ts runs every verse of the
- * bundled data.
+ * pairing (25:42: U+FFFD; 27:26: ۩ and U+200F). The verses' texts are NFC
+ * copies of the bundled texts, and the invisible characters are written as
+ * escapes. wordAlignment.database.test.ts runs every verse of the bundled
+ * data, byte for byte.
  */
 import {
   alignDkWithWbw,
@@ -29,8 +30,8 @@ const shape = (a: DkWbwAlignment): string[] =>
 const oneToOne = (n: number): string[] =>
   Array.from({length: n}, (_, i) => `${i + 1}>${i + 1}`);
 
-// Hafs 2:181 (bundled texts): DigitalKhatt writes بَعْدَ مَا as slots 3 and 4,
-// word by word as word 3.
+// Hafs 2:181 (NFC copies of the bundled texts): DigitalKhatt writes بَعْدَ مَا
+// as slots 3 and 4, word by word as word 3.
 const DK_2_181 = [
   'فَمَنۢ',
   'بَدَّلَهُۥ',
@@ -163,9 +164,10 @@ describe('alignDkWithWbw', () => {
   });
 
   it('never compares text when the counts agree', () => {
+    // Matching the texts would join both slots into the word بَعْدَ مَا.
     const a = alignDkWithWbw(
-      dk(['فِي', 'ٱلْأَرْضِ', '۝٢']),
-      wbw(['فِى', 'unrelated']),
+      dk(['بَعْدَ', 'مَا', '۝١']),
+      wbw(['بَعْدَ مَا', 'unrelated']),
     );
     expect(shape(a)).toEqual(oneToOne(2));
   });
