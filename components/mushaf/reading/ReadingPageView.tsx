@@ -333,6 +333,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   // pager reaches it, and a row's y moves while the rows above it measure
   // (the verse text is drawn once its width is known): the row scrolls
   // again from its own onLayout until the reader drags the page.
+  // Every jump writes a new selectedVerseKeys array, so the effect also runs
+  // for a second jump to the verse still lit: after the reader dragged away,
+  // that jump scrolls back to it instead of lighting it off screen.
   const jumpRowKey = selectedKeys[0] ?? null;
   const jumpRowKeyRef = useRef<string | null>(null);
   useEffect(() => {
@@ -341,7 +344,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     // A page already laid out (a jump within the page being read).
     const y = verseOffsetsRef.current.get(jumpRowKey);
     if (y != null) scrollToRowAt(y, true);
-  }, [jumpRowKey, scrollToRowAt]);
+  }, [jumpRowKey, selectedVerseKeys, scrollToRowAt]);
   const handleScrollBeginDrag = useCallback(() => {
     jumpRowKeyRef.current = null;
   }, []);

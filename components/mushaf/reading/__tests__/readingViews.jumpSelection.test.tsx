@@ -411,6 +411,30 @@ describe('ReadingPageView', () => {
     expect(scrollTo()).not.toHaveBeenCalled();
   });
 
+  // @ai-start
+  it('a second jump to the verse still lit scrolls back after the reader dragged', () => {
+    render();
+    ['2:1', '2:2', '2:3', '2:4', '2:5', '2:6'].forEach((key, i) =>
+      layOut(key, 100 + i * 300),
+    );
+    select(() => selection().selectVerse('2:4', 2));
+    act(() => scrollView().props.onScrollBeginDrag());
+    scrollTo().mockClear();
+    select(() => selection().selectVerse('2:4', 2));
+    expect(scrollTo()).toHaveBeenCalledWith({
+      y: 1000 - PAGE_PADDING_TOP,
+      animated: true,
+    });
+    // and the row is followed again while it is laid out
+    scrollTo().mockClear();
+    layOut('2:4', 1200);
+    expect(scrollTo()).toHaveBeenLastCalledWith({
+      y: 1200 - PAGE_PADDING_TOP,
+      animated: false,
+    });
+  });
+  // @ai-end
+
   it('never scrolls above the top for a verse near it', () => {
     select(() => selection().selectVerse('2:1', 2));
     render();
