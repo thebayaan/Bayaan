@@ -153,6 +153,13 @@ class MushafPreloadService {
 
   private async _doInit(): Promise<void> {
     let failed = false;
+    // @ai-start
+    // The fonts need no Mushaf data, so they load while the data loads, and a
+    // failed data step still loads them for the readers that draw without it.
+    // A retry keeps fonts that loaded. `loadSkiaFonts` swallows its own errors
+    // and leaves `_fontMgr` null on failure.
+    const fonts = this._fontMgr ? undefined : this.loadSkiaFonts();
+    // @ai-end
     try {
       // Wait for Zustand persist hydration so DK service reads the user's
       // saved rewayah rather than the default (otherwise a reloaded app with
@@ -200,11 +207,9 @@ class MushafPreloadService {
       console.warn('[MushafPreload] Initialization failed:', error);
     }
     try {
-      // @ai The fonts need no Mushaf data, so a failed data step still loads
-      // them for the readers that draw without it. A retry keeps fonts that
-      // loaded. `loadSkiaFonts` swallows its own errors and leaves `_fontMgr`
-      // null on failure.
-      if (!this._fontMgr) await this.loadSkiaFonts();
+      // @ai The run ends after its fonts: a font load that outlived a failed
+      // run would race the font load of its retry.
+      await fonts;
     } finally {
       // Always transition to a terminal state and always notify. Without the
       // `finally` block a mid-pipeline rejection would leave `_state` at

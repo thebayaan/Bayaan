@@ -33,10 +33,14 @@ jest.mock('@/components/mushaf/RecitationMicButton', () => ({
     toggle: jest.fn(),
   }),
 }));
-jest.mock('expo-router', () => ({
-  Stack: {Toolbar: () => null},
-  useLocalSearchParams: () => ({}),
-}));
+let mockParams: Record<string, string> = {};
+jest.mock('expo-router', () => {
+  const Toolbar = Object.assign(() => null, {
+    Button: () => null,
+    Spacer: () => null,
+  });
+  return {Stack: {Toolbar}, useLocalSearchParams: () => mockParams};
+});
 
 jest.mock('expo-screen-orientation', () => ({
   unlockAsync: jest.fn(),
@@ -48,14 +52,36 @@ jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({theme: {colors: {background: '#fff', text: '#111'}}}),
 }));
 
-jest.mock('@/hooks/useGlassProps', () => ({USE_GLASS: false}));
-
-jest.mock('@/components/mushaf/main', () => ({
-  __esModule: true,
-  default: () => null,
+let mockGlass = false;
+jest.mock('@/hooks/useGlassProps', () => ({
+  get USE_GLASS() {
+    return mockGlass;
+  },
 }));
 
-const mockDk = {initialized: false};
+// The reader: it keeps the page it shows in its own state, as the real one
+// does, and counts its mounts.
+const mockViewer = {mounts: 0, turnTo: (_page: number): void => undefined};
+jest.mock('@/components/mushaf/main', () => {
+  const ReactMock = jest.requireActual<typeof React>('react');
+  const {Text: TextMock} = jest.requireActual('react-native');
+  function MockViewer({pageNumber}: {pageNumber: number}) {
+    const [page, setPage] = ReactMock.useState(pageNumber);
+    ReactMock.useEffect(() => {
+      mockViewer.mounts += 1;
+      mockViewer.turnTo = setPage;
+    }, []);
+    return <TextMock>{`page ${page}`}</TextMock>;
+  }
+  return {__esModule: true, default: MockViewer};
+});
+
+const mockDk = {
+  initialized: false,
+  loadState: 'loading',
+  ensureRewayahLoaded: jest.fn(() => Promise.resolve()),
+  listeners: new Set<() => void>(),
+};
 
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {
@@ -64,8 +90,17 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     },
     rewayah: 'hafs',
     getSurahStartPages: () => ({}),
+    getPageForVerse: (key: string) => (key === '2:255' ? 42 : undefined),
+    getRewayahLoadState: () => mockDk.loadState,
+    ensureRewayahLoaded: (...args: unknown[]) =>
+      mockDk.ensureRewayahLoaded(...(args as [])),
     switchRewayah: jest.fn(() => Promise.resolve()),
-    subscribeCacheChanges: () => () => undefined,
+    subscribeCacheChanges: (listener: () => void) => {
+      mockDk.listeners.add(listener);
+      return () => {
+        mockDk.listeners.delete(listener);
+      };
+    },
   },
 }));
 
@@ -92,8 +127,19 @@ jest.mock('@/services/mushaf/MushafSessionStore', () => ({
   mushafSessionStore: {setLastScreenWasMushaf: jest.fn()},
 }));
 
+const mockShowSheet = jest.fn();
 jest.mock('react-native-actions-sheet', () => ({
-  SheetManager: {show: jest.fn()},
+  SheetManager: {show: (...args: unknown[]) => mockShowSheet(...args)},
+}));
+const mockSelectVerse = jest.fn();
+jest.mock('@/store/mushafVerseSelectionStore', () => ({
+  useMushafVerseSelectionStore: {
+    getState: () => ({
+      selectVerse: mockSelectVerse,
+      selectUnits: jest.fn(),
+      clearSelection: jest.fn(),
+    }),
+  },
 }));
 
 jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
@@ -111,10 +157,15 @@ jest.mock('@/services/timestamps/TimestampFetchService', () => ({
   timestampFetchService: {hasSurah: () => true, hasSource: () => true},
 }));
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
-  mushafVerseMapService: {getOrderedVerseKeysForPage: () => []},
+  mushafVerseMapService: {
+    getOrderedVerseKeysForPage: () => [],
+    isShownVerseUnitsPending: () => false,
+  },
+  selectionForAnchor: () => null,
+  whenShownVerseUnitsResolved: () => Promise.resolve(),
 }));
 
-import MushafScreen from '@/app/mushaf';
+import MushafScreen, {MushafToolbar} from '@/app/mushaf';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -149,6 +200,14 @@ beforeEach(() => {
   mockPreload.initialize.mockClear();
   mockPreload.startIfIdle.mockClear();
   mockDk.initialized = false;
+  mockDk.loadState = 'loading';
+  mockDk.ensureRewayahLoaded.mockClear();
+  mockDk.listeners.clear();
+  mockParams = {};
+  mockGlass = false;
+  mockViewer.mounts = 0;
+  mockShowSheet.mockClear();
+  mockSelectVerse.mockClear();
   // react-test-renderer prints a deprecation notice under React 19.
   errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -210,9 +269,104 @@ it('shows the error once a load in progress fails', () => {
   expect(texts()[0]).toBe("Couldn't load the mushaf");
 });
 
+// One data state, with one retry that knows which load to redo. A failed read
+// of the active rewayah drops its data after the preload finished: the preload
+// stays 'ready', and its initialize() would do nothing.
+it('the rewayah failed after the preload: the retry goes to the data', async () => {
+  mockPreload.state = 'ready';
+  mockDk.initialized = true;
+  render();
+  expect(texts()).not.toContain("Couldn't load the mushaf");
+
+  act(() => {
+    mockDk.initialized = false;
+    mockDk.loadState = 'error';
+    mockDk.listeners.forEach(listener => listener());
+  });
+  expect(texts()).toContain("Couldn't load the mushaf");
+
+  const retry = root().find(
+    node => node.props.accessibilityRole === 'button' && !!node.props.onPress,
+  );
+  await act(async () => {
+    retry.props.onPress();
+  });
+  expect(mockDk.ensureRewayahLoaded).toHaveBeenCalledWith('hafs', {
+    retry: true,
+  });
+  expect(mockPreload.initialize).not.toHaveBeenCalled();
+});
+
 it('starts the load when the screen opens first', () => {
   mockPreload.state = 'idle';
   render();
   expect(mockPreload.startIfIdle).toHaveBeenCalledTimes(1);
   expect(ofType(ActivityIndicator)).toHaveLength(1);
+});
+
+// A failed chunk read mid-session drops the data of the rewayah on screen.
+// The reader stays mounted under the error, so the retry brings the pages
+// back where the user is: no second open at the verse the screen opened on.
+it('a failure while reading: the retry keeps the page, no second open', async () => {
+  mockPreload.state = 'ready';
+  mockDk.initialized = true;
+  mockGlass = true; // the iOS toolbar, which the error cannot cover
+  mockParams = {surah: '2', ayah: '255', playerOptions: '1'};
+  const toolbars = () => ofType(MushafToolbar).length;
+  const hiddenFromScreenReaders = () =>
+    root().findAll(
+      node => node.props.importantForAccessibility === 'no-hide-descendants',
+    ).length > 0;
+  render();
+  expect(texts()).toEqual(['page 42']);
+  expect(toolbars()).toBe(1);
+  expect(mockSelectVerse).toHaveBeenCalledTimes(1);
+  expect(mockShowSheet).toHaveBeenCalledTimes(1);
+  act(() => mockViewer.turnTo(300));
+
+  act(() => {
+    mockDk.initialized = false;
+    mockDk.loadState = 'error';
+    mockDk.listeners.forEach(listener => listener());
+  });
+  expect(texts()).toContain("Couldn't load the mushaf");
+  expect(toolbars()).toBe(0);
+  expect(hiddenFromScreenReaders()).toBe(true);
+
+  let commit!: () => void;
+  mockDk.ensureRewayahLoaded.mockImplementationOnce(
+    () =>
+      new Promise<void>(resolve => {
+        commit = () => {
+          mockDk.initialized = true;
+          mockDk.loadState = 'ready';
+          mockDk.listeners.forEach(listener => listener());
+          resolve();
+        };
+      }),
+  );
+  const retry = root().find(
+    node => node.props.accessibilityRole === 'button' && !!node.props.onPress,
+  );
+  act(() => retry.props.onPress());
+  expect(ofType(ActivityIndicator)).toHaveLength(1);
+  await act(async () => commit());
+
+  expect({
+    texts: texts(),
+    toolbars: toolbars(),
+    hidden: hiddenFromScreenReaders(),
+    spinners: ofType(ActivityIndicator).length,
+    readerMounts: mockViewer.mounts,
+    flashes: mockSelectVerse.mock.calls.length,
+    playerOptions: mockShowSheet.mock.calls.length,
+  }).toEqual({
+    texts: ['page 300'],
+    toolbars: 1,
+    hidden: false,
+    spinners: 0,
+    readerMounts: 1,
+    flashes: 1,
+    playerOptions: 1,
+  });
 });
