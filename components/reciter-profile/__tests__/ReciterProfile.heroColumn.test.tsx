@@ -195,10 +195,12 @@ afterEach(() => {
 });
 
 function render() {
+  let renderer!: TestRenderer.ReactTestRenderer;
   act(() => {
-    mounted = TestRenderer.create(<ReciterProfile id="r1" />);
+    renderer = TestRenderer.create(<ReciterProfile id="r1" />);
   });
-  return mounted!;
+  mounted = renderer;
+  return renderer;
 }
 
 /** Lays out the profile's root view at `width`. */
