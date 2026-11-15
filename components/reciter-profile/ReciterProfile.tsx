@@ -1127,6 +1127,26 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   if (isTablet && profileWidth === null) {
     return <View onLayout={handleProfileLayout} style={styles.container} />;
   }
+
+  // The tablet hero, built once: a row above the list, or the pinned column
+  // beside it.
+  const rowHeroTop = showSearch ? 16 : isGlass ? 8 : insets.top + 56;
+  const tabletHero = isTablet ? (
+    <TabletReciterHero
+      reciter={reciter}
+      layout={heroColumn ? 'column' : 'row'}
+      paddingTop={heroColumn ? heroColumnTopInset : rowHeroTop}
+      margin={pageMargin}
+      onFavoritePress={handleToggleFavorite}
+      onShufflePress={handleShuffleAll}
+      onPlayPress={handlePlayAll}
+      isFavoriteReciter={isFavoriteReciter(reciter.id)}
+      onDownloadAllPress={handleDownloadAll}
+      isDownloadingAll={isDownloadingAll}
+      downloadAllProgress={downloadAllProgress}
+      allDownloaded={allDownloaded}
+    />
+  ) : null;
   // @ai-end
 
   return (
@@ -1148,20 +1168,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               style={{width: HERO_COLUMN_WIDTH, flexGrow: 0, flexShrink: 0}}
               showsVerticalScrollIndicator={false}
               alwaysBounceVertical={false}>
-              <TabletReciterHero
-                reciter={reciter}
-                layout="column"
-                paddingTop={heroColumnTopInset}
-                margin={pageMargin}
-                onFavoritePress={handleToggleFavorite}
-                onShufflePress={handleShuffleAll}
-                onPlayPress={handlePlayAll}
-                isFavoriteReciter={isFavoriteReciter(reciter.id)}
-                onDownloadAllPress={handleDownloadAll}
-                isDownloadingAll={isDownloadingAll}
-                downloadAllProgress={downloadAllProgress}
-                allDownloaded={allDownloaded}
-              />
+              {tabletHero}
             </ScrollView>
           )}
           {/* @ai-end */}
@@ -1217,19 +1224,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               {heroColumn ? (
                 <View style={{height: heroColumnTopInset}} />
               ) : isTablet ? (
-                <TabletReciterHero
-                  reciter={reciter}
-                  paddingTop={showSearch ? 16 : isGlass ? 8 : insets.top + 56}
-                  margin={pageMargin}
-                  onFavoritePress={handleToggleFavorite}
-                  onShufflePress={handleShuffleAll}
-                  onPlayPress={handlePlayAll}
-                  isFavoriteReciter={isFavoriteReciter(reciter.id)}
-                  onDownloadAllPress={handleDownloadAll}
-                  isDownloadingAll={isDownloadingAll}
-                  downloadAllProgress={downloadAllProgress}
-                  allDownloaded={allDownloaded}
-                />
+                tabletHero
               ) : (
                 <>
                   <ReciterHeader
