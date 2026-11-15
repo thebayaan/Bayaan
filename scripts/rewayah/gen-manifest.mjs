@@ -2,8 +2,8 @@
 /**
  * Generates services/mushaf/rewayahDataManifest.ts: the sha256 of every
  * Digital Khatt SQLite asset that DigitalKhattDataService bundles (every
- * rewayah words DB, including digital-khatt-v2.db for Hafs), and of
- * services/mushaf/mushafTables.generated.ts, the generated verse index and
+ * rewayah words DB, including digital-khatt-v2.db for Hafs), and of the data
+ * of services/mushaf/mushafTables.generated.ts, the generated verse index and
  * page lines. It fails when one of the DBs the tables were generated from (the
  * words DBs and digital-khatt-15-lines.db) changed since: then run
  * gen-mushaf-tables.mjs first.
@@ -73,6 +73,18 @@ function hashOfFile(absPath, algorithm) {
   return createHash(algorithm).update(readFileSync(absPath)).digest('hex');
 }
 
+// @ai-start
+// The data of TABLES_FILE: the file without its header, the comment lines
+// that name the DBs it was generated from. The layout key hashes only this, so
+// a words DB fix that leaves the verse index and the page lines as they were
+// keeps the key of every rewayah.
+function tablesDataSha256(tablesSource) {
+  return createHash('sha256')
+    .update(tablesSource.replace(/^(?:\/\/.*\n)*/, ''))
+    .digest('hex');
+}
+// @ai-end
+
 // Prettier's output for this repo (80 columns): an entry too long for one
 // line moves its value to its own line.
 function pushEntry(lines, file, value) {
@@ -139,9 +151,10 @@ function renderManifest(entries, tablesSha256) {
   lines.push(
     '};',
     '',
-    '// sha256 of mushafTables.generated.ts: the verse index and the page lines',
-    '// the app ships. It names the layout in the data identity keys, so saved',
-    '// layouts stay valid until the tables change.',
+    '// sha256 of the data of mushafTables.generated.ts (the file without its',
+    '// header): the verse index and the page lines the app ships. It names the',
+    '// layout in the data identity keys, so saved layouts stay valid until the',
+    '// tables change.',
     'export const MUSHAF_TABLES_SHA256 =',
     `  '${tablesSha256}';`,
     '',
@@ -173,8 +186,9 @@ function main() {
 
   const tablesPath = path.join(REPO_ROOT, TABLES_FILE);
   if (!existsSync(tablesPath)) fail(`${TABLES_FILE} not found`);
-  checkTablesSources(readFileSync(tablesPath, 'utf8'), entries);
-  const rendered = renderManifest(entries, hashOfFile(tablesPath, 'sha256'));
+  const tablesSource = readFileSync(tablesPath, 'utf8');
+  checkTablesSources(tablesSource, entries);
+  const rendered = renderManifest(entries, tablesDataSha256(tablesSource));
   const manifestPath = path.join(REPO_ROOT, MANIFEST_FILE);
   const existing = existsSync(manifestPath)
     ? readFileSync(manifestPath, 'utf8')

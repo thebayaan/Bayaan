@@ -250,6 +250,20 @@ describe('rewayahDataManifest (contract C4)', () => {
         expect(tablesKey()).not.toBe(key);
       },
     );
+
+    it('keeps the key when a DB changes but the tables do not', () => {
+      expect(run().status).toBe(0);
+      const key = tablesKey();
+
+      // A text fix in a words DB: the header names its new hash, and the
+      // verse index and the page lines stay the same.
+      writeFileSync(path.join(assetDir, 'a.db'), 'a text fix');
+      expect(run().status).toBe(1);
+      writeTables('tables 1');
+      expect(run().status).toBe(0);
+      expect(run('--check').status).toBe(0);
+      expect(tablesKey()).toBe(key);
+    });
   });
   // @ai-end
 });
@@ -262,11 +276,17 @@ describe('MUSHAF_TABLES_SHA256', () => {
     'mushafTables.generated.ts',
   );
 
-  it('is the hash of the generated tables', () => {
+  // @ai-start
+  it('is the hash of the generated tables without their header', () => {
+    // The header ends at the first blank line; it names the source DBs.
+    const source = readFileSync(TABLES, 'utf8');
+    const data = source.slice(source.indexOf('\n\n') + 1);
+    expect(data.startsWith('\nexport const ')).toBe(true);
     expect(MUSHAF_TABLES_SHA256).toBe(
-      createHash('sha256').update(readFileSync(TABLES)).digest('hex'),
+      createHash('sha256').update(data).digest('hex'),
     );
   });
+  // @ai-end
 
   // The full check: the tables are what the DBs give now.
   (hasNodeSqlite() ? it : it.skip)(
