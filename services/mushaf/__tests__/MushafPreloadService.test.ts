@@ -1,9 +1,10 @@
 // @ai RFC-023 step 2: the fonts load while the data loads.
 /**
  * When the data load rejects, the run must not end before its font load
- * does: a retry resets the font fields and starts a second font load, and a
- * first load that ended later would write its own provider over the one the
- * retry published, with no subscriber told.
+ * does: a retry that found no provider yet would start a second font load,
+ * and a first load that ended later would write its own provider over the one
+ * the retry published, with no subscriber told. A retry keeps the fonts that
+ * loaded.
  *
  * Skia, the data service, the text service and the diff service are mocked.
  * The first font of each load waits on that load's gate, so the test decides
@@ -99,9 +100,8 @@ afterEach(() => {
 });
 
 describe('the font load and a retry after a data failure', () => {
-  it('the font provider a retry published stays published when the first font load ends', async () => {
+  it('the run waits for its font load, and a retry keeps that provider', async () => {
     const releaseFirstFonts = gate();
-    const releaseSecondFonts = gate();
     const notified: string[] = [];
     mushafPreloadService.subscribe(() =>
       notified.push(mushafPreloadService.state),
@@ -117,14 +117,13 @@ describe('the font load and a retry after a data failure', () => {
     await first;
     expect(mushafPreloadService.state).toBe('failed');
 
-    const retry = mushafPreloadService.initialize();
-    await flush();
-    expect(mockProviders).toBe(2); // the retry started its own font load
-    releaseSecondFonts();
-    await retry;
+    expect(providerId()).toBe(1);
+
+    await mushafPreloadService.initialize();
+    expect(mockProviders).toBe(1); // the retry started no font load
     expect(mushafPreloadService.state).toBe('ready');
     const atReady = providerId();
-    expect(atReady).toBe(2);
+    expect(atReady).toBe(1);
 
     await flush();
 
