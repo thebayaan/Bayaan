@@ -77,7 +77,7 @@ jest.mock('@/services/mushaf/QuranTextService', () => {
 });
 
 import SkiaLine from '../SkiaLine';
-import {clearLineFits} from '../justifiedSpace';
+import {clearLineFits} from '@/services/mushaf/lineFitCache';
 
 const baseProps = {
   pageNumber: 6,

@@ -95,7 +95,7 @@ import {WBWContent} from './verse-actions/WBWContent';
 import {WordStudyContent} from './verse-actions/WordStudyContent';
 // @ai-start
 import {RootResults} from '@/components/search/quran/RootResults';
-import {quranHitLinkParams} from '@/utils/quranLink';
+import {quranHitOpenParams} from '@/utils/search/quranHitParams';
 import {matchedPositions, type QuranVerseHit} from '@/utils/search/quranSearch';
 // @ai-end
 import type {WordRef} from './verse-actions/wordStudy';
@@ -767,16 +767,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     const trackRewayatId = currentTrack?.rewayatId;
     const trackReciterName = currentTrack?.reciterName;
 
-    const page =
-      digitalKhattDataService.getPageForVerse(firstKey) ||
-      useMushafPlayerStore.getState().currentPage ||
-      1;
-
     const mushafStore = useMushafPlayerStore.getState();
     if (trackRewayatId && trackReciterName) {
       mushafStore.setReciter(trackRewayatId, trackReciterName);
     }
-    useMushafPlayerStore.setState({currentPage: page});
 
     if (playerState.playback.state === 'playing') {
       playerState.pause();
@@ -785,26 +779,25 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     await SheetManager.hide(props.sheetId);
     playerState.setSheetMode('hidden');
 
-    useMushafPlayerStore.setState({
-      currentPage: page,
-      pendingStartVerseKey: firstKey,
-    });
+    useMushafPlayerStore.setState({pendingStartVerseKey: firstKey});
     // Start at the selected verse itself, in its own rewayah. @ai
     if (ready.units) mushafStore.setPendingStart(ready.units[0]);
 
+    // @ai-start
+    // The player can show this sheet before the Mushaf data loads, and a page
+    // lookup here then gave an old page or page 1. Open the reader at once with
+    // the verse and no page. The reader opens the page of the verse and shows
+    // the options when the data is ready (app/mushaf.tsx).
     router.push({
       pathname: '/mushaf',
       params: {
-        page: String(page),
         surah: String(sNum),
         ayah: String(aNum),
-        ...(anchorKey !== null ? {anchor: anchorKey} : {}), // @ai
+        ...(anchorKey !== null ? {anchor: anchorKey} : {}),
+        playerOptions: '1',
       },
     });
-
-    SheetManager.show('mushaf-player-options', {
-      payload: {currentPage: page},
-    });
+    // @ai-end
   }, [readySelection, requireSelection, props.sheetId]); // @ai
 
   // @ai-start
@@ -830,12 +823,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       usePlayerStore.getState().setSheetMode('hidden');
       router.push({
         pathname: '/mushaf',
-        params: quranHitLinkParams(
-          hit.verseKey,
-          matchedPositions(hit),
-          (key, position) =>
-            digitalKhattDataService.getPageForWord(key, position),
-        ),
+        params: quranHitOpenParams(hit.verseKey, matchedPositions(hit)),
       });
     },
     [props.sheetId],
@@ -880,10 +868,17 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     // surface made is left alone.
     if (wordStudyOnly) return;
     // @ai-end
-    setActiveScreen(null);
+    // @ai No LayoutAnimation on close. The sheet library calls onClose in the
+    // task that unmounts the sheet's React Native Modal, so an animation
+    // configured here also covers that unmount. On iOS (React Native 0.88.1),
+    // when "Play from Here" started playback at the same time, the animation
+    // lost the removal of the Modal host: UIKit kept the Modal's empty
+    // full-screen view on top, and the Mushaf ignored every touch until a
+    // restart. Screen changes inside the open sheet still animate.
+    setActiveScreenRaw(null);
     useVerseSelectionStore.getState().clearSelection();
     useMushafVerseSelectionStore.getState().clearSelection();
-  }, [wordStudyOnly, setActiveScreen]); // @ai
+  }, [wordStudyOnly]); // @ai
 
   const handleDismiss = useCallback(() => {
     hideCurrentSheet();
@@ -1466,7 +1461,7 @@ const createStyles = (theme: Theme) =>
     verseRef: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
     },
     card: {

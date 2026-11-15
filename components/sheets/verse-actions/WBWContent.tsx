@@ -221,7 +221,7 @@ const createStyles = (theme: Theme) =>
     partCaption: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: 0.3,
       marginTop: verticalScale(6),
       marginBottom: verticalScale(6),

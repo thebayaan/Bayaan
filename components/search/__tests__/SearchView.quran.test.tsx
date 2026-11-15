@@ -119,12 +119,6 @@ jest.mock('@/components/ReciterItem', () => {
   };
 });
 
-jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
-  digitalKhattDataService: {
-    getPageForWord: (verseKey: string, position: number) =>
-      verseKey === '2:255' && position === 3 ? 42 : undefined,
-  },
-}));
 let mockRewayah = 'hafs';
 jest.mock('@/store/mushafSettingsStore', () => ({
   useMushafSettingsStore: (select: (s: {rewayah: string}) => unknown) =>
@@ -511,12 +505,12 @@ describe('SearchView: Quran results', () => {
     mockQuranStates.set('الله لا اله', textDone([hit('2:255', 3, 2)]));
     await open('الله لا اله');
     press('quran-row', 'quran-verse-2:255');
+    // No page: the reader opens the page of the first matched word.
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/mushaf',
       params: {
         surah: '2',
         ayah: '255',
-        page: '42',
         anchor: '2:255:3',
         words: '3,4',
       },

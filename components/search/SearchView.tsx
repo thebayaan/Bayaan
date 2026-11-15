@@ -72,10 +72,9 @@ import {
   type QuranResultRowViewProps,
 } from '@/components/search/quran/QuranResultRowView';
 import {RecentVerseRow} from '@/components/search/quran/RecentVerseRow';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {quranHitLinkParams} from '@/utils/quranLink';
 import {swapKeyboardLayout} from '@/utils/search/keyboardLayout';
+import {quranHitOpenParams} from '@/utils/search/quranHitParams';
 import {matchedPositions} from '@/utils/search/quranSearch';
 import {rootQuery} from '@/utils/search/quranText';
 // @ai-end
@@ -471,9 +470,7 @@ export function SearchView({
       });
       router.push({
         pathname: '/mushaf',
-        params: quranHitLinkParams(verseKey, positions, (key, position) =>
-          digitalKhattDataService.getPageForWord(key, position),
-        ),
+        params: quranHitOpenParams(verseKey, positions),
       });
     },
     [router, recentSearches],

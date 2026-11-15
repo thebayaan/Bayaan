@@ -316,6 +316,23 @@ describe('useWordStudyData', () => {
     expect(wbwDataService.getVerseWords).not.toHaveBeenCalled();
   });
 
+  it('no Hafs words for a verse (a word read failed) gives an error', async () => {
+    // The words are read on demand: a read that fails gives [] in its turn,
+    // and only then does the rewayah read 'error'.
+    withData(['1:5']);
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    (
+      digitalKhattDataService.tryGetVerseWords as jest.Mock
+    ).mockImplementationOnce(() => []);
+    const probe = renderData([{verseKey: '1:5', caption: 'none'}]);
+    await settle();
+    const failed = probe.latest();
+    if (failed.status !== 'error') throw new Error('expected an error');
+    act(() => failed.retry());
+    await settle();
+    expect(probe.latest().status).toBe('ready');
+  });
+
   it('the same parts in a new array do not load again', async () => {
     withData(['1:5']);
     const probe = renderData([{verseKey: '1:5', caption: 'none'}]);

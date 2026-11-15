@@ -133,7 +133,9 @@ async function loadParts(
   const loaded = await Promise.all(
     parts.map(async (part, i): Promise<PartData> => {
       const dk = dkWords[i];
-      if (!dk) throw new Error(`no Hafs words for ${part.verseKey}`);
+      // [] too: a verse always has words, and a word read that fails gives []
+      // in its turn (the Hafs words then read 'error', so Try again reloads).
+      if (!dk?.length) throw new Error(`no Hafs words for ${part.verseKey}`);
       const [wbw, irab] = await Promise.all([
         wbwDataService.getVerseWords(part.verseKey),
         irabDataService.getVerse(part.verseKey).catch((error: unknown) => {

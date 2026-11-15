@@ -71,6 +71,15 @@ jest.mock('@/store/reciterStore', () => ({
 jest.mock('@/store/themeStore', () => ({
   useThemeStore: {subscribe: (cb: () => void) => mockSubscribe(cb)},
 }));
+const mockDkListeners: (() => void)[] = [];
+jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
+  digitalKhattDataService: {
+    subscribeCacheChanges: (cb: () => void) => {
+      mockDkListeners.push(cb);
+      return () => undefined;
+    },
+  },
+}));
 jest.mock('@/services/dataService', () => ({
   getReciterByIdSync: (id: string) => mockReciterById(id),
 }));
@@ -338,6 +347,24 @@ describe('widget snapshot flush', () => {
     jest.advanceTimersByTime(1000);
     expect(mockWriteSnapshot).toHaveBeenCalledTimes(1);
     expect(mockReloadWidgets).toHaveBeenCalledWith(['ContinueListening']);
+    stop();
+  });
+
+  // RFC-023 step 1: the Mushaf data loads after the splash, and no store
+  // changes when it is ready. Without this run, the widget has no verse text.
+  it('writes again when the Mushaf data is ready', () => {
+    mockDkListeners.length = 0;
+    const sync = loadModule();
+    const stop = sync.startWidgetSync();
+    jest.advanceTimersByTime(1000);
+    expect(mockCollect).toHaveBeenCalledTimes(1);
+    expect(mockWriteSnapshot).toHaveBeenCalledTimes(1);
+
+    expect(mockDkListeners).toHaveLength(1);
+    mockDkListeners[0]();
+    jest.advanceTimersByTime(1000);
+    expect(mockCollect).toHaveBeenCalledTimes(2);
+    expect(mockWriteSnapshot).toHaveBeenCalledTimes(2);
     stop();
   });
 
