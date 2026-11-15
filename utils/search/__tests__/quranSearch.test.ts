@@ -7,10 +7,15 @@ import {
   joinPhrase,
   matchedPositions,
   QURAN_MAX_TOKENS,
+  QURAN_ONE_WORD_AYAHS,
   searchQuranText,
   type QuranPostingSource,
 } from '../quranSearch';
-import {packPosting, type QuranPosting} from '../quranIndexFormat';
+import {
+  packPosting,
+  verseIndexOf,
+  type QuranPosting,
+} from '../quranIndexFormat';
 import type {QuranQueryToken} from '../quranText';
 
 type Spec = Partial<QuranPosting> & {verseIndex: number; position: number};
@@ -149,6 +154,93 @@ describe('searchQuranText', () => {
     expect(water.hits.map(h => h.verseIndex)).toEqual([7]);
     const what = await searchQuranText([token('ما')], source);
     expect(what.hits.map(h => h.verseIndex)).toEqual([7, 8]);
+  });
+
+  it('matches an opening typed as letters as a whole word without a hamza', async () => {
+    const {source, calls} = sourceOf({
+      // الٓمٓ (2:1), ألم typed without its hamza, and الملك by prefix
+      الم: [
+        {verseIndex: 7, position: 1},
+        {verseIndex: 112, position: 12, hasHamza: true},
+      ],
+      الملك: [{verseIndex: 300, position: 4}],
+    });
+    const opening: QuranQueryToken = {
+      keys: ['الم'],
+      needsHamza: false,
+      opening: true,
+    };
+    const found = await searchQuranText([opening], source);
+    expect(found.hits.map(h => h.verseKey)).toEqual(['2:1']);
+    expect(calls.some(call => call.startsWith('prefix:'))).toBe(false);
+    // The same letters as one word: every match, then the prefix one.
+    const word = await searchQuranText([token('الم')], source);
+    expect(word.hits.map(h => h.verseIndex)).toEqual([7, 112, 300]);
+  });
+
+  describe('a phrase that runs on from an ayah of one word', () => {
+    /** A posting at word `position` of the ayah `key`. */
+    const at = (key: string, position: number): Spec => ({
+      verseIndex: verseIndexOf(key) as number,
+      position,
+    });
+    const {source} = sourceOf({
+      الم: [at('2:1', 1), at('3:1', 1), at('2:106', 7)],
+      ذلك: [at('2:2', 1), at('2:3', 9), at('2:107', 1)],
+      الكتاب: [at('2:2', 2), at('3:3', 4)],
+      الله: [at('3:2', 1)],
+      حم: [at('42:1', 1)],
+      عسق: [at('42:2', 1)],
+      كذلك: [at('42:3', 1)],
+      تنزيل: [at('2:3', 1)],
+    });
+
+    it('finds the words of the next ayah, which is the hit', async () => {
+      const found = await searchQuranText(
+        [token('الم'), token('ذلك'), token('الكتاب')],
+        source,
+      );
+      expect(found.kind).toBe('phrase');
+      expect(found.hits.map(h => [h.verseKey, h.matches])).toEqual([
+        ['2:2', [{position: 1, length: 2}]],
+      ]);
+      // الم الله: 3:1, then 3:2.
+      const imran = await searchQuranText(
+        [token('الم'), token('الله')],
+        source,
+      );
+      expect(imran.hits.map(h => h.verseKey)).toEqual(['3:2']);
+    });
+
+    it('runs on over one-word ayahs in a row (حم عسق كذلك)', async () => {
+      const both = await searchQuranText([token('حم'), token('عسق')], source);
+      expect(both.hits.map(h => [h.verseKey, h.matches])).toEqual([
+        ['42:2', [{position: 1, length: 1}]],
+      ]);
+      const three = await searchQuranText(
+        [token('حم'), token('عسق'), token('كذلك')],
+        source,
+      );
+      expect(three.hits.map(h => [h.verseKey, h.matches])).toEqual([
+        ['42:3', [{position: 1, length: 1}]],
+      ]);
+    });
+
+    it('starts only on a one-word ayah and goes on only into the next', async () => {
+      expect(QURAN_ONE_WORD_AYAHS).toContain('2:1');
+      expect(QURAN_ONE_WORD_AYAHS).not.toContain('2:106');
+      // الم is also a word of 2:106 and ذلك the first of 2:107: no run-on
+      // from an ayah of more words, whose end the index does not know.
+      const found = await searchQuranText([token('الم'), token('ذلك')], source);
+      expect(found.hits.map(h => h.verseKey)).toEqual(['2:2']);
+      // تنزيل starts 2:3, two ayahs after 2:1.
+      expect(
+        (await searchQuranText([token('الم'), token('تنزيل')], source)).hits,
+      ).toEqual([]);
+      // A one-word token alone is an ordinary search.
+      const alone = await searchQuranText([token('الم')], source);
+      expect(alone.hits.map(h => h.verseKey)).toEqual(['2:1', '2:106', '3:1']);
+    });
   });
 
   it('matches any key of a token (hamza seat variants)', async () => {

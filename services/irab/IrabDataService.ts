@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import {IRAB_DB_NAME} from '@/constants/bundledDatabases'; // @ai
 import {
   decodeEntries,
   decodeMorph,
@@ -9,9 +10,10 @@ import {
 /**
  * The bundled i'rab database. The file name carries its version: a new build
  * of the data ships as a new file, so installed apps never keep a stale
- * import (bundled databases are imported once).
+ * import (bundled databases are imported once). The name is IRAB_DB_NAME
+ * (constants/bundledDatabases.ts); rename the require() below with it.
  */
-const DB_NAME = 'irab-v1.db';
+const DB_NAME = IRAB_DB_NAME; // @ai
 const OLD_DB_NAMES: readonly string[] = [];
 
 class IrabDataService {

@@ -44,21 +44,28 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
 }));
 
 // @ai-start
-// The Quran text search: a state per query (idle when not enabled); its
-// rows render as elements carrying their props.
+// The Quran text search: a state per query; like the hook, idle (the
+// service never asked) unless enabled and a Quran query by the service's
+// own check. Its rows render as elements carrying their props.
 const mockQuranStates = new Map<string, QuranSearchState>();
-const mockQuranCalls: {query: string; enabled: boolean | undefined}[] = [];
-jest.mock('@/hooks/useQuranSearch', () => ({
-  useQuranSearch: (query: string, options: {enabled?: boolean} = {}) => {
-    mockQuranCalls.push({query, enabled: options.enabled});
-    if (options.enabled === false) return {status: 'idle'};
-    return mockQuranStates.get(query) ?? {status: 'idle'};
-  },
-  isQuranQuery: (query: string) =>
-    jest.requireActual('@/utils/search/quranText').parseQuranQuery(query)
-      .kind !== 'none',
-  prefetchQuranSearch: () => mockPrefetch(),
-}));
+const mockQuranCalls: {query: string; asked: boolean}[] = [];
+jest.mock('expo-sqlite', () => ({}));
+jest.mock('@/hooks/useQuranSearch', () => {
+  const {isQuranQuery, mayBeRootQuery} = jest.requireActual(
+    '@/services/search/QuranSearchDataService',
+  );
+  return {
+    useQuranSearch: (query: string, options: {enabled?: boolean} = {}) => {
+      const asked = (options.enabled ?? true) && isQuranQuery(query);
+      mockQuranCalls.push({query, asked});
+      if (!asked) return {status: 'idle'};
+      return mockQuranStates.get(query) ?? {status: 'idle'};
+    },
+    isQuranQuery,
+    mayBeRootQuery,
+    prefetchQuranSearch: () => mockPrefetch(),
+  };
+});
 const mockPrefetch = jest.fn();
 jest.mock('@/components/search/quran/QuranResultRowView', () => {
   const ReactActual = jest.requireActual('react');
@@ -553,7 +560,7 @@ describe('Quran text search: the Ayahs section', () => {
       'quran-verse-55:1',
       'quran-verse-1:1',
     ]);
-    expect(mockQuranCalls).toContainEqual({query: 'الرحمن', enabled: true});
+    expect(mockQuranCalls).toContainEqual({query: 'الرحمن', asked: true});
   });
 
   it('opens the index when search mode starts, not while browsing', async () => {
@@ -569,7 +576,7 @@ describe('Quran text search: the Ayahs section', () => {
       await searchQuran(renderer, q);
     }
     expect(mockQuranCalls.length).toBeGreaterThan(0);
-    expect(mockQuranCalls.every(call => call.enabled === false)).toBe(true);
+    expect(mockQuranCalls.every(call => !call.asked)).toBe(true);
     expect(quranRows(renderer)).toEqual([]);
   });
 
@@ -662,6 +669,71 @@ describe('Quran text search: the Ayahs section', () => {
     );
     await act(async () => suggestion?.onRootPress(root));
     expect(activeInput(renderer).props.value).toBe('root:ر ح م');
+  });
+
+  it('holds the commands of letters that may be a root until the search answers', async () => {
+    // ر ح م ranks Ar-Rahman, but its answer is the root ر ح م, whose words
+    // are listed alone: the command row never shows, so it never goes.
+    const root: QuranRoot = {id: 7, root: 'ر ح م', words: 339, ayahs: 313};
+    mockQuranStates.set('ر ح م', {
+      status: 'done',
+      outcome: {
+        kind: 'root',
+        letters: 'رحم',
+        candidates: [root],
+        result: {root, lemmas: [], hits: () => [hit('1:1', 3)]},
+      },
+    });
+    const {renderer} = await renderSearch();
+    await search(renderer, 'ر ح م');
+    expect(listOrder(renderer)).toEqual(['quran-loading']);
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+    expect(listOrder(renderer)).toEqual([
+      'quran-root-7',
+      'quran-lemmas-7',
+      'quran-verse-1:1',
+    ]);
+
+    // ر ح م ن may be a root too, until the search says it is text: then
+    // its commands show, above the ayahs.
+    mockQuranStates.set('ر ح م ن', {
+      status: 'done',
+      outcome: {
+        kind: 'text',
+        result: {
+          kind: 'phrase',
+          hits: [hit('1:1', 3)],
+          ayahCount: 1,
+          occurrenceCount: 1,
+        },
+        rootSuggestions: [],
+      },
+    });
+    await search(renderer, 'ر ح م ن');
+    expect(listOrder(renderer)).not.toContain('Ar-Rahman');
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+    expect(listOrder(renderer)).toEqual([
+      'Ar-Rahman',
+      'quran-header',
+      'quran-verse-1:1',
+    ]);
+  });
+
+  it('shows the commands of a query that cannot be a root at once', async () => {
+    // A one-word query is never a root, so its command results never wait
+    // for the search, however slow (an index still being imported).
+    mockQuranStates.set('الرحمن', {status: 'searching', previous: null});
+    const {renderer} = await renderSearch();
+    await search(renderer, 'الرحمن');
+    expect(listOrder(renderer)).toEqual(['Ar-Rahman', 'quran-loading']);
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+    expect(listOrder(renderer)).toEqual(['Ar-Rahman', 'quran-loading']);
   });
 });
 // @ai-end

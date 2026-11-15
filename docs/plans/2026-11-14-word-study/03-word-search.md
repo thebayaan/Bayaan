@@ -158,6 +158,8 @@ Seams: an imla'i text and the other rewayat's spellings can be added to the same
 | بعد ما | DK split slots | 2:181, 8:6, 13:37 |
 | إل ياسين / الياسين | multi-token slot | 37:130 |
 | الم / كهيعص / ن والقلم | muqatta'at | 2:1 first / 19:1 / 68:1 |
+| ا ل م / ح م / ع س ق | openings typed as letters (added in review) | exactly 2:1, 3:1, 29:1, 30:1, 31:1, 32:1 / 40:1-46:1 / 42:2 |
+| الم ذلك الكتاب لا ريب فيه / حم تنزيل الكتاب | runs on from an ayah of one word (added in review) | exactly 2:2 / 40:2, 45:2, 46:2 |
 | الحياة الدنيا / الزكاة / مشكاة / الربا / النبيين | waw-alif, ۧ | 2:85 / 2:43 / 24:35 / 2:275 / 2:61 |
 
 **Known misses (documented, not in v1):** داوود (Uthmani دَاوُۥدَ gives داود), الموءودة, لأذبحنه, مئة (`مِا۟ئَةَ` gives مايه), بأيد, and pronoun suffixes on non-final words of a phrase.
@@ -184,7 +186,7 @@ Seams: an imla'i text and the other rewayat's spellings can be added to the same
 ### 2.1 Schema (format 1)
 ```sql
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
--- format, normalizer, dk_sha256, irab_sha256, content_sha256, counts, complete='1' (written last)
+-- format, normalizer, dk_sha256, irab_morph_sha256, content_sha256, counts, complete='1' (written last)
 CREATE TABLE forms (
   form TEXT PRIMARY KEY,   -- folded spelling (quranText.ts), letters only
   postings TEXT NOT NULL   -- packed codes ascending: first absolute, then deltas; base 36; comma-separated
@@ -225,7 +227,7 @@ CREATE INDEX lemmas_by_root ON lemmas (root_id, words DESC);
 3. Every word yields at least one spelling, and every spelling stays inside the output alphabet. The same check runs over all 7 other words DBs (future-proofing).
 4. Every irab row maps to a slot. Per-root word counts equal the stated `وروده في القرآن` counts, except the allowlisted `ء م م` (20:94 holds two stems).
 5. Every fixture in `utils/search/__fixtures__/quranSearchGolden.ts` passes, and every verse is found by its first 12 or fewer DK words.
-6. `meta` records the sha256 of both sources, the normaliser version, the counts, a `content_sha256` over all rows in canonical order, and `complete='1'` last.
+6. `meta` records the sha256 of the Digital Khatt file, the sha256 of the morphology the index reads from the i'rab DB (`irab_morph_sha256`: per word, its proclitics, definiteness, lemma, root and stated root count, so the i'rab prose, the books and the text ids do not count; changed in review), the normaliser version, the counts, a `content_sha256` over all rows in canonical order, and `complete='1'` last.
 
 ### 2.3 Budgets (77,429 words / 6,236 ayahs)
 | Item | Budget | Measured (prototype, Node 22) |
@@ -245,7 +247,7 @@ Hermes is 3-6x slower than V8 for this kind of loop (search plan, line 34), so t
 **Pipeline (`searchQuranText`):**
 1. **Lookups.** One `SELECT form, postings FROM forms WHERE form IN (...)` fetches every key of every token. The last token, if it has 3 or more letters, also gets a prefix lookup per key: `SELECT form, postings FROM forms WHERE form > ?1 AND form < ?2 LIMIT 4000`, with `?2 = key + '￿'`. BINARY UTF-8 order equals the JS code-unit order for Arabic. Results go into an LRU keyed by (exact|prefix, key).
 2. **Token maps.** Each token gets a map of slot → score. Codes without the hamza bit are skipped when the token needs a hamza. Score = exact 100 or prefix 60, plus tier×10, minus 5 when `rasmOnly`.
-3. **Phrase.** Start from the token with the fewest slots. A hit of token j at slot s needs every token k at slot s−j+k; slots never cross a verse because the stride is 256. The phrase score is the minimum over its tokens.
+3. **Phrase.** Start from the token with the fewest slots. A hit of token j at slot s needs every token k at slot s−j+k; slots never cross a verse because the stride is 256. The phrase score is the minimum over its tokens. A phrase may also run on from an ayah of one word (`QURAN_ONE_WORD_AYAHS`: the openings that are an ayah of their own, الرحمن 55:1, والعصر 103:1 and the like) into the first words of the next ayah, which is the hit (added in review: `الم ذلك الكتاب` found nothing). No other ayah boundary is crossed, as the index keeps no verse lengths.
 4. **Group by verse.** `hit.matches` lists the occurrences as `{position, length}`; the verse score is the maximum over its occurrences.
 5. **Fallback.** If a query of 2 or more words has no phrase hit, `kind: 'allWords'` returns the ayahs where every token matches somewhere, closest span first. The UI shows a note.
 6. **Sort** by score descending, then by `verseIndex`. Totals: `ayahCount` and `occurrenceCount`.
@@ -254,12 +256,12 @@ Hermes is 3-6x slower than V8 for this kind of loop (search plan, line 34), so t
 - **Proclitics and article.** Any query word matches with or without proclitics (و ف ب ل ك س أ يا ها ت) and with or without ال. The proclitics come from the i'rab segmentation, so there is no guessing and no junk forms such as وجه→جه. The match is asymmetric: a query word with ال only matches definite words, and a query word with و only matches words with و.
 - **Prefix.** Only the last word, and only from 3 letters. This gives feedback while typing and covers pronoun suffixes in that position (كتاب finds كتابه).
 - **Phrases.** Consecutive words inside one ayah.
-- **Not in v1:** suffix stripping inside a phrase, typo tolerance (Quran search should be exact; the catalogue's fuzzy tier is not reused), matches across ayah boundaries, other rewayat, an imla'i text, and Latin transliteration.
+- **Not in v1:** suffix stripping inside a phrase, typo tolerance (Quran search should be exact; the catalogue's fuzzy tier is not reused), matches across ayah boundaries (except a run-on from an ayah of one word, step 3), other rewayat, an imla'i text, and Latin transliteration.
 
 ## 4. (d) Root search
 **Inputs:**
 1. **Explicit:** `root:رحم`, `root: ر ح م`, `جذر:رحم`, matching `/^\s*(root|جذر)\s*[:：]\s*/i`. Both keywords are accepted in every UI language.
-2. **Spaced letters:** 3-4 one-letter tokens (`ر ح م`) are a root query when they match a known root. 2-5 single letters that are not a root are joined into one text token (`ح م` finds حم at 40:1; `ك ه ي ع ص` finds 19:1).
+2. **Spaced letters:** single letters typed apart (2-5, or one letter) that spell one of the 14 surah openings (`QURAN_OPENINGS`: الم, المص, الر, المر, كهيعص, طه, طسم, طس, يس, ص, حم, عسق, ق, ن) are a text query for that opening, matched as a whole word without a hamza (`ا ل م` finds the six الم openings, not ألم or الملك), even when they spell a root; the root (ء ل م) is still offered as a suggestion. Otherwise 3-4 one-letter tokens (`ر ح م`) are a root query when they match a known root, and other single letters are joined into one text token. Typed as one word, an opening is an ordinary word (`الم` also finds ألم and, by prefix, الملك). Changed in review: `ا ل م` used to be a root query for ء ل م. Letters typed apart before other words that spell an opening are joined into it (`ا ل ر تلك آيات الكتاب`), and an opening pasted from the mushaf with its maddah (`الٓمٓ`, which ألم never has) is the opening (both added in review).
 3. **Suggestion:** a one-token text query of 3-4 letters also looks up root candidates. Each known candidate gives a "Root ر ح م" row above the verse results; tapping it sets the query to `root:ر ح م`.
 4. **From the word view:** the irab root value is used as is (`roots.root` equals the الجذر text). An optional lemma (`lemmas.lemma` equals الأصل المعجمي) preselects a chip.
 
@@ -304,12 +306,14 @@ export type QuranProclitic = 'wa' | 'fa' | 'bi' | 'li' | 'ka' | 'sa' | 'hamza' |
 export function procliticOfIrabLabel(label: string): QuranProclitic | null;
 export function stripProclitics(spelling: string, proclitics: readonly QuranProclitic[], definite: boolean): string | null;
 export function stripArticle(spelling: string): string | null;
-export interface QuranQueryToken { keys: readonly string[]; needsHamza: boolean; }
+export interface QuranQueryToken { keys: readonly string[]; needsHamza: boolean; opening?: true; } // opening: whole word, no hamza
+export const QURAN_OPENINGS: ReadonlySet<string>; // the 14 surah openings, folded
 export type ParsedQuranQuery =
   | {kind: 'none'}
   | {kind: 'text'; tokens: readonly QuranQueryToken[]; rootLetters: string | null}
   | {kind: 'root'; letters: string; explicit: boolean};
-export function parseQuranQuery(query: string): ParsedQuranQuery;
+// Only QuranSearchDataService.search calls it for the app (it holds the root list); surfaces read the kind from its outcome.
+export function parseQuranQuery(query: string, isKnownRoot?: (root: string) => boolean): ParsedQuranQuery;
 export function rootCandidates(letters: string, isKnownRoot: (root: string) => boolean): string[];
 export function rootQuery(root: string, keyword?: string): string; // 'root:ر ح م'
 
@@ -446,9 +450,9 @@ export function buildQuranSearchIndex(input: QuranSearchIndexInput): QuranSearch
 ## 6. (e) UI
 
 ### 6.1 Search tab, phone (`SearchView`)
-- The Quran search runs alongside the catalogue search on the same 300 ms debounced query, only when `parseQuranQuery` is not `none`. Latin queries behave exactly as today.
+- The Quran search runs alongside the catalogue search on the same 300 ms debounced query, only for Quran queries (`isQuranQuery`, the data service's check, which needs no index and never disagrees with its outcome). Latin queries behave exactly as today.
 - If a Latin query finds nothing in the catalogue and `swapKeyboardLayout` gives Arabic, the verse search runs on the swapped text.
-- Root queries skip the catalogue search.
+- Root queries skip the catalogue search. Whether a query is a root comes from the search's outcome (the service parses it once, with its root list; changed in review: the tab parsed on its own, without the roots, and listed ر ح م as text). Only a query whose answer may be a root (`mayBeRootQuery`, the service's check without the root list) makes the catalogue wait for that outcome, showing no rows meanwhile; every other query runs the catalogue at once (changed in a second review: every Arabic query waited, and the last query's rows stayed on screen meanwhile).
 - List data: `[catalogue rows] + quranResultRows(...)`. The `FlatList` stays (see risks), with a `kind` switch in `renderItem`.
 - **Ayahs section**, in order:
   1. Header: `common:terms.ayahs` in the overline style, `textSecondary` at 0.8 alpha or more, plus "56 ayahs · 57 matches".
@@ -479,7 +483,7 @@ export function buildQuranSearchIndex(input: QuranSearchIndexInput): QuranSearch
   ```
 - A new scope `'ayahs'`: chip `common:terms.ayahs` with the ayah count.
 - The All scope adds an Ayahs section after the top result and surahs: the first 4 rows plus "See all", which switches to the Ayahs scope. The Ayahs scope shows the paged list in a column of at most 680 pt (reading-text rule §4.2).
-- `SearchView` renders the tablet results when `searchResults.length > 0 || quranRows.length > 0`. Root mode on iPad uses the same capped list as the phone.
+- `SearchView` renders the tablet results when `searchResults.length > 0 || quranRows.length > 0`. Root mode on iPad (the outcome on screen is a root, or a query that may be one waits for its answer) uses the same capped list as the phone.
 - Rows are inset 24 pt below a 900 pt window and 32 pt from 900 pt, with a 12 pt pressed and hover radius. Hover comes from `useHover()`. Targets are at least 44 pt.
 
 ### 6.3 Mushaf search (`MushafSearchView`)
@@ -493,7 +497,7 @@ export function buildQuranSearchIndex(input: QuranSearchIndexInput): QuranSearch
   1. `useMushafWordFlashStore.show(verseKey, positions)`.
   2. A history entry exactly like the N:M case: a Hafs verse, or the anchor plus rewayah (`MushafSearchView.tsx:717-733`).
   3. `navigateToTarget(target)` with the page from `getPageForWord`.
-- Root mode works through the typed `root:` query or the suggestion row, which calls `setSearchQuery`.
+- Root mode works through the typed `root:` query, spaced root letters or the suggestion row, which calls `setSearchQuery`. A query that may be a root (`mayBeRootQuery`) holds its command results until the outcome for the typed query: a root lists the root's words only (no command results), as in the Search tab; anything else shows the commands. Other queries show their commands at once (changed in a second review: `ن و ر` showed An-Nur, then took it away).
 - Placeholder: "Search surahs, ayahs, pages, or juz…".
 - No browse-mode changes.
 
@@ -555,7 +559,9 @@ Root letters, lemmas and verse text are data, not locale strings. Digits go thro
   - Queries: digits and Latin give `none`; يا أيها merges into one token; ماء needs a hamza; مسؤولا gives 2 keys; the root syntaxes parse; `rootCandidates` gives the outputs listed in section 4.
 - **Golden table:** shared fixture file used by the build gate and Jest. It holds the section 1.3 rows plus exact counts where they are stable: 2 for بسم الله الرحمن الرحيم, 6 for الحمد لله رب العالمين, 31 for فبأي آلاء ربكما تكذبان, 89 for يا أيها الذين آمنوا. It also holds top-1 expectations (2:2 for الكتاب, 1:1 for الله, 2:124 for ابراهيم) and root rows (ر ح م 339 words, 313 ayahs, 9 lemmas, top lemma رَّحِيم 116; ك ت ب 319; ء ل ه 2,851).
 - **Whole-Quran check:** every verse is found by its first 12 or fewer DK words, under 5 s in Node.
-- **Freshness:** a Jest test re-runs `buildQuranSearchIndex` from the sources (better-sqlite3) and compares `content_sha256` with the committed DB's `meta`, so it fails after a normaliser or irab change that was not rebuilt. An alphabet check runs over all 8 words DBs.
+- **Freshness:** a Jest test re-runs `buildQuranSearchIndex` from the sources (better-sqlite3) and compares the meta (`content_sha256`, the Digital Khatt file's sha256 and `irab_morph_sha256`) with the committed DB's, so it fails after a normaliser change or a change to the morphology the index reads that was not rebuilt, and not after a change to the i'rab prose or books. An alphabet check runs over all 8 words DBs.
+- **Kept by name:** `services/search/__tests__/bundledDatabases.test.ts` records the sha256 of quran-search-v1.db, irab-v1.db, gharib-v1.db and rasm-v1.db under their versioned names and fails when a file's bytes change while its name stays the same (a phone keeps a bundled database by name). It also runs each app service as on a first launch and checks it opens and imports its database under the name of the asset it imports, and that it keeps an installed copy of that name. Added in review (irab-v1.db and the first-launch check in a second review).
+- **Every surface:** `components/search/__tests__/quranSearchSurfaces.golden.test.tsx` runs the query-kind fixtures (`ر ح م` root, `ا ل م` the opening) through the real hook and service on the Search tab (phone, iPad) and the mushaf search. Added in review.
 
 ## 8. Files
 - **Create:**
@@ -595,7 +601,7 @@ scripts/search/quranSearchIndex.ts holds the pure buildQuranSearchIndex(input) w
 
 - **Files:** `scripts/search/quranSearchIndex.ts`, `scripts/search/build-quran-search-db.ts`, `assets/data/quran-search-v1.db`, `utils/search/__fixtures__/quranSearchGolden.ts`, `THIRD_PARTY_LICENSES.md`, `services/search/__tests__/quranSearchDb.test.ts`
 - **Depends on:** T1, T2
-- **Tests:** quranSearchDb.test.ts (better-sqlite3, like services/irab/__tests__/irabDatabase.test.ts) checks that the schema and meta keys exist with complete='1' and the source sha256s match the current files. It rebuilds the index in memory from the sources and compares content_sha256 with the committed meta (stale DB means the test fails, with the rebuild command in the message). It also checks that the forms use only the folded alphabet, that there are 1,642 roots, that per-root counts equal irab's stated counts except the allowlisted ء م م, and that every word of the 7 non-Hafs words DBs normalises into the alphabet.
+- **Tests:** quranSearchDb.test.ts (better-sqlite3, like services/irab/__tests__/irabDatabase.test.ts) checks that the schema and meta keys exist with complete='1' and the source hashes match the current sources (the Digital Khatt file, and the morphology read from irab-v1.db). It rebuilds the index in memory from the sources and compares content_sha256 with the committed meta (stale DB means the test fails, with the rebuild command in the message). It also checks that the forms use only the folded alphabet, that there are 1,642 roots, that per-root counts equal irab's stated counts except the allowlisted ء م م, and that every word of the 7 non-Hafs words DBs normalises into the alphabet.
 
 ### T4. Pure Quran text search engine
 
@@ -678,7 +684,7 @@ On a mid-range Android device and an iPad, profile against the budgets in sectio
 
 - The imla'i spelling is approximated by rules. Some typed spellings won't match: داوود, الموءودة, لأذبحنه, مئة, بأيد, and pronoun suffixes on non-final words of a phrase. Rasm and article-free forms also add some false positives (الكتب finds ٱلْكِتَٰبُ; ملك finds مَلِك, مُلْك and مَلَك). Mitigations: ranking (rasmOnly −5, exact before stripped), the golden table, and the --imlaei seam.
 - Dropping ء everywhere (needed so typed and Uthmani hamza seats agree) merges some words. The hamza-required rule stops a typed ماء from matching ما. A query typed without hamza still matches every hamza homograph (ما finds ماء as well), which slightly inflates counts.
-- Proclitic stripping and the root and lemma data depend on the irab-v1.db segmentation. Rebuilding irab without rebuilding the search DB would desync them; the freshness test (content_sha256 plus source sha256s) is the guard.
+- Proclitic stripping and the root and lemma data depend on the irab-v1.db segmentation. Rebuilding irab without rebuilding the search DB would desync them; the freshness test (content_sha256 plus the Digital Khatt sha256 and the sha256 of the morphology read from irab) is the guard. Changes to the i'rab prose or books do not need a rebuild.
 - One word with two stems (20:94 يَبْنَؤُمَّ) indexes only its main stem's root. Root ء م م therefore shows 118 words while the word view's morphology says «١١٩ مرة», a visible mismatch.
 - DK slots differ from QUL in 2:181, 8:6 and 13:37. Highlights use DK slots and the word view uses QUL positions. The mapping table is verified by a build gate, but any future DK or QUL data change must update it.
 - Each verse row renders a Skia paragraph. Very common words (الله: 1,826 ayahs) depend on paging (30 rows) and FlatList virtualisation. Hermes timings are not measured yet (the prototype ran on V8).

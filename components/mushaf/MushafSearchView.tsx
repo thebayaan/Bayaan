@@ -59,12 +59,15 @@ import {
 // @ai-start
 import {
   isQuranQuery,
+  mayBeRootQuery,
   prefetchQuranSearch,
   useQuranSearch,
+  type QuranSearchState,
 } from '@/hooks/useQuranSearch';
 import {
   QURAN_PAGE_SIZE,
   quranResultRows,
+  showsOwnRows,
   type QuranResultRow,
 } from '@/components/search/quran/quranResultRows';
 import {
@@ -173,6 +176,12 @@ function isQuranRow(item: SearchListItem): item is QuranResultRow {
 const QURAN_LOADING_ROW: QuranResultRow = {
   type: 'quran-loading',
   key: 'quran-loading',
+};
+
+/** The search state of a query typed since the last debounced search. */
+const NOT_SEARCHED_YET: QuranSearchState = {
+  status: 'searching',
+  previous: null,
 };
 // @ai-end
 
@@ -708,7 +717,9 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
 
   // The Quran text search (the Hafs text), after typing pauses. Commands
   // above stay instant; a page, juz or verse number is not a Quran query.
-  // Its index opens when search mode starts, before the first query.
+  // Its index opens when search mode starts, before the first query. What a
+  // Quran query is comes from the search's outcome (the data service parses
+  // it once): a root query lists the root's words only, as in the Search tab.
   useEffect(() => {
     if (isSearchMode) prefetchQuranSearch();
   }, [isSearchMode]);
@@ -720,9 +731,16 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     );
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  const quranState = useQuranSearch(quranQuery, {
-    enabled: isSearchMode && isQuranQuery(quranQuery),
-  });
+  // Idle for a command or a name: the hook asks the service only for Quran
+  // queries.
+  const quranState = useQuranSearch(quranQuery, {enabled: isSearchMode});
+  // The commands show at once, except for a query whose answer may be a
+  // root (ر ح م): they wait for the search of the query as typed, and a
+  // root answer hides them, so they never show only to go.
+  const commandsShown = showsOwnRows(
+    quranQuery === searchQuery ? quranState : NOT_SEARCHED_YET,
+    mayBeRootQuery(searchQuery),
+  );
   // Rows shown and the lemma chosen, both reset when the query changes.
   const [quranPaging, setQuranPaging] = useState({
     query: '',
@@ -745,13 +763,22 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     [quranState, paging.shown, paging.lemma, shown.rewayah, quranQuery],
   );
   // A command shows no Ayahs rows (none left from an earlier query); a
-  // Quran query shows "Searching" until its first results arrive.
+  // Quran query shows "Searching" until its first results arrive, and a
+  // root query the root's words without the command results.
   const typedQuranQuery = isQuranQuery(searchQuery);
   const listData = useMemo<SearchListItem[]>(() => {
     if (!typedQuranQuery) return searchResults;
     const waiting = quranQuery !== searchQuery && quranRows.length === 0;
-    return [...searchResults, ...(waiting ? [QURAN_LOADING_ROW] : quranRows)];
-  }, [typedQuranQuery, searchResults, quranQuery, searchQuery, quranRows]);
+    const commands = commandsShown ? searchResults : [];
+    return [...commands, ...(waiting ? [QURAN_LOADING_ROW] : quranRows)];
+  }, [
+    typedQuranQuery,
+    searchResults,
+    quranQuery,
+    searchQuery,
+    quranRows,
+    commandsShown,
+  ]);
 
   // @ai-start
   // Opens a verse of the rewayah on screen on its page (the page of the

@@ -13,7 +13,10 @@ import TestRenderer, {act} from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {QuranSearchState} from '@/hooks/useQuranSearch';
 import type {QuranResultRowViewProps} from '@/components/search/quran/QuranResultRowView';
-import type {QuranRoot} from '@/services/search/QuranSearchDataService';
+import type {
+  QuranRoot,
+  QuranSearchOutcome,
+} from '@/services/search/QuranSearchDataService';
 import type {QuranVerseHit} from '@/utils/search/quranSearch';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -40,20 +43,27 @@ jest.mock('@/services/dataService', () => ({
   getAllSurahs: async () => [],
 }));
 
-// The Quran search: a state per query; idle when not enabled.
+// The Quran search: a state per query; like the hook, idle (the service
+// never asked) unless enabled and a Quran query by the service's own check.
 const mockQuranStates = new Map<string, QuranSearchState>();
-const mockQuranCalls: {query: string; enabled: boolean | undefined}[] = [];
-jest.mock('@/hooks/useQuranSearch', () => ({
-  useQuranSearch: (query: string, options: {enabled?: boolean} = {}) => {
-    mockQuranCalls.push({query, enabled: options.enabled});
-    if (options.enabled === false) return {status: 'idle'};
-    return mockQuranStates.get(query) ?? {status: 'idle'};
-  },
-  isQuranQuery: (query: string) =>
-    jest.requireActual('@/utils/search/quranText').parseQuranQuery(query)
-      .kind !== 'none',
-  prefetchQuranSearch: jest.fn(),
-}));
+const mockQuranCalls: {query: string; asked: boolean}[] = [];
+jest.mock('expo-sqlite', () => ({}));
+jest.mock('@/hooks/useQuranSearch', () => {
+  const {isQuranQuery, mayBeRootQuery} = jest.requireActual(
+    '@/services/search/QuranSearchDataService',
+  );
+  return {
+    useQuranSearch: (query: string, options: {enabled?: boolean} = {}) => {
+      const asked = (options.enabled ?? true) && isQuranQuery(query);
+      mockQuranCalls.push({query, asked});
+      if (!asked) return {status: 'idle'};
+      return mockQuranStates.get(query) ?? {status: 'idle'};
+    },
+    isQuranQuery,
+    mayBeRootQuery,
+    prefetchQuranSearch: jest.fn(),
+  };
+});
 
 // Rows render as text: the row key (and a header's note); a press acts on
 // the verse or the root suggestion.
@@ -185,6 +195,12 @@ jest.mock('@/services/analytics/AnalyticsService', () => ({
 
 import {SearchView} from '../SearchView';
 
+const trackSearchPerformed = (
+  jest.requireMock('@/services/analytics/AnalyticsService') as {
+    analyticsService: {trackSearchPerformed: jest.Mock};
+  }
+).analyticsService.trackSearchPerformed;
+
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -213,20 +229,21 @@ function textDone(
 
 const RAHMA: QuranRoot = {id: 7, root: 'ر ح م', words: 339, ayahs: 313};
 
-function rootDone(hits: QuranVerseHit[]): QuranSearchState {
+function rootOutcome(hits: QuranVerseHit[]): QuranSearchOutcome {
   return {
-    status: 'done',
-    outcome: {
-      kind: 'root',
-      letters: 'رحم',
-      candidates: [RAHMA],
-      result: {
-        root: RAHMA,
-        lemmas: [{id: 1, rootId: 7, lemma: 'رَحِيم', words: 116, ayahs: 114}],
-        hits: () => hits,
-      },
+    kind: 'root',
+    letters: 'رحم',
+    candidates: [RAHMA],
+    result: {
+      root: RAHMA,
+      lemmas: [{id: 1, rootId: 7, lemma: 'رَحِيم', words: 116, ayahs: 114}],
+      hits: () => hits,
     },
   };
+}
+
+function rootDone(hits: QuranVerseHit[]): QuranSearchState {
+  return {status: 'done', outcome: rootOutcome(hits)};
 }
 
 const onQueryChange = jest.fn();
@@ -308,6 +325,7 @@ beforeEach(async () => {
   mockRewayah = 'hafs';
   mockTablet = false;
   mockTabletRows.length = 0;
+  trackSearchPerformed.mockClear();
   await AsyncStorage.clear();
   // react-test-renderer prints a deprecation notice under React 19.
   errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -349,14 +367,14 @@ describe('SearchView: Quran results', () => {
     await open('husary');
     expect(rows()).toEqual(['catalog-row|Mahmoud Khalil Al-Husary']);
     expect(mockQuranCalls.length).toBeGreaterThan(0);
-    expect(mockQuranCalls.every(call => call.enabled === false)).toBe(true);
+    expect(mockQuranCalls.every(call => !call.asked)).toBe(true);
   });
 
   it('searches the Arabic-layout letters of a Latin query the catalogue cannot match', async () => {
     // "hgpl]" is الحمد typed on a US keyboard.
     mockQuranStates.set('الحمد', textDone([hit('1:2', 1)]));
     await open('hgpl]');
-    expect(mockQuranCalls).toContainEqual({query: 'الحمد', enabled: true});
+    expect(mockQuranCalls).toContainEqual({query: 'الحمد', asked: true});
     expect(rows()).toEqual([
       'quran-row|quran-header:none',
       'quran-row|quran-verse-1:2',
@@ -370,6 +388,111 @@ describe('SearchView: Quran results', () => {
     mockQuranStates.set('root:رحم', rootDone([hit('1:1', 3)]));
     await open('root:رحم');
     expect(mockCatalogQueries).not.toContain('root:رحم');
+    expect(rows()).toEqual([
+      'quran-row|quran-root-7',
+      'quran-row|quran-lemmas-7',
+      'quran-row|quran-verse-1:1',
+    ]);
+  });
+
+  it('lists ر ح م as the root the search says it is, without the catalogue', async () => {
+    // The tab does not parse the query: the service, which holds the root
+    // list, says ر ح م is a root.
+    mockCatalog.set('ر ح م', [
+      {type: 'surah', item: {id: 55, name: 'Ar-Rahman'}},
+    ]);
+    mockQuranStates.set('ر ح م', rootDone([hit('1:1', 3)]));
+    await open('ر ح م');
+    expect(mockCatalogQueries).not.toContain('ر ح م');
+    expect(trackSearchPerformed).not.toHaveBeenCalled();
+    expect(rows()).toEqual([
+      'quran-row|quran-root-7',
+      'quran-row|quran-lemmas-7',
+      'quran-row|quran-verse-1:1',
+    ]);
+  });
+
+  it('runs the catalogue once the search says letters that may be a root are text', async () => {
+    // ل ك ن could spell a root until the root list says it is لكن.
+    mockCatalog.set('ل ك ن', [
+      {type: 'surah', item: {id: 2, name: 'Al-Baqarah'}},
+    ]);
+    mockQuranStates.set('ل ك ن', {status: 'searching', previous: null});
+    await open('ل ك ن');
+    expect(mockCatalogQueries).not.toContain('ل ك ن');
+    expect(rows()).toEqual(['quran-row|quran-loading']);
+
+    mockQuranStates.set('ل ك ن', textDone([hit('3:198', 1)]));
+    await retype('ل ك ن');
+    expect(mockCatalogQueries.filter(q => q === 'ل ك ن')).toHaveLength(1);
+    expect(trackSearchPerformed).toHaveBeenCalledTimes(1);
+    expect(rows()).toEqual([
+      'catalog-row|Al-Baqarah',
+      'quran-row|quran-header:none',
+      'quran-row|quran-verse-3:198',
+    ]);
+  });
+
+  it('runs the catalogue at once for a query that cannot be a root', async () => {
+    // A surah name, and a surah opening typed as letters (its root ء ل م
+    // is only a suggestion): neither waits for the Quran search, which may
+    // be slow on first use.
+    mockCatalog.set('البقرة', [
+      {type: 'surah', item: {id: 2, name: 'Al-Baqarah'}},
+    ]);
+    mockQuranStates.set('البقرة', {status: 'searching', previous: null});
+    await open('البقرة');
+    expect(rows()).toEqual([
+      'catalog-row|Al-Baqarah',
+      'quran-row|quran-loading',
+    ]);
+    expect(trackSearchPerformed).toHaveBeenCalledTimes(1);
+
+    mockCatalog.set('ا ل م', [
+      {type: 'surah', item: {id: 2, name: 'Al-Baqarah'}},
+    ]);
+    mockQuranStates.set('ا ل م', {status: 'searching', previous: null});
+    await retype('ا ل م');
+    expect(rows()).toEqual([
+      'catalog-row|Al-Baqarah',
+      'quran-row|quran-loading',
+    ]);
+    const pain: QuranRoot = {id: 3, root: 'ء ل م', words: 75, ayahs: 73};
+    mockQuranStates.set('ا ل م', textDone([hit('2:1', 1)], [pain]));
+    await retype('ا ل م');
+    expect(rows()).toEqual([
+      'catalog-row|Al-Baqarah',
+      'quran-row|quran-header:none',
+      'quran-row|quran-root-suggestion-3',
+      'quran-row|quran-verse-2:1',
+    ]);
+
+    // After a root, the next query's catalogue does not wait either, though
+    // the root's rows stay until its own answer arrives.
+    mockQuranStates.set('ر ح م', rootDone([hit('1:1', 3)]));
+    await retype('ر ح م');
+    mockCatalog.set('رحمة', [{type: 'surah', item: {id: 19, name: 'Maryam'}}]);
+    mockQuranStates.set('رحمة', {
+      status: 'searching',
+      previous: rootOutcome([hit('1:1', 3)]),
+    });
+    await retype('رحمة');
+    expect(rows()[0]).toBe('catalog-row|Maryam');
+  });
+
+  it('never leaves rows of the last query under one whose answer may be a root', async () => {
+    mockCatalog.set('husary', [
+      {type: 'reciter', item: {id: 'r1', name: 'Mahmoud Khalil Al-Husary'}},
+    ]);
+    await open('husary');
+    expect(rows()).toEqual(['catalog-row|Mahmoud Khalil Al-Husary']);
+
+    mockQuranStates.set('ر ح م', {status: 'searching', previous: null});
+    await retype('ر ح م');
+    expect(rows()).toEqual(['quran-row|quran-loading']);
+
+    mockQuranStates.set('ر ح م', rootDone([hit('1:1', 3)]));
+    await retype('ر ح م');
     expect(rows()).toEqual([
       'quran-row|quran-root-7',
       'quran-row|quran-lemmas-7',
@@ -438,6 +561,21 @@ describe('SearchView: Quran results', () => {
       'quran-row|quran-lemmas-7',
       'quran-row|quran-verse-1:1',
     ]);
+
+    // Spaced letters the search calls a root: the list too, also while
+    // their answer is pending (no jump from the tablet results).
+    const tabletRenders = mockTabletRows.length;
+    mockQuranStates.set('ر ح م', {status: 'searching', previous: null});
+    await retype('ر ح م');
+    expect(rows()).toEqual(['quran-row|quran-loading']);
+    mockQuranStates.set('ر ح م', rootDone([hit('1:1', 3)]));
+    await retype('ر ح م');
+    expect(rows()).toEqual([
+      'quran-row|quran-root-7',
+      'quran-row|quran-lemmas-7',
+      'quran-row|quran-verse-1:1',
+    ]);
+    expect(mockTabletRows).toHaveLength(tabletRenders);
   });
 
   it('shows the empty state only when both searches are empty', async () => {

@@ -6,6 +6,11 @@
  * (services/search/__tests__/quranSearchDb.test.ts) feed it the rows of both
  * DBs. Every check below is a build gate: a failure throws.
  *
+ * Of the i'rab DB the index reads only the morphology of each word (its
+ * proclitics, definiteness, lemma, root and stated root count), and meta
+ * records the sha256 of exactly that (irab_morph_sha256), so a change to the
+ * i'rab prose, the books or the text ids leaves the index fresh.
+ *
  * buildQuranSearchIndex (gates 1-4):
  *  1. 6,236 verses in mushaf order and 77,432 words outside the markers;
  *  2. Digital Khatt and QUL (i'rab) word counts agree in every verse except
@@ -21,6 +26,7 @@
 import crypto from 'crypto';
 import {decodeEntries, decodeMorph} from '@/services/irab/irabFormat';
 import {
+  QURAN_KIND_FIXTURES,
   QURAN_ROOT_FIXTURES,
   QURAN_ROOT_QUERY_FIXTURES,
   QURAN_TEXT_FIXTURES,
@@ -33,6 +39,7 @@ import {
   QURAN_SEARCH_FORMAT,
   QURAN_SLOT_STRIDE,
   QURAN_VERSE_COUNT,
+  verseIndexOf,
   verseKeyAt,
   type QuranLemma,
   type QuranRoot,
@@ -102,8 +109,11 @@ export interface QuranSearchIndexInput {
   irabTexts: readonly string[];
   /** Optional imla'i spelling per slot ('s:a:w' → word): extra tier-3 forms. */
   imlaei?: ReadonlyMap<string, string>;
-  /** Recorded in meta. */
-  sources: {dkSha256: string; irabSha256: string; imlaeiSha256?: string};
+  /**
+   * Recorded in meta. The i'rab DB's part is computed from the rows
+   * (irabMorphologySha256), not from its file.
+   */
+  sources: {dkSha256: string; imlaeiSha256?: string};
 }
 
 export interface QuranIndexLemma extends QuranLemma {
@@ -174,6 +184,52 @@ function morphOfRow(
     root: facts.get('الجذر') ?? null,
     statedRootCount: occurrence ? statedRootCount(occurrence) : null,
   };
+}
+
+/** One i'rab word (QUL numbering) and what the index reads of it. */
+interface IrabWord {
+  verseKey: string;
+  position: number;
+  morph: SlotMorph;
+}
+
+/** The morphology of every i'rab word: all the index reads of that DB. */
+function irabWordsOf(
+  input: Pick<QuranSearchIndexInput, 'irabRows' | 'irabTexts'>,
+): IrabWord[] {
+  return input.irabRows.map(row => ({
+    verseKey: row.verseKey,
+    position: row.position,
+    morph: morphOfRow(row, input.irabTexts),
+  }));
+}
+
+function morphologySha256(words: readonly IrabWord[]): string {
+  const lines = words.map(({verseKey, position, morph}) => ({
+    order: (verseIndexOf(verseKey) ?? -1) * QURAN_SLOT_STRIDE + position,
+    line: [
+      `${verseKey}:${position}`,
+      morph.proclitics.join(','),
+      morph.definiteByArticle ? '1' : '0',
+      morph.lemma ?? '',
+      morph.root ?? '',
+      morph.statedRootCount ?? '',
+    ].join('\t'),
+  }));
+  lines.sort((a, b) => a.order - b.order || codeUnitOrder(a.line, b.line));
+  return sha256(lines.map(l => l.line).join('\n'));
+}
+
+/**
+ * sha256 of the morphology the index reads from the i'rab DB: per word, in
+ * mushaf order, its proclitics, whether the article defines it, its lemma,
+ * its root and the root count the data states. It changes only when one of
+ * those does: not with the i'rab prose, the books or the ids of the texts.
+ */
+export function irabMorphologySha256(
+  input: Pick<QuranSearchIndexInput, 'irabRows' | 'irabTexts'>,
+): string {
+  return morphologySha256(irabWordsOf(input));
 }
 
 function formScore(form: QuranWordForm): number {
@@ -292,19 +348,20 @@ export function buildQuranSearchIndex(
   }
 
   // Gate 4 (part): every i'rab word maps to a slot.
+  const irabWords = irabWordsOf(input);
   const morphBySlot = new Map<number, SlotMorph>();
-  for (const row of input.irabRows) {
-    const verseIndex = verseIndexByKey.get(row.verseKey);
-    gate(verseIndex !== undefined, `i'rab verse ${row.verseKey} not in DK`);
+  for (const word of irabWords) {
+    const verseIndex = verseIndexByKey.get(word.verseKey);
+    gate(verseIndex !== undefined, `i'rab verse ${word.verseKey} not in DK`);
     const verse = verses[verseIndex as number];
-    const position = qulToDkPositions(row.verseKey, row.position)[0];
+    const position = qulToDkPositions(word.verseKey, word.position)[0];
     gate(
       verse.words.has(position),
-      `i'rab word ${row.verseKey}:${row.position} has no slot`,
+      `i'rab word ${word.verseKey}:${word.position} has no slot`,
     );
     morphBySlot.set(
       (verseIndex as number) * QURAN_SLOT_STRIDE + position,
-      morphOfRow(row, input.irabTexts),
+      word.morph,
     );
   }
 
@@ -458,7 +515,7 @@ export function buildQuranSearchIndex(
     format: String(QURAN_SEARCH_FORMAT),
     normalizer: String(QURAN_TEXT_NORMALIZER_VERSION),
     dk_sha256: input.sources.dkSha256,
-    irab_sha256: input.sources.irabSha256,
+    irab_morph_sha256: morphologySha256(irabWords),
     verses: String(verses.length),
     words: String(QURAN_WORD_COUNT),
     forms: String(forms.size),
@@ -576,6 +633,22 @@ export async function checkQuranSearchIndex(
     const got = rootCandidates(fixture.letters, isKnownRoot);
     if (got.join('|') !== fixture.roots.join('|')) {
       failures.push(`root letters ${fixture.letters}: ${got.join(', ')}`);
+    }
+  }
+
+  // What each query is, as the data service parses it (with the roots).
+  for (const fixture of QURAN_KIND_FIXTURES) {
+    const parsed = parseQuranQuery(fixture.query, isKnownRoot);
+    let letters: string | null = null;
+    if (parsed.kind === 'root') letters = parsed.letters;
+    if (parsed.kind === 'text') letters = parsed.rootLetters;
+    const roots = letters ? rootCandidates(letters, isKnownRoot).sort() : [];
+    const want = [...fixture.roots].sort();
+    if (parsed.kind !== fixture.kind || roots.join('|') !== want.join('|')) {
+      failures.push(
+        `«${fixture.query}»: ${parsed.kind} [${roots.join(', ')}], ` +
+          `expected ${fixture.kind} [${want.join(', ')}]`,
+      );
     }
   }
 

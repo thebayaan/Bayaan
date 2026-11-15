@@ -3,8 +3,10 @@
  * The bundled Quran search index (assets/data/quran-search-v1.db): complete,
  * built from the current sources, and fresh. The test rebuilds the index in
  * memory from the Digital Khatt words and the i'rab morphology and compares
- * its content hash with the committed one, so a normaliser or source change
- * that was not rebuilt fails here. Rebuild with:
+ * its meta (content and source hashes) with the committed one, so a
+ * normaliser or source change that was not rebuilt fails here. Of the i'rab
+ * DB only the morphology the index reads counts: its prose, books and text
+ * ids may change without a rebuild. Rebuild with:
  *
  *   npx tsx scripts/search/build-quran-search-db.ts
  */
@@ -13,24 +15,32 @@ import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import {
+  IRAB_DB,
   readQuranSearchInput,
   REBUILD_COMMAND,
 } from '../../../scripts/search/build-quran-search-db';
 import {
   alphabetViolations,
   buildQuranSearchIndex,
+  irabMorphologySha256,
   ROOT_COUNT_EXCEPTIONS,
   statedRootCount,
   type QuranSearchIndexContent,
+  type QuranSearchIndexInput,
 } from '../../../scripts/search/quranSearchIndex';
-import {decodePostings} from '@/utils/search/quranIndexFormat';
-import {isFoldedForm} from '@/utils/search/quranText';
-import {decodeMorph} from '@/services/irab/irabFormat';
+import {IRAB_DB_NAME} from '@/constants/bundledDatabases';
+import {
+  decodePostings,
+  QURAN_SEARCH_DB_NAME,
+} from '@/utils/search/quranIndexFormat';
+import {QURAN_ONE_WORD_AYAHS} from '@/utils/search/quranSearch';
+import {isFoldedForm, isVerseMarker} from '@/utils/search/quranText';
+import {decodeMorph, MORPH_LEMMA_LABEL} from '@/services/irab/irabFormat';
 
 jest.setTimeout(120_000);
 
 const ROOT = path.join(__dirname, '../../..');
-const DB = path.join(ROOT, 'assets/data/quran-search-v1.db');
+const DB = path.join(ROOT, 'assets/data', QURAN_SEARCH_DB_NAME);
 const DK_DIR = path.join(ROOT, 'data/mushaf/digitalkhatt');
 
 const db = new Database(DB, {readonly: true});
@@ -43,16 +53,18 @@ const meta: Record<string, string> = Object.fromEntries(
   ).map(row => [row.key, row.value]),
 );
 
+let input: QuranSearchIndexInput;
 let rebuilt: QuranSearchIndexContent;
 beforeAll(() => {
-  rebuilt = buildQuranSearchIndex(readQuranSearchInput());
+  input = readQuranSearchInput();
+  rebuilt = buildQuranSearchIndex(input);
 });
 afterAll(() => db.close());
 
 const sha256 = (file: string) =>
   crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
-describe('quran-search-v1.db', () => {
+describe(QURAN_SEARCH_DB_NAME, () => {
   it('has the format 1 schema and a complete meta', () => {
     const tables = (
       db
@@ -74,7 +86,7 @@ describe('quran-search-v1.db', () => {
       'format',
       'normalizer',
       'dk_sha256',
-      'irab_sha256',
+      'irab_morph_sha256',
       'content_sha256',
       'verses',
       'words',
@@ -90,26 +102,122 @@ describe('quran-search-v1.db', () => {
     expect(meta.imlaei_sha256).toBeUndefined();
   });
 
-  it('records the sha256 of the sources it was built from', () => {
+  it('records the sha256 of what it was built from', () => {
     expect(meta.dk_sha256).toBe(
       sha256(path.join(DK_DIR, 'digital-khatt-v2.db')),
     );
-    expect(meta.irab_sha256).toBe(
-      sha256(path.join(ROOT, 'assets/data/irab-v1.db')),
-    );
+    // Of the i'rab DB, the morphology it reads; never the whole file.
+    expect(IRAB_DB).toBe(path.join(ROOT, 'assets/data', IRAB_DB_NAME));
+    expect(meta.irab_morph_sha256).toBe(irabMorphologySha256(input));
+    expect(meta.irab_sha256).toBeUndefined();
   });
 
   it('is fresh: a rebuild from the sources gives the same content', () => {
     const stale = Object.entries(rebuilt.meta)
       .filter(([key, value]) => meta[key] !== value)
       .map(([key]) => key);
+    // Keys an older build wrote and this one does not.
+    for (const key of Object.keys(meta)) {
+      if (key !== 'complete' && !(key in rebuilt.meta)) stale.push(key);
+    }
     if (stale.length) {
       throw new Error(
-        `assets/data/quran-search-v1.db is stale (${stale.join(', ')}). ` +
+        `assets/data/${QURAN_SEARCH_DB_NAME} is stale (${stale.join(', ')}). ` +
           `Run: ${REBUILD_COMMAND}`,
       );
     }
     expect(stale).toEqual([]);
+  });
+
+  it("follows the morphology it reads, not the rest of the i'rab DB", () => {
+    const base = irabMorphologySha256(input);
+    const texts = input.irabTexts;
+    const rows = input.irabRows;
+
+    // The same data with every text id renumbered (a rebuilt i'rab DB).
+    const last = texts.length - 1;
+    const renumber = (id: number) => last - id;
+    const renumbered: string[] = [];
+    texts.forEach((text, id) => {
+      renumbered[renumber(id)] = text;
+    });
+    const remapped = rows.map(row => ({
+      ...row,
+      entries: JSON.stringify(
+        (JSON.parse(row.entries) as unknown[][]).map(
+          ([kind, label, text, ...span]) => [
+            kind,
+            renumber(label as number),
+            renumber(text as number),
+            ...span,
+          ],
+        ),
+      ),
+      morph: JSON.stringify(
+        (JSON.parse(row.morph) as number[][]).map(([label, value]) => [
+          renumber(label),
+          renumber(value),
+        ]),
+      ),
+    }));
+    expect(
+      irabMorphologySha256({irabRows: remapped, irabTexts: renumbered}),
+    ).toBe(base);
+
+    // The i'rab prose of a stem (footnotes stripped, a wording fixed).
+    const facts = new Set<number>();
+    for (const row of rows) {
+      for (const entry of JSON.parse(row.entries) as number[][]) {
+        facts.add(entry[1]);
+      }
+      for (const [label, value] of JSON.parse(row.morph) as number[][]) {
+        facts.add(label);
+        facts.add(value);
+      }
+    }
+    const prose = rows
+      .flatMap(row => JSON.parse(row.entries) as [string, number, number][])
+      .find(([kind, , text]) => kind === 's' && !facts.has(text));
+    if (!prose) throw new Error('no stem text to change');
+    const edited = [...texts];
+    edited[prose[2]] = `${texts[prose[2]]} (حاشية)`;
+    expect(irabMorphologySha256({irabRows: rows, irabTexts: edited})).toBe(
+      base,
+    );
+
+    // A lemma the index reads: the hash changes.
+    const at = rows.findIndex(row =>
+      decodeMorph(row.morph, texts).some(f => f.label === MORPH_LEMMA_LABEL),
+    );
+    const other = [...texts, 'لَفْظ'];
+    const lemmaId = texts.indexOf(MORPH_LEMMA_LABEL);
+    const changed = rows.map((row, i) =>
+      i === at
+        ? {
+            ...row,
+            morph: JSON.stringify(
+              (JSON.parse(row.morph) as number[][]).map(([label, value]) =>
+                label === lemmaId ? [label, other.length - 1] : [label, value],
+              ),
+            ),
+          }
+        : row,
+    );
+    expect(
+      irabMorphologySha256({irabRows: changed, irabTexts: other}),
+    ).not.toBe(base);
+  });
+
+  it('knows every ayah of one word, which a phrase runs on from', () => {
+    const words = new Map<string, number>();
+    for (const row of input.dkWords) {
+      if (isVerseMarker(row.text)) continue;
+      const key = row.location.split(':').slice(0, 2).join(':');
+      words.set(key, (words.get(key) ?? 0) + 1);
+    }
+    expect(words.size).toBe(6236);
+    const oneWord = [...words].filter(([, n]) => n === 1).map(([key]) => key);
+    expect(oneWord).toEqual(QURAN_ONE_WORD_AYAHS);
   });
 
   it('stores the rebuilt rows', () => {
@@ -143,9 +251,7 @@ describe('quran-search-v1.db', () => {
   });
 
   it("matches the i'rab data's stated counts, except ء م م", () => {
-    const irab = new Database(path.join(ROOT, 'assets/data/irab-v1.db'), {
-      readonly: true,
-    });
+    const irab = new Database(IRAB_DB, {readonly: true});
     const texts: string[] = [];
     for (const row of irab.prepare('SELECT id, text FROM texts').all() as {
       id: number;

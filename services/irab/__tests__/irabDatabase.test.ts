@@ -6,6 +6,7 @@
  */
 import path from 'path';
 import Database from 'better-sqlite3';
+import {IRAB_DB_NAME} from '@/constants/bundledDatabases'; // @ai
 import {
   decodeEntries,
   decodeMorph,
@@ -13,7 +14,7 @@ import {
   MORPH_ROOT_LABEL, // @ai
 } from '../irabFormat';
 
-const DB = path.join(__dirname, '../../../assets/data/irab-v1.db');
+const DB = path.join(__dirname, '../../../assets/data', IRAB_DB_NAME); // @ai
 const WBW = path.join(__dirname, '../../../data/wbw/wbw-en.db');
 
 const db = new Database(DB, {readonly: true});

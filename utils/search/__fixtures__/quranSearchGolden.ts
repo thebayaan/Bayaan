@@ -131,13 +131,62 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'بعد ما', includes: ['2:181', '8:6', '13:37']},
   {query: 'إل ياسين', includes: ['37:130']},
   {query: 'الياسين', includes: ['37:130']},
-  // Muqatta'at
-  {query: 'الم', first: '2:1'},
+  // Muqatta'at. Letters typed apart (or one letter) are the surah opening:
+  // whole words drawn without a hamza, also when the letters spell a root
+  // (ا ل م, root ء ل م, which is suggested instead).
+  {query: 'ا ل م', exactly: ['2:1', '3:1', '29:1', '30:1', '31:1', '32:1']},
+  {query: 'ا ل م ص', exactly: ['7:1']},
+  {query: 'ا ل ر', exactly: ['10:1', '11:1', '12:1', '14:1', '15:1']},
+  {query: 'ا ل م ر', exactly: ['13:1']},
+  {query: 'ك ه ي ع ص', exactly: ['19:1']},
+  {query: 'ط ه', exactly: ['20:1']},
+  {query: 'ط س م', exactly: ['26:1', '28:1']},
+  {query: 'ط س', exactly: ['27:1']},
+  {query: 'ي س', exactly: ['36:1']},
+  {query: 'ص', exactly: ['38:1']},
+  {
+    query: 'ح م',
+    exactly: ['40:1', '41:1', '42:1', '43:1', '44:1', '45:1', '46:1'],
+  },
+  {query: 'ع س ق', exactly: ['42:2']},
+  {query: 'ق', exactly: ['50:1']},
+  {query: 'ن', exactly: ['68:1']},
+  // A phrase runs on from an ayah of one word (QURAN_ONE_WORD_AYAHS: an
+  // opening, الرحمن, والعصر) into the next ayah, which is the hit: a surah's
+  // beginning pasted with its opening.
+  {query: 'الم ذلك الكتاب لا ريب فيه', exactly: ['2:2']},
+  {query: 'الٓمٓ ذَٰلِكَ ٱلۡكِتَٰبُ لَا رَيۡبَۛ فِيهِۛ', exactly: ['2:2']},
+  {query: 'الم الله لا إله إلا هو', exactly: ['3:2']},
+  {query: 'الم أحسب الناس', exactly: ['29:2']},
+  {query: 'الم تنزيل الكتاب', exactly: ['32:2']},
+  {query: 'المص كتاب أنزل إليك', exactly: ['7:2']},
+  {query: 'كهيعص ذكر رحمت ربك', exactly: ['19:2']},
+  {query: 'طه ما أنزلنا عليك القرآن لتشقى', exactly: ['20:2']},
+  {query: 'طسم تلك آيات الكتاب المبين', exactly: ['26:2', '28:2']},
+  {query: 'يس والقرآن الحكيم', exactly: ['36:2']},
+  {query: 'حم تنزيل الكتاب', exactly: ['40:2', '45:2', '46:2']},
+  {query: 'حم عسق', exactly: ['42:2']},
+  {query: 'حم عسق كذلك يوحي', exactly: ['42:3']},
+  {query: 'الرحمن علم القرآن', exactly: ['55:2']},
+  {query: 'والعصر إن الإنسان لفي خسر', exactly: ['103:2']},
+  // Letters typed apart, then words: the opening they spell.
+  {query: 'ا ل ر تلك آيات الكتاب', exactly: ['10:1', '12:1', '15:1']},
+  {query: 'ح م تنزيل الكتاب', exactly: ['40:2', '45:2', '46:2']},
+  // Pasted from the mushaf, with the maddah over its letters (which ألم
+  // never has), one word is the opening too.
+  {query: 'الٓمٓ', exactly: ['2:1', '3:1', '29:1', '30:1', '31:1', '32:1']},
+  {query: 'الٓرۚ', exactly: ['10:1', '11:1', '12:1', '14:1', '15:1']},
+  // Typed as one word, an opening is an ordinary word: الم also finds ألم
+  // typed without its hamza (2:106) and, as a prefix, الملك; the openings
+  // rank with the whole-word matches, in mushaf order.
+  {
+    query: 'الم',
+    first: '2:1',
+    includes: ['3:1', '29:1', '30:1', '31:1', '32:1', '2:106', '67:1'],
+  },
   {query: 'طه', includes: ['20:1']},
   {query: 'يس', includes: ['36:1']},
   {query: 'كهيعص', includes: ['19:1']},
-  {query: 'ك ه ي ع ص', includes: ['19:1']},
-  {query: 'ح م', includes: ['40:1']},
   {query: 'ن والقلم', includes: ['68:1']},
   // The all-words fallback
   {query: 'العالمين رب', kind: 'allWords', includes: ['1:2']},
@@ -188,6 +237,34 @@ export const QURAN_ROOT_QUERY_FIXTURES: readonly {
   {letters: 'شيء', roots: ['ش ي ء']},
   {letters: 'أمن', roots: ['ء م ن']},
   {letters: 'كتب', roots: ['ك ت ب']},
+  // An opening keeps its root reachable as a suggestion.
+  {letters: 'ا ل م', roots: ['ء ل م']},
+  {letters: 'الم', roots: ['ء ل م']},
+];
+
+/**
+ * What every surface treats a query as: the kind of the data service's
+ * outcome (the service alone parses with the root list), and the root it
+ * lists (root) or the roots it suggests (text).
+ */
+export interface QuranKindFixture {
+  query: string;
+  kind: 'none' | 'text' | 'root';
+  roots: readonly string[];
+}
+
+export const QURAN_KIND_FIXTURES: readonly QuranKindFixture[] = [
+  {query: 'ر ح م', kind: 'root', roots: ['ر ح م']},
+  // Letters that could spell a root until the root list says they are the
+  // text لكن (the surfaces hold their own rows until this answer).
+  {query: 'ل ك ن', kind: 'text', roots: []},
+  {query: 'root:رحم', kind: 'root', roots: ['ر ح م']},
+  {query: 'جذر: ر ح م', kind: 'root', roots: ['ر ح م']},
+  {query: 'رحم', kind: 'text', roots: ['ر ح م']},
+  {query: 'ا ل م', kind: 'text', roots: ['ء ل م']},
+  {query: 'ح م', kind: 'text', roots: []},
+  {query: '2:255', kind: 'none', roots: []},
+  {query: 'husary', kind: 'none', roots: []},
 ];
 
 /** Why a text search result fails a fixture, or null when it passes. */

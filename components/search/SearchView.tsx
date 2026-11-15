@@ -56,12 +56,15 @@ import {useTranslation} from 'react-i18next';
 // @ai-start
 import {
   isQuranQuery,
+  mayBeRootQuery,
   prefetchQuranSearch,
   useQuranSearch,
 } from '@/hooks/useQuranSearch';
 import {
+  isRootOutcome,
   QURAN_PAGE_SIZE,
   quranResultRows,
+  showsOwnRows,
   type QuranResultRow,
 } from '@/components/search/quran/quranResultRows';
 import {
@@ -74,7 +77,7 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {quranHitLinkParams} from '@/utils/quranLink';
 import {swapKeyboardLayout} from '@/utils/search/keyboardLayout';
 import {matchedPositions} from '@/utils/search/quranSearch';
-import {parseQuranQuery, rootQuery} from '@/utils/search/quranText';
+import {rootQuery} from '@/utils/search/quranText';
 // @ai-end
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
@@ -108,6 +111,7 @@ function recentId(item: RecentSearchItem): string | number {
 type SearchResult = CatalogSearchResult;
 // Catalogue rows, then the Quran results ("Ayahs") section.
 type SearchListItem = SearchResult | QuranResultRow;
+const NO_CATALOGUE_RESULTS: SearchResult[] = [];
 
 function isCatalogResult(item: SearchListItem): item is SearchResult {
   return item.type === 'surah' || item.type === 'reciter';
@@ -252,22 +256,29 @@ export function SearchView({
   }, [query]);
 
   // The Quran text search runs beside the catalogue on the same debounced
-  // query. A root query ('root:ر ح م') skips the catalogue; a Latin query the
-  // catalogue cannot match runs on the Arabic layout's letters.
-  const queryKind = useMemo(
-    () => parseQuranQuery(debouncedQuery).kind,
-    [debouncedQuery],
-  );
-  const rootMode = queryKind === 'root';
+  // query; a Latin query the catalogue cannot match runs on the Arabic
+  // layout's letters. What a Quran query is comes from the search's outcome
+  // (the data service parses it once, with its root list): a root query
+  // ('root:ر ح م', or ر ح م) lists the root's words without the catalogue.
+  const typedQuranQuery = isQuranQuery(debouncedQuery);
   // Set by the catalogue search, for the query it searched.
   const [swapped, setSwapped] = useState({from: '', query: ''});
   let quranQuery = debouncedQuery;
-  if (queryKind === 'none') {
+  if (!typedQuranQuery) {
     quranQuery = swapped.from === debouncedQuery ? swapped.query : '';
   }
   const quranState = useQuranSearch(quranQuery, {
     enabled: visible && quranQuery.length > 0,
   });
+  // The rows on screen (the last outcome's while the next search runs) are
+  // a root's: on iPad they keep the list.
+  const rootRows = isRootOutcome(quranState);
+  // The catalogue shows at once, except for a query whose answer may be a
+  // root (ر ح م), which waits for it; a root answer hides it.
+  const catalogueShown = showsOwnRows(
+    quranState,
+    mayBeRootQuery(debouncedQuery),
+  );
   // Rows shown and the lemma chosen, both reset when the query changes.
   const [quranPaging, setQuranPaging] = useState({
     query: '',
@@ -338,8 +349,7 @@ export function SearchView({
   }, [visible, isSearchMode]);
 
   const performSearch = useCallback(() => {
-    // A root query lists the root's words only.
-    if (!catalogSearch || !debouncedQuery.trim() || rootMode) {
+    if (!catalogSearch || !debouncedQuery.trim()) {
       setSearchResults([]);
       setSearching(false);
       return;
@@ -369,11 +379,18 @@ export function SearchView({
     }
 
     setSearching(false);
-  }, [debouncedQuery, catalogSearch, rootMode]);
+  }, [debouncedQuery, catalogSearch]);
 
   useEffect(() => {
-    performSearch();
-  }, [performSearch]);
+    if (catalogueShown) {
+      performSearch();
+    } else {
+      // A root lists its words only, and while the answer is pending no
+      // rows of the last query stay under this one.
+      setSearchResults(NO_CATALOGUE_RESULTS);
+      setSearching(false);
+    }
+  }, [performSearch, catalogueShown]);
 
   const addToRecentSearches = useCallback(
     async (result: SearchResult) => {
@@ -758,7 +775,8 @@ export function SearchView({
           </ScrollView>
         ) : isTablet &&
           !searching &&
-          !rootMode &&
+          !rootRows &&
+          catalogueShown &&
           (searchResults.length > 0 || quranRows.length > 0) ? (
           <SurahOptionsProvider build={buildSurahOptions}>
             <TabletSearchResults
@@ -821,9 +839,9 @@ export function SearchView({
                           .toString(),
                       },
                     ]}>
-                    {queryKind === 'none'
-                      ? t('search.noResultsHint')
-                      : t('reader:quranSearch.noAyahsHint')}
+                    {typedQuranQuery
+                      ? t('reader:quranSearch.noAyahsHint')
+                      : t('search.noResultsHint')}
                   </Text>
                 </View>
               ) : undefined

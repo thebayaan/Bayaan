@@ -182,7 +182,28 @@ export function quranAyahCount(
   return outcome.result?.hits(selectedLemma).length ?? 0;
 }
 
-/** True when the state is a root search (catalogue rows are hidden). */
+/**
+ * True when the outcome on screen is a root search (catalogue rows are
+ * hidden). The kind comes from the data service, which parses each query
+ * once with its root list; no surface parses a query itself.
+ */
 export function isRootOutcome(state: QuranSearchState): boolean {
   return shownOutcome(state)?.kind === 'root';
+}
+
+/**
+ * Whether a surface shows its own rows beside the Quran results (the Search
+ * tab's catalogue, the mushaf's commands) for a query whose search is in
+ * `state`. A root lists its words only, so a root answer hides them. A query
+ * that may be a root (mayBeRootQuery: root:رحم, ر ح م) shows them only once
+ * its search has answered something else (or failed), so they never show
+ * only to go; any other query shows them at once, without waiting for the
+ * search.
+ */
+export function showsOwnRows(
+  state: QuranSearchState,
+  mayBeRoot: boolean,
+): boolean {
+  if (state.status === 'done') return state.outcome.kind !== 'root';
+  return !(mayBeRoot && state.status === 'searching');
 }

@@ -4,6 +4,7 @@ import {
   QURAN_PAGE_SIZE,
   quranAyahCount,
   quranResultRows,
+  showsOwnRows,
   type QuranResultView,
 } from '../quranResultRows';
 import type {QuranSearchState} from '@/hooks/useQuranSearch';
@@ -175,5 +176,45 @@ describe('quranResultRows', () => {
     ]);
     expect(quranAyahCount({status: 'searching', previous})).toBe(1);
     expect(quranAyahCount({status: 'idle'})).toBe(0);
+  });
+
+  it('reads a root from the outcome on screen, the last one while searching', () => {
+    const rootOutcome: QuranSearchOutcome = {
+      kind: 'root',
+      letters: 'رحم',
+      candidates: [root],
+      result: null,
+    };
+    expect(isRootOutcome(done(rootOutcome))).toBe(true);
+    expect(isRootOutcome({status: 'searching', previous: rootOutcome})).toBe(
+      true,
+    );
+    expect(isRootOutcome({status: 'searching', previous: null})).toBe(false);
+    expect(isRootOutcome(done(text([hit(0)])))).toBe(false);
+  });
+
+  it('shows the other rows at once, but holds them for a query that may be a root', () => {
+    const rootOutcome: QuranSearchOutcome = {
+      kind: 'root',
+      letters: 'رحم',
+      candidates: [root],
+      result: null,
+    };
+    const searching: QuranSearchState = {status: 'searching', previous: null};
+    // A query that is never a root (رحم, البقرة): at once, whatever the
+    // search is doing; the last query's root on screen does not hold them.
+    expect(showsOwnRows(searching, false)).toBe(true);
+    expect(
+      showsOwnRows({status: 'searching', previous: rootOutcome}, false),
+    ).toBe(true);
+    expect(showsOwnRows({status: 'idle'}, false)).toBe(true);
+    expect(showsOwnRows(done(text([hit(0)])), false)).toBe(true);
+    // One that may be a root (ر ح م): held until its own answer.
+    expect(showsOwnRows(searching, true)).toBe(false);
+    expect(showsOwnRows(done(rootOutcome), true)).toBe(false);
+    expect(showsOwnRows(done(text([hit(0)])), true)).toBe(true);
+    // A failed search, or one that never runs, holds nothing back.
+    expect(showsOwnRows({status: 'error'}, true)).toBe(true);
+    expect(showsOwnRows({status: 'idle'}, true)).toBe(true);
   });
 });

@@ -4,9 +4,15 @@
  * first use, never at app start. It serves the postings the search engine
  * (utils/search/quranSearch.ts) asks for, root searches, and whole queries.
  *
+ * search() is the one place that parses a query for the app: it holds the
+ * root list, which decides whether spaced letters (ر ح م) are a root, so the
+ * surfaces read the kind (text, root or none) from its outcome.
+ *
  * The file name carries the index version: a rebuilt index ships as a new
- * file, so an installed app never keeps a stale import. A copy whose meta
- * lacks complete='1' (an import cut short) is deleted and imported again.
+ * file, so an installed app never keeps a stale import (expo-sqlite keeps an
+ * existing copy by name; services/search/__tests__/bundledDatabases.test.ts
+ * fails when the bytes change under the same name). A copy whose meta lacks
+ * complete='1' (an import cut short) is deleted and imported again.
  */
 import * as SQLite from 'expo-sqlite';
 import {
@@ -35,6 +41,29 @@ export interface RootSearchResult {
   lemmas: readonly QuranLemma[];
   /** The ayahs with words of the root (null) or of one lemma, mushaf order. */
   hits(lemmaId: number | null): readonly QuranVerseHit[];
+}
+
+/**
+ * Whether search(query) can answer anything but {kind: 'none'}: false for a
+ * command or a name ('2:255', 'صفحة 5', 'husary'). Needs no index and never
+ * disagrees with search(), as the root list only decides between text and
+ * root. The surfaces use it to leave other queries alone; what a Quran query
+ * is comes from the outcome.
+ */
+export function isQuranQuery(query: string): boolean {
+  return parseQuranQuery(query).kind !== 'none';
+}
+
+/**
+ * Whether search(query) may answer a root: root:رحم, or 3-4 letters typed
+ * apart that could spell one and are not a surah opening (ر ح م, also ل ك ن
+ * before the root list says it is the text لكن). Needs no index: it parses
+ * as if every root were known, so whatever search() answers with a root,
+ * this says may be one. False means it never does (رحم, البقرة, ا ل م), so
+ * a surface can show its own rows for that query at once.
+ */
+export function mayBeRootQuery(query: string): boolean {
+  return parseQuranQuery(query, () => true).kind === 'root';
 }
 
 export type QuranSearchOutcome =

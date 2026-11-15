@@ -480,7 +480,39 @@ export interface QuranQueryToken {
   keys: readonly string[];
   /** Typed with a hamza: only words with a hamza match. */
   needsHamza: boolean;
+  /**
+   * A surah opening typed as letters (ا ل م, ح م, ن; also before other
+   * words) or pasted from the mushaf (الٓمٓ): only whole words without a
+   * hamza match, so ا ل م finds الٓمٓ and not ألم or الملك.
+   */
+  opening?: true;
 }
+
+/**
+ * The surah openings drawn as separate letters (al-muqatta'at), folded:
+ * الم (2:1, 3:1, 29:1, 30:1, 31:1, 32:1), المص (7:1), الر (10:1, 11:1,
+ * 12:1, 14:1, 15:1), المر (13:1), كهيعص (19:1), طه (20:1), طسم (26:1,
+ * 28:1), طس (27:1), يس (36:1), ص (38:1), حم (40:1-46:1), عسق (42:2, after
+ * حم), ق (50:1) and ن (68:1). The Digital Khatt text draws them with a
+ * maddah over the letters (الٓمٓ, عٓسٓقٓ) and pause marks (الٓرۚ), which the
+ * folds remove; طه has no marks.
+ */
+export const QURAN_OPENINGS: ReadonlySet<string> = new Set([
+  'الم',
+  'المص',
+  'الر',
+  'المر',
+  'كهيعص',
+  'طه',
+  'طسم',
+  'طس',
+  'يس',
+  'ص',
+  'حم',
+  'عسق',
+  'ق',
+  'ن',
+]);
 
 export type ParsedQuranQuery =
   | {kind: 'none'}
@@ -562,17 +594,40 @@ function joinsNextWord(word: string): boolean {
 }
 
 /**
+ * Whether a query starts with a surah opening as the mushaf draws it: a
+ * word whose letters spell an opening and that carries a maddah (الٓمٓ,
+ * حمٓ, نٓۚ). No other word of the Hafs text does both (ألم has no maddah,
+ * and طه, which has none, is only ever the opening), so a pasted opening is
+ * never ألم.
+ */
+function startsWithDrawnOpening(query: string): boolean {
+  const first = query.trim().split(/\s+/u)[0] ?? '';
+  return (
+    first.includes('\u{0653}') && QURAN_OPENINGS.has(fold(rawLetters(first)))
+  );
+}
+
+/**
  * Parses a search query. A query with a digit or without an Arabic letter
  * is not a Quran query ('2:255', 'صفحة 5', 'juz 30', reciter names).
  * `root:رحم` / `جذر: ر ح م` ask for a root; 3-4 spaced letters (ر ح م) do
- * too when they spell a known root. Otherwise the text is split into words;
- * a standalone يا, ها or إل joins the next word (يا أيها → ياايها), as the
- * Uthmani text writes them as one.
+ * too when they spell a known root, unless they spell a surah opening
+ * (QURAN_OPENINGS: ا ل م is the text الم, its root ء ل م only a suggestion).
+ * Letters typed apart before other words that spell an opening, and a first
+ * word pasted as the mushaf draws an opening (الٓمٓ), are that opening too.
+ * Otherwise the text is split into words; a standalone يا, ها or إل joins
+ * the next word (يا أيها → ياايها), as the Uthmani text writes them as one.
+ *
+ * The root list (`isKnownRoot`) decides between a root and text for spaced
+ * letters, so only QuranSearchDataService, which holds it, parses for the
+ * app: the surfaces read the kind from its outcome. Without the list,
+ * spaced letters are text; whether a query is `none` never depends on it.
  */
 export function parseQuranQuery(
   query: string,
   isKnownRoot: (root: string) => boolean = () => false,
 ): ParsedQuranQuery {
+  const drawnOpening = startsWithDrawnOpening(query);
   let text = query
     .replace(MADDAH, '')
     .normalize('NFKC')
@@ -597,14 +652,21 @@ export function parseQuranQuery(
     .filter(word => ARABIC_LETTER.test(word));
   if (!words.length) return {kind: 'none'};
 
-  // Spaced single letters: a root (ر ح م), or muqatta'at (ح م, ك ه ي ع ص).
-  if (
-    words.length >= 2 &&
-    words.length <= 5 &&
-    words.every(word => rawLetters(word).length === 1)
-  ) {
+  // Single letters typed apart (or one letter): a surah opening (ا ل م, ح م,
+  // ك ه ي ع ص, ن), text matched as a whole word; else a root when 3-4 of
+  // them spell a known one (ر ح م); else one word. The openings are drawn
+  // without a hamza, so letters typed with one (أ ل م) are not an opening.
+  let opening = false;
+  // The first word is an opening (its letters typed apart, words after).
+  let leadOpening = false;
+  const isOpening = (letters: readonly string[]) =>
+    !letters.some(word => HAMZA.test(word)) &&
+    QURAN_OPENINGS.has(fold(letters.map(rawLetters).join('')));
+  if (words.length <= 5 && words.every(word => rawLetters(word).length === 1)) {
     const letters = words.map(rawLetters).join('');
+    opening = isOpening(words);
     if (
+      !opening &&
       words.length <= 4 &&
       words.length >= 3 &&
       rootCandidates(letters, isKnownRoot).length > 0
@@ -612,6 +674,19 @@ export function parseQuranQuery(
       return {kind: 'root', letters, explicit: false};
     }
     words.splice(0, words.length, words.join(''));
+  } else {
+    // Letters typed apart before other words (ا ل ر تلك آيات الكتاب, ح م
+    // تنزيل): when they spell an opening, that opening as one word.
+    let lead = 0;
+    while (lead < words.length && rawLetters(words[lead]).length === 1) lead++;
+    if (lead >= 1 && lead <= 5 && isOpening(words.slice(0, lead))) {
+      words.splice(0, lead, words.slice(0, lead).join(''));
+      leadOpening = true;
+    } else if (drawnOpening) {
+      // Pasted from the mushaf (الٓمٓ): the opening, alone or before words.
+      if (words.length === 1) opening = true;
+      else leadOpening = true;
+    }
   }
 
   const merged: string[][] = [];
@@ -637,7 +712,12 @@ export function parseQuranQuery(
     letters += keys[0].length;
     if (letters > QURAN_QUERY_MAX_LENGTH) break;
     const word = parts.join('');
-    tokens.push({keys, needsHamza: HAMZA.test(prepare(word))});
+    const token: QuranQueryToken = {
+      keys,
+      needsHamza: HAMZA.test(prepare(word)),
+    };
+    if (opening || (leadOpening && !tokens.length)) token.opening = true;
+    tokens.push(token);
     tokenWords.push(word);
   }
   if (!tokens.length) return {kind: 'none'};

@@ -4,14 +4,19 @@
  * mushaf search) and the word view's root results. The caller debounces the
  * query; the hook runs one search per query and drops a response that
  * arrives after a newer query was asked.
+ *
+ * What a query is (text or root) comes from the outcome: the data service
+ * parses it once, with its root list, so every surface agrees (ر ح م is a
+ * root, ا ل م the opening الم). The surfaces never parse a query themselves.
  */
 import {useEffect, useRef, useState} from 'react';
 import {
+  isQuranQuery,
+  mayBeRootQuery,
   quranSearchDataService,
   type QuranSearchOutcome,
   type RootSearchResult,
 } from '@/services/search/QuranSearchDataService';
-import {parseQuranQuery} from '@/utils/search/quranText';
 
 export type QuranSearchState =
   | {status: 'idle'}
@@ -21,10 +26,18 @@ export type QuranSearchState =
 
 const IDLE: QuranSearchState = {status: 'idle'};
 
-/** True when `query` is for the Quran text (not a page, number or name). */
-export function isQuranQuery(query: string): boolean {
-  return parseQuranQuery(query).kind !== 'none';
-}
+/**
+ * True when `query` is for the Quran search (not a page, number or name).
+ * The data service's check: it never disagrees with its outcome.
+ */
+export {isQuranQuery};
+
+/**
+ * True when the outcome for `query` may be a root (root:رحم, ر ح م): the
+ * surfaces hold their own rows until it answers. The data service's check,
+ * which needs no index.
+ */
+export {mayBeRootQuery};
 
 /** Opens the search index ahead of the first query (search mode entered). */
 export function prefetchQuranSearch(): void {

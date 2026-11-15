@@ -8,10 +8,12 @@
  *   npx tsx scripts/search/build-quran-search-db.ts --imlaei words.tsv --out x.db
  *
  * --check rebuilds in memory and fails when the committed DB is stale (its
- * content hash or a source hash differs). --imlaei adds one imla'i word per
- * slot ('s:a:w<TAB>word' lines) as extra spellings; v1 ships without it, and
- * a text fed in must have its licence checked first (see THIRD_PARTY_LICENSES
- * .md). Every gate is in scripts/search/quranSearchIndex.ts.
+ * content hash or a source hash differs: the Digital Khatt file's, or that
+ * of the morphology the index reads from the i'rab DB). --imlaei adds one
+ * imla'i word per slot ('s:a:w<TAB>word' lines) as extra spellings; v1 ships
+ * without it, and a text fed in must have its licence checked first (see
+ * THIRD_PARTY_LICENSES.md). Every gate is in scripts/search/quranSearchIndex
+ * .ts. The file names come from QURAN_SEARCH_DB_NAME and IRAB_DB_NAME.
  */
 import crypto from 'crypto';
 import fs from 'fs';
@@ -25,13 +27,18 @@ import {
   type QuranSearchIndexContent,
   type QuranSearchIndexInput,
 } from './quranSearchIndex';
-import {encodePostings} from '@/utils/search/quranIndexFormat';
+import {IRAB_DB_NAME} from '@/constants/bundledDatabases';
+import {
+  encodePostings,
+  QURAN_SEARCH_DB_NAME,
+} from '@/utils/search/quranIndexFormat';
 
 const ROOT = path.join(__dirname, '../..');
 const DK_DIR = path.join(ROOT, 'data/mushaf/digitalkhatt');
 const DK_DB = path.join(DK_DIR, 'digital-khatt-v2.db');
-const IRAB_DB = path.join(ROOT, 'assets/data/irab-v1.db');
-const OUT_DB = path.join(ROOT, 'assets/data/quran-search-v1.db');
+/** The i'rab DB the index reads its morphology from. */
+export const IRAB_DB = path.join(ROOT, 'assets/data', IRAB_DB_NAME);
+const OUT_DB = path.join(ROOT, 'assets/data', QURAN_SEARCH_DB_NAME);
 /** The other rewayat's words DBs: their spellings must fold cleanly too. */
 const OTHER_WORDS_DBS = [
   'dk_words_shouba.db',
@@ -105,7 +112,6 @@ export function readQuranSearchInput(
       imlaei,
       sources: {
         dkSha256: fileSha256(DK_DB),
-        irabSha256: fileSha256(IRAB_DB),
         imlaeiSha256: imlaeiFile ? fileSha256(imlaeiFile) : undefined,
       },
     };
@@ -218,6 +224,10 @@ async function main(): Promise<void> {
       ([key, value]) => committed[key] !== value,
     );
     if (committed.complete !== '1') stale.push(['complete', '1']);
+    // Keys an older build wrote and this one does not (irab_sha256).
+    for (const key of Object.keys(committed)) {
+      if (key !== 'complete' && !(key in content.meta)) stale.push([key, '']);
+    }
     if (stale.length) {
       const keys = stale.map(([key]) => key).join(', ');
       throw new Error(

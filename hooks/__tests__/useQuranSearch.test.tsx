@@ -23,7 +23,11 @@ interface Pending {
 const mockPending: Pending[] = [];
 const mockRoots = new Map<string, {id: number; root: string}>();
 
+jest.mock('expo-sqlite', () => ({}));
 jest.mock('@/services/search/QuranSearchDataService', () => ({
+  // The service's own check of which queries it answers.
+  isQuranQuery: jest.requireActual('@/services/search/QuranSearchDataService')
+    .isQuranQuery,
   quranSearchDataService: {
     search: jest.fn(
       (query: string) =>
@@ -102,6 +106,20 @@ describe('useQuranSearch', () => {
       view.unmount();
     },
   );
+
+  it('leaves the kind to the service: spaced letters reach it as they are', async () => {
+    const view = renderSearch('ر ح م');
+    expect(service.search).toHaveBeenCalledWith('ر ح م');
+    const root: QuranSearchOutcome = {
+      kind: 'root',
+      letters: 'رحم',
+      candidates: [],
+      result: null,
+    };
+    await act(async () => mockPending[0].resolve(root));
+    expect(view.latest()).toEqual({status: 'done', outcome: root});
+    view.unmount();
+  });
 
   it('stays idle while disabled', () => {
     const view = renderSearch('الرحمن', false);

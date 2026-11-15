@@ -11,16 +11,21 @@ import {
   type QuranSearchDb,
 } from '../QuranSearchDataService';
 import {openAdapterDatabase} from '@/test-utils/sqliteAdapter';
+import {QURAN_SEARCH_DB_NAME} from '@/utils/search/quranIndexFormat';
 
 jest.mock('expo-sqlite', () => ({}));
 
-const ASSET = path.join(__dirname, '../../../assets/data/quran-search-v1.db');
+const ASSET = path.join(
+  __dirname,
+  '../../../assets/data',
+  QURAN_SEARCH_DB_NAME,
+);
 let dir: string;
 let copy: string;
 
 beforeAll(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quran-search-'));
-  copy = path.join(dir, 'quran-search-v1.db');
+  copy = path.join(dir, QURAN_SEARCH_DB_NAME);
   fs.copyFileSync(ASSET, copy);
 });
 afterAll(() => {
@@ -88,6 +93,27 @@ describe('QuranSearchDataService', () => {
       candidates: [],
       result: null,
     });
+  });
+
+  it('reads the letters of a surah opening as text, its root a suggestion', async () => {
+    const {service} = serviceOnCopy();
+    const outcome = await service.search('ا ل م');
+    if (outcome.kind !== 'text') throw new Error(outcome.kind);
+    expect(outcome.result.hits.map(hit => hit.verseKey)).toEqual([
+      '2:1',
+      '3:1',
+      '29:1',
+      '30:1',
+      '31:1',
+      '32:1',
+    ]);
+    expect(outcome.result.hits[0].matches).toEqual([{position: 1, length: 1}]);
+    expect(outcome.rootSuggestions).toEqual([
+      expect.objectContaining({root: 'ء ل م', ayahs: 73}),
+    ]);
+    // Typed with a hamza, the letters are the root.
+    const root = await service.search('أ ل م');
+    expect(root.kind === 'root' && root.result?.root.root).toBe('ء ل م');
   });
 
   it('suggests the root of a 3-letter word', async () => {

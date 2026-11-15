@@ -8,6 +8,7 @@ import path from 'path';
 import Database from 'better-sqlite3';
 import {
   parseQuranQuery,
+  QURAN_OPENINGS,
   QURAN_QUERY_MAX_TOKENS,
   quranWordForms,
   quranWordSpellings,
@@ -407,6 +408,126 @@ describe('parseQuranQuery', () => {
     it("joins other spaced letters into one word (the muqatta'at)", () => {
       expect(keys('ح م')).toEqual([['حم']]);
       expect(keys('ك ه ي ع ص')).toEqual([['كهيعص']]);
+      expect(keys('ب ت')).toEqual([['بت']]);
+    });
+
+    describe('surah openings', () => {
+      const withAlam = new Set(['ء ل م', 'ر ح م']);
+      const knowsAlam = (root: string) => withAlam.has(root);
+      const opening = (key: string) => ({
+        kind: 'text',
+        tokens: [{keys: [key], needsHamza: false, opening: true}],
+      });
+
+      it('lists the 14 openings', () => {
+        expect(QURAN_OPENINGS.size).toBe(14);
+        expect([...QURAN_OPENINGS].every(o => /^[ء-ي]+$/u.test(o))).toBe(true);
+      });
+
+      it('reads ا ل م as the opening, even though it spells the root ء ل م', () => {
+        expect(parseQuranQuery('ا ل م', knowsAlam)).toEqual({
+          ...opening('الم'),
+          // The root stays reachable as a suggestion.
+          rootLetters: 'الم',
+        });
+      });
+
+      it.each([
+        ['ا ل م ص', 'المص'],
+        ['ا ل ر', 'الر'],
+        ['ا ل م ر', 'المر'],
+        ['ك ه ي ع ص', 'كهيعص'],
+        ['ط ه', 'طه'],
+        ['ط س م', 'طسم'],
+        ['ط س', 'طس'],
+        ['ي س', 'يس'],
+        ['ح م', 'حم'],
+        ['ع س ق', 'عسق'],
+        ['ص', 'ص'],
+        ['ق', 'ق'],
+        ['ن', 'ن'],
+        // Pasted with the mushaf's marks (a maddah over the letters, which
+        // ألم never has), another keyboard's letters.
+        [dk('68:1:1'), 'ن'],
+        [dk('2:1:1'), 'الم'],
+        [dk('10:1:1'), 'الر'],
+        [dk('42:2:1'), 'عسق'],
+        ['ک ه ی ع ص', 'كهيعص'],
+        ['ى س', 'يس'],
+      ])('%s is the opening %s', (query, key) => {
+        expect(parseQuranQuery(query, knowsAlam)).toMatchObject(opening(key));
+      });
+
+      it('reads letters typed apart before other words as their opening', () => {
+        const first = (query: string) => {
+          const parsed = parseQuranQuery(query, knowsAlam);
+          if (parsed.kind !== 'text') throw new Error(query);
+          return {
+            words: parsed.tokens.length,
+            first: parsed.tokens[0],
+            rest: parsed.tokens.slice(1).some(t => t.opening),
+          };
+        };
+        expect(first('ا ل ر تلك آيات الكتاب')).toEqual({
+          words: 4,
+          first: {keys: ['الر'], needsHamza: false, opening: true},
+          rest: false,
+        });
+        expect(first('ح م تنزيل الكتاب')).toMatchObject({
+          words: 3,
+          first: {keys: ['حم'], opening: true},
+        });
+        expect(first('ن والقلم')).toMatchObject({
+          words: 2,
+          first: {keys: ['ن'], opening: true},
+        });
+        // Pasted from the mushaf, with its maddah.
+        expect(first(`${dk('2:1:1')} ${dk('2:2:1')}`)).toMatchObject({
+          words: 2,
+          first: {keys: ['الم'], opening: true},
+          rest: false,
+        });
+        // Letters that are no opening, or typed with a hamza: as typed.
+        expect(first('ب س م الله')).toMatchObject({words: 4});
+        expect(first('ب س م الله').first.opening).toBeUndefined();
+        expect(first('أ ل م تنزيل')).toMatchObject({words: 4});
+        expect(first('أ ل م تنزيل').first.opening).toBeUndefined();
+      });
+
+      it('leaves other letters alone', () => {
+        // Typed with a hamza: the root letters, not an opening.
+        expect(parseQuranQuery('أ ل م', knowsAlam)).toEqual({
+          kind: 'root',
+          letters: 'ألم',
+          explicit: false,
+        });
+        expect(parseQuranQuery('ر ح م', knowsAlam)).toMatchObject({
+          kind: 'root',
+        });
+        // One word: an ordinary word (also ألم without its hamza), as is
+        // ألم pasted from the mushaf (no maddah).
+        expect(parseQuranQuery('الم', knowsAlam)).toEqual({
+          kind: 'text',
+          tokens: [{keys: ['الم'], needsHamza: false}],
+          rootLetters: 'الم',
+        });
+        expect(parseQuranQuery(dk('94:1:1'), knowsAlam)).toEqual({
+          kind: 'text',
+          tokens: [{keys: ['الم'], needsHamza: true}],
+          rootLetters: 'ألم',
+        });
+        // A letter that opens no surah, and spaced letters that open none.
+        expect(parseQuranQuery('ب', knowsAlam)).toEqual({
+          kind: 'text',
+          tokens: [{keys: ['ب'], needsHamza: false}],
+          rootLetters: null,
+        });
+        expect(parseQuranQuery('ح م ع س ق', knowsAlam)).toEqual({
+          kind: 'text',
+          tokens: [{keys: ['حمعسق'], needsHamza: false}],
+          rootLetters: null,
+        });
+      });
     });
 
     it('gives nothing for an empty root query', () => {

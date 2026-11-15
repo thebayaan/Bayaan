@@ -6,13 +6,17 @@
  *
  * 1. Look up every key of every token at once; the last token also matches
  *    as a prefix when it has 3 or more letters (feedback while typing, and
- *    pronoun suffixes: كتاب finds كتابه).
+ *    pronoun suffixes: كتاب finds كتابه), unless it is a surah opening
+ *    (typed as letters, ا ل م, or pasted, الٓمٓ), which matches whole
+ *    words only.
  * 2. Score each word slot per token: exact 100 or prefix 60, plus 10 per
  *    tier (3 full spelling, 2 without proclitics, 1 without the article),
  *    minus 5 for a rasm-only spelling. A token typed with a hamza skips
- *    words without one.
+ *    words without one; an opening skips words with one (الٓمٓ, not ألم).
  * 3. A phrase is the tokens on consecutive slots of one verse; its score is
- *    its weakest token's.
+ *    its weakest token's. It may also run on from an ayah of one word
+ *    (QURAN_ONE_WORD_AYAHS: الم, حم, الرحمن, والعصر) into the start of
+ *    the next ayah, which is the hit: الم ذلك الكتاب finds 2:2.
  * 4. Without any phrase, a query of 2 or more words falls back to the ayahs
  *    that hold every word somewhere ('allWords'), closest together first.
  * 5. Hits are ranked by score, then in mushaf order.
@@ -24,7 +28,9 @@ import {
   QURAN_FLAG,
   QURAN_FLAG_RANGE,
   QURAN_SLOT_STRIDE,
+  QURAN_VERSE_COUNT,
   slotOfCode,
+  verseIndexOf,
   verseKeyAt,
 } from './quranIndexFormat';
 
@@ -69,6 +75,49 @@ export const QURAN_MAX_TOKENS = 24;
 /** Above this many postings lists, a token is merged into a map to look up. */
 const MAP_LOOKUP_LISTS = 8;
 
+/**
+ * The ayahs of the Hafs text that are one word: the surah openings that are
+ * an ayah of their own (الٓمٓ 2:1, حمٓ 40:1, عٓسٓقٓ 42:2) and الطور,
+ * الرحمن, مدهامتان, الحاقة, الفجر, الضحى, القارعة and العصر. A phrase
+ * runs on from one into the next ayah: no other ayah boundary is known to
+ * the index, which keeps no verse lengths. Checked against the Digital
+ * Khatt words by services/search/__tests__/quranSearchDb.test.ts.
+ */
+export const QURAN_ONE_WORD_AYAHS: readonly string[] = [
+  '2:1',
+  '3:1',
+  '7:1',
+  '19:1',
+  '20:1',
+  '26:1',
+  '28:1',
+  '29:1',
+  '30:1',
+  '31:1',
+  '32:1',
+  '36:1',
+  '40:1',
+  '41:1',
+  '42:1',
+  '42:2',
+  '43:1',
+  '44:1',
+  '45:1',
+  '46:1',
+  '52:1',
+  '55:1',
+  '55:64',
+  '69:1',
+  '89:1',
+  '93:1',
+  '101:1',
+  '103:1',
+];
+
+const ONE_WORD_VERSES: ReadonlySet<number> = new Set(
+  QURAN_ONE_WORD_AYAHS.map(key => verseIndexOf(key) as number),
+);
+
 const EXACT_SCORE = 100;
 const PREFIX_SCORE = 60;
 const TIER_SCORE = 10;
@@ -84,17 +133,32 @@ export function postingScore(code: number, exact: boolean): number {
   );
 }
 
+/**
+ * What a token asks of a word's hamza: true, words with one (typed with a
+ * hamza); false, words without one (an opening); null, either.
+ */
+type HamzaRule = boolean | null;
+
+function hamzaRule(token: QuranQueryToken): HamzaRule {
+  if (token.needsHamza) return true;
+  return token.opening ? false : null;
+}
+
+function allows(rule: HamzaRule, code: number): boolean {
+  return (
+    rule === null || hasFlag(flagsOfCode(code), QURAN_FLAG.hasHamza) === rule
+  );
+}
+
 function addPostings(
   slots: Map<number, number>,
   codes: readonly number[] | undefined,
   exact: boolean,
-  needsHamza: boolean,
+  hamza: HamzaRule,
 ): void {
   if (!codes) return;
   for (const code of codes) {
-    if (needsHamza && !hasFlag(flagsOfCode(code), QURAN_FLAG.hasHamza)) {
-      continue;
-    }
+    if (!allows(hamza, code)) continue;
     const slot = slotOfCode(code);
     const score = postingScore(code, exact);
     if ((slots.get(slot) ?? 0) < score) slots.set(slot, score);
@@ -104,7 +168,7 @@ function addPostings(
 /** A token's postings lists, each ascending, with how they matched. */
 interface TokenPostings {
   lists: {codes: readonly number[]; exact: boolean}[];
-  needsHamza: boolean;
+  hamza: HamzaRule;
 }
 
 function firstAtLeast(codes: readonly number[], value: number): number {
@@ -129,12 +193,7 @@ function scoreAt(token: TokenPostings, slot: number): number {
       i++
     ) {
       const code = codes[i];
-      if (
-        token.needsHamza &&
-        !hasFlag(flagsOfCode(code), QURAN_FLAG.hasHamza)
-      ) {
-        continue;
-      }
+      if (!allows(token.hamza, code)) continue;
       best = Math.max(best, postingScore(code, exact));
     }
   }
@@ -144,7 +203,7 @@ function scoreAt(token: TokenPostings, slot: number): number {
 function slotsOf(token: TokenPostings): Map<number, number> {
   const slots = new Map<number, number>();
   for (const {codes, exact} of token.lists) {
-    addPostings(slots, codes, exact, token.needsHamza);
+    addPostings(slots, codes, exact, token.hamza);
   }
   return slots;
 }
@@ -206,6 +265,84 @@ function joinFromAnchor(
     matches: starts.sort((a, b) => a - b).map(position => ({position, length})),
     score,
   }));
+}
+
+/** The surah of a verse index ('2:255' → 2). */
+function surahOf(verseIndex: number): string {
+  return verseKeyAt(verseIndex).split(':')[0];
+}
+
+/**
+ * The phrases that run on from ayahs of one word: the first tokens on such
+ * ayahs in a row (حم 42:1, then عسق 42:2), the rest from the first word of
+ * the ayah after them, in the same surah. Each hit is that ayah, with its
+ * words the phrase matched: الم ذلك الكتاب finds 2:2 (ذلك الكتاب).
+ */
+function joinRunOn(
+  length: number,
+  scoreOf: (k: number, slot: number) => number,
+): QuranVerseHit[] {
+  const hits: QuranVerseHit[] = [];
+  for (const first of ONE_WORD_VERSES) {
+    let score = Infinity;
+    // Tokens 0 .. lead - 1 on the one-word ayahs first .. first + lead - 1.
+    for (let lead = 1; lead < length; lead++) {
+      const verse = first + lead - 1;
+      if (!ONE_WORD_VERSES.has(verse)) break;
+      score = Math.min(score, scoreOf(lead - 1, verse * QURAN_SLOT_STRIDE + 1));
+      if (score <= 0) break;
+      const next = verse + 1;
+      if (next >= QURAN_VERSE_COUNT || surahOf(next) !== surahOf(first)) {
+        break;
+      }
+      let total = score;
+      for (let k = lead; k < length && total > 0; k++) {
+        total = Math.min(
+          total,
+          scoreOf(k, next * QURAN_SLOT_STRIDE + 1 + k - lead),
+        );
+      }
+      if (total > 0) {
+        hits.push({
+          verseIndex: next,
+          verseKey: verseKeyAt(next),
+          matches: [{position: 1, length: length - lead}],
+          score: total,
+        });
+      }
+    }
+  }
+  return hits;
+}
+
+/** Hits of one search, one per ayah: matches joined, the best score. */
+function mergeHits(
+  a: readonly QuranVerseHit[],
+  b: readonly QuranVerseHit[],
+): QuranVerseHit[] {
+  const byVerse = new Map(a.map(hit => [hit.verseIndex, hit]));
+  for (const hit of b) {
+    const other = byVerse.get(hit.verseIndex);
+    if (!other) {
+      byVerse.set(hit.verseIndex, hit);
+      continue;
+    }
+    const seen = new Set<string>();
+    const matches = [...other.matches, ...hit.matches]
+      .filter(m => {
+        const id = `${m.position}+${m.length}`;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      })
+      .sort((x, y) => x.position - y.position || x.length - y.length);
+    byVerse.set(hit.verseIndex, {
+      ...other,
+      matches,
+      score: Math.max(other.score, hit.score),
+    });
+  }
+  return [...byVerse.values()];
 }
 
 /**
@@ -297,9 +434,10 @@ export async function searchQuranText(
   if (!tokens.length) return result('phrase', []);
   const allKeys = [...new Set(tokens.flatMap(token => token.keys))];
   const last = tokens[tokens.length - 1];
-  const prefixKeys = last.keys.filter(
-    key => key.length >= QURAN_PREFIX_MIN_LETTERS,
-  );
+  // An opening (typed as letters, or pasted) is a whole word: no prefixes.
+  const prefixKeys = last.opening
+    ? []
+    : last.keys.filter(key => key.length >= QURAN_PREFIX_MIN_LETTERS);
   const [exact, ...prefixes] = await Promise.all([
     source.exact(allKeys),
     ...prefixKeys.map(key => source.prefix(key, QURAN_PREFIX_FORM_LIMIT)),
@@ -318,7 +456,7 @@ export async function searchQuranText(
         }
       }
     }
-    return {lists, needsHamza: token.needsHamza};
+    return {lists, hamza: hamzaRule(token)};
   });
 
   // Walk the rarest token's slots and look the others up only where the
@@ -336,15 +474,14 @@ export async function searchQuranText(
       ? slotsOf(token)
       : null,
   );
-  const phrase = joinFromAnchor(
-    tokens.length,
-    anchor,
-    maps[anchor] ?? new Map(),
-    (k, slot) => {
-      const map = maps[k];
-      if (!map) return scoreAt(postings[k], slot);
-      return map.get(slot) ?? 0;
-    },
+  const scoreOf = (k: number, slot: number) => {
+    const map = maps[k];
+    if (!map) return scoreAt(postings[k], slot);
+    return map.get(slot) ?? 0;
+  };
+  const phrase = mergeHits(
+    joinFromAnchor(tokens.length, anchor, maps[anchor] ?? new Map(), scoreOf),
+    tokens.length > 1 ? joinRunOn(tokens.length, scoreOf) : [],
   );
   if (phrase.length || tokens.length < 2) {
     return result('phrase', phrase.sort(byScoreThenMushaf));
