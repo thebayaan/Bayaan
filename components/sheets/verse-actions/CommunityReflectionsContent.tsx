@@ -251,7 +251,7 @@ const createStyles = (theme: Theme) =>
     emptyText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.55).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       lineHeight: moderateScale(19),
       paddingVertical: verticalScale(40),
@@ -259,7 +259,7 @@ const createStyles = (theme: Theme) =>
     sectionLabel: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2), // @ai
       textTransform: 'uppercase',
       marginBottom: verticalScale(10),

@@ -144,7 +144,7 @@ const createStyles = (theme: Theme) =>
     emptyText: {
       fontSize: moderateScale(14),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       paddingVertical: verticalScale(24),
     },
@@ -171,7 +171,7 @@ const createStyles = (theme: Theme) =>
     infoLabel: {
       fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
     infoValue: {
       fontSize: moderateScale(13.5),

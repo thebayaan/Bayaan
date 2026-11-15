@@ -327,7 +327,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: moderateScale(10),
@@ -341,7 +341,7 @@ const createStyles = (theme: Theme) =>
     loadingText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
     },
     errorContainer: {
       alignItems: 'center',
@@ -415,7 +415,7 @@ const createStyles = (theme: Theme) =>
     actionDescription: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       lineHeight: moderateScale(17),
     },
     actionButton: {

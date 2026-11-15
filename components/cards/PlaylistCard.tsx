@@ -87,7 +87,7 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({
         subtitle: {
           fontSize: moderateScale(8.5),
           fontFamily: 'Manrope-Regular',
-          color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+          color: theme.colors.textTertiary,
           marginTop: moderateScale(1),
         },
       }),
