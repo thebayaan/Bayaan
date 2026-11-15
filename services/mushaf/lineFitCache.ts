@@ -49,12 +49,14 @@ let openTried = false;
 /**
  * The update id. With updates off, the build version and its commit, since the
  * build number is a commit count and two branches can share it. Null without
- * both.
+ * both. scripts/generate-version.js writes the hash 'unknown' (and build
+ * number '1') when git is not there, so two such builds of one version would
+ * share a store: 'unknown' is no hash.
  */
 function currentBundle(): string | null {
   if (Updates.updateId) return Updates.updateId;
   const v = readVersionInfo();
-  return v?.gitHash
+  return v?.gitHash && v.gitHash !== 'unknown'
     ? `${v.semanticVersion}-${v.buildNumber}-${v.gitHash}`
     : null;
 }

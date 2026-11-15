@@ -173,6 +173,19 @@ describe('the open', () => {
     expect(launch().getLineFit(KEY)).toBeUndefined();
   });
 
+  it('a build made without git has no store', () => {
+    mockBundle.updateId = null; // updates off
+    // What scripts/generate-version.js writes when git is not there.
+    mockBundle.version = {
+      semanticVersion: '2.3.0',
+      buildNumber: '1',
+      gitHash: 'unknown',
+    };
+    launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
+    expect(launch().getLineFit(KEY)).toBeUndefined();
+    expect(count('createMMKV')).toBe(0);
+  });
+
   it('a store over the limit starts again at the next launch', () => {
     launch().setLineFit(KEY, {wordSize: 20, spaceExtra: 1}, true);
     for (let i = 0; i < 30000; i++) mockNative.data.set(`k${i}`, '20,1');
