@@ -182,6 +182,7 @@ function RootLayout() {
   // ready, rather than as a side effect of importing translation resources.
   useEffect(() => {
     bootstrapDirection();
+    // @ai-start
     // Android: a launch whose native direction disagrees with its language
     // runs half mirrored, so restart once into the right one. This runs
     // before anything below has mounted. Not while audio is going: the car
@@ -190,6 +191,7 @@ function RootLayout() {
     if (state !== 'playing' && state !== 'buffering' && state !== 'loading') {
       restartIfDirectionMismatched();
     }
+    // @ai-end
   }, []);
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);

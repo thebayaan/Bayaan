@@ -26,10 +26,12 @@ jest.mock('@/modules/bayaan-car', () => ({
 const mockSetCarMode = jest.fn((_enabled: boolean): void => undefined);
 const mockIsAdhkarHeld = jest.fn((): boolean => false);
 const mockHasAdhkarTrackControls = jest.fn((): boolean => false);
-// @ai True when verse audio from the Mushaf took the press.
+// @ai-start
+// True when verse audio from the Mushaf took the press.
 const mockSkipMushafVerseIfHeld = jest.fn(
   (_forward: boolean): boolean => false,
 );
+// @ai-end
 jest.mock('@/services/audio/LockScreenService', () => ({
   lockScreenService: {
     setCarMode: (enabled: boolean) => mockSetCarMode(enabled),

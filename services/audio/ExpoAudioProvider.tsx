@@ -590,8 +590,8 @@ export function ExpoAudioProvider({
         // next play goes on to the next surah, as after any finished track.
         if (__DEV__)
           console.log('[ExpoAudioProvider] Sleep timer ended with the track');
-        // @ai-end
       } else if (repeatMode === 'track') {
+        // @ai-end
         // Repeat current track
         if (__DEV__)
           console.log('[ExpoAudioProvider] Repeat mode: track - restarting');

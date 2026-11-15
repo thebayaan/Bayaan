@@ -27,9 +27,11 @@ type StateListener = (state: ExpoAudioServiceState) => void;
 // @ai How long loadTrack() waits for the provider to hand over the player.
 const PLAYER_WAIT_MS = 3000;
 
-// @ai How long after a held source became ready a play by the player itself
-// is still taken for its own resume and paused again (see holdUrl).
+// @ai-start
+// How long after a held source became ready a play by the player itself is
+// still taken for its own resume and paused again (see holdUrl).
 const HOLD_SETTLE_MS = 1000;
+// @ai-end
 
 class ExpoAudioService {
   private static instance: ExpoAudioService;

@@ -187,7 +187,7 @@ export function startAdhkarPlaybackEngine(
   let trackSubscription: {remove(): void} | null = null;
   let confirmTimer: ReturnType<typeof setTimeout> | null = null;
   // @ai When the engine last paused the player itself (see STALE_PLAYING_MS).
-  let pausedAt = 0;
+  let pausedAt = 0; // @ai
   let startingTimer: ReturnType<typeof setTimeout> | null = null; // @ai
   let retried = false;
   let lockScreenToken: number | null = null;

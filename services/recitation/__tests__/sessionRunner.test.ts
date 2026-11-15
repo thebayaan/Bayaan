@@ -272,9 +272,11 @@ describe('sessionRunner', () => {
   it("pauses Bayaan's own audio before opening the mic", async () => {
     playerControl.playing = true;
     await runner.startSession({purpose: 'identify', hint: null}, handlers());
-    // @ai Asked at the start and again before the mic opens (the mock keeps
+    // @ai-start
+    // Asked at the start and again before the mic opens (the mock keeps
     // reporting 'playing'; a real player is paused by the first).
     expect(mockPlayerPause).toHaveBeenCalled();
+    // @ai-end
   });
 
   // @ai-start

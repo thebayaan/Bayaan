@@ -933,10 +933,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
           const {tracks, index, outcome} = computeQueueRemoval(queue, indices);
           // @ai Read the autoplay intent before the reload. 'loading' means
           // that a load which plays is in flight: only those loads write it.
+          // @ai-start
           // 'buffering' is a player that wants to play and waits for data.
           const autoPlay = ['playing', 'loading', 'buffering'].includes(
             playback.state,
           );
+          // @ai-end
 
           // @ai The state that this op settles; null leaves it to its owner.
           let settled: StorePlaybackState | null = null;
