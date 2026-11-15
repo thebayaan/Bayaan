@@ -1,10 +1,5 @@
 // @ai-generated
-
-/**
- * Windows this wide are the `large` width class (ipad-standards §2.1): a 13"
- * iPad in landscape, a large Stage Manager window, an external display.
- */
-export const HERO_COLUMN_MIN_WINDOW = 1280;
+import {TABLE_MIN_WIDTH} from './surahTable';
 
 /**
  * Width of the pinned hero column, page margins included. It holds the 240pt
@@ -14,14 +9,17 @@ export const HERO_COLUMN_WIDTH = 448;
 
 /**
  * Whether the reciter page pins its hero as a leading column, with the tab
- * bar and the surah list scrolling beside it (ipad-standards §10.2). The
- * class comes from the window, like every other width class.
+ * bar and the surah list scrolling beside it (ipad-standards §10.2). It does
+ * only when the list beside the column still gets the table width, so the
+ * Revelation and Verses columns stay. `profileWidth` is the profile's own
+ * measured width, not the window's: the sidebar, the rail and the capped
+ * Collection column all take some of the window.
  */
 export function usesHeroColumn(
   isTablet: boolean,
-  windowWidth: number,
+  profileWidth: number,
 ): boolean {
-  return isTablet && windowWidth >= HERO_COLUMN_MIN_WINDOW;
+  return isTablet && profileWidth - HERO_COLUMN_WIDTH >= TABLE_MIN_WIDTH;
 }
 
 /**

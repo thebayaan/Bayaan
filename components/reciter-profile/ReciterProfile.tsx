@@ -63,11 +63,7 @@ import Animated, {
 import {ActionButtons} from './components/ActionButtons';
 import {ReciterHeader} from './components/ReciterHeader';
 import {NavigationButtons} from './components/NavigationButtons';
-import {
-  SurahList,
-  SurahListTableHeader,
-  TABLE_MIN_WIDTH,
-} from './components/SurahList'; // @ai
+import {SurahList, SurahListTableHeader} from './components/SurahList'; // @ai
 import {SearchView} from './components/SearchView';
 import {RewayatTabBar} from './components/RewayatTabBar';
 import {UploadsTabContent} from './components/UploadsTabContent';
@@ -99,6 +95,7 @@ import {
   heroColumnTop,
   usesHeroColumn,
 } from './utils/heroColumn';
+import {TABLE_MIN_WIDTH} from './utils/surahTable';
 // @ai-end
 import {TabletReciterHero} from './components/TabletReciterHero'; // @ai
 import {useResponsive} from '@/hooks/useResponsive'; // @ai
@@ -238,10 +235,19 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   // the page margin for the window's width class (ipad-standards §5.2).
   const {isTablet} = useResponsive();
   const pageMargin = windowWidth >= 900 ? 32 : 24;
-  // From the `large` class (1280pt) the hero is a fixed leading column and
-  // only the tab bar and the surahs scroll beside it (ipad-standards §10.2).
-  const heroColumn = usesHeroColumn(isTablet, windowWidth); // @ai
   // @ai-start
+  // When the profile is wide enough for the hero column and the table
+  // beside it, the hero is a fixed leading column and only the tab bar and
+  // the surahs scroll (ipad-standards §10.2). The profile's own width
+  // decides, not the window: the sidebar and the capped Collection column
+  // take part of the window.
+  const [profileWidth, setProfileWidth] = useState<number | null>(null);
+  const handleProfileLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = e.nativeEvent.layout.width;
+    setProfileWidth(prev => (prev === next ? prev : next));
+  }, []);
+  const heroColumn =
+    profileWidth !== null && usesHeroColumn(isTablet, profileWidth);
   // The pager pages must match the pager's own width, not the window: on
   // iPad the profile sits beside the sidebar inside a capped column, so
   // window-wide pages were clipped and swipes landed mid-page. Pages render
@@ -1114,8 +1120,19 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     );
   }
 
+  // @ai-start
+  // On a tablet the hero's place depends on the profile's width, so the
+  // page lays out once that is measured, as the pager pages do. This keeps
+  // the hero from jumping from a row to the column on the first frame.
+  if (isTablet && profileWidth === null) {
+    return <View onLayout={handleProfileLayout} style={styles.container} />;
+  }
+  // @ai-end
+
   return (
-    <View style={styles.container}>
+    <View
+      onLayout={handleProfileLayout} // @ai
+      style={styles.container}>
       <StatusBar style={theme.isDarkMode ? 'light' : 'dark'} />
       {/* Main content — always mounted to preserve pager scroll position */}
       <View

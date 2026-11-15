@@ -1,29 +1,26 @@
 // @ai-generated
-import {
-  HERO_COLUMN_MIN_WINDOW,
-  heroColumnTop,
-  usesHeroColumn,
-} from '../utils/heroColumn';
+import {heroColumnTop, usesHeroColumn} from '../utils/heroColumn';
 
 describe('usesHeroColumn', () => {
-  it('pins the hero from the large class, 1280pt', () => {
-    expect(HERO_COLUMN_MIN_WINDOW).toBe(1280);
-    expect(usesHeroColumn(true, 1280)).toBe(true);
-    // iPad Pro 13" and iPad Air 13" in landscape
-    expect(usesHeroColumn(true, 1376)).toBe(true);
-    expect(usesHeroColumn(true, 1366)).toBe(true);
-  });
-
-  it('keeps the hero above the list below 1280pt', () => {
-    expect(usesHeroColumn(true, 1279)).toBe(false);
-    // iPad Pro 11" landscape, 13" portrait, iPad mini portrait
-    expect(usesHeroColumn(true, 1210)).toBe(false);
-    expect(usesHeroColumn(true, 1032)).toBe(false);
-    expect(usesHeroColumn(true, 744)).toBe(false);
+  // The profile's own width: the window less the sidebar or the rail, or
+  // the capped column. The list beside a 448pt column needs 720pt for the
+  // Revelation and Verses table.
+  it.each([
+    ['the Collection column, any window', 720, false],
+    ['an 11" iPad in landscape with the labelled sidebar', 970, false],
+    ['a 1000pt pane', 1000, false],
+    ['a 13" iPad in landscape with the labelled sidebar', 1096, false],
+    ['an 11" iPad in landscape with the sidebar collapsed', 1122, false],
+    ['one point under the table width beside the column', 1167, false],
+    ['exactly the table width beside the column', 1168, true],
+    ['a 13" iPad in landscape with the sidebar collapsed', 1288, true],
+    ['a large external display with the labelled sidebar', 1640, true],
+  ])('%s (%ipt): %s', (_name, width, pinned) => {
+    expect(usesHeroColumn(true, width)).toBe(pinned);
   });
 
   it('never pins the hero on a phone', () => {
-    expect(usesHeroColumn(false, 1280)).toBe(false);
+    expect(usesHeroColumn(false, 1288)).toBe(false);
     expect(usesHeroColumn(false, 956)).toBe(false);
   });
 });
