@@ -184,6 +184,30 @@ describe('createCatalogSearch (Home)', () => {
     expect((top?.item as Surah | undefined)?.id).toBe(id);
   });
   // @ai-end
+
+  // @ai-start
+  // Review: the first letters of a name ("ad" for Adel, "ash" for Al-Hashr)
+  // are also article spellings; while typed they must not match every
+  // "Al-" name in the catalogue.
+  it.each(['ad', 'ar', 'ash', 'ul'])(
+    'does not read the word being typed as an article: %s',
+    query => {
+      expect(search.search(query).length).toBeLessThan(40);
+    },
+  );
+
+  it.each([
+    ['ad', 'Adh-Dhariyat', 5],
+    ['ad', 'Adel Al-Khalbany', 8],
+    ['ar', 'Abdulmajeed Al-Arkani', 8],
+    ['an', 'Anas Alemadi', 12],
+    ['ash', 'Al-Hashr', 8],
+  ])('keeps a name spelled with "%s" near the top: %s', (query, name, max) => {
+    const names = search.search(query).map(r => r.item.name);
+    expect(names.indexOf(name)).toBeGreaterThanOrEqual(0);
+    expect(names.indexOf(name)).toBeLessThan(max);
+  });
+  // @ai-end
 });
 
 // Final-review fixes (2026-10-12).

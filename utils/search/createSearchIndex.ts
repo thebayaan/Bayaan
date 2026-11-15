@@ -216,8 +216,11 @@ function scoreToken(
   // with folded names a step below a literal match.
   const folded = foldLongVowels(token);
   const isFolded = folded !== token;
-  const isArticle = DEFINITE_ARTICLES.has(token);
   // @ai-end
+  // The word still being typed is not read as an article: "ad", "ar", "ash"
+  // are also how "Adel", "Arkani" and "Ash-Shams" begin, and would otherwise
+  // match every "Al-" name above the names that really start that way.
+  const isArticle = !isLast && DEFINITE_ARTICLES.has(token); // @ai
   let best = 0;
   for (const field of fields) {
     for (let t = 0; t < field.tokens.length; t++) {
