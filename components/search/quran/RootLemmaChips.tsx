@@ -116,7 +116,9 @@ export const RootLemmaChips: React.FC<RootLemmaChipsProps> = ({
         return (
           <Chip
             key={lemma.id}
-            label={name}
+            // The corpus's homonym number (مَٰلِك2) in the app's digits, as
+            // Word Study and the spoken label show it.
+            label={localizeDigits(name)}
             quranic={lemma.lemma !== null}
             count={lemma.words}
             accessibilityLabel={chipLabel(name, lemma.words)}

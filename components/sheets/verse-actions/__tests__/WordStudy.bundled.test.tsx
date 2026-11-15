@@ -11,7 +11,9 @@
  * text is damaged, is shown and quoted in the mushaf's own text; its i'rab
  * references open the words they name; its Arabic meaning quotes the words
  * it explains; 1:4:1 shows its root, lemma and rasm; stepping crosses from
- * one verse into the next.
+ * one verse into the next; 2:255:1's meaning is quoted without the data's
+ * trailing space; a word of another verse is named by its number while the
+ * Hafs words are out of memory, and quoted once they are back. @ai
  */
 import fs from 'fs';
 import os from 'os';
@@ -21,6 +23,8 @@ import TestRenderer from 'react-test-renderer';
 import {Text} from 'react-native';
 
 const ROOT = path.join(__dirname, '../../../..');
+/** Whether the Hafs words are in memory, and who listens (setHafsInMemory). @ai */
+const mockHafs = {inMemory: true, listeners: new Set<() => void>()};
 
 jest.mock('expo-sqlite', () => {
   const m = jest.requireActual('@/test-utils/mockExpoSqlite').expoSqliteModule;
@@ -48,10 +52,20 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => {
   return {
     digitalKhattDataService: {
       initialized: true,
-      isRewayahReady: () => true,
+      // @ai-start
+      // As the service: null while the Hafs words are not in memory, and a
+      // cache change tells the subscribers.
+      isRewayahReady: () => mockHafs.inMemory,
       ensureRewayahLoaded: async () => undefined,
-      subscribeCacheChanges: () => () => undefined,
-      tryGetVerseWords: words,
+      subscribeCacheChanges: (listener: () => void) => {
+        mockHafs.listeners.add(listener);
+        return () => {
+          mockHafs.listeners.delete(listener);
+        };
+      },
+      tryGetVerseWords: (verseKey: string) =>
+        mockHafs.inMemory ? words(verseKey) : null,
+      // @ai-end
       getVerseWords: words,
     },
     getRewayahDataIdentityKey: () => null,
@@ -107,10 +121,12 @@ jest.mock('@/hooks/useTheme', () => ({
 }));
 
 import Database from 'better-sqlite3';
+import {IRAB_DB_NAME} from '@/constants/bundledDatabases';
 import {
   decodeMorph,
   MORPH_LEMMA_LABEL,
   MORPH_ROOT_LABEL,
+  quotableWord, // @ai
 } from '@/services/irab/irabFormat';
 import {selectVerses} from '@/components/share/rewayahVerseSelection';
 import {useDatabaseDir, resetDatabases} from '@/test-utils/mockExpoSqlite';
@@ -125,7 +141,7 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
 // The services open these names; a copy of each bundled file is there.
 const BUNDLED: Record<string, string> = {
   'wbw-en.db': 'data/wbw/wbw-en.db',
-  'irab-v1.db': 'assets/data/irab-v1.db',
+  [IRAB_DB_NAME]: `assets/data/${IRAB_DB_NAME}`,
   'gharib-v1.db': 'assets/data/gharib-v1.db',
   'rasm-v1.db': 'assets/data/rasm-v1.db',
 };
@@ -154,6 +170,7 @@ let renderer: TestRenderer.ReactTestRenderer | null = null;
 afterEach(() => {
   act(() => renderer?.unmount());
   renderer = null;
+  mockHafs.inMemory = true; // @ai
 });
 
 // The words of these Hafs verses, as the sheet gives them to Word Study. @ai
@@ -221,7 +238,7 @@ const dk = new Database(
   path.join(ROOT, 'data/mushaf/digitalkhatt/digital-khatt-v2.db'),
   {readonly: true},
 );
-const irab = new Database(path.join(ROOT, 'assets/data/irab-v1.db'), {
+const irab = new Database(path.join(ROOT, 'assets/data', IRAB_DB_NAME), {
   readonly: true,
 });
 const irabTexts: string[] = [];
@@ -330,3 +347,51 @@ it('shows the root, the lemma and the rasm of 1:4:1, and steps into 1:5', async 
     expect.arrayContaining([mushaf('1:5', 1), '1:5 · word 1', 'Word 4 of 7']),
   );
 });
+
+// @ai-start
+/** The Hafs words leave memory (another rewayah's load evicted them) or come back. */
+function setHafsInMemory(inMemory: boolean) {
+  act(() => {
+    mockHafs.inMemory = inMemory;
+    for (const listener of [...mockHafs.listeners]) listener();
+  });
+}
+
+async function press(label: string) {
+  const found = root().findAll(
+    n =>
+      typeof n.props.onPress === 'function' &&
+      (n.props.accessibilityLabel === label ||
+        n.findAll(c => c.props.children === label).length > 0),
+  );
+  if (!found.length) throw new Error(`nothing to press: ${label}`);
+  await act(async () => found[found.length - 1].props.onPress());
+  await settle();
+}
+
+it("quotes 2:255:1's meaning without the data's trailing space", async () => {
+  await open(['2:255'], {verseKey: '2:255', position: 1});
+  expect(texts()).toEqual(expect.arrayContaining(['al-lahu', '“Allah”']));
+});
+
+it('names a word of another verse by number while the Hafs words are out of memory, and quotes it once they are back', async () => {
+  // 16:44:12: a phrase of its i'rab names word 11 of its own verse, and its
+  // object (behind Show more) is 16:45:5.
+  await open(['16:44'], {verseKey: '16:44', position: 12});
+  await press('Show more');
+  const own = `«${quotableWord(mushaf('16:44', 11))}»`;
+  const quoted = `\u2068«${quotableWord(mushaf('16:45', 5))}» (16:45)\u2069`;
+  const numbered = '\u2068word 5 (16:45)\u2069';
+  expect(texts()).toEqual(expect.arrayContaining([own, quoted]));
+  expect(texts()).not.toContain(numbered);
+
+  setHafsInMemory(false);
+  // The selection's own words were read when it loaded: still quoted.
+  expect(texts()).toEqual(expect.arrayContaining([own, numbered]));
+  expect(texts()).not.toContain(quoted);
+
+  setHafsInMemory(true);
+  expect(texts()).toEqual(expect.arrayContaining([own, quoted]));
+  expect(texts()).not.toContain(numbered);
+});
+// @ai-end

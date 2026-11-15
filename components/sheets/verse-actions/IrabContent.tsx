@@ -29,6 +29,7 @@ import {
 } from '@/services/irab/irabFormat';
 import {localizeDigits} from '@/i18n/format';
 import {isRTL, latinLetterSpacing} from '@/utils/rtl';
+import {isolate} from './word-study/text'; // @ai
 import type {WordRef} from './wordStudy'; // @ai
 
 const ARABIC_FONT = 'ScheherazadeNew-Regular';
@@ -67,24 +68,49 @@ export interface IrabRefContext {
   onRef: (ref: WordRef) => void;
   styles: IrabStyles;
   t: IrabT;
+  /**
+   * The name of a verse other than `verseKey` in a reference to one of its
+   * words, digits localized: "1:2", or "Hafs 1:2" beside another rewayah.
+   * Default: the verse key.
+   */
+  verseLabel?: (verseKey: string) => string;
 }
 
 /**
- * Text with its word placeholders filled in: «word» (or "word 5" when the
- * word's text is unknown), tappable when canOpen allows it.
+ * A referred word as the text shows it: «word» (or "word 5" when the word's
+ * text is unknown); a word of another verse also names that verse,
+ * «word» (1:2), isolated so a Latin "word 5 (1:2)" keeps its order inside
+ * the right-to-left i'rab line.
+ */
+function refText(ref: WordRef, context: IrabRefContext): string {
+  const {verseKey, wordTextOf, t, verseLabel} = context;
+  const text = wordTextOf(ref.verseKey, ref.position);
+  const word = text
+    ? `«${text}»`
+    : localizeDigits(t('irab.wordN', {ns: 'sheets', n: ref.position}));
+  if (ref.verseKey === verseKey) return word;
+  const verse = verseLabel
+    ? verseLabel(ref.verseKey)
+    : localizeDigits(ref.verseKey);
+  return isolate(
+    localizeDigits(t('irab.otherVerseRef', {ns: 'sheets', word, verse})),
+  );
+}
+
+/**
+ * Text with its word placeholders filled in (refText), each tappable when
+ * canOpen allows it. The data's own digits follow the app language (a
+ * lemma's homonym number: «مَٰلِك2»).
  */
 export function renderRefs(
   text: string,
   context: IrabRefContext,
 ): React.ReactNode[] {
-  const {verseKey, wordTextOf, canOpen, onRef, styles, t} = context;
+  const {verseKey, canOpen, onRef, styles} = context;
   return splitRefs(text, verseKey).map((part, i) => {
-    if (part.type === 'text') return part.text;
+    if (part.type === 'text') return localizeDigits(part.text);
     const ref: WordRef = {verseKey: part.verseKey, position: part.position};
-    const word = wordTextOf(ref.verseKey, ref.position);
-    const shown = word
-      ? `«${word}»`
-      : localizeDigits(t('irab.wordN', {ns: 'sheets', n: ref.position}));
+    const shown = refText(ref, context);
     if (!canOpen(ref)) return shown;
     return (
       <Text key={i} style={styles.ref} onPress={() => onRef(ref)}>

@@ -245,6 +245,32 @@ describe('header', () => {
       expect(texts(root)).toContain('2:4 · word 9');
     },
   );
+
+  it("trims the data's stray spaces inside the quotes (2:255:1's meaning is 'Allah ')", () => {
+    const root = render(
+      <WordCard
+        {...props({
+          wbw: {
+            ...WBW_2_4_9,
+            translation: ' before you ',
+            transliteration: 'qablika ',
+          },
+        })}
+      />,
+    );
+    expect(texts(root)).toEqual(
+      expect.arrayContaining(['qablika', '“before you”']),
+    );
+    // A meaning of spaces alone is no meaning: no quotes, no separator.
+    act(() =>
+      renderer?.update(
+        <WordCard {...props({wbw: {...WBW_2_4_9, translation: '  '}})} />,
+      ),
+    );
+    expect(texts(current())).toContain('qablika');
+    expect(allText(current())).not.toContain('“');
+    expect(texts(current())).not.toContain(' · ');
+  });
   // @ai-end
 
   it('keeps the IndoPak face for Skia and draws the fallback in V2', () => {
@@ -348,6 +374,42 @@ describe('sections', () => {
     );
     expect(onRef).toHaveBeenCalledWith({verseKey: '2:255', position: 2});
   });
+
+  // @ai-start
+  it.each([
+    ['hafs', '1:2'],
+    ['warsh', 'Hafs 1:2'],
+  ] as const)(
+    'names a word of another verse with its verse (%s)',
+    (rewayah, verse) => {
+      const lillahi = 'لِلَّهِ';
+      const irab: WordIrab = {
+        ...IRAB,
+        entries: [{kind: 'stem', label: '', text: 'بدل من {{1:2:2}}'}],
+      };
+      const wordTextOf = (verseKey: string, position: number) =>
+        verseKey === '1:2' && position === 2 ? lillahi : undefined;
+      const card = render(
+        <WordCard {...props({word: wordOf(1), irab, rewayah, wordTextOf})} />,
+      );
+      expect(texts(card)).toContain(`\u2068«${lillahi}» (${verse})\u2069`);
+      const list = render(
+        <CompactWordCard
+          word={wordOf(1)}
+          wbw={undefined}
+          irab={irab}
+          rewayah={rewayah}
+          wordTextOf={() => undefined}
+          canOpen={() => false}
+          onRef={jest.fn()}
+          onStudy={jest.fn()}
+        />,
+      );
+      // Its text unknown, the word is named by number and verse.
+      expect(texts(list)).toContain(`\u2068word 2 (${verse})\u2069`);
+    },
+  );
+  // @ai-end
 
   it("says the i'rab failed, and hides morphology, when it could not load", () => {
     const root = render(<WordCard {...props({irab: null})} />);
@@ -523,6 +585,7 @@ describe('CompactWordCard', () => {
         }}
         wbw={{...WBW_2_4_9, position: 1, translation: 'Allah'}}
         irab={IRAB}
+        rewayah="hafs"
         wordTextOf={() => undefined}
         canOpen={(_ref: WordRef) => true}
         onRef={jest.fn()}
@@ -549,8 +612,10 @@ describe('CompactWordCard', () => {
     const root = render(
       <CompactWordCard
         word={word}
-        wbw={{...WBW_2_4_9, position: 1, translation: 'Allah'}}
+        // As the data writes it, with a trailing space. @ai
+        wbw={{...WBW_2_4_9, position: 1, translation: 'Allah '}}
         irab={IRAB}
+        rewayah="hafs"
         wordTextOf={() => undefined}
         canOpen={(_ref: WordRef) => true}
         onRef={jest.fn()}

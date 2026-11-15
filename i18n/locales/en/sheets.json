@@ -433,6 +433,7 @@
     "showWord": "One word",
     "wordOf": "Word {{n}} of {{total}}",
     "wordN": "word {{n}}",
+    "otherVerseRef": "{{word}} ({{verse}})",
     "hafsVerse": "Hafs {{verse}}",
     "implied": "Implied",
     "agreed": "Confirmed by two independent analyses",

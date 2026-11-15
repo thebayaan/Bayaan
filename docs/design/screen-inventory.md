@@ -184,8 +184,11 @@ replaced the I'rab screen and the word sheet (`word-detail`,
 across verses, with a fixed Previous / Next bar in the Quran's direction (and
 ← / → on iPad), verse chips for several verses, and a whole-verse list. Its
 word card (`verse-actions/WordCard.tsx`) shows the word, its transliteration
-and meaning (each only when its Word by Word option is on), Play and
-reference, then the Readings (`WordReadingsSection`), I'rab,
+and meaning (each only when its Word by Word option is on, and neither in the
+Arabic UI, whatever the options, where the card has no English or Latin text
+other than the sources' web addresses, tanzil.net and quranpedia.net), Play
+and reference,
+then the Readings (`WordReadingsSection`), I'rab,
 Morphology, Arabic meaning (`word-study/GharibSection`) and Rasm
 (`word-study/RasmSection`) sections; its I'rab books tab shows the classical
 books. It opens from the Explore card's Word Study row, from a word

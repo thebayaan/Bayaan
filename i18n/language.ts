@@ -73,7 +73,10 @@ export const currentLanguageConfig = getLanguageConfig(currentLanguage);
 
 /**
  * Initial reading-aid preference only. Persisted user choices take precedence
- * and remain available in every interface language.
+ * and remain available in every interface language, with one exception: Word
+ * Study never shows the English or Latin word-by-word lines in a UI whose
+ * readers understand Arabic (showsWordGloss in
+ * components/sheets/verse-actions/wordStudy.ts).
  */
 export const defaultShowEnglishReadingAids =
   !currentLanguageConfig.understandsArabic;

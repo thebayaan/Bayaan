@@ -74,6 +74,7 @@ import {moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 import {createIrabStyles, IrabBooksTab, ROW_FROM_RIGHT} from './IrabContent';
 import {
+  hafsWordText,
   useIrabBooks,
   useVerseWordStudy,
   useWordStudyData,
@@ -175,15 +176,28 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
   );
   const verseStudy = useVerseWordStudy(current?.verseKey ?? null); // @ai
 
+  // The grid memoizes the Hafs words per verse: remount it once they are
+  // in memory (as the I'rab and Word by Word screens do).
+  const hafsWordsReady = useSyncExternalStore(
+    digitalKhattDataService.subscribeCacheChanges,
+    () => digitalKhattDataService.isRewayahReady('hafs'),
+  );
   const textByVerse = useMemo(
     () => new Map(ready?.parts.map(p => [p.part.verseKey, p.wordText]) ?? []),
     [ready],
   );
+  // @ai-start
+  // A word of another verse (an i'rab reference) is quoted from the Hafs
+  // words while they are in memory.
   const wordTextOf = useCallback(
-    (verseKey: string, position: number) =>
-      textByVerse.get(verseKey)?.get(position),
-    [textByVerse],
+    (verseKey: string, position: number) => {
+      const own = textByVerse.get(verseKey);
+      if (own) return own.get(position);
+      return hafsWordsReady ? hafsWordText(verseKey, position) : undefined;
+    },
+    [textByVerse, hafsWordsReady],
   );
+  // @ai-end
 
   // Readings of the next verse, so stepping into it finds them loaded (the
   // card's section asks for the current one itself).
@@ -344,12 +358,6 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
     [allahNameHighlightColorSetting, theme.isDarkMode],
   );
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
-  // The grid memoizes the Hafs words per verse: remount it once they are
-  // in memory (as the I'rab and Word by Word screens do).
-  const hafsWordsReady = useSyncExternalStore(
-    digitalKhattDataService.subscribeCacheChanges,
-    () => digitalKhattDataService.isRewayahReady('hafs'),
-  );
   const isDK =
     mushafPreloadService.initialized && digitalKhattDataService.initialized;
   const subscribedFontMgr = useMushafFontMgr();
@@ -462,6 +470,7 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
                     irab={partData.irab?.find(
                       w => w.position === word.position,
                     )}
+                    rewayah={rewayah} // @ai
                     wordTextOf={wordTextOf}
                     canOpen={canOpen}
                     onRef={onRef}

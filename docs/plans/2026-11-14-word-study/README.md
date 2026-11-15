@@ -40,7 +40,7 @@ The design docs were written by read-only design agents. **Where this README dis
   - It replaces the I'rab screen: `ActiveScreen 'irab'` becomes `'words'`.
   - Tabs: *Words / الكلمات* and *I'rab books / كتب الإعراب*.
 - **Step bar:** Previous / Next follows the Quran's reading direction in both UI languages.
-- **Header:** shows the transliteration and the English meaning each only when its Word by Word option is on, as `WordDetailSheet` did (changed after review: some readers hide the meaning while memorising). The whole-verse list's meaning follows the Translation option too.
+- **Header:** shows the transliteration and the English meaning each only when its Word by Word option is on, as `WordDetailSheet` did (changed after review: some readers hide the meaning while memorising). The whole-verse list's meaning follows the Translation option too. Neither shows in the Arabic UI, whatever the options (second review: no English or Latin around the word there; 01 §3). This overrides a reader's choice, the one exception to the app's reading-aid rule (`defaultShowEnglishReadingAids`): the Word by Word screen still follows the options in every UI.
 - **Sections:** open/closed state resets each time the screen opens.
 - **`WordDetailSheet` is retired (01 T9).**
   - A word long-press in a list or the player opens the verse sheet on Word Study at that word.

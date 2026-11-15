@@ -3,9 +3,10 @@
  * The i'rab building blocks IrabContent.tsx exports for Word Study
  * (IrabEntryList, MorphTable, IrabBooksTab, renderRefs): a word reference
  * is a tappable «word» only when canOpen allows it, and is otherwise plain
- * text; a word whose text is unknown reads "word N". The lines of 1:5:2 from
- * the bundled i'rab, plus one constructed line holding every kind of
- * reference; placeholder books.
+ * text; a word whose text is unknown reads "word N", and a word of another
+ * verse also names that verse. The lines of 1:5:2 from the bundled i'rab,
+ * plus one constructed line holding every kind of reference; placeholder
+ * books.
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -102,6 +103,7 @@ interface Rendered {
 function render(
   block: (context: IrabRefContext) => React.ReactElement,
   canOpenRef: (ref: WordRef) => boolean,
+  over: Partial<IrabRefContext> = {}, // @ai
 ): Rendered {
   const onRef = jest.fn();
   const canOpen = jest.fn(canOpenRef);
@@ -109,7 +111,15 @@ function render(
     const {t} = useTranslation('sheets');
     const {theme} = useTheme();
     const styles = createIrabStyles(theme);
-    return block({verseKey: '1:5', wordTextOf, canOpen, onRef, styles, t});
+    return block({
+      verseKey: '1:5',
+      wordTextOf,
+      canOpen,
+      onRef,
+      styles,
+      t,
+      ...over, // @ai
+    });
   }
   let renderer: TestRenderer.ReactTestRenderer | null = null;
   act(() => {
@@ -149,16 +159,47 @@ describe('IrabEntryList', () => {
       context => <IrabEntryList word={NABUDU} {...context} />,
       () => true,
     );
-    expect(tappable(renderer)).toEqual(['«إِيَّاكَ»', 'word 9', 'word 1']);
+    // A reference to another verse names that verse (isolated). @ai
+    expect(tappable(renderer)).toEqual([
+      '«إِيَّاكَ»',
+      'word 9',
+      '\u2068word 1 (1:4)\u2069',
+    ]);
     const word1 = renderer.root.find(
       n => (n.type as unknown) === Text && n.props.children === '«إِيَّاكَ»',
     );
     act(() => word1.props.onPress());
     expect(onRef).toHaveBeenCalledWith({verseKey: '1:5', position: 1});
-    // A reference to another verse names that verse.
     expect(canOpen).toHaveBeenCalledWith({verseKey: '1:4', position: 1});
     act(() => renderer.unmount());
   });
+
+  // @ai-start
+  it("quotes another verse's word when its text is known, naming the verse as the caller does", () => {
+    const {renderer, onRef} = render(
+      context => <IrabEntryList word={NABUDU} {...context} />,
+      ref => ref.verseKey === '1:4',
+      {
+        wordTextOf: (verseKey, position) =>
+          verseKey === '1:4' && position === 1
+            ? 'مَٰلِكِ'
+            : wordTextOf(verseKey, position),
+        verseLabel: verseKey => `Hafs ${verseKey}`,
+      },
+    );
+    const other = '\u2068«مَٰلِكِ» (Hafs 1:4)\u2069';
+    expect(tappable(renderer)).toEqual([other]);
+    act(() =>
+      renderer.root
+        .find(n => (n.type as unknown) === Text && n.props.children === other)
+        .props.onPress(),
+    );
+    expect(onRef).toHaveBeenCalledWith({verseKey: '1:4', position: 1});
+    // A word of the text's own verse names no verse.
+    expect(strings(renderer).join('')).toContain('ومفعوله «إِيَّاكَ»');
+    act(() => renderer.unmount());
+  });
+  // @ai-end
 
   it('a reference that cannot be opened is plain text with no onPress', () => {
     const {renderer, onRef} = render(
@@ -168,7 +209,7 @@ describe('IrabEntryList', () => {
     expect(tappable(renderer)).toEqual(['word 9']);
     const text = strings(renderer).join('');
     expect(text).toContain('ومفعوله «إِيَّاكَ»');
-    expect(text).toContain('word 1');
+    expect(text).toContain('\u2068word 1 (1:4)\u2069'); // @ai
     expect(onRef).not.toHaveBeenCalled();
     act(() => renderer.unmount());
   });

@@ -5,7 +5,8 @@
  * failure of the words with a retry, no reload for the same parts, the
  * mushaf text quoted for each word, the gharib / rasm of the current verse,
  * and the books loaded only once their tab opens. Hafs slots are the real
- * ones of the verse-units fixture.
+ * ones of the verse-units fixture. hafsWordText: a word of any Hafs verse
+ * quoted from the Hafs words in memory, بَعْدَ مَا's two slots in 2:181. @ai
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -38,8 +39,10 @@ import {wbwDataService} from '@/services/wbw/WBWDataService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {irabDataService} from '@/services/irab/IrabDataService';
 import {wordStudyDataService} from '@/services/wordStudy/WordStudyDataService';
+import {quotableWord} from '@/services/irab/irabFormat'; // @ai
 import type {WordStudyPart} from '../verseUnitScreens';
 import {
+  hafsWordText, // @ai
   partsSignature,
   useIrabBooks,
   useVerseWordStudy,
@@ -340,6 +343,88 @@ describe('useWordStudyData', () => {
     ).toBe('1:7|hafsVerse|1-4,1:8|verse|');
   });
 });
+
+// @ai-start
+describe('hafsWordText', () => {
+  // Hafs 2:181 as DigitalKhatt writes it: word-by-word word 3 (بَعْدَ مَا) is
+  // slots 3 and 4, so every later word sits one slot on; slot 10 carries a
+  // waqf mark and slot 15 is the verse-end marker.
+  const V2_181 = [
+    'فَمَنۢ',
+    'بَدَّلَهُۥ',
+    'بَعْدَ',
+    'مَا',
+    'سَمِعَهُۥ',
+    'فَإِنَّمَآ',
+    'إِثْمُهُۥ',
+    'عَلَى',
+    'ٱلَّذِينَ',
+    'يُبَدِّلُونَهُۥٓۚ',
+    'إِنَّ',
+    'ٱللَّهَ',
+    'سَمِيعٌ',
+    'عَلِيمࣱ',
+    '۝١٨١',
+  ];
+  const WAQF = 'ۚ';
+
+  beforeEach(() => {
+    withData(['1:2', '1:7', '71:4']);
+    mockDk.words.set(
+      '2:181',
+      V2_181.map((text, i) => ({
+        text,
+        verseKey: '2:181',
+        wordPositionInVerse: i + 1,
+      })),
+    );
+  });
+
+  it("quotes a word of any Hafs verse in the mushaf's text, without its waqf mark", () => {
+    expect(hafsWordText('1:2', 2)).toBe(hafsSlots('1:2')[1].text);
+    const marked = hafsSlots('71:4')[7].text;
+    expect(marked.endsWith(WAQF)).toBe(true);
+    expect(hafsWordText('71:4', 8)).toBe(marked.replace(WAQF, ''));
+    // It reads the words in memory and loads nothing.
+    expect(digitalKhattDataService.tryGetVerseWords).toHaveBeenCalledWith(
+      '1:2',
+      'hafs',
+    );
+    expect(digitalKhattDataService.ensureRewayahLoaded).not.toHaveBeenCalled();
+  });
+
+  it('joins the two slots of بَعْدَ مَا (2:181:3) and finds every later word one slot on', () => {
+    expect(hafsWordText('2:181', 2)).toBe(V2_181[1]);
+    expect(hafsWordText('2:181', 3)).toBe(`${V2_181[2]} ${V2_181[3]}`);
+    expect(hafsWordText('2:181', 4)).toBe(V2_181[4]);
+    // Word 9 is slot 10, quoted without its waqf mark.
+    expect(V2_181[9].endsWith(WAQF)).toBe(true);
+    expect(hafsWordText('2:181', 9)).toBe(quotableWord(V2_181[9]));
+    expect(hafsWordText('2:181', 9)).not.toContain(WAQF);
+    // Word 13, the last, is slot 14.
+    expect(hafsWordText('2:181', 13)).toBe(V2_181[13]);
+  });
+
+  it('gives nothing for the verse-end marker, a word past the verse, or a verse without words', () => {
+    // 1:7 has 9 words; its slot 10 is the end marker.
+    expect(hafsSlots('1:7')[9].text.startsWith('۝')).toBe(true);
+    expect(hafsWordText('1:7', 9)).toBe(hafsSlots('1:7')[8].text);
+    expect(hafsWordText('1:7', 10)).toBeUndefined();
+    expect(hafsWordText('1:7', 11)).toBeUndefined();
+    // 2:181 has 13 words: a 14th would be slot 15, its end marker.
+    expect(hafsWordText('2:181', 14)).toBeUndefined();
+    // Loaded, but no words for the verse ([]).
+    expect(hafsWordText('2:255', 1)).toBeUndefined();
+  });
+
+  it('gives nothing while the Hafs words are not in memory', () => {
+    mockDk.ready = false;
+    expect(hafsWordText('1:2', 2)).toBeUndefined();
+    expect(hafsWordText('2:181', 3)).toBeUndefined();
+    expect(digitalKhattDataService.ensureRewayahLoaded).not.toHaveBeenCalled();
+  });
+});
+// @ai-end
 
 describe('useVerseWordStudy', () => {
   const study = (verseKey: string): VerseWordStudy => ({

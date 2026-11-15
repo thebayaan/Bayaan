@@ -23,6 +23,7 @@ import {
   type IrabBookPassages,
   type WordIrab,
 } from '@/services/irab/irabFormat';
+import {dkPositionsForWbwWord} from '@/services/mushaf/wordReadingsFormat'; // @ai
 import {wbwDataService} from '@/services/wbw/WBWDataService';
 import {wordStudyDataService} from '@/services/wordStudy/WordStudyDataService';
 import type {VerseWordStudy} from '@/services/wordStudy/wordStudyFormat';
@@ -70,6 +71,32 @@ export function partsSignature(parts: readonly WordStudyPart[]): string {
     )
     .join(',');
 }
+
+// @ai-start
+const END_OF_AYAH = String.fromCharCode(0x06dd);
+
+/**
+ * The quotable mushaf text of word `position` (word-by-word numbering) of
+ * any Hafs verse, read from the Hafs words in memory: what an i'rab
+ * reference to a word outside the selection quotes. Undefined when they are
+ * not in memory or the verse has no such word; the reference then names the
+ * word by its number.
+ */
+export function hafsWordText(
+  verseKey: string,
+  position: number,
+): string | undefined {
+  const slots = digitalKhattDataService.tryGetVerseWords(verseKey, 'hafs');
+  if (!slots) return undefined;
+  const texts: string[] = [];
+  for (const slot of dkPositionsForWbwWord(verseKey, position)) {
+    const text = slots.find(s => s.wordPositionInVerse === slot)?.text;
+    if (!text || text.startsWith(END_OF_AYAH)) return undefined;
+    texts.push(text);
+  }
+  return quotableWord(texts.join(' ')) || undefined;
+}
+// @ai-end
 
 /** The quotable mushaf text of every word of a verse, by position. */
 function verseWordTexts(

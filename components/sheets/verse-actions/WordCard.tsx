@@ -3,9 +3,9 @@
  * The card of one word in Word Study (docs/plans/2026-11-14-word-study,
  * README decisions and 01 §3), top to bottom:
  *  - header: the mushaf's own word (WordHeaderText), its transliteration and
- *    English meaning (always shown here, whatever the grid settings), Play,
- *    and its reference; for another rewayah a Hafs chip and a note that the
- *    word's data is Hafs;
+ *    English meaning (each when its Word by Word option is on, and never in
+ *    the Arabic UI: showsWordGloss), Play, and its reference; for another
+ *    rewayah a Hafs chip and a note that the word's data is Hafs; @ai
  *  - Readings: how the 8 rewayat read the word (WordReadingsSection);
  *  - I'rab, then Morphology: the root (a chip when root search is wired),
  *    the lemma, and Show more for the other facts in data order;
@@ -19,7 +19,7 @@
  * of the other rewayat.
  *
  * CompactWordCard is one word of the whole-verse list: the word, its
- * meaning, its number and its i'rab; a tap studies it.
+ * meaning (as the header's), its number and its i'rab; a tap studies it.
  */
 import React, {useMemo} from 'react';
 import {
@@ -81,6 +81,7 @@ import {RasmSection} from './word-study/RasmSection';
 import {WordHeaderText} from './WordHeaderText';
 import {
   rnQuranFontFamily,
+  showsWordGloss,
   summarizeMorph,
   type StudyWord,
   type WordRef,
@@ -133,7 +134,11 @@ export interface WordCardProps extends RefProps {
 /**
  * The word's word-by-word lines the reader wants: each only when its Word by
  * Word option is on, as the old word sheet did (some readers hide the
- * meaning while memorising). Undefined when off or missing.
+ * meaning while memorising), and neither in the Arabic UI, whose card is all
+ * Arabic, even when the reader turned them on (showsWordGloss: an exception
+ * to the reading-aid rule). Trimmed: hundreds of meanings in the data end
+ * with a space ('Allah ' at 2:255:1), which the quotes would show. Undefined
+ * when off or missing.
  */
 function useWordGloss(wbw: WBWWord | undefined): {
   transliteration: string | undefined;
@@ -143,9 +148,13 @@ function useWordGloss(wbw: WBWWord | undefined): {
   const showTransliteration = useMushafSettingsStore(
     s => s.wbwShowTransliteration,
   );
+  if (!showsWordGloss()) {
+    return {transliteration: undefined, translation: undefined};
+  }
   return {
-    transliteration: (showTransliteration && wbw?.transliteration) || undefined,
-    translation: (showTranslation && wbw?.translation) || undefined,
+    transliteration:
+      (showTransliteration && wbw?.transliteration?.trim()) || undefined,
+    translation: (showTranslation && wbw?.translation?.trim()) || undefined,
   };
 }
 // @ai-end
@@ -193,6 +202,7 @@ export const WordCard: React.FC<WordCardProps> = ({
     onRef,
     styles: irabStyles,
     t: sheetsT,
+    verseLabel: verseKey => verseLabel(verseKey, rewayah), // @ai
   };
   const morph = irab ? summarizeMorph(irab.morph) : null;
   const gharib = study ? gharibForWord(study, word.position) : [];
@@ -566,6 +576,8 @@ export interface CompactWordCardProps extends RefProps {
   wbw: WBWWord | undefined;
   /** Its i'rab; undefined when there is none (or it failed to load). */
   irab: WordIrab | undefined;
+  /** The selection's rewayah: how its i'rab names another verse. @ai */
+  rewayah: RewayahId;
   /** Opens one-word mode at this word. */
   onStudy: (word: StudyWord) => void;
 }
@@ -575,6 +587,7 @@ export const CompactWordCard: React.FC<CompactWordCardProps> = ({
   word,
   wbw,
   irab,
+  rewayah, // @ai
   wordTextOf,
   canOpen,
   onRef,
@@ -588,6 +601,7 @@ export const CompactWordCard: React.FC<CompactWordCardProps> = ({
     [theme, isTablet],
   );
   const irabStyles = useMemo(() => createIrabStyles(theme), [theme]);
+  const verseLabel = useVerseLabel(); // @ai
   const {hovered, hoverProps} = useHover();
   const renderer = useMushafSettingsStore(s => s.mushafRenderer);
   const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
@@ -638,6 +652,7 @@ export const CompactWordCard: React.FC<CompactWordCardProps> = ({
           onRef={onRef}
           styles={irabStyles}
           t={t}
+          verseLabel={verseKey => verseLabel(verseKey, rewayah)} // @ai
         />
       ) : null}
     </Pressable>

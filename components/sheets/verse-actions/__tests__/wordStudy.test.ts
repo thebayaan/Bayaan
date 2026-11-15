@@ -4,8 +4,10 @@
  * through, built from the real Hafs DigitalKhatt slots of the verse-units
  * fixture (services/mushaf/__fixtures__/verseUnitsFixture.json), word
  * references, the root and lemma of a word's morphology (real facts of the
- * bundled i'rab), and the React Native Quran face.
+ * bundled i'rab), the React Native Quran face, and which UI languages show
+ * the word-by-word lines. @ai
  */
+import {SUPPORTED_LANGUAGES, getLanguageConfig} from '@/i18n/languages'; // @ai
 import type {MorphFact} from '@/services/irab/irabFormat';
 import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 import type {WBWWord} from '@/services/wbw/WBWDataService';
@@ -16,6 +18,7 @@ import {
   rnQuranFontFamily,
   rootSearchKey,
   sameWord,
+  showsWordGloss,
   summarizeMorph,
   type PartWords,
 } from '../wordStudy';
@@ -292,3 +295,24 @@ describe('rnQuranFontFamily', () => {
     expect(rnQuranFontFamily('qcf_v2', 'hafs')).toBe('DigitalKhattV2');
   });
 });
+
+// @ai-start
+describe('showsWordGloss', () => {
+  it('shows the English and Latin word-by-word lines in the English UI only', () => {
+    expect(showsWordGloss('en')).toBe(true);
+    expect(showsWordGloss('ar')).toBe(false);
+  });
+
+  it('follows whether the language understands Arabic, for every language', () => {
+    for (const language of SUPPORTED_LANGUAGES) {
+      expect(showsWordGloss(language)).toBe(
+        !getLanguageConfig(language).understandsArabic,
+      );
+    }
+  });
+
+  it("defaults to this session's UI language (English in the suites)", () => {
+    expect(showsWordGloss()).toBe(true);
+  });
+});
+// @ai-end
