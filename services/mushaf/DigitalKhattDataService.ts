@@ -1031,6 +1031,14 @@ export class DigitalKhattDataService {
         let failure: unknown = null;
         try {
           snapshot = await this.loadMainSnapshot(target);
+          // @ai A read of its words failed (the store is dropped a microtask
+          // later), before this load or while it ran. A commit would serve
+          // empty words as ready, with no retry.
+          if (snapshot.words.hasFailed) {
+            const {dbName} = snapshot.words;
+            snapshot = null;
+            throw new Error(`Reading ${dbName} failed before the commit`);
+          }
         } catch (error) {
           failure = error;
         }
