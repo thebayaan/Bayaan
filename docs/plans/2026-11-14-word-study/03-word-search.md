@@ -186,7 +186,7 @@ Seams: an imla'i text and the other rewayat's spellings can be added to the same
 ### 2.1 Schema (format 1)
 ```sql
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
--- format, normalizer, dk_sha256, irab_morph_sha256, content_sha256, counts, complete='1' (written last)
+-- format, normalizer, dk_words_sha256, irab_morph_sha256, content_sha256, counts, complete='1' (written last)
 CREATE TABLE forms (
   form TEXT PRIMARY KEY,   -- folded spelling (quranText.ts), letters only
   postings TEXT NOT NULL   -- packed codes ascending: first absolute, then deltas; base 36; comma-separated
@@ -227,7 +227,7 @@ CREATE INDEX lemmas_by_root ON lemmas (root_id, words DESC);
 3. Every word yields at least one spelling, and every spelling stays inside the output alphabet. The same check runs over all 7 other words DBs (future-proofing).
 4. Every irab row maps to a slot. Per-root word counts equal the stated `وروده في القرآن` counts, except the allowlisted `ء م م` (20:94 holds two stems).
 5. Every fixture in `utils/search/__fixtures__/quranSearchGolden.ts` passes, and every verse is found by its first 12 or fewer DK words.
-6. `meta` records the sha256 of the Digital Khatt file, the sha256 of the morphology the index reads from the i'rab DB (`irab_morph_sha256`: per word, its proclitics, definiteness, lemma, root and stated root count, so the i'rab prose, the books and the text ids do not count; changed in review), the normaliser version, the counts, a `content_sha256` over all rows in canonical order, and `complete='1'` last.
+6. `meta` records the sha256 of the Digital Khatt rows the index reads (`dk_words_sha256`: each word's location and text, not the file; changed after #489 rewrote the file with the same rows), the sha256 of the morphology the index reads from the i'rab DB (`irab_morph_sha256`: per word, its proclitics, definiteness, lemma, root and stated root count, so the i'rab prose, the books and the text ids do not count; changed in review), the normaliser version, the counts, a `content_sha256` over all rows in canonical order, and `complete='1'` last.
 
 ### 2.3 Budgets (77,429 words / 6,236 ayahs)
 | Item | Budget | Measured (prototype, Node 22) |
@@ -559,7 +559,7 @@ Root letters, lemmas and verse text are data, not locale strings. Digits go thro
   - Queries: digits and Latin give `none`; يا أيها merges into one token; ماء needs a hamza; مسؤولا gives 2 keys; the root syntaxes parse; `rootCandidates` gives the outputs listed in section 4.
 - **Golden table:** shared fixture file used by the build gate and Jest. It holds the section 1.3 rows plus exact counts where they are stable: 2 for بسم الله الرحمن الرحيم, 6 for الحمد لله رب العالمين, 31 for فبأي آلاء ربكما تكذبان, 89 for يا أيها الذين آمنوا. It also holds top-1 expectations (2:2 for الكتاب, 1:1 for الله, 2:124 for ابراهيم) and root rows (ر ح م 339 words, 313 ayahs, 9 lemmas, top lemma رَّحِيم 116; ك ت ب 319; ء ل ه 2,851).
 - **Whole-Quran check:** every verse is found by its first 12 or fewer DK words, under 5 s in Node.
-- **Freshness:** a Jest test re-runs `buildQuranSearchIndex` from the sources (better-sqlite3) and compares the meta (`content_sha256`, the Digital Khatt file's sha256 and `irab_morph_sha256`) with the committed DB's, so it fails after a normaliser change or a change to the morphology the index reads that was not rebuilt, and not after a change to the i'rab prose or books. An alphabet check runs over all 8 words DBs.
+- **Freshness:** a Jest test re-runs `buildQuranSearchIndex` from the sources (better-sqlite3) and compares the meta (`content_sha256`, `dk_words_sha256` and `irab_morph_sha256`) with the committed DB's, so it fails after a normaliser change or a change to the morphology the index reads that was not rebuilt, and not after a change to the i'rab prose or books. An alphabet check runs over all 8 words DBs.
 - **Kept by name:** `services/search/__tests__/bundledDatabases.test.ts` records the sha256 of quran-search-v1.db, irab-v1.db, gharib-v1.db and rasm-v1.db under their versioned names and fails when a file's bytes change while its name stays the same (a phone keeps a bundled database by name). It also runs each app service as on a first launch and checks it opens and imports its database under the name of the asset it imports, and that it keeps an installed copy of that name. Added in review (irab-v1.db and the first-launch check in a second review).
 - **Every surface:** `components/search/__tests__/quranSearchSurfaces.golden.test.tsx` runs the query-kind fixtures (`ر ح م` root, `ا ل م` the opening) through the real hook and service on the Search tab (phone, iPad) and the mushaf search. Added in review.
 

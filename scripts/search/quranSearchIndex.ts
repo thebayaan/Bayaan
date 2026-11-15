@@ -9,7 +9,10 @@
  * Of the i'rab DB the index reads only the morphology of each word (its
  * proclitics, definiteness, lemma, root and stated root count), and meta
  * records the sha256 of exactly that (irab_morph_sha256), so a change to the
- * i'rab prose, the books or the text ids leaves the index fresh.
+ * i'rab prose, the books or the text ids leaves the index fresh. Of the
+ * Digital Khatt DB it reads each word's location and text, and meta records
+ * the sha256 of those rows (dk_words_sha256), not of the file, so a rewrite
+ * with the same rows leaves it fresh too.
  *
  * buildQuranSearchIndex (gates 1-4):
  *  1. 6,236 verses in mushaf order and 77,432 words outside the markers;
@@ -110,10 +113,10 @@ export interface QuranSearchIndexInput {
   /** Optional imla'i spelling per slot ('s:a:w' → word): extra tier-3 forms. */
   imlaei?: ReadonlyMap<string, string>;
   /**
-   * Recorded in meta. The i'rab DB's part is computed from the rows
-   * (irabMorphologySha256), not from its file.
+   * Recorded in meta. The Digital Khatt and i'rab parts are computed from the
+   * rows (dkWordsSha256, irabMorphologySha256), not from their files.
    */
-  sources: {dkSha256: string; imlaeiSha256?: string};
+  sources: {imlaeiSha256?: string};
 }
 
 export interface QuranIndexLemma extends QuranLemma {
@@ -230,6 +233,17 @@ export function irabMorphologySha256(
   input: Pick<QuranSearchIndexInput, 'irabRows' | 'irabTexts'>,
 ): string {
   return morphologySha256(irabWordsOf(input));
+}
+
+/**
+ * sha256 of the Digital Khatt rows the index reads: each word's location and
+ * text, in id order. It changes only when one of them does, not when the
+ * file is rewritten with the same rows (as words.id became the primary key).
+ */
+export function dkWordsSha256(
+  dkWords: QuranSearchIndexInput['dkWords'],
+): string {
+  return sha256(dkWords.map(w => `${w.location}\t${w.text}`).join('\n'));
 }
 
 function formScore(form: QuranWordForm): number {
@@ -514,7 +528,7 @@ export function buildQuranSearchIndex(
   const meta: Record<string, string> = {
     format: String(QURAN_SEARCH_FORMAT),
     normalizer: String(QURAN_TEXT_NORMALIZER_VERSION),
-    dk_sha256: input.sources.dkSha256,
+    dk_words_sha256: dkWordsSha256(input.dkWords),
     irab_morph_sha256: morphologySha256(irabWords),
     verses: String(verses.length),
     words: String(QURAN_WORD_COUNT),

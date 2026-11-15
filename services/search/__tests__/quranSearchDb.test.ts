@@ -6,12 +6,11 @@
  * its meta (content and source hashes) with the committed one, so a
  * normaliser or source change that was not rebuilt fails here. Of the i'rab
  * DB only the morphology the index reads counts: its prose, books and text
- * ids may change without a rebuild. Rebuild with:
+ * ids may change without a rebuild. Of the Digital Khatt DB only the rows it
+ * reads count: the file may be rewritten with the same rows. Rebuild with:
  *
  *   npx tsx scripts/search/build-quran-search-db.ts
  */
-import crypto from 'crypto';
-import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import {
@@ -22,6 +21,7 @@ import {
 import {
   alphabetViolations,
   buildQuranSearchIndex,
+  dkWordsSha256,
   irabMorphologySha256,
   ROOT_COUNT_EXCEPTIONS,
   statedRootCount,
@@ -61,9 +61,6 @@ beforeAll(() => {
 });
 afterAll(() => db.close());
 
-const sha256 = (file: string) =>
-  crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-
 describe(QURAN_SEARCH_DB_NAME, () => {
   it('has the format 1 schema and a complete meta', () => {
     const tables = (
@@ -85,7 +82,7 @@ describe(QURAN_SEARCH_DB_NAME, () => {
     for (const key of [
       'format',
       'normalizer',
-      'dk_sha256',
+      'dk_words_sha256',
       'irab_morph_sha256',
       'content_sha256',
       'verses',
@@ -103,9 +100,9 @@ describe(QURAN_SEARCH_DB_NAME, () => {
   });
 
   it('records the sha256 of what it was built from', () => {
-    expect(meta.dk_sha256).toBe(
-      sha256(path.join(DK_DIR, 'digital-khatt-v2.db')),
-    );
+    // Of the Digital Khatt DB, the rows it reads; never the whole file.
+    expect(meta.dk_words_sha256).toBe(dkWordsSha256(input.dkWords));
+    expect(meta.dk_sha256).toBeUndefined();
     // Of the i'rab DB, the morphology it reads; never the whole file.
     expect(IRAB_DB).toBe(path.join(ROOT, 'assets/data', IRAB_DB_NAME));
     expect(meta.irab_morph_sha256).toBe(irabMorphologySha256(input));
@@ -127,6 +124,38 @@ describe(QURAN_SEARCH_DB_NAME, () => {
       );
     }
     expect(stale).toEqual([]);
+  });
+
+  it('follows the Digital Khatt words it reads, not the file', () => {
+    const base = dkWordsSha256(input.dkWords);
+
+    // A file rewritten with the same rows (another table layout, the ids
+    // renumbered in the same order) reads back the same: the index stays
+    // fresh, as it should have when words.id became the primary key.
+    const copy = new Database(':memory:');
+    try {
+      copy.exec('CREATE TABLE words (id INTEGER, location TEXT, text TEXT)');
+      const insert = copy.prepare('INSERT INTO words VALUES (?, ?, ?)');
+      const rows = input.dkWords;
+      copy.transaction(() => {
+        for (let i = rows.length - 1; i >= 0; i--) {
+          insert.run(10 * (i + 1), rows[i].location, rows[i].text);
+        }
+      })();
+      const reread = copy
+        .prepare('SELECT location, text FROM words ORDER BY id')
+        .all() as {location: string; text: string}[];
+      expect(dkWordsSha256(reread)).toBe(base);
+    } finally {
+      copy.close();
+    }
+
+    // A word the index reads: the hash changes.
+    const at = input.dkWords.findIndex(row => !isVerseMarker(row.text));
+    const edited = input.dkWords.map((row, i) =>
+      i === at ? {...row, text: `${row.text}ا`} : row,
+    );
+    expect(dkWordsSha256(edited)).not.toBe(base);
   });
 
   it("follows the morphology it reads, not the rest of the i'rab DB", () => {

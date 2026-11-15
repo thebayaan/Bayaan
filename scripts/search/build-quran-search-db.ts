@@ -111,7 +111,6 @@ export function readQuranSearchInput(
       irabTexts,
       imlaei,
       sources: {
-        dkSha256: fileSha256(DK_DB),
         imlaeiSha256: imlaeiFile ? fileSha256(imlaeiFile) : undefined,
       },
     };
@@ -224,7 +223,8 @@ async function main(): Promise<void> {
       ([key, value]) => committed[key] !== value,
     );
     if (committed.complete !== '1') stale.push(['complete', '1']);
-    // Keys an older build wrote and this one does not (irab_sha256).
+    // Keys an older build wrote and this one does not (irab_sha256,
+    // dk_sha256).
     for (const key of Object.keys(committed)) {
       if (key !== 'complete' && !(key in content.meta)) stale.push([key, '']);
     }
