@@ -105,6 +105,17 @@ export default function SearchScreen() {
     return subscribeSearchFocus(focusIfAsked);
   }, [canFocusField]);
 
+  // On iOS 26 the field is the native search bar, which Keyboard.dismiss()
+  // never reaches (it only blurs React Native text inputs), so dragging the
+  // results left the keyboard over half the list. Only with text in the
+  // field: blurring an empty bar leaves search mode (see onBlur), which would
+  // swap the recent searches for Explore.
+  const dismissSearchBarKeyboard = useCallback(() => {
+    if (USE_GLASS && queryRef.current.length > 0) {
+      searchBarRef.current?.blur();
+    }
+  }, []);
+
   const handleCancel = () => {
     setQuery('');
     setIsSearchActive(false);
@@ -204,6 +215,7 @@ export default function SearchScreen() {
         query={query}
         isSearchActive={isSearchActive}
         skipTopInset={!USE_GLASS}
+        onDismissKeyboard={dismissSearchBarKeyboard}
       />
     </View>
   );

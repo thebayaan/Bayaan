@@ -77,6 +77,13 @@ interface SearchViewProps {
   isSearchActive: boolean;
   /** Skip the built-in safe-area top padding (when the parent already handles it) */
   skipTopInset?: boolean;
+  // @ai-start
+  /**
+   * Dismisses the keyboard of a field this view does not own: the native
+   * search bar on iOS 26, which Keyboard.dismiss() cannot reach.
+   */
+  onDismissKeyboard?: () => void;
+  // @ai-end
 }
 
 // @ai-start
@@ -86,6 +93,7 @@ export function SearchView({
   query,
   isSearchActive,
   skipTopInset,
+  onDismissKeyboard, // @ai
 }: SearchViewProps) {
   const bottomInset = useBottomInset();
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -304,9 +312,16 @@ export function SearchView({
     [recentSearches],
   );
 
+  // @ai-start
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+    onDismissKeyboard?.();
+  }, [onDismissKeyboard]);
+  // @ai-end
+
   const handleResultPress = useCallback(
     async (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard(); // @ai
       await addToRecentSearches(result);
 
       if (result.type === 'reciter') {
@@ -323,12 +338,12 @@ export function SearchView({
         });
       }
     },
-    [router, addToRecentSearches],
+    [router, addToRecentSearches, dismissKeyboard], // @ai
   );
 
   const handleSurahLongPress = useCallback(
     async (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard(); // @ai
       await addToRecentSearches(result);
 
       const surah = result.item as Surah;
@@ -376,6 +391,7 @@ export function SearchView({
       defaultReciter,
       playWithReciter,
       playWithRandomReciter,
+      dismissKeyboard, // @ai
     ],
   );
 
@@ -407,11 +423,11 @@ export function SearchView({
 
   const handleSurahOptions = useCallback(
     (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard();
       const payload = buildSurahOptions(result.item as Surah);
       if (payload) SheetManager.show('surah-options', {payload});
     },
-    [buildSurahOptions],
+    [buildSurahOptions, dismissKeyboard],
   );
   // @ai-end
 
@@ -591,6 +607,7 @@ export function SearchView({
               onResultPress={handleResultPress}
               onSurahPlay={handleSurahLongPress}
               onSurahOptions={handleSurahOptions}
+              onScrollBeginDrag={dismissKeyboard} // @ai
               bottomPadding={Math.max(keyboardHeight, bottomInset)}
               style={styles.tabletFullWidth}
             />
@@ -607,7 +624,7 @@ export function SearchView({
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={() => Keyboard.dismiss()}
+            onScrollBeginDrag={dismissKeyboard} // @ai
             ListHeaderComponent={
               resultsPending && searchResults.length === 0 ? (
                 <View style={styles.loadingContainer}>

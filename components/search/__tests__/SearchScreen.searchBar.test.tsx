@@ -9,7 +9,11 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 
 type BarProps = {
-  ref?: React.Ref<{setText: (text: string) => void; focus: () => void}>;
+  ref?: React.Ref<{
+    setText: (text: string) => void;
+    focus: () => void;
+    blur: () => void;
+  }>;
   onChangeText: (e: {nativeEvent: {text: string}}) => void;
   onFocus: () => void;
 };
@@ -18,12 +22,23 @@ const mockBar: {
   props: BarProps | null;
   mounts: number;
   setText: jest.Mock;
+  blur: jest.Mock;
   /** False stands for a bar whose handle never arrives. */
   attachHandle: boolean;
-} = {props: null, mounts: 0, setText: jest.fn(), attachHandle: true};
+} = {
+  props: null,
+  mounts: 0,
+  setText: jest.fn(),
+  blur: jest.fn(),
+  attachHandle: true,
+};
 const mockFocus: {effect: (() => () => void) | null} = {effect: null};
 const mockSearchView: {
-  props: {query: string; isSearchActive: boolean} | null;
+  props: {
+    query: string;
+    isSearchActive: boolean;
+    onDismissKeyboard?: () => void;
+  } | null;
 } = {props: null};
 
 jest.mock('expo-router', () => {
@@ -35,7 +50,11 @@ jest.mock('expo-router', () => {
     }, []);
     MockReact.useImperativeHandle(
       mockBar.attachHandle ? props.ref : null,
-      () => ({setText: mockBar.setText, focus: jest.fn()}),
+      () => ({
+        setText: mockBar.setText,
+        focus: jest.fn(),
+        blur: mockBar.blur,
+      }),
       [],
     );
     return null;
@@ -96,6 +115,7 @@ beforeEach(() => {
   mockBar.props = null;
   mockBar.mounts = 0;
   mockBar.setText.mockClear();
+  mockBar.blur.mockClear();
   mockBar.attachHandle = true;
   mockSearchView.props = null;
   act(() => {
@@ -150,4 +170,25 @@ it('is back on Explore after leaving with the cursor in an empty field', () => {
   focus();
 
   expect(mockSearchView.props!.isSearchActive).toBe(false);
+});
+
+// Keyboard.dismiss() only reaches React Native text inputs, so the results
+// asked the screen to blur the native bar: dragging them left the keyboard up.
+it('blurs the native bar when the results dismiss the keyboard', () => {
+  focus();
+  type('mishary');
+  act(() => {
+    mockSearchView.props!.onDismissKeyboard!();
+  });
+
+  expect(mockBar.blur).toHaveBeenCalledTimes(1);
+});
+
+it('leaves an empty bar focused, so recent searches stay up', () => {
+  focus();
+  act(() => {
+    mockSearchView.props!.onDismissKeyboard!();
+  });
+
+  expect(mockBar.blur).not.toHaveBeenCalled();
 });
