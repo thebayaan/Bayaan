@@ -49,15 +49,6 @@ export function buildMushafLayout(): MushafLayout {
     }
   }
 
-  // Fallback: If any surahs are missing ayahs in the DB (unlikely),
-  // use the surah_name lines as a secondary source.
-  for (const row of rows) {
-    if (row.line_type !== 'surah_name') continue;
-    if (row.surah_number && !surahStartPages[row.surah_number]) {
-      surahStartPages[row.surah_number] = row.page_number;
-    }
-  }
-
   // Fill pageToSurah for all pages
   const surahIds = Object.keys(surahStartPages)
     .map(Number)

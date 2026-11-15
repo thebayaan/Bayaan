@@ -518,7 +518,7 @@ export class DigitalKhattDataService {
   private _initialized = false;
   private _initializing: Promise<void> | null = null;
 
-  // Identity (asset hashes) of the main cache, and the layout copy it uses.
+  // Identity of the main cache: its words DB and the generated tables.
   private activeIdentity: DKDataIdentity | null = null;
   // Main-cache load queue. `desiredRewayah` is the latest requested rewayah
   // (null when nothing is pending); one worker loads it, and commits only if
@@ -721,10 +721,10 @@ export class DigitalKhattDataService {
 
   /**
    * Dev-only: delete every runtime SQLite copy this service manages (current
-   * and stale content-addressed names, per-rewayah words DBs and the shared
-   * layout DB) and drop all caches. On next launch the assets are re-imported
-   * from source. Pair with `mushafLayoutCacheService.clearAll()` in dev
-   * tooling.
+   * and stale content-addressed names of the per-rewayah words DBs, and any
+   * copy of a RETIRED_DB_BASES DB, such as the layout DB of older releases)
+   * and drop all caches. On next launch the assets are re-imported from
+   * source. Pair with `mushafLayoutCacheService.clearAll()` in dev tooling.
    */
   async resetDatabases(): Promise<void> {
     this.epoch += 1;
