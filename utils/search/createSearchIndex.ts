@@ -332,6 +332,11 @@ export function createSearchIndex<T>(
     if (!fillers) return null;
     const kept = query.tokens.filter(token => !fillers.has(token));
     if (kept.length === 0 || kept.length === query.tokens.length) return null;
+    // @ai-start
+    // A bare article is no name: "al qari" scored as just "al" listed every
+    // reciter carrying "Al" above Al-Qari'ah and Al-Qaria Yassen.
+    if (kept.every(token => ARTICLES.has(token))) return null;
+    // @ai-end
     return prepareQuery(kept.join(' '));
   }
 

@@ -207,6 +207,23 @@ describe('createCatalogSearch (Home)', () => {
     expect(names.indexOf(name)).toBeGreaterThanOrEqual(0);
     expect(names.indexOf(name)).toBeLessThan(max);
   });
+
+  it.each(['al qari', 'al imam', 'al sheikh'])(
+    'does not list every "Al" reciter for an article plus a title: %s',
+    query => {
+      expect(search.search(query).length).toBeLessThan(40);
+    },
+  );
+
+  it('keeps Al-Qari\'ah and Al-Qaria Yassen near the top of "al qari"', () => {
+    const names = search
+      .search('al qari')
+      .slice(0, 3)
+      .map(r => r.item.name);
+    expect(names).toEqual(
+      expect.arrayContaining(["Al-Qari'ah", 'Al-Qaria Yassen']),
+    );
+  });
   // @ai-end
 });
 
