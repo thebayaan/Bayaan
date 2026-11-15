@@ -17,13 +17,7 @@ import AppErrorScreen from '@/components/AppErrorScreen';
 import {ROOT_COLORS} from '@/constants/rootColors';
 // @ai-end
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {
-  AppState,
-  Platform,
-  Appearance,
-  Linking,
-  type AppStateStatus,
-} from 'react-native';
+import {AppState, Platform, Appearance, Linking} from 'react-native';
 import {runAfterInteractions} from '@/utils/afterInteractions';
 import {useTheme} from '@/hooks/useTheme';
 // @ai-start
@@ -157,17 +151,9 @@ function AnalyticsConnector(): null {
 
   // Track app foreground/background transitions
   useEffect(() => {
-    function handleAppStateChange(nextState: AppStateStatus): void {
-      if (nextState === 'background' || nextState === 'inactive') {
-        analyticsService.trackAppBackgrounded();
-      } else if (nextState === 'active') {
-        analyticsService.trackAppOpened();
-      }
-    }
-    const subscription = AppState.addEventListener(
-      'change',
-      handleAppStateChange,
-    );
+    const subscription = AppState.addEventListener('change', state =>
+      analyticsService.handleAppStateChange(state),
+    ); // @ai
     return () => subscription.remove();
   }, []);
 

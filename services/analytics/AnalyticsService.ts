@@ -1,4 +1,5 @@
 import {PostHog} from 'posthog-react-native';
+import {AppState, AppStateStatus} from 'react-native'; // @ai
 import {getOrCreateDeviceId} from './deviceId';
 import {
   ANALYTICS_EVENTS,
@@ -65,6 +66,13 @@ class AnalyticsServiceImpl {
   private meaningfulListenTracker: MeaningfulListenTracker;
   private sessionStartTime: number = Date.now();
   private sessionListenMs: number = 0;
+  // @ai-start
+  /**
+   * True after a real background, until the next `active`. A launch that
+   * starts in the background counts, so its first `active` sends app_opened.
+   */
+  private backgrounded = AppState.currentState === 'background';
+  // @ai-end
   private readyListeners = new Set<() => void>();
 
   constructor() {
@@ -335,6 +343,26 @@ class AnalyticsServiceImpl {
     this.sessionListenMs = 0;
     this.capture(ANALYTICS_EVENTS.APP_OPENED, {});
   }
+
+  // @ai-start
+  /**
+   * The AppState listener for app_backgrounded and app_opened. Only
+   * `background` is a background. iOS reports `inactive` while the app is
+   * still on screen (Control Center, the notification list, the app switcher,
+   * a system alert) and on the way to `background`, so `inactive` sends
+   * nothing. The mount sends the first app_opened.
+   */
+  handleAppStateChange(state: AppStateStatus): void {
+    if (state === 'background') {
+      if (this.backgrounded) return;
+      this.backgrounded = true;
+      this.trackAppBackgrounded();
+    } else if (state === 'active' && this.backgrounded) {
+      this.backgrounded = false;
+      this.trackAppOpened();
+    }
+  }
+  // @ai-end
 
   trackAppBackgrounded(): void {
     const props: AppBackgroundedProps = {
