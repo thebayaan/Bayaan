@@ -4,7 +4,6 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
 import {uploadsService} from '@/services/uploads/UploadsService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
@@ -272,22 +271,6 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await adhkarService.initialize();
-  },
-});
-
-/**
- * Mushaf Preload (Priority 5)
- * Loads DigitalKhatt data, Skia typefaces (V1+V2), and surah header font.
- * Eliminates loading screens in the Mushaf tab by having everything ready
- * before the user navigates there.
- * Non-critical - Mushaf tab will render empty frames until ready (rare race).
- */
-appInitializer.registerService({
-  name: 'Mushaf Preload',
-  priority: 5,
-  critical: false,
-  initialize: async () => {
-    await mushafPreloadService.initialize();
   },
 });
 

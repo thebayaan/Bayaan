@@ -14,6 +14,7 @@ const mockPreload = {
   state: 'failed' as string,
   listeners: new Set<() => void>(),
   initialize: jest.fn(() => Promise.resolve()),
+  startIfIdle: jest.fn(),
 };
 
 // Recitation follow-along pulls in native audio and ONNX modules.
@@ -54,17 +55,25 @@ jest.mock('@/components/mushaf/main', () => ({
   default: () => null,
 }));
 
+const mockDk = {initialized: false};
+
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {
-    initialized: false,
+    get initialized() {
+      return mockDk.initialized;
+    },
     rewayah: 'hafs',
     getSurahStartPages: () => ({}),
     switchRewayah: jest.fn(() => Promise.resolve()),
+    subscribeCacheChanges: () => () => undefined,
   },
 }));
 
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
   mushafPreloadService: {
+    get initialized() {
+      return mockPreload.state === 'ready' || mockPreload.state === 'failed';
+    },
     get state() {
       return mockPreload.state;
     },
@@ -75,6 +84,7 @@ jest.mock('@/services/mushaf/MushafPreloadService', () => ({
       };
     },
     initialize: () => mockPreload.initialize(),
+    startIfIdle: () => mockPreload.startIfIdle(),
   },
 }));
 
@@ -137,6 +147,8 @@ beforeEach(() => {
   mockPreload.state = 'failed';
   mockPreload.listeners.clear();
   mockPreload.initialize.mockClear();
+  mockPreload.startIfIdle.mockClear();
+  mockDk.initialized = false;
   // react-test-renderer prints a deprecation notice under React 19.
   errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -165,6 +177,22 @@ it('says the mushaf could not be loaded and retries the preload', async () => {
   expect(mockPreload.initialize).toHaveBeenCalledTimes(1);
 });
 
+// The data loaded and only the fonts failed: the pages would stay blank.
+it('fonts that fail: the error, and the retry runs the preload again', async () => {
+  mockDk.initialized = true;
+  render();
+  expect(texts()[0]).toBe("Couldn't load the mushaf");
+  expect(ofType(ActivityIndicator)).toHaveLength(0);
+
+  const retry = root().find(
+    node => node.props.accessibilityRole === 'button' && !!node.props.onPress,
+  );
+  await act(async () => {
+    retry.props.onPress();
+  });
+  expect(mockPreload.initialize).toHaveBeenCalledTimes(1);
+});
+
 it('keeps the spinner while the mushaf is still loading', () => {
   mockPreload.state = 'loading';
   render();
@@ -180,4 +208,11 @@ it('shows the error once a load in progress fails', () => {
     mockPreload.listeners.forEach(listener => listener());
   });
   expect(texts()[0]).toBe("Couldn't load the mushaf");
+});
+
+it('starts the load when the screen opens first', () => {
+  mockPreload.state = 'idle';
+  render();
+  expect(mockPreload.startIfIdle).toHaveBeenCalledTimes(1);
+  expect(ofType(ActivityIndicator)).toHaveLength(1);
 });

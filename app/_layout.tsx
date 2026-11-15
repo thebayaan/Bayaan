@@ -25,6 +25,7 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import {runAfterInteractions} from '@/utils/afterInteractions';
+import {hideSplash, whenSplashHidden} from '@/utils/splashHidden'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 // @ai-start
 import {LocaleDirContext, ThemeProvider} from 'expo-router/react-navigation';
@@ -63,6 +64,7 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
@@ -245,6 +247,14 @@ function RootLayout() {
     };
   }, [appIsReady]);
 
+  // @ai-start
+  // The Mushaf load does not hold the splash. A screen that needs it sooner (a
+  // restored reader, a link) starts it itself.
+  useEffect(() => {
+    whenSplashHidden().then(() => mushafPreloadService.startIfIdle());
+  }, []);
+  // @ai-end
+
   // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {
     runAfterInteractions(() => {
@@ -262,7 +272,7 @@ function RootLayout() {
         !hasShareIntent &&
         mushafRestoreHandled
       ) {
-        await SplashScreen.hideAsync();
+        await hideSplash();
       }
     } catch (e) {
       if (__DEV__) console.warn('Error hiding splash screen:', e);
@@ -348,7 +358,7 @@ function RootLayout() {
         const files = shareIntent.files;
         if (!files || files.length === 0) {
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           return;
         }
 
@@ -356,7 +366,7 @@ function RootLayout() {
 
         if (audioFiles.length === 0) {
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           return;
         }
 
@@ -369,7 +379,7 @@ function RootLayout() {
             file.fileName || i18n.t('app.sharedAudio'),
           );
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           showToast(i18n.t('app.fileImported'));
           SheetManager.show('organize-recitation', {
             payload: {recitation},
@@ -381,14 +391,14 @@ function RootLayout() {
           }));
           await importFiles(mapped);
           resetShareIntent();
-          await SplashScreen.hideAsync();
+          await hideSplash();
           showToast(i18n.t('app.filesImported', {count: audioFiles.length}));
           router.push('/collection/uploads');
         }
       } catch (error) {
         console.error('[ShareIntent] Import failed:', error);
         resetShareIntent();
-        await SplashScreen.hideAsync();
+        await hideSplash();
       }
     };
 
@@ -445,7 +455,7 @@ function RootLayout() {
       !hasShareIntent &&
       mushafRestoreHandled
     ) {
-      SplashScreen.hideAsync().catch(() => {});
+      hideSplash().catch(() => {});
     }
   }, [
     appIsReady,
@@ -456,12 +466,12 @@ function RootLayout() {
   ]);
 
   if (fontError) {
-    SplashScreen.hideAsync();
+    hideSplash();
     return <AppErrorScreen message={i18n.t('app.fontError')} />; // @ai
   }
 
   if (setupError) {
-    SplashScreen.hideAsync();
+    hideSplash();
     // @ai-start
     return (
       <AppErrorScreen
