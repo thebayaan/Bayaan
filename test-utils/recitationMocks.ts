@@ -49,11 +49,6 @@ export const mockEngine = {
     chunks: 20,
     lastError: null,
   })),
-  setChunkListener: jest.fn(
-    (listener: ((audioTime: number) => void) | null) => {
-      engineControl.chunkDone = listener;
-    },
-  ),
   dispose: jest.fn(async () => undefined),
 };
 
@@ -62,9 +57,7 @@ export const engineControl: {
   sendEvent: ((msg: EngineMessage) => void) | null;
   /** When set, loading the model waits for it. */
   gate: Promise<void> | null;
-  /** The listener told of each chunk's end (setChunkListener), if any. */
-  chunkDone: ((audioTime: number) => void) | null;
-} = {sendEvent: null, gate: null, chunkDone: null};
+} = {sendEvent: null, gate: null};
 
 export const recitationEngineModule = {
   RECITATION_SAMPLE_RATE: 16000,
@@ -157,7 +150,6 @@ export const digitalKhattModule = {
 export function resetRecitationControls(): void {
   engineControl.sendEvent = null;
   engineControl.gate = null;
-  engineControl.chunkDone = null;
   micControl.granted = true;
   micControl.chunk = null;
   micControl.interrupt = null;
