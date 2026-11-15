@@ -175,14 +175,6 @@ export interface MushafLayoutOpts {
   toolbarHeight?: number;
   /** Height of the native stack header, if one is shown (phone only). */
   headerHeight?: number;
-  // @ai-start
-  /**
-   * Height of a header that floats over the page (the iOS 26 glass Stack
-   * header), or 0. Only phone landscape reads it: that page scrolls, so its
-   * top gutter grows to keep the surah / juz labels below the header.
-   */
-  floatingHeaderHeight?: number;
-  // @ai-end
   isTablet?: boolean;
 }
 
@@ -315,12 +307,11 @@ export function getMushafLayout(
     // @ai-start
     // Keep the labels clear of the safe area, or they land at a negative
     // offset: with glass chrome (0 heights) an iPhone 15 had a 29pt bottom
-    // gutter and the page number at -6. At the top they also clear a
-    // floating glass header, which covered them at 22pt. The page scrolls and
-    // the glyphs follow contentWidth, so a deeper gutter costs no text size.
+    // gutter and the page number at -6. The page scrolls and the glyphs
+    // follow contentWidth, so a deeper gutter costs no text size.
     const landscapePaddingTop = Math.max(
       headerH + insetTop + 12,
-      minLabelGutter(Math.max(insetTop, opts.floatingHeaderHeight ?? 0)),
+      minLabelGutter(insetTop),
     );
     const landscapePaddingBottom = Math.max(
       toolbarH + insetBottom + 8,
@@ -497,7 +488,6 @@ export function useMushafLayout(
       opts.sideInsets?.right, // @ai
       opts.toolbarHeight,
       opts.headerHeight,
-      opts.floatingHeaderHeight, // @ai
       opts.isTablet,
     ],
   );
