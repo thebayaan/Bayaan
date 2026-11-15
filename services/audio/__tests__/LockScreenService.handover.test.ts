@@ -170,6 +170,49 @@ describe('verse audio and the lock screen', () => {
     expect(mockMushafPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
   });
 
+  // @ai-start
+  it('a next surah cued while paused claims it for its player', () => {
+    setMushaf({playbackState: 'playing', currentSurah: 2});
+    setMushaf({playbackState: 'paused'});
+    const first = mockMushafPlayer;
+    expect(first.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+
+    // Next on the last verse while paused: the next surah loads in a new
+    // player (releasing the old one cleared the entry on iOS) and stays
+    // paused.
+    mockMushafPlayer = {
+      setActiveForLockScreen: jest.fn(),
+      updateLockScreenMetadata: jest.fn(),
+      clearLockScreenControls: jest.fn(),
+    };
+    setMushaf({playbackState: 'loading', currentSurah: 3});
+    expect(mockMushafPlayer.setActiveForLockScreen).not.toHaveBeenCalled();
+    setMushaf({playbackState: 'paused'});
+
+    expect(first.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+    expect(mockMushafPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+    expect(mockMushafPlayer.setActiveForLockScreen.mock.calls[0][1]).toEqual({
+      title: "Ali 'Imran",
+      artist: 'Test Reciter',
+    });
+  });
+
+  it('a paused Mushaf does not take it back from the main player', () => {
+    setMain({queue: {tracks: [track('a')], currentIndex: 0}});
+    setMushaf({playbackState: 'playing', currentSurah: 2});
+    setMushaf({playbackState: 'paused'});
+    mockActiveSource = 'main';
+    setMain({
+      queue: {tracks: [track('b')], currentIndex: 0},
+      playback: {state: 'playing'},
+    });
+    mockMushafPlayer.setActiveForLockScreen.mockClear();
+
+    setMushaf({currentVerseKey: '2:7', currentVerseLabel: '2:7'});
+    expect(mockMushafPlayer.setActiveForLockScreen).not.toHaveBeenCalled();
+  });
+  // @ai-end
+
   it('gives the lock screen back when the main player plays, without a Stop', () => {
     setMain({queue: {tracks: [track('a')], currentIndex: 0}});
     setMushaf({playbackState: 'playing', currentSurah: 2});

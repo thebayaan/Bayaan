@@ -572,10 +572,14 @@ class LockScreenService {
       // showing the main player's last surah, its play button started that
       // surah, and its pause button did nothing to the verse audio. A new
       // player is made for every surah, so each one claims the entry.
+      // A new player that stays paused claims it too: Next on the last verse
+      // while paused cues the next surah without playing it, and releasing
+      // the old player cleared the entry on iOS, so the lock screen and
+      // headphone buttons did nothing until Play was tapped in the app.
       const mushafPlayer = mushafAudioService.getPlayer();
       if (
         this.isMushafActive &&
-        playbackState === 'playing' &&
+        (playbackState === 'playing' || playbackState === 'paused') &&
         mushafPlayer &&
         mushafPlayer !== this.lastMushafPlayer
       ) {
