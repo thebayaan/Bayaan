@@ -623,7 +623,9 @@ describe('ContinuousMushafView list', () => {
     mount(continuousView());
     const props = mockList.props;
     expect(props?.initialScrollIndex).toBe(PAGE - 1);
-    const layoutOf = (index: number) => props!.getItemLayout!(null, index);
+    const getItemLayout = props?.getItemLayout;
+    if (!getItemLayout) throw new Error('the list estimates its pages');
+    const layoutOf = (index: number) => getItemLayout(null, index);
     const lines = (page: number) =>
       digitalKhattDataService.getPageLines(page).length;
     // The line height the view draws with (a page is its lines times it).
@@ -633,7 +635,7 @@ describe('ContinuousMushafView list', () => {
     let pagesAbove = 0;
     for (let page = 1; page < PAGE; page++) pagesAbove += lines(page);
     expect(pagesAbove).toBeGreaterThan(0);
-    expect(layoutOf(0).offset).toBe(props!.contentContainerStyle!.paddingTop);
+    expect(layoutOf(0).offset).toBe(props?.contentContainerStyle?.paddingTop);
     expect(layoutOf(PAGE - 1).offset).toBeCloseTo(
       layoutOf(0).offset + pagesAbove * lineHeight,
       6,
