@@ -44,6 +44,26 @@ function getCredits(
           description: t('credits.items.quranFoundation'),
           link: 'https://api-docs.quran.foundation',
         },
+        {
+          title: 'The Quranic Treebank',
+          description: t('credits.items.quranicTreebank'),
+          link: 'https://github.com/NoorBayan/Quranic',
+        },
+        {
+          title: 'Quranic Arabic Corpus',
+          description: t('credits.items.quranicCorpus'),
+          link: 'https://corpus.quran.com',
+        },
+        {
+          title: 'MASAQ',
+          description: t('credits.items.masaq'),
+          link: 'https://data.mendeley.com/datasets/9yvrzxktmr/5',
+        },
+        {
+          title: 'Quranpedia',
+          description: t('credits.items.quranpedia'),
+          link: 'https://quranpedia.net',
+        },
       ],
     },
     {

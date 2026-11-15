@@ -1,0 +1,65 @@
+{
+ "about": "Second judge constants set on quran-asr-small and the official text only, in text_harness.mjs, with no engine output, apart from mut below. Frozen on dev before the test split was read.",
+ "modelRevision": "004f898639f3127a74eac1b898a2cb3ef0b5268d",
+ "modelSha256": "88f9df290d57b8890275d79187b77515aeeb12626a42bc76cbd0f8bfcaff00f0",
+ "mut": {
+  "value": 3,
+  "unit": "nats",
+  "meaning": "a mutashabih alternative must beat the expected word by this",
+  "source": "h1_joint.mjs on dev: the last margin before false alarms on correct words jump. The table has no engine output, but the end-to-end dev sweep had been seen when this was fixed, and the table alone supports 3 or 4",
+  "license": "NPL-1.2 because of that: the app reads it from services/recitation/followerConstants.npl.json"
+ },
+ "altFit": {
+  "value": 1,
+  "unit": "nats",
+  "meaning": "and must itself score at least minus this",
+  "source": "h1_joint.mjs on dev"
+ },
+ "fit": {
+  "value": 2,
+  "unit": "nats",
+  "meaning": "the expected word fits when it scores at least minus this",
+  "source": "h1_report.mjs on dev: changed words scoring above this are about 1.5%"
+ },
+ "absent": {
+  "value": 10,
+  "unit": "nats",
+  "meaning": "no word here must beat the expected word by this, and score at least -altFit",
+  "source": "text-harness rows on dev"
+ },
+ "leftWords": {
+  "value": 2,
+  "meaning": "words of left context",
+  "source": "text harness grid on dev"
+ },
+ "rightWords": {
+  "value": 0,
+  "meaning": "words of right context when scoring a word; 1 for the no-word score",
+  "source": "text harness grid on dev"
+ },
+ "sliceSeconds": {
+  "value": 8,
+  "meaning": "longest slice",
+  "source": "text harness grid on dev"
+ },
+ "cutSeconds": {
+  "value": 0.2,
+  "meaning": "slice starts this long before the ayah's first word",
+  "source": "text harness grid on dev; 1 s scored the same"
+ },
+ "tailSeconds": {
+  "value": 0.2,
+  "meaning": "slice ends this long after the ayah's end",
+  "source": "text harness grid on dev; 1 s scored the same"
+ },
+ "firstWithinFrames": {
+  "value": 50,
+  "meaning": "an ayah's first word must begin within this many 40 ms frames of the slice's start",
+  "source": "design: how far the slice's start can miss the ayah's"
+ },
+ "nearWords": {
+  "value": "off",
+  "meaning": "words within edit distance 2 are not alternatives",
+  "source": "dev and test: no exact catch gained, one more false mark"
+ }
+}
