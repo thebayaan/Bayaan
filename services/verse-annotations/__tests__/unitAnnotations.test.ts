@@ -417,16 +417,25 @@ describe('describeSavedVerse: a collection row in its own rewayah', () => {
 });
 
 describe('opening a saved verse', () => {
-  it('Hafs rows route with no anchor', () => {
-    for (const rewayahId of ['hafs', null, undefined] as const) {
-      const params = savedVerseRouteParams({
+  it('Hafs rows route with no anchor and no page', () => {
+    expect(
+      savedVerseRouteParams({
         verseKey: '2:255',
         surahNumber: 2,
         ayahNumber: 255,
-        rewayahId,
-      });
-      expect(params).toEqual({surah: '2', ayah: '255'});
-      expect('anchor' in params).toBe(false);
+        rewayahId: 'hafs',
+      }),
+    ).toEqual({surah: '2', ayah: '255', rewayah: 'hafs'});
+    // A legacy row has no rewayah.
+    for (const rewayahId of [null, undefined] as const) {
+      expect(
+        savedVerseRouteParams({
+          verseKey: '2:255',
+          surahNumber: 2,
+          ayahNumber: 255,
+          rewayahId,
+        }),
+      ).toEqual({surah: '2', ayah: '255'});
     }
   });
 
@@ -438,7 +447,7 @@ describe('opening a saved verse', () => {
         ayahNumber: 7,
         rewayahId: 'warsh',
       }),
-    ).toEqual({surah: '1', ayah: '7', anchor: '1:7:5'});
+    ).toEqual({surah: '1', ayah: '7', anchor: '1:7:5', rewayah: 'warsh'});
     expect(
       savedVerseRouteParams({
         verseKey: '1:7:1',
@@ -465,7 +474,7 @@ describe('opening a saved verse', () => {
         ayahNumber: 7,
         rewayahId: 'warsh',
       }),
-    ).toEqual({surah: '1', ayah: '7'});
+    ).toEqual({surah: '1', ayah: '7', rewayah: 'warsh'});
   });
 
   it('unitForRouteAnchor opens the verse holding the anchored word', () => {

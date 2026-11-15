@@ -160,7 +160,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
-import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
+import {savedVerseRouteParams} from '@/services/verse-annotations/unitAnnotations';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -212,13 +212,13 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-const HAFS_BOOKMARK = savedVerseOpenParams({
+const HAFS_BOOKMARK = savedVerseRouteParams({
   verseKey: '2:255',
   surahNumber: 2,
   ayahNumber: 255,
   rewayahId: 'hafs',
 });
-const WARSH_BOOKMARK = savedVerseOpenParams({
+const WARSH_BOOKMARK = savedVerseRouteParams({
   verseKey: '2:255',
   surahNumber: 2,
   ayahNumber: 255,

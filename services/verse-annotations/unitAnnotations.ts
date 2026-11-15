@@ -416,6 +416,8 @@ export type SavedVerseRouteParams = {
    * the first of them. Hafs rows keep today's params (no anchor).
    */
   anchor?: string;
+  /** The rewayah the row was saved in, which the reader restores. */
+  rewayah?: RewayahId;
 };
 
 /**
@@ -465,9 +467,10 @@ export function routeAnchorSelection(
 }
 
 /**
- * Params that open a saved row with its verse selected. The reader opens the
- * page of the verse. For a Hafs row (and a legacy row without rewayah) no
- * anchor.
+ * Params that open a saved row with its verse selected, in the rewayah it was
+ * saved in. They hold no page: a page lookup needs the Mushaf data, which
+ * loads after the splash, so the reader opens the page of the verse when the
+ * data is ready. For a Hafs row (and a legacy row without rewayah) no anchor.
  */
 export function savedVerseRouteParams(row: {
   verseKey: string;
@@ -482,5 +485,6 @@ export function savedVerseRouteParams(row: {
   if (!isHafsSaved(row) && parseAnchorKey(row.verseKey)) {
     params.anchor = row.verseKey;
   }
+  if (row.rewayahId) params.rewayah = row.rewayahId;
   return params;
 }
