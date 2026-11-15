@@ -100,6 +100,7 @@ export default function MushafScreen() {
         <MushafReader
           target={open.target}
           playerOptions={params.playerOptions === '1'}
+          covered={open.data !== 'ready'}
         />
         {open.data !== 'ready' && (
           <View style={StyleSheet.absoluteFill}>
@@ -136,8 +137,7 @@ function MushafLoadFailed({retry}: {retry: () => void}) {
   return (
     <View
       style={[styles.loading, {backgroundColor: theme.colors.background}]}
-      accessibilityRole="alert"
-      accessibilityViewIsModal>
+      accessibilityRole="alert">
       <Text style={[styles.errorTitle, {color: theme.colors.text}]}>
         {t('reader:mushaf.loadFailedTitle')}
       </Text>
@@ -168,10 +168,16 @@ function MushafLoadFailed({retry}: {retry: () => void}) {
 function MushafReader({
   target,
   playerOptions,
+  covered,
 }: {
   target: MushafOpenTarget;
   /** The player's Repeat opened the reader: show the player options. */
   playerOptions: boolean;
+  /**
+   * The load error or its spinner shows over the reader. The native toolbar
+   * would stay above it, so it goes, and a screen reader skips the pages.
+   */
+  covered: boolean;
 }) {
   const {theme} = useTheme();
   const {page, anchor, verseKey} = target;
@@ -226,8 +232,10 @@ function MushafReader({
 
   return (
     <View
-      style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {USE_GLASS && <MushafToolbar />}
+      style={[styles.container, {backgroundColor: theme.colors.background}]}
+      accessibilityElementsHidden={covered}
+      importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}>
+      {USE_GLASS && !covered && <MushafToolbar />}
       <MushafViewer
         pageNumber={page}
         initialSurahId={target.surahId}

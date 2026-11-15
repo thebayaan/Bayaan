@@ -34,10 +34,13 @@ jest.mock('@/components/mushaf/RecitationMicButton', () => ({
   }),
 }));
 let mockParams: Record<string, string> = {};
-jest.mock('expo-router', () => ({
-  Stack: {Toolbar: () => null},
-  useLocalSearchParams: () => mockParams,
-}));
+jest.mock('expo-router', () => {
+  const Toolbar = Object.assign(() => null, {
+    Button: () => null,
+    Spacer: () => null,
+  });
+  return {Stack: {Toolbar}, useLocalSearchParams: () => mockParams};
+});
 
 jest.mock('expo-screen-orientation', () => ({
   unlockAsync: jest.fn(),
@@ -49,7 +52,12 @@ jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({theme: {colors: {background: '#fff', text: '#111'}}}),
 }));
 
-jest.mock('@/hooks/useGlassProps', () => ({USE_GLASS: false}));
+let mockGlass = false;
+jest.mock('@/hooks/useGlassProps', () => ({
+  get USE_GLASS() {
+    return mockGlass;
+  },
+}));
 
 // The reader: it keeps the page it shows in its own state, as the real one
 // does, and counts its mounts.
@@ -157,7 +165,7 @@ jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
   whenShownVerseUnitsResolved: () => Promise.resolve(),
 }));
 
-import MushafScreen from '@/app/mushaf';
+import MushafScreen, {MushafToolbar} from '@/app/mushaf';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -196,6 +204,7 @@ beforeEach(() => {
   mockDk.ensureRewayahLoaded.mockClear();
   mockDk.listeners.clear();
   mockParams = {};
+  mockGlass = false;
   mockViewer.mounts = 0;
   mockShowSheet.mockClear();
   mockSelectVerse.mockClear();
@@ -301,9 +310,16 @@ it('starts the load when the screen opens first', () => {
 it('a failure while reading: the retry keeps the page, no second open', async () => {
   mockPreload.state = 'ready';
   mockDk.initialized = true;
+  mockGlass = true; // the iOS toolbar, which the error cannot cover
   mockParams = {surah: '2', ayah: '255', playerOptions: '1'};
+  const toolbars = () => ofType(MushafToolbar).length;
+  const hiddenFromScreenReaders = () =>
+    root().findAll(
+      node => node.props.importantForAccessibility === 'no-hide-descendants',
+    ).length > 0;
   render();
   expect(texts()).toEqual(['page 42']);
+  expect(toolbars()).toBe(1);
   expect(mockSelectVerse).toHaveBeenCalledTimes(1);
   expect(mockShowSheet).toHaveBeenCalledTimes(1);
   act(() => mockViewer.turnTo(300));
@@ -314,6 +330,8 @@ it('a failure while reading: the retry keeps the page, no second open', async ()
     mockDk.listeners.forEach(listener => listener());
   });
   expect(texts()).toContain("Couldn't load the mushaf");
+  expect(toolbars()).toBe(0);
+  expect(hiddenFromScreenReaders()).toBe(true);
 
   let commit!: () => void;
   mockDk.ensureRewayahLoaded.mockImplementationOnce(
@@ -336,12 +354,16 @@ it('a failure while reading: the retry keeps the page, no second open', async ()
 
   expect({
     texts: texts(),
+    toolbars: toolbars(),
+    hidden: hiddenFromScreenReaders(),
     spinners: ofType(ActivityIndicator).length,
     readerMounts: mockViewer.mounts,
     flashes: mockSelectVerse.mock.calls.length,
     playerOptions: mockShowSheet.mock.calls.length,
   }).toEqual({
     texts: ['page 300'],
+    toolbars: 1,
+    hidden: false,
     spinners: 0,
     readerMounts: 1,
     flashes: 1,
