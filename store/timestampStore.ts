@@ -3,6 +3,7 @@ import {persist} from 'zustand/middleware'; // @ai
 import {persistStorage} from '@/utils/storage'; // @ai
 import {AppState} from 'react-native'; // @ai
 import {useNetworkStore} from '@/store/networkStore'; // @ai
+import {useReciterStore} from '@/store/reciterStore'; // @ai
 import type {AyahTimestamp, AyahTrackingState} from '@/types/timestamps';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import {timestampFetchService} from '@/services/timestamps/TimestampFetchService'; // @ai
@@ -270,6 +271,19 @@ function retryFailedTimestamps(): void {
 useNetworkStore.subscribe(({isOnline}, previous) => {
   if (isOnline && !previous.isOnline) retryFailedTimestamps();
 });
+
+// Who has follow-along is worked out from the catalogue at launch, before
+// the catalogue's refresh: reciters whose timings were added since showed no
+// follow-along until the next launch. Work it out again whenever the
+// catalogue is refilled (dataService then tells the reciter store). Guarded:
+// a stand-in reciter store (tests) may only offer getState.
+if (typeof useReciterStore?.subscribe === 'function') {
+  useReciterStore.subscribe(() => {
+    const {registryLoaded, loadFollowAlongRegistry} =
+      useTimestampStore.getState();
+    if (registryLoaded) loadFollowAlongRegistry();
+  });
+}
 
 // Not while known to be offline: it would only fail again, hiding the
 // notice for the moment it takes.

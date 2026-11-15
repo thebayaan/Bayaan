@@ -48,6 +48,7 @@ import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {parseVerseKey} from '@/services/mushaf/RewayahVerseMapService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useReciterStore} from '@/store/reciterStore'; // @ai
 import {resolveMushafAudioUrl} from '@/utils/mushafAudioUtils';
 import {
   parseVerseKeyListId, // @ai
@@ -1521,6 +1522,18 @@ if (typeof useMushafSettingsStore?.subscribe === 'function') {
   console.warn(
     "[MushafPlayerStore] mushafSettingsStore is not defined yet (an import cycle?): the verse label will not follow the mushaf's rewayah",
   );
+}
+
+// The reciter list of the play options is worked out once from the
+// catalogue. When the catalogue is refilled (the refresh after launch),
+// work it out again, so reciters whose timings were added since are
+// offered now instead of on the next launch. Guarded as above.
+if (typeof useReciterStore?.subscribe === 'function') {
+  useReciterStore.subscribe(() => {
+    const {availableReciters, computeAvailableReciters} =
+      useMushafPlayerStore.getState();
+    if (availableReciters.length > 0) void computeAvailableReciters();
+  });
 }
 
 let stopFollowingVerseUnits: (() => void) | null = null;
