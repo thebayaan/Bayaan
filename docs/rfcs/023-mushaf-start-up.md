@@ -175,11 +175,18 @@ The fork has more changes than step 2 (for example the line-fit store and the re
 
 ### Step 5: one restore state machine
 
-- The root layout owns one restore state for the launch: `none`, `pushing`, `waitingForContent`, `shown`, `ended`. It reads `mushafSessionStore.getLastScreenWasMushaf()` once.
-- Every reader surface takes an `onFirstContent` prop and calls it once: `DKPageView` (also inside `DKSpreadView`), `ContinuousMushafView`, `ContinuousListView`, `ReadingPageView` and `QCFPage`.
-- **The splash** hides at the first content, with a 4 s deadline from the push for a surface that never reports.
-- **Offline Mushaf 1440:** `QCFPage` already calls `onReady` on a page-font load error (`components/mushaf/qcf/QCFPage.tsx:710`), so `onFirstContent` fires at the error and the reader shows its error state. A download that neither ends nor fails is caught by the 4 s deadline.
-- **The home route** returns an empty `View` while the state is `pushing` or `waitingForContent`, and renders 1 s after `shown`, on a return to Home, or 15 s after the launch (a safety limit).
+- The root layout owns one restore state for the launch, with a reducer and six phases: `none`, `pushing`, `waiting`, `late`, `shown` and `ended`. It reads `mushafSessionStore.getLastScreenWasMushaf()` once.
+  - `none`: the last screen was not the reader. Nothing waits.
+  - `pushing`: the layout pushes the reader when the boot and a share end, unless a deep link opened the app (then `ended`). This phase has no time limit, so a slow boot or a long share import still pushes the reader.
+  - `waiting`: the reader is pushed, and the splash waits for the page it opens on.
+  - `late`: that page had no content at the splash deadline, so the splash goes and the user sees the reader's loading view.
+  - `shown`: that page has its first content, so the splash goes.
+  - `ended`: the wait is over, and the home route renders.
+- Each phase has at most one timer: 4 s in `waiting` (the splash deadline), the rest of the 15 s in `late`, and 1 s in `shown`. So the deadline and the safety limit both count from the push.
+- Every reader surface takes an `onFirstContent` prop and calls it once: `DKPageView` (also inside `DKSpreadView`), `ContinuousMushafView`, `ContinuousListView`, `ReadingPageView` and `QCFPage`. Only the item that shows the page the reader opens on gets it. A spread reports when both of its pages have content. The reader's failed view reports too.
+- **The splash** waits in `pushing` and `waiting`: it hides at the first content, or at the 4 s deadline for a surface that never reports.
+- **Offline Mushaf 1440:** `QCFPage` reports when it has its layout or its error state, at the same moment as its `onReady`, so a page-font load error ends the wait and the reader shows its error state. A download that neither ends nor fails is caught by the 4 s deadline.
+- **The home route** returns an empty `View` from `pushing` to `shown`, and renders 1 s after `shown`, on a return to Home, or 15 s after the push (a safety limit).
 
 ![The order of a launch that restores the reader, today and proposed](assets/023-restore-launch-order.svg)
 
