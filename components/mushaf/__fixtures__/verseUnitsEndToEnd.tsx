@@ -91,8 +91,8 @@ import {
   annotationAnchor,
   deriveUnitAnnotations,
   noteRowKey,
+  savedVerseRouteParams,
 } from '@/services/verse-annotations/unitAnnotations';
-import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {
   selectUnitAnnotations,
   useVerseAnnotationsStore,
@@ -974,7 +974,7 @@ export async function runEndToEnd(
     // The saved row opens with exactly this verse selected: the params the
     // Bookmarks and Notes lists send (/mushaf's anchor param; Hafs: no
     // anchor). They send no page: the reader opens the page of the verse.
-    const params = savedVerseOpenParams({
+    const params = savedVerseRouteParams({
       verseKey: anchorKey,
       surahNumber: u.anchorSurah,
       ayahNumber: u.anchorAyah,

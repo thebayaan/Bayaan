@@ -110,12 +110,6 @@ export interface RecitationEngine {
   /** Words in an ayah, in the engine's numbering. */
   wordCount: (surah: number, ayah: number) => number;
   getStats: () => RecitationStats;
-  /**
-   * Called at the end of each chunk's feed, with the seconds of audio fed, or with
-   * null nothing is. It runs inside the engine's queue, so it must return at once:
-   * the live check only schedules its tick here.
-   */
-  setChunkListener: (listener: ((audioTime: number) => void) | null) => void;
   dispose: () => Promise<void>;
 }
 
@@ -263,7 +257,6 @@ export async function createRecitationEngine(
   // on.
   let queue: Promise<unknown> = Promise.resolve();
   let disposed = false;
-  let chunkListener: ((audioTime: number) => void) | null = null;
 
   // Each word's last reported verdict, so a chunk reports only changes.
   const verdictStates = new Map<string, VerdictState>();
@@ -426,7 +419,6 @@ export async function createRecitationEngine(
         stats.maxFeedMs = Math.max(stats.maxFeedMs, elapsed);
         stats.audioSeconds += pcm.length / RECITATION_SAMPLE_RATE;
         stats.chunks += 1;
-        chunkListener?.(fedSamples / RECITATION_SAMPLE_RATE);
       }, undefined);
     },
     stop() {
@@ -500,9 +492,6 @@ export async function createRecitationEngine(
     },
     getStats() {
       return {...stats};
-    },
-    setChunkListener(listener) {
-      chunkListener = listener;
     },
     async dispose() {
       disposed = true;
