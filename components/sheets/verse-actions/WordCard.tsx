@@ -129,6 +129,27 @@ export interface WordCardProps extends RefProps {
   fontMgr: SkTypefaceFontProvider | null;
 }
 
+// @ai-start
+/**
+ * The word's word-by-word lines the reader wants: each only when its Word by
+ * Word option is on, as the old word sheet did (some readers hide the
+ * meaning while memorising). Undefined when off or missing.
+ */
+function useWordGloss(wbw: WBWWord | undefined): {
+  transliteration: string | undefined;
+  translation: string | undefined;
+} {
+  const showTranslation = useMushafSettingsStore(s => s.wbwShowTranslation);
+  const showTransliteration = useMushafSettingsStore(
+    s => s.wbwShowTransliteration,
+  );
+  return {
+    transliteration: (showTransliteration && wbw?.transliteration) || undefined,
+    translation: (showTranslation && wbw?.translation) || undefined,
+  };
+}
+// @ai-end
+
 /** "2:255", or "Hafs 1:7" when the sheet shows another rewayah. */
 function useVerseLabel(): (verseKey: string, rewayah: RewayahId) => string {
   const {t} = useTranslation('sheets');
@@ -163,6 +184,7 @@ export const WordCard: React.FC<WordCardProps> = ({
   );
   const irabStyles = useMemo(() => createIrabStyles(theme), [theme]);
   const verseLabel = useVerseLabel();
+  const gloss = useWordGloss(wbw); // @ai
 
   const refContext: IrabRefContext = {
     verseKey: word.verseKey,
@@ -194,15 +216,19 @@ export const WordCard: React.FC<WordCardProps> = ({
           </View>
         ) : null}
         <HeaderWord word={word} slots={slots} fontMgr={fontMgr} />
-        {wbw ? (
+        {/* @ai-start */}
+        {gloss.transliteration || gloss.translation ? (
           <Text style={styles.gloss}>
-            {wbw.transliteration ? (
-              <Text style={styles.transliteration}>{wbw.transliteration}</Text>
+            {gloss.transliteration ? (
+              <Text style={styles.transliteration}>
+                {gloss.transliteration}
+              </Text>
             ) : null}
-            {wbw.transliteration && wbw.translation ? ' · ' : null}
-            {wbw.translation ? `“${wbw.translation}”` : null}
+            {gloss.transliteration && gloss.translation ? ' · ' : null}
+            {gloss.translation ? `“${gloss.translation}”` : null}
           </Text>
         ) : null}
+        {/* @ai-end */}
         <View style={styles.headerRow}>
           <PlayPill
             verseKey={word.verseKey}
@@ -565,6 +591,7 @@ export const CompactWordCard: React.FC<CompactWordCardProps> = ({
   const {hovered, hoverProps} = useHover();
   const renderer = useMushafSettingsStore(s => s.mushafRenderer);
   const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+  const {translation} = useWordGloss(wbw); // @ai
   const fontSize = Math.round(arabicFontSize * COMPACT_SCALE);
   // The mushaf's own text of the word, as the grid draws it.
   const text = word.text;
@@ -593,8 +620,9 @@ export const CompactWordCard: React.FC<CompactWordCardProps> = ({
           {text}
         </Text>
         <View style={styles.compactMeta}>
-          {wbw?.translation ? (
-            <Text style={styles.compactMeaning}>{wbw.translation}</Text>
+          {/* @ai */}
+          {translation ? (
+            <Text style={styles.compactMeaning}>{translation}</Text>
           ) : null}
           <Text style={styles.reference}>
             {localizeDigits(t('irab.wordN', {n: word.position}))}

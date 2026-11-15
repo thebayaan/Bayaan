@@ -135,6 +135,9 @@ beforeEach(() => {
   useMushafSettingsStore.setState({
     mushafRenderer: 'dk_v2',
     arabicFontSize: 26,
+    // Both Word by Word lines on unless a test says otherwise. @ai
+    wbwShowTranslation: true,
+    wbwShowTransliteration: true,
   });
 });
 
@@ -220,6 +223,29 @@ describe('header', () => {
       expect.arrayContaining(['qablika', '“before you”', '2:4 · word 9']),
     );
   });
+
+  // @ai-start
+  it.each([
+    [true, false, ['“before you”'], ['qablika']],
+    [false, true, ['qablika'], ['“before you”']],
+    [false, false, [], ['qablika', '“before you”']],
+  ])(
+    'shows only the Word by Word lines turned on (translation %s, transliteration %s)',
+    (translation, transliteration, shown, hidden) => {
+      useMushafSettingsStore.setState({
+        wbwShowTranslation: translation,
+        wbwShowTransliteration: transliteration,
+      });
+      const root = render(<WordCard {...props()} />);
+      expect(texts(root)).toEqual(expect.arrayContaining(shown));
+      for (const text of hidden) expect(allText(root)).not.toContain(text);
+      // No separator without both lines.
+      expect(texts(root)).not.toContain(' · ');
+      // The reference still shows.
+      expect(texts(root)).toContain('2:4 · word 9');
+    },
+  );
+  // @ai-end
 
   it('keeps the IndoPak face for Skia and draws the fallback in V2', () => {
     useMushafSettingsStore.setState({mushafRenderer: 'dk_indopak'});
@@ -482,6 +508,34 @@ describe('sections', () => {
 });
 
 describe('CompactWordCard', () => {
+  // @ai-start
+  it('hides the meaning when the Word by Word translation is off', () => {
+    useMushafSettingsStore.setState({wbwShowTranslation: false});
+    const root = render(
+      <CompactWordCard
+        word={{
+          verseKey: '2:255',
+          position: 1,
+          index: 0,
+          part: 0,
+          slots: ['2:255:1'],
+          text: 'ٱللَّهُ',
+        }}
+        wbw={{...WBW_2_4_9, position: 1, translation: 'Allah'}}
+        irab={IRAB}
+        wordTextOf={() => undefined}
+        canOpen={(_ref: WordRef) => true}
+        onRef={jest.fn()}
+        onStudy={jest.fn()}
+      />,
+    );
+    expect(texts(root)).not.toContain('Allah');
+    expect(texts(root)).toEqual(
+      expect.arrayContaining(['ٱللَّهُ', 'word 1', 'لفظ الجلالة مبتدأ مرفوع']),
+    );
+  });
+  // @ai-end
+
   it("lists a word with its meaning, number and i'rab; a tap studies it", () => {
     const onStudy = jest.fn();
     const word: StudyWord = {

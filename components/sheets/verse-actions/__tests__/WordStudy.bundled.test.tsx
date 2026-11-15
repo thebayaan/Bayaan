@@ -114,6 +114,7 @@ import {
 } from '@/services/irab/irabFormat';
 import {selectVerses} from '@/components/share/rewayahVerseSelection';
 import {useDatabaseDir, resetDatabases} from '@/test-utils/mockExpoSqlite';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore'; // @ai
 import {WordStudyContent} from '../WordStudyContent';
 import type {WordRef} from '../wordStudy';
 
@@ -135,6 +136,11 @@ beforeAll(() => {
     fs.copyFileSync(path.join(ROOT, file), path.join(dir, name));
   }
   useDatabaseDir(dir);
+  // The card shows the Word by Word lines the reader turned on: both. @ai
+  useMushafSettingsStore.setState({
+    wbwShowTranslation: true,
+    wbwShowTransliteration: true,
+  });
 });
 
 afterAll(async () => {
