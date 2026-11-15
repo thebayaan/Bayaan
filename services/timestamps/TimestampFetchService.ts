@@ -17,7 +17,7 @@ import type {AyahTimestamp, TimestampSource} from '@/types/timestamps'; // @ai
 // the contract regardless of the fork-side value.
 // @ai Also saved with each cached surah: a surah cached at another version is
 // fetched again (see TimestampService), so a bump reaches every device.
-export const TIMESTAMP_DATA_VERSION = 2;
+export const TIMESTAMP_DATA_VERSION = 2; // @ai exported
 
 const R2_BASE = (
   branding.timestampCdnBase ?? 'https://cdn.thebayaan.com/timestamps'

@@ -92,6 +92,7 @@ class TimestampService {
       }
       // @ai-end
 
+      // @ai Only timings saved at the current data version are final.
       if (dbTimestamps.length > 0 && !stale) {
         this.cache.set(key, dbTimestamps);
         return dbTimestamps;
