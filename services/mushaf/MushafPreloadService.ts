@@ -36,9 +36,10 @@ function assetUri(asset: number): string {
 }
 
 /**
- * Preloads everything the Mushaf screen needs at app startup (AppInitializer
- * priority 5). By the time the user navigates to the Mushaf tab, fonts and
- * DK data are available synchronously; no loading spinners.
+ * Loads everything the Mushaf screen needs. The root layout starts it after
+ * the splash hides (startIfIdle); a screen that needs it sooner starts it
+ * itself (useMushafData), and so does BackgroundRoot, which has no splash.
+ * Until it is ready, the reader shows its loading view.
  *
  * - DigitalKhatt SQLite data (word + layout databases)
  * - Skia TypefaceFontProvider with DK + ornamental fonts (for SkiaPage rendering)
