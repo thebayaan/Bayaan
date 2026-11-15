@@ -1883,7 +1883,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: verticalScale(4),
@@ -1892,7 +1892,7 @@ const createStyles = (theme: Theme) =>
     sectionSubHeader: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(4),
     },
@@ -1985,7 +1985,7 @@ const createStyles = (theme: Theme) =>
     helperText: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: verticalScale(4),
       marginBottom: verticalScale(8),
       paddingHorizontal: moderateScale(16),
@@ -2030,7 +2030,7 @@ const createStyles = (theme: Theme) =>
     tajweedSubLabel: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: verticalScale(2),
     },
 
@@ -2084,7 +2084,7 @@ const createStyles = (theme: Theme) =>
     radioDescription: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: verticalScale(1),
     },
 
@@ -2111,7 +2111,7 @@ const createStyles = (theme: Theme) =>
     accordionHeaderEyebrow: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: verticalScale(2),
@@ -2124,7 +2124,7 @@ const createStyles = (theme: Theme) =>
     accordionSubHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       paddingTop: verticalScale(12),
@@ -2171,7 +2171,7 @@ const createStyles = (theme: Theme) =>
     legendDescription: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: theme.colors.textTertiary,
       marginTop: verticalScale(1),
     },
   });

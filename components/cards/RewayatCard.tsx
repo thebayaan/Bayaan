@@ -93,7 +93,7 @@ function createStyles(
   theme: {
     colors: {
       text: string;
-      textSecondary: string;
+      textTertiary: string;
       card: string;
       border: string;
       background: string;
@@ -126,7 +126,7 @@ function createStyles(
     teacherLabel: {
       fontSize: moderateScale(9),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       textTransform: 'uppercase',
       letterSpacing: latinLetterSpacing(0.8),
     },
@@ -143,7 +143,7 @@ function createStyles(
     subtitle: {
       fontSize: moderateScale(10),
       fontFamily: theme.fonts.regular,
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
     pressed: {
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),

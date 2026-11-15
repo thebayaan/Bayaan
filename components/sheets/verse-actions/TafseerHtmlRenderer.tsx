@@ -137,7 +137,7 @@ const createStyles = (theme: Theme, isRtl: boolean) =>
       fontFamily: isRtl ? 'ScheherazadeNew-Regular' : 'Manrope-Regular',
       fontSize: moderateScale(13),
       lineHeight: isRtl ? moderateScale(28) : moderateScale(22),
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: theme.colors.textTertiary,
       ...(isRtl && {writingDirection: 'rtl' as const}),
     },
   });
