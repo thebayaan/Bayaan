@@ -1,7 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
-  rendererPinsHafs, // @ai
   useMushafSettingsStore,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
@@ -746,9 +745,6 @@ export class DigitalKhattDataService {
   // Bumped by resetDatabases so in-flight loads drop their results.
   private epoch = 0;
   // @ai-start
-  // Whether this instance follows the settings store's Hafs pin (installed
-  // with the first main-cache request; see followSettingsStore).
-  private followingSettings = false;
   // The saved rewayah a startup fallback to Hafs stands in for, recorded in
   // the settings store by the Hafs commit (runInitialLoad, swapMain).
   private pendingFallbackFrom: RewayahId | null = null;
@@ -994,18 +990,12 @@ export class DigitalKhattDataService {
    *   previous rewayah stays active and intact, getRewayahLoadState(rewayah)
    *   becomes 'error', and the promise rejects with RewayahLoadError.
    */
-  // @ai-start
-  // - Mushaf 1440 (the store pins Hafs) overtakes any other rewayah: such a
-  //   request, or one still loading when the pin lands, rejects with
-  //   RewayahSwitchSupersededError and Hafs stays (or becomes) active.
-  // @ai-end
   async switchRewayah(rewayah: RewayahId): Promise<void> {
     requireRewayahAssets(rewayah);
     return this.requestMain(rewayah, false);
   }
 
   private requestMain(target: RewayahId, anyOutcome: boolean): Promise<void> {
-    this.followSettingsStore(); // @ai
     return new Promise<void>((resolve, reject) => {
       if (anyOutcome) {
         // initialize(): a switch already requested keeps precedence.
@@ -1014,15 +1004,6 @@ export class DigitalKhattDataService {
         runInBackground('Main-cache worker', this.runMainWorker());
         return;
       }
-      // @ai-start
-      // Mushaf 1440 shows Hafs and the store names Hafs there, so another
-      // rewayah would land under the Hafs label: the pin overtakes it.
-      if (target !== 'hafs' && this.hafsPinned()) {
-        reject(new RewayahSwitchSupersededError(target, 'hafs'));
-        this.followHafsPin();
-        return;
-      }
-      // @ai-end
       if (this.desiredRewayah !== target) this.supersedeMainWaiters(target);
       if (this._initialized && target === this.currentRewayah) {
         // Already active: nothing to load or wait for. A load still running
@@ -1036,39 +1017,6 @@ export class DigitalKhattDataService {
       runInBackground('Main-cache worker', this.runMainWorker());
     });
   }
-
-  // @ai-start
-  // Mushaf 1440 pins the settings store to Hafs (setMushafRenderer). Follow
-  // that pin from whichever path set it, so the label the store gives and
-  // the text served cannot disagree: a switch still loading is overtaken and
-  // Hafs becomes the active rewayah. Installed once, with the first request.
-  private followSettingsStore(): void {
-    if (this.followingSettings) return;
-    this.followingSettings = true;
-    useMushafSettingsStore.subscribe(state => {
-      if (rendererPinsHafs(state.mushafRenderer)) this.followHafsPin();
-    });
-  }
-
-  private hafsPinned(): boolean {
-    return rendererPinsHafs(useMushafSettingsStore.getState().mushafRenderer);
-  }
-
-  // Requests Hafs when the main cache serves, or is loading, another
-  // rewayah. Before the first load nothing is requested: initialization
-  // starts from the store, which names Hafs under the pin.
-  private followHafsPin(): void {
-    if (!this._initialized && !this.mainWorkerRunning) return;
-    if ((this.desiredRewayah ?? this.currentRewayah) === 'hafs') return;
-    this.requestMain('hafs', false).catch(error => {
-      if (isRewayahSwitchSuperseded(error)) return;
-      console.error(
-        '[DigitalKhattDataService] Could not show Hafs for Mushaf 1440:',
-        error,
-      );
-    });
-  }
-  // @ai-end
 
   private supersedeMainWaiters(target: RewayahId): void {
     const kept: MainWaiter[] = [];
@@ -1157,14 +1105,6 @@ export class DigitalKhattDataService {
             this.notifyCacheChange();
             continue;
           }
-          // @ai-start
-          // Mushaf 1440 pinned the store to Hafs while this load ran: never
-          // commit another rewayah under the Hafs label; Hafs overtakes it.
-          if (target !== 'hafs' && this.hafsPinned()) {
-            this.followHafsPin();
-            continue;
-          }
-          // @ai-end
           const firstCommit = !this._initialized;
           const prevRewayah = this.currentRewayah;
           this.swapMain(snapshot);

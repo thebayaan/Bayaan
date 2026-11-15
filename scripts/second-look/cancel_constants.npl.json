@@ -1,0 +1,25 @@
+{
+ "license": "NPL-1.2: chosen on marks the follower made, so these belong with the follower's model, not in the app's own code.",
+ "about": "The cancel step's letter-slip rule. Frozen before this comparison; nothing here was tuned on it.",
+ "keepFirstPerLetter": {
+  "value": -6,
+  "meaning": "keep the mark if the expected word scores at or below this per letter on the first pass",
+  "source": "letter-slip experiment, QuranMB marks, professional false marks and W1 marks, none of them held out"
+ },
+ "keepGap": {
+  "value": -3.34,
+  "unit": "nats",
+  "meaning": "keep the mark if a spelling with one inner letter changed beats the written word by at least this, in the padded look",
+  "source": "the same experiment"
+ },
+ "marginSeconds": {
+  "value": 0.3,
+  "meaning": "the padded look takes the word and this much either side",
+  "source": "the same experiment: the cut that separated marks best"
+ },
+ "silenceSeconds": {
+  "value": 1,
+  "meaning": "digital silence added each side of the padded look",
+  "source": "the same experiment: a choice, not varied"
+ }
+}

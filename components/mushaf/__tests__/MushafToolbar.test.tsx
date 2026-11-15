@@ -15,6 +15,22 @@ import TestRenderer from 'react-test-renderer';
 
 const mockShowToast = jest.fn();
 
+// Recitation follow-along pulls in native audio and ONNX modules.
+jest.mock('@/services/recitation/RecitationTrackingService', () => ({
+  stopRecitationTracking: jest.fn(),
+}));
+jest.mock('@/components/mushaf/RecitationMicButton', () => ({
+  RecitationMicButton: () => null,
+  useRecitationFollowAlong: jest.fn(),
+  useRecitationStatusText: () => null,
+  useRecitationMic: () => ({
+    enabled: false,
+    status: 'off',
+    progress: 0,
+    busy: false,
+    toggle: jest.fn(),
+  }),
+}));
 jest.mock('expo-router', () => {
   const ReactActual = jest.requireActual('react');
   function Toolbar({children}: {children: unknown}) {

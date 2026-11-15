@@ -7,6 +7,7 @@ import {
   migratePersistedId,
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
+import type {CancelMayCancel} from '@/services/recitation/secondLook/config';
 
 // Re-exported for backward compat with existing imports across the app.
 // RewayahIdentity is the canonical source; do not redefine the union here.
@@ -35,15 +36,17 @@ export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak' | 'qcf_v2';
 // @ai-start
 // Renderer gating for non-Hafs rewayat.
 //
-// Mushaf 1440 (qcf_v2) draws Hafs glyph pages only, so it pins the rewayah to
-// Hafs: it can be chosen only while Hafs is shown, and no other rewayah can
-// be set under it (setMushafRenderer / setRewayah / persist v16 below).
-// IndoPak is the opposite case: its font lacks marks every non-Hafs rewayah
-// needs (the wasl dot U+06EC, the small waw U+06E5, U+06D7, U+06E0, U+06E7,
-// ...), so about one word in seven would come from a fallback font. Here the
-// rewayah wins: choosing a non-Hafs rewayah while IndoPak is selected moves
-// the renderer to a Madani DigitalKhatt font, and IndoPak cannot be chosen
-// while a non-Hafs rewayah is active.
+// Mushaf 1440 (qcf_v2) draws the 1441H print's glyph pages, which exist for
+// Hafs only. Every rewayah can be read under it: another rewayah's text is
+// drawn with the Madani DigitalKhatt font (getDkFontFamily) on the same
+// pages, and Mushaf 1440 stays the reader's choice, so Hafs returns to its
+// glyphs.
+// IndoPak cannot draw another rewayah: its font lacks marks every non-Hafs
+// rewayah needs (the wasl dot U+06EC, the small waw U+06E5, U+06D7, U+06E0,
+// U+06E7, ...), so about one word in seven would come from a fallback font.
+// There the rewayah wins: choosing a non-Hafs rewayah while IndoPak is
+// selected moves the renderer to a Madani DigitalKhatt font, and IndoPak
+// cannot be chosen while a non-Hafs rewayah is active.
 export const REWAYAH_FALLBACK_RENDERER: MushafRenderer = 'dk_v2';
 /** User-facing name of REWAYAH_FALLBACK_RENDERER (matches the font picker). */
 export const REWAYAH_FALLBACK_RENDERER_LABEL = 'Madani 1421';
@@ -53,16 +56,7 @@ export function isRendererCompatibleWithRewayah(
   renderer: MushafRenderer,
   rewayah: RewayahId,
 ): boolean {
-  return rewayah === 'hafs' || renderer === 'dk_v1' || renderer === 'dk_v2';
-}
-
-/**
- * Whether `renderer` pins the rewayah to Hafs (Mushaf 1440 draws Hafs glyph
- * pages only): the store then names Hafs, and the DigitalKhatt data service
- * must serve Hafs too.
- */
-export function rendererPinsHafs(renderer: MushafRenderer): boolean {
-  return renderer === 'qcf_v2';
+  return rewayah === 'hafs' || renderer !== 'dk_indopak';
 }
 
 export type DkFontFamily =
@@ -75,8 +69,8 @@ export type DkFontFamily =
  * Surfaces that can show a rewayah other than the active mushaf one (a
  * reciter's rewayah in the player, a bookmark saved in another rewayah) must
  * use this rather than mapping the renderer directly: IndoPak draws Hafs only.
- * qcf_v2 has no DigitalKhatt face of its own, so it maps to Madani 1421 as
- * before.
+ * qcf_v2 has no DigitalKhatt face of its own: its pages draw another
+ * rewayah, and every DigitalKhatt surface its text, in Madani 1421.
  */
 export function getDkFontFamily(
   renderer: MushafRenderer,
@@ -119,6 +113,18 @@ interface MushafSettingsState {
   // default off. The toggle row only renders when a fork supplies
   // `branding.communityReflectionsProvider`; inert for Bayaan.
   showCommunityReflections: boolean;
+  // Memorisation: while following the reader's recitation, ghost the page
+  // text and reveal words as they are recited.
+  recitationHideText: boolean;
+  // While following the reader's recitation: mark missed and wrong words
+  // as they recite, and a short vibration on each one.
+  recitationCheckMistakes: boolean;
+  recitationMistakeHaptics: boolean;
+  /**
+   * What the cancel step may cancel, chosen on the hidden spike screen. Null until
+   * then: secondLook/config.ts says.
+   */
+  recitationCancelMayCancel: CancelMayCancel | null;
 
   // Word-by-word settings
   showWBW: boolean;
@@ -179,6 +185,10 @@ interface MushafSettingsState {
   toggleTajweed: () => void;
   toggleThemes: () => void;
   toggleCommunityReflections: () => void;
+  toggleRecitationHideText: () => void;
+  toggleRecitationCheckMistakes: () => void;
+  toggleRecitationMistakeHaptics: () => void;
+  setRecitationCancelMayCancel: (choice: CancelMayCancel) => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
@@ -223,6 +233,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showTajweed: false,
       showThemes: false,
       showCommunityReflections: false,
+      recitationHideText: false,
+      recitationCheckMistakes: true,
+      recitationMistakeHaptics: true,
+      recitationCancelMayCancel: null,
       showWBW: false,
       wbwShowTranslation: defaultShowEnglishReadingAids, // @ai
       wbwShowTransliteration: false,
@@ -257,6 +271,18 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({
           showCommunityReflections: !state.showCommunityReflections,
         })),
+      toggleRecitationHideText: () =>
+        set(state => ({recitationHideText: !state.recitationHideText})),
+      toggleRecitationCheckMistakes: () =>
+        set(state => ({
+          recitationCheckMistakes: !state.recitationCheckMistakes,
+        })),
+      toggleRecitationMistakeHaptics: () =>
+        set(state => ({
+          recitationMistakeHaptics: !state.recitationMistakeHaptics,
+        })),
+      setRecitationCancelMayCancel: (choice: CancelMayCancel) =>
+        set({recitationCancelMayCancel: choice}),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
         set(state => ({wbwShowTranslation: !state.wbwShowTranslation})),
@@ -278,31 +304,21 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       // @ai-start
       setMushafRenderer: (renderer: MushafRenderer) =>
         set(state => {
-          // IndoPak cannot draw non-Hafs text and Mushaf 1440 shows Hafs
-          // only, and the rewayah is never changed from here: the DigitalKhatt
-          // data service would keep the old rewayah's words under a Hafs
-          // label. The settings UI disables IndoPak and switches the service
-          // to Hafs before choosing Mushaf 1440 (selectMushafRenderer); this
-          // keeps the pair valid for any other caller.
-          if (
-            (renderer === 'dk_indopak' || rendererPinsHafs(renderer)) &&
-            state.rewayah !== 'hafs'
-          ) {
+          // IndoPak cannot draw non-Hafs text, and the rewayah is never
+          // changed from here: the DigitalKhatt data service would keep the
+          // old rewayah's words under a Hafs label. The settings UI disables
+          // IndoPak for another rewayah; this keeps the pair valid for any
+          // other caller.
+          if (renderer === 'dk_indopak' && state.rewayah !== 'hafs') {
             return state;
           }
           return {
             mushafRenderer: renderer,
             arabicFontFamily: 'Uthmani',
-            showTajweed:
-              renderer === 'qcf_v2' && state.mushafRenderer !== renderer
-                ? true
-                : state.showTajweed,
-            showRewayahDiffs:
-              renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
             uthmaniFont: uthmaniFontForRenderer(renderer),
-            // A font that cannot draw the saved rewayah (IndoPak, Mushaf
-            // 1440) ends a startup fallback: Hafs becomes the saved choice,
-            // so the persisted pair stays valid.
+            // A font that cannot draw the saved rewayah (IndoPak) ends a
+            // startup fallback: Hafs becomes the saved choice, so the
+            // persisted pair stays valid.
             rewayahFallbackFrom:
               state.rewayahFallbackFrom &&
               isRendererCompatibleWithRewayah(
@@ -357,7 +373,6 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       // @ai-start
       setRewayah: (rewayah: RewayahId) =>
         set(state => {
-          if (rendererPinsHafs(state.mushafRenderer)) return state;
           // Showing a non-Hafs rewayah ends a startup fallback (the text on
           // screen is a rewayah the reader chose again); showing Hafs is
           // what the fallback itself does, so it leaves it in place.
@@ -378,19 +393,15 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         }),
       // @ai-end
       toggleRewayahDiffs: () =>
-        set(state =>
-          state.mushafRenderer === 'qcf_v2'
-            ? state
-            : {showRewayahDiffs: !state.showRewayahDiffs},
-        ),
+        set(state => ({showRewayahDiffs: !state.showRewayahDiffs})),
       // @ai-start
       startRewayahFallback: (from: RewayahId) =>
         set(state =>
-          // Mushaf 1440 pins Hafs, and a Hafs failure has nothing to fall
-          // back to, so neither is ever a fallback. The data service calls
-          // this from its Hafs commit, so labels and the notice name the
-          // Hafs on screen in the same update.
-          from === 'hafs' || rendererPinsHafs(state.mushafRenderer)
+          // A Hafs failure has nothing to fall back to, so it is never a
+          // fallback. The data service calls this from its Hafs commit, so
+          // labels and the notice name the Hafs on screen in the same
+          // update.
+          from === 'hafs'
             ? state
             : {rewayah: 'hafs', rewayahFallbackFrom: from},
         ),
@@ -400,7 +411,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: persistStorage(), // @ai
-      version: 19, // @ai
+      version: 21, // @ai
       // @ai-start
       // A startup fallback lasts one session: persist the reader's saved
       // rewayah rather than the Hafs shown in its place, and never the
@@ -516,6 +527,19 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         // @ai-start
         if (version < 19 && state.mushafRenderer === 'qcf_v2') {
           state.showTajweed = true;
+        }
+        // @ai-end
+        if (version < 20) {
+          // Recitation follow-along: the mic is always on (the old toggle
+          // is dropped) and hide text starts off.
+          delete state.showRecitationTracking;
+          state.recitationHideText = false;
+        }
+        // @ai-start
+        if (version < 21 && state.mushafRenderer === 'qcf_v2') {
+          // Mushaf 1440 no longer pins Hafs: 'Show differences' was forced
+          // off under it, not chosen, so it returns to its default.
+          state.showRewayahDiffs = true;
         }
         // @ai-end
         return state as unknown as MushafSettingsState;

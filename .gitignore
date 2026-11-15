@@ -33,6 +33,7 @@ web-build/
 .mcp.json
 
 config.ts
+!services/recitation/secondLook/config.ts
 
 # Large data files
 assets/data/timestamps.db

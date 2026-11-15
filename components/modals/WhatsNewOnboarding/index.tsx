@@ -11,9 +11,10 @@ import {
   Text,
   StyleSheet,
   Modal,
-  Dimensions,
   Pressable,
   FlatList,
+  useWindowDimensions,
+  type ListRenderItemInfo,
   type ListViewToken,
 } from 'react-native';
 import {moderateScale} from '@/utils/scale';
@@ -37,7 +38,7 @@ import {useTranslation} from 'react-i18next';
 import {appLayoutDirection, isRTL} from '@/utils/rtl';
 // @ai-end
 
-const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
+const PAGES_MIN_HEIGHT = moderateScale(280); // @ai
 
 export interface WhatsNewModalRef {
   show: () => void;
@@ -52,12 +53,37 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   const [pages, setPages] = useState<OnboardingPage[]>(getOnboardingPages());
   const flatListRef = useRef<FlatList<OnboardingPage>>(null);
   const scrollX = useSharedValue(0);
+  // @ai The visible page, for the re-anchor below. onViewableItemsChanged sets it.
+  const currentPageRef = useRef(0);
+
+  // @ai-start
+  // Live window size: a module-scope Dimensions value goes stale after a
+  // rotation or a split-view resize.
+  const {width: windowWidth, height: windowHeight} = useWindowDimensions();
+  // @ai-end
 
   const modalWidth = Math.min(
-    SCREEN_WIDTH - moderateScale(48),
+    windowWidth - moderateScale(48),
     moderateScale(420),
   );
   const pageWidth = modalWidth - moderateScale(64); // account for modal padding
+  const modalMaxHeight = windowHeight * 0.72; // @ai
+
+  // @ai-start
+  // A scroll view does not take the height of its content, so each page
+  // reports it. The pager is as tall as the tallest page (at least the
+  // floor); when the card is full, flexbox shrinks it and a page scrolls.
+  const [pageHeights, setPageHeights] = useState<Record<string, number>>({});
+  const onPageContentHeight = useCallback((id: string, height: number) => {
+    setPageHeights(prev =>
+      prev[id] === height ? prev : {...prev, [id]: height},
+    );
+  }, []);
+  const pagesHeight = Math.max(
+    PAGES_MIN_HEIGHT,
+    ...pages.map(page => pageHeights[page.id] ?? 0),
+  );
+  // @ai-end
 
   const isLastPage = currentPage === pages.length - 1;
 
@@ -65,6 +91,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
     show: () => {
       setPages(getOnboardingPages());
       setCurrentPage(0);
+      currentPageRef.current = 0; // @ai
       scrollX.value = 0;
       flatListRef.current?.scrollToOffset({offset: 0, animated: false});
       setVisible(true);
@@ -94,6 +121,20 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
     checkAndShow();
   }, []);
 
+  // @ai-start
+  // Re-anchor on resize: a paged horizontal list keeps its pixel offset while
+  // the item width changes, so the visible page would drift. scrollToIndex,
+  // not scrollToOffset: in RTL a raw offset counts from the last page.
+  // show() resets the ref, so a new set of pages starts on page one.
+  useEffect(() => {
+    const index = currentPageRef.current;
+    if (pages.length > 0) {
+      flatListRef.current?.scrollToIndex({index, animated: false});
+    }
+    scrollX.value = index * pageWidth;
+  }, [pageWidth, pages.length, scrollX]);
+  // @ai-end
+
   function handleClose() {
     setVisible(false);
     markVersionAsSeen();
@@ -111,6 +152,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   const onViewableItemsChanged = useRef(
     ({viewableItems}: {viewableItems: ListViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].index != null) {
+        currentPageRef.current = viewableItems[0].index; // @ai
         setCurrentPage(viewableItems[0].index);
       }
     },
@@ -142,14 +184,15 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   );
 
   const renderItem = useCallback(
-    ({item, index}: {item: OnboardingPage; index: number}) => (
+    ({item}: ListRenderItemInfo<OnboardingPage>) => (
       <OnboardingPageComponent
         page={item}
         width={pageWidth}
         isIntroPage={item.id === 'welcome'}
+        onContentHeight={onPageContentHeight} // @ai
       />
     ),
-    [pageWidth],
+    [pageWidth, onPageContentHeight],
   );
 
   const keyExtractor = useCallback((item: OnboardingPage) => item.id, []);
@@ -170,7 +213,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
             {
               backgroundColor: theme.colors.backgroundSecondary,
               width: modalWidth,
-              maxHeight: SCREEN_HEIGHT * 0.72,
+              maxHeight: modalMaxHeight,
             },
           ]}>
           {/* Skip button */}
@@ -184,13 +227,13 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
             </Text>
           </Pressable>
 
-          {/* Pages */}
+          {/* Pages: the only row that can shrink */}
           <View style={styles.pagesContainer}>
             {/* Runs in the app's direction: the list's index math follows
                 the native direction, so forcing LTR here breaks Next in RTL. */}
             <Animated.FlatList
               ref={flatListRef as any}
-              style={appLayoutDirection}
+              style={[appLayoutDirection, {height: pagesHeight}]} // @ai
               data={pages}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
@@ -205,6 +248,8 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
               viewabilityConfig={viewabilityConfig}
               getItemLayout={getItemLayout}
               bounces={false}
+              // @ai Render every page at once, so the tallest one is known.
+              initialNumToRender={pages.length}
             />
           </View>
 
@@ -221,7 +266,8 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
               styles.button,
               pressed && styles.buttonPressed,
             ]}
-            onPress={handleNext}>
+            onPress={handleNext}
+            accessibilityRole="button">
             <Text
               style={[styles.buttonText, {color: theme.colors.textSecondary}]}>
               {isLastPage
@@ -272,7 +318,13 @@ const styles = StyleSheet.create({
   },
   pagesContainer: {
     marginTop: moderateScale(24),
-    minHeight: moderateScale(280),
+    // @ai-start
+    // The only row that can shrink: when the card reaches its maxHeight,
+    // flexbox gives the pager the room that the dots and the button leave.
+    // A page that is taller scrolls (OnboardingPage).
+    flexShrink: 1,
+    overflow: 'hidden',
+    // @ai-end
     justifyContent: 'center',
   },
   button: {

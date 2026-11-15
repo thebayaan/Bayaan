@@ -108,6 +108,7 @@ const NotesScreen = () => {
         verseKey: item.note.verseKey,
         surahNumber: item.note.surahNumber,
         ayahNumber: item.note.ayahNumber,
+        verseKeys: item.note.verseKeys, // @ai a range note keeps its range title
         noteId: item.note.id,
         // The note's own rewayah names its verses (decision 3): the sheet
         // labels them at once instead of after loading the note. A legacy

@@ -8,8 +8,7 @@
     "shareMessage": "اطّلع على الصفحة {{page}} من القرآن الكريم على {{appName}}",
     "loadFailedTitle": "تعذّر تحميل المصحف",
     "loadFailedBody": "تأكّد من توفّر مساحة تخزين كافية على جهازك، ثم حاول مجددًا.",
-    "pageLoadFailed": "تعذّر تحميل هذه الصفحة.",
-    "turnOffTajweed": "إيقاف تلوين التجويد"
+    "pageLoadFailed": "تعذّر تحميل هذه الصفحة."
   },
   "toolbar": {
     "options": "خيارات",
@@ -54,5 +53,31 @@
     "loading": "جارٍ تحميل آيات رواية {{rewayah}}",
     "loadFailed": "تعذّر تحميل آيات رواية {{rewayah}}.",
     "retryLabel": "أعد محاولة تحميل آيات رواية {{rewayah}}"
+  },
+  "recitation": {
+    "recite": "تلاوة",
+    "stop": "إيقاف",
+    "listening": "يستمع",
+    "listeningLabel": "يستمع. {{status}}",
+    "nextAyah": "الآية التالية",
+    "nextWord": "الكلمة التالية",
+    "showText": "إظهار النص",
+    "hideText": "إخفاء النص",
+    "showTheText": "إظهار النص",
+    "hideTheText": "إخفاء النص",
+    "stopFollowing": "إيقاف متابعة تلاوتي",
+    "stopFollowAlong": "إيقاف المتابعة",
+    "followMine": "تابع تلاوتي",
+    "gettingReady": "جارٍ التجهيز…",
+    "findingPlace": "جارٍ تحديد موضعك…",
+    "paused": "متوقف مؤقتًا حتى ينتهي الاتصال أو الصوت…",
+    "barLabel": "{{surah}} {{verseKey}}",
+    "micOffTitle": "الميكروفون غير مفعّل",
+    "micPermission": "اسمح لبيان باستخدام الميكروفون من الإعدادات لتتمكن من التلاوة.",
+    "notNow": "ليس الآن",
+    "openSettings": "فتح الإعدادات",
+    "stoppedTitle": "توقفت المتابعة",
+    "errorInterruption": "توقفت المتابعة لأن تطبيقًا آخر استخدم الصوت.",
+    "errorMicSilent": "توقف الميكروفون. اضغط على الميكروفون للبدء من جديد."
   }
 }

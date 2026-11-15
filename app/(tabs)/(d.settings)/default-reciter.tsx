@@ -65,20 +65,16 @@ export default function DefaultReciterScreen() {
   );
 
   const renderItem = useCallback(
-    ({item}: {item: Reciter}) => {
-      if (!hasCompleteQuran(item)) {
-        return null;
-      }
-
-      return (
-        <ReciterItem
-          item={item}
-          onPress={() => handleReciterSelect(item)}
-          isSelected={defaultReciter?.id === item.id}
-        />
-      );
-    },
-    [handleReciterSelect, hasCompleteQuran, defaultReciter],
+    // @ai The results come from completeReciters, so no completeness check
+    // is needed here.
+    ({item}: {item: Reciter}) => (
+      <ReciterItem
+        item={item}
+        onPress={() => handleReciterSelect(item)}
+        isSelected={defaultReciter?.id === item.id}
+      />
+    ),
+    [handleReciterSelect, defaultReciter],
   );
 
   return (
@@ -137,6 +133,9 @@ export default function DefaultReciterScreen() {
                 : t('defaultReciter.noResults')}
             </Text>
           }
+          // @ai The first tap on a result selects it, not only closes the
+          // keyboard.
+          keyboardShouldPersistTaps="handled"
         />
       </View>
     </View>

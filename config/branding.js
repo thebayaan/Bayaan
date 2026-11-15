@@ -21,6 +21,11 @@ module.exports = {
   termsUrl: 'https://thebayaan.com/terms',
   privacyUrl: 'https://thebayaan.com/privacy',
   shareBaseUrl: 'https://app.thebayaan.com',
+  // @ai-start
+  // Optional: a fork that leaves one out gets no link, not Bayaan's.
+  appStoreId: '6648769980',
+  githubUrl: 'https://github.com/thebayaan/Bayaan',
+  // @ai-end
   emailProductName: 'Bayaan',
   catalog: {
     source: 'bundled',

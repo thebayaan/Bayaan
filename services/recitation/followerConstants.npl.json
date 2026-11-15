@@ -1,0 +1,91 @@
+{
+  "license": "Quran-Lab NPL-1.2, full text in licenses/NPL-1.2.txt. Every number here was tuned on the output of the follower model (zipformer_a0w), so this file is a Derivative of it and is not under the app's licence. Keep such numbers here, apart from the app's own code.",
+  "about": "What the word marks and checks read. notes says where each came from. The second model's own constants are not here: they were set without the follower (scripts/recitation-bench/judge/judge_constants.json), apart from secondJudge.altMargin. For now this file is built into the app's JavaScript: before a public release it must be delivered with the model and its licence file.",
+  "marks": {
+    "confirmMs": 500,
+    "nextOkWindowMs": 3000,
+    "nextOkWords": 2,
+    "skipFitsGop": -5,
+    "wrongFitsGop": -1,
+    "firstSkipHeard": 0.1,
+    "confusedNeighbours": 3,
+    "neighbourSpan": 3,
+    "neighbourWindowMs": 2000,
+    "realignWords": 11,
+    "realignAyat": 3,
+    "afterSkipWords": 3
+  },
+  "engine": {
+    "commitDwell": 2,
+    "cutAtJump": 10000
+  },
+  "junction": {
+    "llrMissing": -7,
+    "fitNext": -4,
+    "fitLate": -20,
+    "lookBackFrames": 75,
+    "anchorTokens": 3,
+    "waitFrames": 12,
+    "lookBackWords": 3
+  },
+  "gapReport": {
+    "runCost": 0.05,
+    "lookAhead": 8,
+    "maxRegion": 200
+  },
+  "addedWord": {
+    "minSounds": 3,
+    "fit": 0.15,
+    "fitLast": 0.4,
+    "noGap": -2,
+    "looseFrom": 5,
+    "nasalFrom": 4,
+    "shortRun": 5,
+    "backShort": 4,
+    "aheadShort": 2,
+    "back": 12,
+    "ahead": 12,
+    "tolShort": 0.3,
+    "tolMid": 1,
+    "midRun": 12,
+    "tolLong": 0.3,
+    "twoPartsFrom": 10,
+    "notTextPhrases": [
+      "ءَعُۥۥذُبِللَااهِمِنَششَييطَاانِررَجِۦۦم",
+      "بِسمِللَااهِررَحمَاانِررَحِۦۦۦۦم",
+      "ءَللَااهُءَكبَر",
+      "صَدَقَللَااهُلعَظِۦۦم",
+      "ءَاامِۦۦن"
+    ]
+  },
+  "secondJudge": {
+    "altMargin": 3,
+    "wakeStep1": ["wrong", "skipped"],
+    "wakeStep2": ["unsure"],
+    "wakeOkGop": -1.5,
+    "wakeOkNoGop": true,
+    "holdSeconds": 0.48,
+    "trackerLagSeconds": 0.23,
+    "cursorLagSeconds": 1.5,
+    "afterPreviousSeconds": 0.3,
+    "noPreviousSeconds": 1.0,
+    "minSliceSeconds": 1.5,
+    "fallbackSeconds": 3
+  },
+  "cancel": {
+    "keepFirstPerLetter": -6,
+    "keepGap": -3.34,
+    "marginSeconds": 0.3,
+    "silenceSeconds": 1,
+    "minCutSeconds": 0.2
+  },
+  "notes": {
+    "marks": "The rules in services/recitation/wordMarks.ts, each explained beside where it is read. Set on bench recitations through the follower's verdicts and gop scores: planted mistakes, then voices behind correct recitation.",
+    "engine": "commitDwell: heard sounds after a word before the engine judges it. Measured on five reciters with planted mistakes. cutAtJump: a forward jump of more than this many places in the text starts a new stretch of alignment, so the work a chunk stays bounded. Compared at 300, 3000 and 10000 on the longest-jump clips under voices: at 10000 no verdict changed there.",
+    "junction": "Set on the dev split of the junction job (scripts/recitation-bench/natural/junction/README.md), frozen in .out/natural/junction/frozen_v2.json. llrMissing: per token of the last word, h1 - h0 under this says it was left out. fitNext and fitLate: how well h0 must fit on the early and late paths, in nats. lookBackFrames, anchorTokens, waitFrames, lookBackWords: where the hypotheses look.",
+    "gapReport": "Mechanics of the split behind the added-word mark, on the follower's sounds (scripts/recitation-bench/added/README.md).",
+    "addedWord": "Set on dev reciters and dev events, frozen in .out/added/frozen.sha256 (scripts/recitation-bench/added/README.md). fit and fitLast reuse the engine's okDistance and unsureDistance. notTextPhrases are the isti'adha, basmala, takbir, closing formula and amin in the follower's phonemes, for matching only: they are never shown.",
+    "secondJudge": "scripts/recitation-bench/judge/engine_constants.npl.json, frozen on dev. wakeStep1 and wakeStep2: the verdicts that wake it at each step. wakeOkGop and wakeOkNoGop: Step 2 also wakes on an ok word with gop at or below this, or with no gop and some distance. altMargin: an alternative must beat the expected word by this many nats; read from a table with no follower output, but fixed after the follower's end-to-end sweep on dev had been seen, so it is kept here. holdSeconds: the judge answers from the slice one chunk after the verdict. The rest place the slice: tracker lag against the second model's first letter, cursor lag when the tracker has no frames, a slice may start this long after the end of the ayah before, this long before the first word when there is no ayah before, and a shorter slice means the places were wrong, so use the last fallbackSeconds.",
+    "cancel": "scripts/second-look/cancel_constants.npl.json, chosen on marks the follower made: on QuranMB's planted errors, with professional false marks and W1 marks, none held out (scripts/second-look/RULE.md). QuranMB's licence for this use is not yet confirmed (IqraEval has not answered), so keepFirstPerLetter and keepGap need the owner's decision before any release. keepFirstPerLetter: a mark stays if the expected word scores at or below this per letter on the judge's slice. keepGap: or if a spelling with one inner letter changed beats the written word by at least this many nats on the padded look. marginSeconds: the padded look takes the word and this much either side. silenceSeconds: digital silence added each side. minCutSeconds: a shorter cut is a failure, and the mark shows."
+  }
+}
