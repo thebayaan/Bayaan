@@ -1021,17 +1021,19 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     (contentWidth: number) => {
       // @ai-start
       // After the reveal, go back to the active page each time the pages get
-      // a new width. The width effect below can scroll before the pages have
-      // that width, and Android clamps the offset to the old content: a
-      // window resize across 1280pt left the pager part-way between pages.
+      // a new width (rotation, Split View, the sidebar, the hero column).
+      // Only now do the pages have that width: a scroll before it is clamped
+      // to the old content on Android, and leaves the pager between pages.
       if (pagerScrolledRef.current) {
         if (contentWidth === pagerContentWidthRef.current) return;
         pagerContentWidthRef.current = contentWidth;
         const index = tabs.findIndex(tab => tab.id === activeTabRef.current);
         if (index < 0) return;
+        const x = index * pageWidth;
+        // The tab bar indicator follows scrollX.
+        scrollX.setValue(x);
         // A scroll in this frame can still reach the view before its new
         // layout, so wait one frame.
-        const x = index * pageWidth;
         requestAnimationFrame(() =>
           horizontalRef.current?.scrollTo({x, y: 0, animated: false}),
         );
@@ -1065,22 +1067,6 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     },
     [pageWidth, pagerOpacity, initialTabIndex, scrollX, tabs],
   );
-
-  // @ai-start
-  // Keep the current page in place when the pager width changes after the
-  // first reveal (rotation, Split View, sidebar changes).
-  const lastPageWidthRef = useRef(pageWidth);
-  useEffect(() => {
-    if (lastPageWidthRef.current === pageWidth) return;
-    lastPageWidthRef.current = pageWidth;
-    if (!pagerScrolledRef.current) return;
-    const index = tabs.findIndex(tab => tab.id === activeTabRef.current);
-    if (index < 0) return;
-    const x = index * pageWidth;
-    scrollX.setValue(x);
-    horizontalRef.current?.scrollTo({x, y: 0, animated: false});
-  }, [pageWidth, tabs, scrollX]);
-  // @ai-end
 
   // Sticky title bar opacity — fades in as the outer scroll collapses the header
   // With negative margin on header, the actual collapse point is reduced

@@ -186,6 +186,7 @@ jest.mock('../components/ActionButtons', () => ({ActionButtons: () => null}));
 import ReciterProfile from '../ReciterProfile';
 import {TabletReciterHero} from '../components/TabletReciterHero';
 import {SurahListTableHeader} from '../components/SurahList';
+import {RewayatTabBar} from '../components/RewayatTabBar';
 
 let mounted: TestRenderer.ReactTestRenderer | null = null;
 afterEach(() => {
@@ -229,6 +230,27 @@ function layoutPager(renderer: TestRenderer.ReactTestRenderer, width: number) {
   );
 }
 
+/** The horizontal pager's ScrollView, whose content size the test sets. */
+const pager = (renderer: TestRenderer.ReactTestRenderer) =>
+  renderer.root.find(
+    n =>
+      typeof n.type !== 'string' &&
+      n.props.horizontal === true &&
+      typeof n.props.onContentSizeChange === 'function' &&
+      n.instance?.scrollTo !== undefined,
+  );
+
+/** Gives the pager pages `pageWidth` wide content for its two tabs. */
+function layoutPages(
+  renderer: TestRenderer.ReactTestRenderer,
+  pageWidth: number,
+) {
+  act(() => {
+    pager(renderer).props.onContentSizeChange(2 * pageWidth, 2000);
+    jest.runOnlyPendingTimers();
+  });
+}
+
 const heroLayouts = (renderer: TestRenderer.ReactTestRenderer) =>
   renderer.root
     .findAllByType(TabletReciterHero)
@@ -269,5 +291,36 @@ describe('ReciterProfile on a 1376pt iPad window', () => {
     expect(heroLayouts(renderer)).toEqual(['column']);
     layoutProfile(renderer, 1096);
     expect(heroLayouts(renderer)).toEqual(['row']);
+  });
+
+  it('puts the pager and the tab indicator back on the page after a width change', () => {
+    jest.useFakeTimers();
+    try {
+      const renderer = render();
+      layoutProfile(renderer, 1288);
+      layoutPager(renderer, 840);
+      // The reveal: Hafs is page 1, after My Uploads.
+      layoutPages(renderer, 840);
+      const scrollTo = pager(renderer).instance.scrollTo as jest.Mock;
+      scrollTo.mockClear();
+
+      // The sidebar opens: the hero goes back above the list, and the
+      // pager is as wide as the profile.
+      layoutProfile(renderer, 1096);
+      layoutPager(renderer, 1096);
+      layoutPages(renderer, 1096);
+
+      expect(scrollTo).toHaveBeenLastCalledWith({
+        x: 1096,
+        y: 0,
+        animated: false,
+      });
+      const scrollX = renderer.root.find(
+        n => (n.type as unknown) === RewayatTabBar,
+      ).props.scrollX;
+      expect(scrollX.__getValue()).toBe(1096);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
