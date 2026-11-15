@@ -285,18 +285,13 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const {tracks, currentIndex} = state.queue;
         const {repeatMode} = state.settings;
 
-        // Fire analytics before advancing
-        const currentTrack = tracks[currentIndex];
-        if (currentTrack?.surahId && !currentTrack.isUserUpload) {
-          analyticsService.trackPlaybackSkipped({
-            surah_id: parseInt(currentTrack.surahId, 10),
-            reciter_id: currentTrack.reciterId,
-            reciter_name: currentTrack.reciterName,
-            position_ms: Math.round(state.playback.position * 1000),
-            listened_ms: Math.round(state.playback.position * 1000),
-            direction: 'next',
-          });
-        }
+        // @ai-start
+        // After a completion the session already ended, so this sends nothing.
+        analyticsService.listenSession.end('skipped', {
+          direction: 'next',
+          positionMs: Math.round(state.playback.position * 1000),
+        });
+        // @ai-end
 
         try {
           let nextIndex = currentIndex + 1;
@@ -364,18 +359,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const {repeatMode} = state.settings;
         const position = expoAudioService.getPosition();
 
-        // Fire analytics before going back
-        const currentTrack = tracks[currentIndex];
-        if (currentTrack?.surahId && !currentTrack.isUserUpload) {
-          analyticsService.trackPlaybackSkipped({
-            surah_id: parseInt(currentTrack.surahId, 10),
-            reciter_id: currentTrack.reciterId,
-            reciter_name: currentTrack.reciterName,
-            position_ms: Math.round(state.playback.position * 1000),
-            listened_ms: Math.round(state.playback.position * 1000),
-            direction: 'prev',
-          });
-        }
+        // @ai-start
+        analyticsService.listenSession.end('skipped', {
+          direction: 'prev',
+          positionMs: Math.round(state.playback.position * 1000),
+        });
+        // @ai-end
 
         try {
           // If more than 3 seconds into the track, restart it (no index change needed)
