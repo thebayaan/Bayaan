@@ -1,10 +1,10 @@
 // @ai-generated
 /**
- * An item of the continuous view has no height until the fonts are there, and
- * the fonts finish after the data. So the view mounts no list until then: a
- * list mounted earlier mounts all 604 pages to fill the screen, and draws all
- * of them when the fonts arrive. The view reports its first content once, when
- * the list has drawn (RFC-023 step 5).
+ * The fonts finish after the data, so the reader can open before them. The
+ * continuous view mounts no list until they are there: its first layout then
+ * has the text of the page it opens on, and no page is drawn blank first. The
+ * view reports its first content once, when the list has drawn (RFC-023 step
+ * 5).
  */
 
 import React, {act} from 'react';
@@ -47,17 +47,17 @@ jest.mock('@/hooks/useMushafFontMgr', () => {
   };
 });
 
-jest.mock('@shopify/flash-list', () => {
+jest.mock('react-native/Libraries/Lists/FlatList', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const FlashList = (props: MockListProps) => {
+  const FlatList = ReactActual.forwardRef((props: MockListProps, _ref) => {
     ReactActual.useEffect(() => {
       mockList.mounts.push(props);
       // Mount only: the props of this first render are the ones to check.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     return null;
-  };
-  return {FlashList};
+  });
+  return {__esModule: true, default: FlatList};
 });
 
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
@@ -69,6 +69,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     getLayoutIdentityKey: () => 'hafs@test',
     getSurahStartPages: () => ({}),
     getPageToSurah: () => ({}),
+    getPageLines: () => [],
   },
   getRewayahFontFamily: () => 'DigitalKhattV2',
 }));
