@@ -8,6 +8,7 @@ export const lightColors = {
   secondary: '#f0f0f0',
   accent: '#5645a1',
   textSecondary: '#052c39',
+  textTertiary: '#48646b', // @ai
   light: '#f4f4f4',
   border: '#a4a4a4',
   shadow: '#000000',
@@ -24,6 +25,7 @@ export const darkColors = {
   secondary: '#1c1a1e',
   accent: '#00623a',
   textSecondary: '#B0B0B0',
+  textTertiary: '#888888', // @ai
   light: '#242326',
   border: '#332f38',
   shadow: '#000000',

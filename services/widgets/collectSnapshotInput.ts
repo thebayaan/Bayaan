@@ -27,7 +27,9 @@ const OPENING_WORDS = 6;
 const countsForToday = createCountDayTracker();
 
 function openingTextForPage(page: number): string {
-  if (!digitalKhattDataService.initialized) return '';
+  // Before the data loads, the line the last snapshot published. @ai
+  if (!digitalKhattDataService.initialized)
+    return mushafSessionStore.getLastOpeningText(page); // @ai
   const firstKey = mushafVerseMapService.getOrderedVerseKeysForPage(page)[0];
   if (!firstKey) return '';
   return digitalKhattDataService

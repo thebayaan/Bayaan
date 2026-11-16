@@ -27,10 +27,14 @@ export interface BundledDkSqliteFake {
   readonly broken: Set<string>;
   /** Bases read, in order. */
   readonly reads: string[];
+  /** @ai Bases of the WordStore's chunk reads, in order. */
+  readonly chunkReads: string[];
 }
 
 interface SqliteDb {
-  prepare(sql: string): {all(): Record<string, unknown>[]};
+  prepare(sql: string): {
+    all(...params: unknown[]): Record<string, unknown>[];
+  };
   close(): void;
 }
 
@@ -70,6 +74,7 @@ export function bundledDkSqliteModule() {
     files: new Set(),
     broken: new Set(),
     reads: [],
+    chunkReads: [], // @ai
   };
   const baseOf = (name: string) =>
     name.replace(/\.db$/, '').replace(/\.[0-9a-f]{8}$/, '');
@@ -78,25 +83,46 @@ export function bundledDkSqliteModule() {
     defaultDatabaseDirectory: '/data/user/0/app.test/files/SQLite',
     async openDatabaseAsync(name: string) {
       const base = baseOf(name);
+      // @ai-start
+      // RFC-023 step 2: real SQL with bound params, also
+      // the integrity counts (getFirstAsync) and the WordStore's synchronous
+      // chunk reads (getFirstSync, which counts no read).
+      const query = (sql: string, params: unknown[]) => {
+        const db = new DatabaseSync(bundledDkFile(base), {readOnly: true});
+        try {
+          return db.prepare(sql).all(...params);
+        } finally {
+          db.close();
+        }
+      };
       return {
-        async getFirstAsync(sql: string) {
+        async getFirstAsync(sql: string, params: unknown[] = []) {
           if (!fake.files.has(name)) return null;
-          return {name: /name='(\w+)'/.exec(sql)?.[1]};
+          if (sql.includes('sqlite_master')) {
+            return {name: /name='(\w+)'/.exec(sql)?.[1]};
+          }
+          if (fake.broken.has(base)) {
+            throw new Error('database disk image is malformed');
+          }
+          return query(sql, params)[0] ?? null;
         },
-        async getAllAsync(sql: string) {
+        async getAllAsync(sql: string, params: unknown[] = []) {
           if (fake.broken.has(base)) {
             throw new Error('database disk image is malformed');
           }
           fake.reads.push(base);
-          const db = new DatabaseSync(bundledDkFile(base), {readOnly: true});
-          try {
-            return db.prepare(sql).all();
-          } finally {
-            db.close();
-          }
+          return query(sql, params);
+        },
+        getAllSync(sql: string, params: unknown[] = []) {
+          return query(sql, params);
+        },
+        getFirstSync(sql: string, params: unknown[] = []) {
+          if (sql.includes('group_concat')) fake.chunkReads.push(base);
+          return query(sql, params)[0] ?? null;
         },
         closeAsync: async () => undefined,
       };
+      // @ai-end
     },
     async importDatabaseFromAssetAsync(name: string) {
       fake.files.add(name);

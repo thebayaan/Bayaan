@@ -66,11 +66,40 @@ jest.mock('@/hooks/useTheme', () => ({
     isDarkMode: false,
   }),
 }));
-jest.mock('@/hooks/useMushafFontMgr', () => ({
-  useMushafFontMgr: () => ({fontMgr: true}),
-}));
+// The fonts of the preload. The surah header tests hold them back, then let
+// them arrive after the page mounted.
+const mockFonts = {
+  fontMgr: {fontMgr: true} as object | null,
+  typeface: null as object | null,
+  listeners: new Set<() => void>(),
+};
+jest.mock('@/hooks/useMushafFontMgr', () => {
+  const R = jest.requireActual<typeof import('react')>('react');
+  return {
+    useMushafFontMgr: () =>
+      R.useSyncExternalStore(
+        (listener: () => void) => {
+          mockFonts.listeners.add(listener);
+          return () => mockFonts.listeners.delete(listener);
+        },
+        () => mockFonts.fontMgr,
+      ),
+  };
+});
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
-  mushafPreloadService: {quranCommonTypeface: null},
+  mushafPreloadService: {
+    get quranCommonTypeface() {
+      return mockFonts.typeface;
+    },
+  },
+}));
+const mockHeaders = {count: 0};
+jest.mock('@/components/mushaf/skia/SkiaSurahHeader', () => ({
+  __esModule: true,
+  default: () => {
+    mockHeaders.count += 1;
+    return null;
+  },
 }));
 jest.mock('react-native-worklets', () => ({
   runOnJS: (fn: unknown) => fn,
@@ -189,6 +218,7 @@ jest.mock('@shopify/react-native-skia', () => {
         size,
         setSubpixel: () => undefined,
         setLinearMetrics: () => undefined,
+        getGlyphIDs: (text: string) => [...text].map(() => 1),
         getGlyphWidths: (ids: number[]) =>
           ids.map(
             id => (mockMetrics.advance(id) / mockMetrics.unitsPerEm) * size,
@@ -274,6 +304,10 @@ run('Mushaf 1440 page', () => {
   });
 
   beforeEach(() => {
+    mockFonts.fontMgr = {fontMgr: true};
+    mockFonts.typeface = null;
+    mockFonts.listeners.clear();
+    mockHeaders.count = 0;
     mockTypefaces.clear();
     mockLoader.ensure.mockClear();
     mockSheet.show.mockClear();
@@ -332,6 +366,30 @@ run('Mushaf 1440 page', () => {
     const word = pageWords().find(w => w.location === location)!;
     return [...word.code].map(c => mockMetrics.glyphId(c.codePointAt(0)!));
   };
+
+  // A page that mounts before the fonts draws its surah header (page 50
+  // opens Al Imran) once they arrive.
+  const fontsArrive = () => {
+    mockFonts.fontMgr = {fontMgr: true};
+    mockFonts.typeface = {};
+    mockFonts.listeners.forEach(listener => listener());
+  };
+
+  it('draws the surah header when the fonts are there at mount', async () => {
+    fontsArrive();
+    await draw();
+    expect(mockHeaders.count).toBeGreaterThan(0);
+  });
+
+  it('draws the surah header when the fonts arrive after mount', async () => {
+    mockFonts.fontMgr = null;
+    await draw();
+    expect(mockHeaders.count).toBe(0);
+    await act(async () => {
+      fontsArrive();
+    });
+    expect(mockHeaders.count).toBeGreaterThan(0);
+  });
 
   it('draws every glyph of the page in the text colour', async () => {
     const tree = await draw();

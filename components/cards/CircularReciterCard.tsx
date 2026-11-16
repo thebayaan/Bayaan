@@ -99,7 +99,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
         subtitle: {
           fontSize: moderateScale(8.5),
           fontFamily: 'Manrope-Regular',
-          color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+          color: theme.colors.textTertiary,
           textAlign: 'center',
           width: imageSize,
           marginTop: moderateScale(1),

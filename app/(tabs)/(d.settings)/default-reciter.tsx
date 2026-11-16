@@ -186,7 +186,7 @@ const createStyles = (theme: Theme) =>
     currentReciterMoshaf: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
     },
     searchSection: {
       paddingHorizontal: moderateScale(15),
@@ -194,7 +194,7 @@ const createStyles = (theme: Theme) =>
     searchLabel: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: verticalScale(8),
@@ -207,7 +207,7 @@ const createStyles = (theme: Theme) =>
     emptyText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       paddingVertical: moderateScale(15),
     },

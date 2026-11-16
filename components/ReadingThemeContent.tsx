@@ -585,7 +585,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: moderateScale(8),
     },
     segmentedControl: {
