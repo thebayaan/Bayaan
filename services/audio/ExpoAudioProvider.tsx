@@ -104,7 +104,8 @@ export function ExpoAudioProvider({
   });
   const isHandlingTrackEnd = useRef(false);
   const wasPlaying = useRef(false);
-  const wasBuffering = useRef(false); // @ai
+  // The player starts with nothing loaded, which the edge counts as a stall. @ai
+  const wasBuffering = useRef(true); // @ai
   const lastTrackIdRef = useRef<string | null>(null);
 
   // Get store actions
