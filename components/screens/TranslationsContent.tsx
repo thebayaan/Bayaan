@@ -1085,8 +1085,8 @@ const createStyles = (theme: Theme) =>
     },
     langCount: {
       fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.35).toString(),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textTertiary,
     },
 
     // Active card
