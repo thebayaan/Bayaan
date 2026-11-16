@@ -100,10 +100,7 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 jest.mock('../constants', () => ({
-  getJuzForPage: () => 1,
-  getPageEdgeLayout: () => ({isRightPage: true, contentMarginLeft: 0}),
-  readerListKey: (name: string) => name,
-  singlePageLayout: (metrics: unknown) => metrics,
+  ...jest.requireActual('../constants'),
   useMushafLayout: () => ({
     ...mockLayout,
     screenHeight: 800,
