@@ -259,13 +259,15 @@ export function ExpoAudioProvider({
 
     // @ai-start
     // The native playing edge, so a button press and an outside pause take one
-    // path. A stall is not a pause: iOS reports playing false while it waits.
-    if (!status.isBuffering && status.playing !== wasPlaying.current) {
+    // path. iOS reports playing false in a stall; ListenSession reads the stop
+    // with isBuffering as a stall, not a pause.
+    if (status.playing !== wasPlaying.current) {
       wasPlaying.current = status.playing;
       listenSession.playingChanged(status.playing, {
         positionMs: Math.round(status.currentTime * 1000),
         durationMs: Math.round(status.duration * 1000),
         didJustFinish: status.didJustFinish,
+        isBuffering: status.isBuffering,
       });
       // Save the final position when playback stops.
       if (!status.playing && status.duration > 0) {

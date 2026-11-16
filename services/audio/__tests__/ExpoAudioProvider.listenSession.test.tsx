@@ -341,6 +341,27 @@ it('a stall is not a pause: iOS reports playing false while it buffers', async (
   expect(events()).toEqual(['playback_started']);
 });
 
+it('a pause during a stall: the paused time is not listened time', async () => {
+  await playQueue(900);
+  await wait(10);
+  await native({playing: false, isBuffering: true});
+  // iOS: a paused player with an empty buffer reports isBuffering, and no
+  // other status comes while it is paused.
+  await storeAction(() => usePlayerStore.getState().pause());
+  await wait(600);
+  await storeAction(() => usePlayerStore.getState().play());
+  await native({playing: true, isBuffering: false});
+  await wait(10);
+  await storeAction(() => usePlayerStore.getState().pause());
+  await native({playing: false});
+
+  expect(events()).toEqual(['playback_started', 'playback_paused']);
+  expect(eventProps('playback_paused')).toEqual([
+    expect.objectContaining({listened_ms: 10_000}),
+  ]);
+  expect(listenedTotal()).toBe(20_000);
+});
+
 it('repeat one: each loop completes once and starts again as autoplay', async () => {
   usePlayerStore.getState().setRepeatMode('track');
   await playQueue(60);

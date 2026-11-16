@@ -22,6 +22,8 @@ export interface ListenPosition {
   positionMs: number;
   durationMs: number;
   didJustFinish?: boolean;
+  /** The player waits for data: a stop now is a stall, not a pause. */
+  isBuffering?: boolean;
 }
 
 export interface ListenSessionEvents {
@@ -108,7 +110,9 @@ export class ListenSession {
       at.didJustFinish ||
       (at.durationMs > 0 &&
         at.durationMs - at.positionMs < TRACK_END_WINDOW_MS);
-    if (isTrackEnd) return;
+    // A stall, or a pause while the buffer is empty, sends nothing: on iOS
+    // nothing else reports the pause, so the segment closes here.
+    if (isTrackEnd || at.isBuffering) return;
     this.paused = true;
     this.events.paused({
       ...this.trackProps(track),

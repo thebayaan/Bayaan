@@ -120,6 +120,20 @@ describe('playingChanged', () => {
     expect(totals()).toBe(DURATION_MS);
   });
 
+  it('treats a stop while it buffers as a stall: the segment closes, and nothing is sent', () => {
+    session.start(TRACK, 0);
+    now += 10_000;
+    session.playingChanged(false, {...at(10_000), isBuffering: true});
+    expect(totals()).toBe(10_000);
+    now += 600_000;
+    session.playingChanged(true, at(10_000));
+    now += 10_000;
+    session.playingChanged(false, at(20_000));
+    expect(sent()).toEqual(['started', 'paused']);
+    expect(events.paused.mock.calls[0][0].listened_ms).toBe(10_000);
+    expect(totals()).toBe(20_000);
+  });
+
   it('treats a stop in the last 2 s as the track end, not a pause', () => {
     session.start(TRACK, 0);
     session.playingChanged(false, at(DURATION_MS - 1500));
