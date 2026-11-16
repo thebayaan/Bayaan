@@ -220,14 +220,12 @@ export function ExpoAudioProvider({
 
   // Merged progress + playback state effect (throttled)
   useEffect(() => {
-    if (!status.isLoaded) return;
-
     const now = Date.now();
     const shouldUpdateProgress =
       now - lastProgressUpdate.current >= PROGRESS_UPDATE_INTERVAL;
 
     // Throttled position/duration update
-    if (shouldUpdateProgress) {
+    if (status.isLoaded && shouldUpdateProgress) {
       lastProgressUpdate.current = now;
       updatePlaybackState({
         position: status.currentTime,
@@ -261,10 +259,13 @@ export function ExpoAudioProvider({
     // @ai-start
     // The native playing and buffering edges, so a button press and an
     // outside pause take one path. ListenSession reads a stall from
-    // isBuffering: iOS reports playing false in a stall, Android true.
+    // isBuffering: iOS reports playing false in a stall, Android true. On
+    // Android isLoaded is also false in a stall, so the check for it comes
+    // after this.
     if (
-      status.playing !== wasPlaying.current ||
-      status.isBuffering !== wasBuffering.current
+      (status.isLoaded || status.isBuffering) &&
+      (status.playing !== wasPlaying.current ||
+        status.isBuffering !== wasBuffering.current)
     ) {
       const stopped = wasPlaying.current && !status.playing;
       wasPlaying.current = status.playing;
@@ -276,10 +277,11 @@ export function ExpoAudioProvider({
         isBuffering: status.isBuffering,
       });
       // Save the final position when playback stops.
-      if (stopped && status.duration > 0) {
+      if (stopped && status.isLoaded && status.duration > 0) {
         persistCurrentProgress(status.currentTime, status.duration, true);
       }
     }
+    if (!status.isLoaded) return;
     // @ai-end
 
     // Start a listening session when a track starts playing

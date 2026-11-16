@@ -365,16 +365,16 @@ it('a pause during a stall: the paused time is not listened time', async () => {
 it('a pause during a stall on Android: playing stays true while it buffers', async () => {
   await playQueue(900);
   await wait(10);
-  // Android: expo-audio reports the playing the user asked for while
-  // ExoPlayer buffers, so a stall keeps playing true.
-  await native({isBuffering: true});
+  // Android: while ExoPlayer buffers, expo-audio reports the playing the user
+  // asked for, so a stall keeps playing true, and isLoaded is false.
+  await native({isBuffering: true, isLoaded: false});
   mockNow += 20_000;
   await native({});
   // A pause while it buffers sends no status. The stop comes when the buffer
   // fills, here 10 s later, and by then isBuffering is false.
   await storeAction(() => usePlayerStore.getState().pause());
   mockNow += 10_000;
-  await native({playing: false, isBuffering: false});
+  await native({playing: false, isBuffering: false, isLoaded: true});
   await wait(60);
   await storeAction(() => usePlayerStore.getState().play());
   await native({playing: true});
