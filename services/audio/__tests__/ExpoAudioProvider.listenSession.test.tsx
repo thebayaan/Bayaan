@@ -362,6 +362,28 @@ it('a pause during a stall: the paused time is not listened time', async () => {
   expect(listenedTotal()).toBe(20_000);
 });
 
+it('Next on the last track with repeat off sends nothing, and the completion has the whole listen', async () => {
+  await storeAction(() =>
+    usePlayerStore.getState().updateQueue([track('a', '1')], 0),
+  );
+  await native({isLoaded: true, duration: 90, currentTime: 0});
+  await storeAction(() => usePlayerStore.getState().play());
+  await native({playing: true});
+  await wait(20);
+  // The end of the queue: the store stays on the track, and the audio plays on.
+  await storeAction(() => usePlayerStore.getState().skipToNext());
+  // The next status: here a new session would start, mid-track.
+  await wait(1);
+  await wait(69);
+  await native({playing: false, currentTime: 90, didJustFinish: true});
+
+  expect(events()).toEqual(['playback_started', 'playback_completed']);
+  expect(eventProps('playback_completed')).toEqual([
+    expect.objectContaining({listened_ms: 90_000, completion_pct: 100}),
+  ]);
+  expect(listenedTotal()).toBe(90_000);
+});
+
 it('repeat one: each loop completes once and starts again as autoplay', async () => {
   usePlayerStore.getState().setRepeatMode('track');
   await playQueue(60);

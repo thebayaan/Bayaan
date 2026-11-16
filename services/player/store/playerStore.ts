@@ -285,14 +285,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const {tracks, currentIndex} = state.queue;
         const {repeatMode} = state.settings;
 
-        // @ai-start
-        // After a completion the session already ended, so this sends nothing.
-        analyticsService.listenSession.end('skipped', {
-          direction: 'next',
-          positionMs: Math.round(state.playback.position * 1000),
-        });
-        // @ai-end
-
         try {
           let nextIndex = currentIndex + 1;
 
@@ -312,6 +304,15 @@ export const usePlayerStore = create<PlayerStoreState>()(
               return;
             }
           }
+
+          // @ai-start
+          // Below the end-of-queue return: there the audio plays on, so the
+          // press sends nothing. After a completion the session already ended.
+          analyticsService.listenSession.end('skipped', {
+            direction: 'next',
+            positionMs: Math.round(state.playback.position * 1000),
+          });
+          // @ai-end
 
           // Optimistic update: set currentIndex immediately so UI updates instantly
           set(state => ({
