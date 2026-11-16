@@ -224,6 +224,11 @@ interface MushafPageContentProps {
   onTap?: () => void;
   /** Live render constants derived from `metrics`. */
   render: RenderConstants;
+  // @ai-start
+  /** The page's height in the list (its getItemLayout entry): the one value
+   *  the list and the page both use. */
+  pageHeight: number;
+  // @ai-end
 }
 
 const EMPTY_BG_MAP = new Map<
@@ -250,6 +255,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     nameFontSize,
     onTap,
     render,
+    pageHeight, // @ai
   }) => {
     const {isDarkMode} = useTheme();
     // @ai-start
@@ -386,7 +392,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       ],
     );
 
-    const canvasHeight = pageLines.length * baseLineHeight;
+    const canvasHeight = pageHeight; // @ai
 
     // ── Paragraph refs for hit testing ─────────────────────
     const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
@@ -748,32 +754,35 @@ const ContinuousQCFPage: React.FC<{
   dividerColor: string;
   onTap?: () => void;
   render: RenderConstants;
-}> = React.memo(({pageNumber, textColor, dividerColor, onTap, render}) => {
-  const {screenWidth, contentWidth, canvasMarginX, baseLineHeight} = render;
-  const lineCount = qcfDataService.getPage(pageNumber).lines.length;
-  const frame = useMemo<QCFPageFrame>(
-    () => ({
-      width: screenWidth,
-      height: lineCount * baseLineHeight,
-      contentLeft: canvasMarginX,
-      contentTop: 0,
-      contentWidth,
-      contentHeight: lineCount * baseLineHeight,
-      lineHeight: baseLineHeight,
-      centerOpeningPages: false,
-    }),
-    [screenWidth, lineCount, baseLineHeight, canvasMarginX, contentWidth],
-  );
-  return (
-    <QCFPage
-      pageNumber={pageNumber}
-      textColor={textColor}
-      dividerColor={dividerColor}
-      frame={frame}
-      onTap={onTap}
-    />
-  );
-});
+  /** The page's height in the list (its getItemLayout entry). */
+  pageHeight: number;
+}> = React.memo(
+  ({pageNumber, textColor, dividerColor, onTap, render, pageHeight}) => {
+    const {screenWidth, contentWidth, canvasMarginX, baseLineHeight} = render;
+    const frame = useMemo<QCFPageFrame>(
+      () => ({
+        width: screenWidth,
+        height: pageHeight,
+        contentLeft: canvasMarginX,
+        contentTop: 0,
+        contentWidth,
+        contentHeight: pageHeight,
+        lineHeight: baseLineHeight,
+        centerOpeningPages: false,
+      }),
+      [screenWidth, pageHeight, baseLineHeight, canvasMarginX, contentWidth],
+    );
+    return (
+      <QCFPage
+        pageNumber={pageNumber}
+        textColor={textColor}
+        dividerColor={dividerColor}
+        frame={frame}
+        onTap={onTap}
+      />
+    );
+  },
+);
 ContinuousQCFPage.displayName = 'ContinuousQCFPage';
 // @ai-end
 
@@ -946,10 +955,12 @@ const ContinuousMushafView = forwardRef<
     const renderItem = useCallback(
       ({item}: {item: number}) => {
         // @ai-start
+        // The page is as tall as its layout entry says: the list and the
+        // page read the one value.
+        const pageHeight = pageItemLayout(pageOffsets, item - 1).length;
         // Until the fonts are ready, a blank page keeps the page's place.
         if (!fontMgr) {
-          const {length} = pageItemLayout(pageOffsets, item - 1);
-          return <View style={{height: length}} />;
+          return <View style={{height: pageHeight}} />;
         }
         if (drawsQCF) {
           return (
@@ -959,6 +970,7 @@ const ContinuousMushafView = forwardRef<
               dividerColor={dividerColor}
               onTap={onTap}
               render={render}
+              pageHeight={pageHeight}
             />
           );
         }
@@ -982,6 +994,7 @@ const ContinuousMushafView = forwardRef<
             nameFontSize={surahHeaderFonts.nameFontSize}
             onTap={onTap}
             render={render}
+            pageHeight={pageHeight} // @ai
           />
         );
       },

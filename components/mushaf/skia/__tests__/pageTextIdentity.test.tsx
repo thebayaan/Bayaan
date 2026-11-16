@@ -640,5 +640,9 @@ describe('ContinuousMushafView list', () => {
       layoutOf(0).offset + pagesAbove * lineHeight,
       6,
     );
+    // The page drawn is exactly as tall as its layout entry: a taller page
+    // would move every page below it off its offset.
+    const drawn = renderers[0].toJSON() as TestRenderer.ReactTestRendererJSON;
+    expect(drawn.props.style.height).toBe(layoutOf(PAGE - 1).length);
   });
 });
