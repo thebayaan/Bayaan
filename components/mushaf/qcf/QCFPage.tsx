@@ -105,6 +105,7 @@ import {
   getArabicTextWeightStrokeWidth,
 } from '@/utils/skiaTextWeight';
 import {disposeAfterPendingDraws} from '@/utils/skiaDeferredDispose';
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import SkiaSurahHeader from '../skia/SkiaSurahHeader';
 import {
   computeLineAllahNameColorMaps,
@@ -163,6 +164,7 @@ interface QCFPageProps {
   frame: QCFPageFrame;
   onReady?: () => void;
   onTap?: () => void;
+  onFirstContent?: () => void; // @ai
 }
 
 const DK_FONT_FAMILY = 'DigitalKhattV2';
@@ -199,6 +201,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
   frame,
   onReady,
   onTap,
+  onFirstContent, // @ai
 }) => {
   const {
     width,
@@ -724,6 +727,9 @@ const QCFPage: React.FC<QCFPageProps> = ({
   useEffect(() => {
     if (error || layout) onReady?.();
   }, [layout, error, onReady]);
+  // @ai — the same moment as onReady: the page's lines, or its error state with
+  // a retry when a page font cannot load (offline). Once, also after a retry.
+  useFirstContent(error !== null || layout !== null, onFirstContent);
 
   const charAtPoint = useCallback(
     (x: number, y: number): LineCharHit | null => {
