@@ -68,7 +68,7 @@ class AnalyticsServiceImpl {
   private sessionListenMs: number = 0;
   // @ai-start
   /**
-   * True after a real background, until the next `active`. A launch that
+   * True after a real background, until the next app_opened. A launch that
    * starts in the background counts, so its first `active` sends app_opened.
    */
   private backgrounded = AppState.currentState === 'background';
@@ -339,6 +339,7 @@ class AnalyticsServiceImpl {
   // --- Lifecycle ---
 
   trackAppOpened(): void {
+    this.backgrounded = false; // @ai
     this.sessionStartTime = Date.now();
     this.sessionListenMs = 0;
     this.capture(ANALYTICS_EVENTS.APP_OPENED, {});
@@ -346,11 +347,21 @@ class AnalyticsServiceImpl {
 
   // @ai-start
   /**
+   * The mount's app_opened. While the app is in the background (a CarPlay
+   * launch), it sends nothing, and the first `active` sends app_opened.
+   */
+  trackAppOpenedOnMount(): void {
+    if (AppState.currentState === 'background') return;
+    this.trackAppOpened();
+  }
+
+  /**
    * The AppState listener for app_backgrounded and app_opened. Only
    * `background` is a background. iOS reports `inactive` while the app is
    * still on screen (Control Center, the notification list, the app switcher,
    * a system alert) and on the way to `background`, so `inactive` sends
-   * nothing. The mount sends the first app_opened.
+   * nothing. The mount sends the first app_opened, unless it comes while the
+   * app is in the background.
    */
   handleAppStateChange(state: AppStateStatus): void {
     if (state === 'background') {
@@ -358,7 +369,6 @@ class AnalyticsServiceImpl {
       this.backgrounded = true;
       this.trackAppBackgrounded();
     } else if (state === 'active' && this.backgrounded) {
-      this.backgrounded = false;
       this.trackAppOpened();
     }
   }

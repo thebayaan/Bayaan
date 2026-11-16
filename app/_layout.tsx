@@ -145,7 +145,7 @@ function AnalyticsConnector(): null {
   useEffect(() => {
     if (posthog) {
       analyticsService.setPostHogInstance(posthog);
-      analyticsService.trackAppOpened();
+      analyticsService.trackAppOpenedOnMount(); // @ai
     }
   }, [posthog]);
 

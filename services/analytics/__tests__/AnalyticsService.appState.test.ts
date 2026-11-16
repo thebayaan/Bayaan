@@ -47,16 +47,28 @@ async function launch(launchState: AppStateStatus): Promise<Service> {
   return analyticsService;
 }
 
-function sent(service: Service, states: AppStateStatus[]): string[] {
+/** The events that the mount (`'mount'`) and the AppState changes send. */
+function sent(service: Service, steps: (AppStateStatus | 'mount')[]): string[] {
   capture.mockClear();
-  states.forEach(state => service.handleAppStateChange(state));
+  steps.forEach(step => {
+    if (step === 'mount') {
+      service.trackAppOpenedOnMount();
+      return;
+    }
+    require('react-native').AppState.currentState = step;
+    service.handleAppStateChange(step);
+  });
   return capture.mock.calls.map(([event]) => event);
 }
 
-it('a cold launch sends nothing more than the mount does', async () => {
+it('a cold launch sends one app_opened, from the mount', async () => {
   // iOS starts `inactive` and then goes `active`; Android starts `active`.
-  expect(sent(await launch('inactive'), ['active'])).toEqual([]);
-  expect(sent(await launch('active'), ['active'])).toEqual([]);
+  expect(sent(await launch('inactive'), ['mount', 'active'])).toEqual([
+    'app_opened',
+  ]);
+  expect(sent(await launch('active'), ['mount', 'active'])).toEqual([
+    'app_opened',
+  ]);
 });
 
 it('a launch that starts in the background sends app_opened at its first active', async () => {
@@ -65,6 +77,21 @@ it('a launch that starts in the background sends app_opened at its first active'
     'app_opened',
   ]);
   expect(sent(service, ['active'])).toEqual([]);
+});
+
+it('a launch in the background, then the mount, then active sends one app_opened', async () => {
+  // A CarPlay launch: the process starts in the background, and the phone
+  // root mounts before the app comes to the screen.
+  const carPlay = await launch('background');
+  expect(sent(carPlay, ['mount'])).toEqual([]);
+  expect(sent(carPlay, ['inactive', 'active'])).toEqual(['app_opened']);
+  // The phone root mounts after the app comes to the screen: the mount sends
+  // app_opened, and Control Center after it sends nothing.
+  const service = await launch('background');
+  require('react-native').AppState.currentState = 'active';
+  expect(sent(service, ['mount', 'inactive', 'active'])).toEqual([
+    'app_opened',
+  ]);
 });
 
 it('Control Center opening and closing sends nothing', async () => {
