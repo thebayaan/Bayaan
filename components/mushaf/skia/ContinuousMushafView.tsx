@@ -926,14 +926,11 @@ const ContinuousMushafView = forwardRef<
 
     const renderItem = useCallback(
       ({item}: {item: number}) => {
+        if (!fontMgr) return null;
         // @ai-start
         // The page is as tall as its layout entry says: the list and the
         // page read the one value.
         const pageHeight = pageItemLayout(pageOffsets, item - 1).length;
-        // Until the fonts are ready, a blank page keeps the page's place.
-        if (!fontMgr) {
-          return <View style={{height: pageHeight}} />;
-        }
         if (drawsQCF) {
           return (
             <ContinuousQCFPage
@@ -994,10 +991,10 @@ const ContinuousMushafView = forwardRef<
     const keyExtractor = useCallback((item: number) => `page-${item}`, []);
 
     // @ai-start
-    // An item with no fontMgr draws nothing and has no height, so a list mounted
-    // now would mount all 604 pages to fill the screen, then draw them all when
-    // the fonts arrive. The reader can open before them: they finish after the
-    // data.
+    // The one font wait: the reader can open before the fonts (they finish
+    // after the data), and the list mounts once they are there. Its first
+    // layout then has the text of the page it opens on, and no page is drawn
+    // blank first.
     if (!fontMgr) return null;
     // @ai-end
 
