@@ -18,6 +18,25 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+jest.mock('@/services/mushaf/mushafTables', () =>
+  jest
+    .requireActual('@/services/mushaf/__fixtures__/wordStoreQueries')
+    .fakeMushafTables(
+      ['1:1:1', '1:1:2'],
+      [
+        {
+          page_number: 1,
+          line_number: 1,
+          line_type: 'ayah',
+          is_centered: 0,
+          first_word_id: 1,
+          last_word_id: 2,
+          surah_number: 1,
+        },
+      ],
+    ),
+);
+
 jest.mock('expo-sqlite', () => {
   // @ai the WordStore's queries (DigitalKhattDataService).
   const {withWordStoreQueries} = jest.requireActual(
@@ -36,23 +55,10 @@ jest.mock('expo-sqlite', () => {
           if (!files.has(name)) return null;
           return {name: /name='(\w+)'/.exec(sql)?.[1]};
         },
-        async getAllAsync(sql: string) {
+        async getAllAsync() {
           const base = baseOf(name);
           if (broken.has(base)) {
             throw new Error('database disk image is malformed');
-          }
-          if (sql.includes('FROM pages')) {
-            return [
-              {
-                page_number: 1,
-                line_number: 1,
-                line_type: 'ayah',
-                is_centered: 0,
-                first_word_id: 1,
-                last_word_id: 2,
-                surah_number: 1,
-              },
-            ];
           }
           const tag = base === 'dk_words' ? 'H' : 'W';
           return [
