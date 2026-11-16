@@ -25,6 +25,7 @@ import {currentLanguageConfig} from '@/i18n/language'; // @ai
 // @ai-start
 import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {listRowContextMenusEnabled} from '@/components/native/nativeMenus'; // @ai
 // @ai-end
 import {
   getReciterDisplayName,
@@ -157,7 +158,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     // @ai-start
     const options = useSurahOptionsContext();
     const tapMenuAvailable = useNativeOptionsMenu('tap');
-    const rowMenuAvailable = useNativeOptionsMenu('longPress');
+    const rowMenuAvailable =
+      useNativeOptionsMenu('longPress') && listRowContextMenusEnabled;
     // @ai-end
 
     const surah = getSurahById(parseInt(surahId, 10));
