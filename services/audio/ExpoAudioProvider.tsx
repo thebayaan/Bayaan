@@ -104,7 +104,8 @@ export function ExpoAudioProvider({
   });
   const isHandlingTrackEnd = useRef(false);
   const wasPlaying = useRef(false);
-  const wasBuffering = useRef(false); // @ai
+  // The player starts with nothing loaded, which the edge counts as a stall. @ai
+  const wasBuffering = useRef(true); // @ai
   const lastTrackIdRef = useRef<string | null>(null);
 
   // Get store actions
@@ -259,22 +260,23 @@ export function ExpoAudioProvider({
     // @ai-start
     // The native playing and buffering edges, so a button press and an
     // outside pause take one path. ListenSession reads a stall from
-    // isBuffering: iOS reports playing false in a stall, Android true. On
-    // Android isLoaded is also false in a stall, so the check for it comes
-    // after this.
+    // isBuffering: iOS reports playing false in a stall, Android true. A
+    // player that is not loaded plays nothing either: on Android isLoaded is
+    // false in a stall, and after an error isBuffering is false too. So both
+    // count as a stall, and the check for isLoaded comes after this.
+    const stalled = status.isBuffering || !status.isLoaded;
     if (
-      (status.isLoaded || status.isBuffering) &&
-      (status.playing !== wasPlaying.current ||
-        status.isBuffering !== wasBuffering.current)
+      status.playing !== wasPlaying.current ||
+      stalled !== wasBuffering.current
     ) {
       const stopped = wasPlaying.current && !status.playing;
       wasPlaying.current = status.playing;
-      wasBuffering.current = status.isBuffering;
+      wasBuffering.current = stalled;
       listenSession.playingChanged(status.playing, {
         positionMs: Math.round(status.currentTime * 1000),
         durationMs: Math.round(status.duration * 1000),
         didJustFinish: status.didJustFinish,
-        isBuffering: status.isBuffering,
+        isBuffering: stalled,
       });
       // Save the final position when playback stops.
       if (stopped && status.isLoaded && status.duration > 0) {
