@@ -1,5 +1,5 @@
 import branding from '@/config/branding';
-import {RECITERS, type Rewayat} from '@/data/reciterData';
+import {RECITERS, type Reciter, type Rewayat} from '@/data/reciterData'; // @ai
 import {timestampDatabaseService} from './TimestampDatabaseService';
 import type {AyahTimestamp} from '@/types/timestamps';
 
@@ -75,12 +75,34 @@ class TimestampFetchService {
    * flag for bundled timings to apply.
    */
   hasSource(rewayatId: string): boolean {
+    return this.rewayatHasSource(rewayatId, this.findRewayat(rewayatId)); // @ai
+  }
+
+  // @ai-start
+  /**
+   * Every rewayah that has a source (as `hasSource` decides), with its
+   * reciter, in catalog order. The Follow-Along registry and the Mushaf
+   * player's reciter list both read this, so they cannot drift apart. Each
+   * rewayah is checked as found, with no second `RECITERS` scan by id.
+   */
+  rewayatWithSource(): {reciter: Reciter; rewayat: Rewayat}[] {
+    return RECITERS.flatMap(reciter =>
+      reciter.rewayat
+        .filter(rewayat => this.rewayatHasSource(rewayat.id, rewayat))
+        .map(rewayat => ({reciter, rewayat})),
+    );
+  }
+
+  private rewayatHasSource(
+    rewayatId: string,
+    rw: Rewayat | undefined,
+  ): boolean {
     // Any local coverage at all counts as a source (RFC-019), independent of
     // the catalog's R2 `has_timestamps` flag.
     if (this.localSurahs(rewayatId).length > 0) return true;
-    const rw = this.findRewayat(rewayatId);
     return Boolean(rw?.has_timestamps);
   }
+  // @ai-end
 
   /**
    * Returns true if timestamps cover this specific surah from EITHER the

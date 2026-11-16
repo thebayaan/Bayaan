@@ -36,7 +36,7 @@ import {
   CollectionOptionsMenu,
   type CollectionOptionsPayload,
 } from '@/components/sheets/options/collectionOptions';
-import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse'; // @ai
+import {savedVerseRouteParams} from '@/services/verse-annotations/unitAnnotations'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 // @ai-end
 
@@ -128,7 +128,7 @@ const NotesScreen = () => {
       openingRef.current = true;
       router.push({
         pathname: '/mushaf',
-        params: savedVerseOpenParams(note),
+        params: savedVerseRouteParams(note),
       });
     },
     [router],

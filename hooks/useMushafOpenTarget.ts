@@ -4,7 +4,7 @@
 // a saved verse is restored. It is worked out once and kept: a rewayah switch
 // in the reader later moves no page and flashes no verse again.
 import {useEffect, useState} from 'react';
-import {useMushafData} from '@/hooks/useMushafData';
+import {useMushafData, type MushafDataState} from '@/hooks/useMushafData';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {isRewayahId} from '@/services/rewayah/RewayahIdentity';
 import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
@@ -35,7 +35,17 @@ export type MushafOpenTarget = {
 export type MushafOpenState =
   | {state: 'loading'}
   | {state: 'failed'; retry: () => void}
-  | {state: 'ready'; target: MushafOpenTarget};
+  | {
+      state: 'ready';
+      target: MushafOpenTarget;
+      /**
+       * The data of the open reader. A failed read of the active rewayah
+       * drops it mid-session: the reader stays mounted at its own page, and
+       * the screen shows the error with its retry, then the load, over it.
+       */
+      data: MushafDataState;
+      retry: () => void;
+    };
 
 function resolveTarget(params: MushafOpenParams): MushafOpenTarget {
   const {surah, page, ayah, anchor} = params;
@@ -75,7 +85,10 @@ export function useMushafOpenTarget(params: MushafOpenParams): MushafOpenState {
     setTarget(resolveTarget(params));
   }
 
+  // Failed only while there is no target: once the reader opened, it stays.
+  if (target) {
+    return {state: 'ready', target, data: data.state, retry: data.retry};
+  }
   if (data.state === 'failed') return {state: 'failed', retry: data.retry};
-  if (data.state === 'ready' && target) return {state: 'ready', target};
   return {state: 'loading'};
 }
