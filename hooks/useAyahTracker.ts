@@ -22,6 +22,7 @@ import {
 } from '@/utils/timestampNumbering';
 // @ai-start
 import {canShowRewayahVerses} from '@/utils/playbackVerseUnits';
+import {useAppForeground} from '@/hooks/useAppForeground';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 // @ai-end
 
@@ -89,6 +90,7 @@ export function useAyahTracker() {
   const timestampKey = useTimestampStore(s => s.currentTimestampKey);
   const followAlongEnabled = useTimestampStore(s => s.followAlongEnabled);
   const catalogReady = useReciterStore(s => s.isInitialized);
+  const foreground = useAppForeground(); // @ai
   const reciterRewayah = useMemo(
     () =>
       rewayatId
@@ -190,8 +192,14 @@ export function useAyahTracker() {
   }, [followAlongEnabled, numbering]);
   // @ai-end
 
+  // @ai-start
+  // No ticks in the background: a verse published there would only be
+  // queued for the first frame on return. On return the first tick
+  // publishes the verse being recited.
+  // @ai-end
   useEffect(() => {
     if (
+      !foreground || // @ai
       playbackState !== 'playing' ||
       !timestamps ||
       !numbering ||
@@ -273,7 +281,14 @@ export function useAyahTracker() {
       lastAyahRef.current = null;
       foreignRef.current = null; // @ai
     };
-  }, [playbackState, timestamps, numbering, followAlongEnabled, surahNumber]); // @ai
+  }, [
+    foreground, // @ai
+    playbackState,
+    timestamps,
+    numbering,
+    followAlongEnabled,
+    surahNumber,
+  ]); // @ai
 }
 
 // @ai-start

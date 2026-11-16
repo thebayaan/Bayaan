@@ -1,6 +1,7 @@
 import {create} from 'zustand';
 import {useEffect, useRef} from 'react';
 import {usePlayerStore} from './playerStore';
+import {useAppForeground} from '@/hooks/useAppForeground'; // @ai
 
 interface ProgressState {
   position: number;
@@ -49,14 +50,24 @@ export function useProgress() {
     setSeekPosition,
   } = useProgressStore();
 
-  // Subscribe to playerStore for progress updates
-  const playback = usePlayerStore(state => state.playback);
-
   // Use refs to access latest values without causing effect re-runs
   const isSeekingRef = useRef(isSeeking);
   const seekPositionRef = useRef(seekPosition);
   const positionRef = useRef(position);
   const durationRef = useRef(duration);
+
+  // @ai-start
+  // Subscribe to the two playerStore fields shown here. In the background
+  // each selector returns the value already shown, so the tick renders
+  // nothing: Android would queue each update for the first frame on return.
+  const foreground = useAppForeground();
+  const playbackPosition = usePlayerStore(state =>
+    foreground ? state.playback.position : positionRef.current,
+  );
+  const playbackDuration = usePlayerStore(state =>
+    foreground ? state.playback.duration : durationRef.current,
+  );
+  // @ai-end
 
   // Keep refs in sync
   useEffect(() => {
@@ -82,20 +93,20 @@ export function useProgress() {
 
     // Update duration if changed significantly
     if (
-      playback.duration > 0 &&
-      Math.abs(playback.duration - durationRef.current) > 0.5
+      playbackDuration > 0 &&
+      Math.abs(playbackDuration - durationRef.current) > 0.5
     ) {
-      setDuration(playback.duration);
+      setDuration(playbackDuration);
     }
 
     // Update position if not seeking and changed significantly
     if (
       !seekPositionRef.current &&
-      Math.abs(playback.position - positionRef.current) > 0.5
+      Math.abs(playbackPosition - positionRef.current) > 0.5
     ) {
-      setPosition(playback.position);
+      setPosition(playbackPosition);
     }
-  }, [playback.position, playback.duration, setPosition, setDuration]);
+  }, [playbackPosition, playbackDuration, setPosition, setDuration]); // @ai
 
   return {
     position,

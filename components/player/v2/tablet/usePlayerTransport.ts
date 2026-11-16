@@ -51,14 +51,17 @@ export function usePlayerTransport() {
     if (trackLoading || isLastTrack) return;
     await skipToNext();
   }, [trackLoading, isLastTrack, skipToNext]);
+  // Read at the press, so the seek handlers do not change on every tick.
   const seekBack = useCallback(async () => {
     if (trackLoading) return;
-    await seekTo(Math.max(0, progress.position - SEEK_INTERVAL));
-  }, [trackLoading, progress.position, seekTo]);
+    const {position} = usePlayerStore.getState().playback;
+    await seekTo(Math.max(0, position - SEEK_INTERVAL));
+  }, [trackLoading, seekTo]);
   const seekForward = useCallback(async () => {
     if (trackLoading) return;
-    await seekTo(progress.position + SEEK_INTERVAL);
-  }, [trackLoading, progress.position, seekTo]);
+    const {position} = usePlayerStore.getState().playback;
+    await seekTo(position + SEEK_INTERVAL);
+  }, [trackLoading, seekTo]);
 
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
