@@ -134,6 +134,45 @@ describe('playingChanged', () => {
     expect(totals()).toBe(20_000);
   });
 
+  it('closes the segment while it buffers with playing true, as on Android, and sends nothing', () => {
+    session.start(TRACK, 0);
+    now += 10_000;
+    session.playingChanged(true, {...at(10_000), isBuffering: true});
+    expect(totals()).toBe(10_000);
+    now += 20_000;
+    session.playingChanged(true, at(10_000));
+    now += 5000;
+    session.end('skipped', {direction: 'next', positionMs: 15_000});
+    expect(sent()).toEqual(['started', 'skipped']);
+    expect(events.skipped.mock.calls[0][0].listened_ms).toBe(15_000);
+  });
+
+  it('a pause during an Android stall sends nothing, and its late stop adds no time', () => {
+    session.start(TRACK, 0);
+    now += 10_000;
+    session.playingChanged(true, {...at(10_000), isBuffering: true});
+    now += 30_000; // the stall, then the pause; its stop comes without isBuffering
+    session.playingChanged(false, at(10_000));
+    now += 60_000;
+    session.playingChanged(true, at(10_000));
+    now += 10_000;
+    session.playingChanged(false, at(20_000));
+    expect(sent()).toEqual(['started', 'paused']);
+    expect(events.paused.mock.calls[0][0].listened_ms).toBe(10_000);
+    expect(totals()).toBe(20_000);
+  });
+
+  it('opens no segment at a start while it buffers', () => {
+    session.playingChanged(true, {...at(0), isBuffering: true});
+    session.start(TRACK, 0);
+    now += 5000;
+    session.playingChanged(true, at(0));
+    now += 10_000;
+    session.playingChanged(false, at(10_000));
+    expect(events.paused.mock.calls[0][0].listened_ms).toBe(10_000);
+    expect(totals()).toBe(10_000);
+  });
+
   it('treats a stop in the last 2 s as the track end, not a pause', () => {
     session.start(TRACK, 0);
     session.playingChanged(false, at(DURATION_MS - 1500));

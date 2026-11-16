@@ -362,6 +362,33 @@ it('a pause during a stall: the paused time is not listened time', async () => {
   expect(listenedTotal()).toBe(20_000);
 });
 
+it('a pause during a stall on Android: playing stays true while it buffers', async () => {
+  await playQueue(900);
+  await wait(10);
+  // Android: expo-audio reports the playing the user asked for while
+  // ExoPlayer buffers, so a stall keeps playing true.
+  await native({isBuffering: true});
+  mockNow += 20_000;
+  await native({});
+  // A pause while it buffers sends no status. The stop comes when the buffer
+  // fills, here 10 s later, and by then isBuffering is false.
+  await storeAction(() => usePlayerStore.getState().pause());
+  mockNow += 10_000;
+  await native({playing: false, isBuffering: false});
+  await wait(60);
+  await storeAction(() => usePlayerStore.getState().play());
+  await native({playing: true});
+  await wait(10);
+  await storeAction(() => usePlayerStore.getState().pause());
+  await native({playing: false});
+
+  expect(events()).toEqual(['playback_started', 'playback_paused']);
+  expect(eventProps('playback_paused')).toEqual([
+    expect.objectContaining({listened_ms: 10_000}),
+  ]);
+  expect(listenedTotal()).toBe(20_000);
+});
+
 it('Next on the last track with repeat off sends nothing, and the completion has the whole listen', async () => {
   await storeAction(() =>
     usePlayerStore.getState().updateQueue([track('a', '1')], 0),

@@ -104,6 +104,7 @@ export function ExpoAudioProvider({
   });
   const isHandlingTrackEnd = useRef(false);
   const wasPlaying = useRef(false);
+  const wasBuffering = useRef(false); // @ai
   const lastTrackIdRef = useRef<string | null>(null);
 
   // Get store actions
@@ -258,11 +259,16 @@ export function ExpoAudioProvider({
     }
 
     // @ai-start
-    // The native playing edge, so a button press and an outside pause take one
-    // path. iOS reports playing false in a stall; ListenSession reads the stop
-    // with isBuffering as a stall, not a pause.
-    if (status.playing !== wasPlaying.current) {
+    // The native playing and buffering edges, so a button press and an
+    // outside pause take one path. ListenSession reads a stall from
+    // isBuffering: iOS reports playing false in a stall, Android true.
+    if (
+      status.playing !== wasPlaying.current ||
+      status.isBuffering !== wasBuffering.current
+    ) {
+      const stopped = wasPlaying.current && !status.playing;
       wasPlaying.current = status.playing;
+      wasBuffering.current = status.isBuffering;
       listenSession.playingChanged(status.playing, {
         positionMs: Math.round(status.currentTime * 1000),
         durationMs: Math.round(status.duration * 1000),
@@ -270,7 +276,7 @@ export function ExpoAudioProvider({
         isBuffering: status.isBuffering,
       });
       // Save the final position when playback stops.
-      if (!status.playing && status.duration > 0) {
+      if (stopped && status.duration > 0) {
         persistCurrentProgress(status.currentTime, status.duration, true);
       }
     }

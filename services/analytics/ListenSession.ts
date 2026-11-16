@@ -22,7 +22,7 @@ export interface ListenPosition {
   positionMs: number;
   durationMs: number;
   didJustFinish?: boolean;
-  /** The player waits for data: a stop now is a stall, not a pause. */
+  /** The player waits for data: a stall, not listened time. */
   isBuffering?: boolean;
 }
 
@@ -61,6 +61,8 @@ export class ListenSession {
   private listenedMs = 0;
   /** A playback_paused went out, so the next play is a resume. */
   private paused = false;
+  /** The native player waits for data. */
+  private buffering = false;
   private nextIsAutoplay = false;
 
   constructor(
@@ -78,7 +80,7 @@ export class ListenSession {
     this.track = track;
     this.listenedMs = 0;
     this.paused = false;
-    this.segmentStartedAt = this.now();
+    this.segmentStartedAt = this.buffering ? 0 : this.now();
     const source = this.nextIsAutoplay ? 'autoplay' : 'queue';
     this.nextIsAutoplay = false;
     this.events.started({
@@ -89,11 +91,16 @@ export class ListenSession {
     });
   }
 
-  /** The native player started or stopped. */
+  /**
+   * The native player started or stopped, or its buffering changed. A segment
+   * is open while it plays and does not buffer: Android reports playing true
+   * through a stall, iOS reports playing false.
+   */
   playingChanged(playing: boolean, at: ListenPosition): void {
+    this.buffering = at.isBuffering === true;
     const track = this.track;
     if (!track) return;
-    if (playing) {
+    if (playing && !this.buffering) {
       if (this.segmentStartedAt > 0) return;
       this.segmentStartedAt = this.now();
       if (!this.paused) return;
@@ -110,9 +117,10 @@ export class ListenSession {
       at.didJustFinish ||
       (at.durationMs > 0 &&
         at.durationMs - at.positionMs < TRACK_END_WINDOW_MS);
-    // A stall, or a pause while the buffer is empty, sends nothing: on iOS
-    // nothing else reports the pause, so the segment closes here.
-    if (isTrackEnd || at.isBuffering) return;
+    // A stall sends nothing. A pause during a stall sends nothing either: on
+    // iOS no other status reports it, and on Android its stop comes when the
+    // buffer fills, after the segment closed at the stall.
+    if (isTrackEnd || this.buffering) return;
     this.paused = true;
     this.events.paused({
       ...this.trackProps(track),
