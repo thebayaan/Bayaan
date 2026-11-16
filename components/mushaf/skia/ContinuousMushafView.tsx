@@ -3,12 +3,14 @@ import React, {
   useCallback,
   useRef,
   useImperativeHandle,
+  useState, // @ai
   useSyncExternalStore,
   forwardRef,
 } from 'react';
 import {FlatList} from 'react-native'; // @ai
 import {Skia} from '@shopify/react-native-skia';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {verticalScale} from '@/utils/scale';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -114,6 +116,7 @@ interface ContinuousMushafViewProps {
   metrics: MushafLayoutMetrics;
   /** Whether a tap on the status bar scrolls back to page 1. Default on. @ai */
   scrollsToTop?: boolean; // @ai
+  onFirstContent?: () => void; // @ai
 }
 
 const ContinuousMushafView = forwardRef<
@@ -129,6 +132,7 @@ const ContinuousMushafView = forwardRef<
       onCurrentPageChange,
       metrics,
       scrollsToTop = true, // @ai
+      onFirstContent, // @ai
     },
     ref,
   ) => {
@@ -141,6 +145,17 @@ const ContinuousMushafView = forwardRef<
     // Subscribe to preloaded fontMgr; no useFonts fallback that races
     // at first-mount.
     const fontMgr = useMushafFontMgr();
+
+    // @ai-start
+    // The list's first content size comes when the pages it renders first (the
+    // page asked for and the next) have their layout, and VirtualizedList
+    // scrolls to initialScrollIndex just before it passes that size on: the
+    // page asked for is on screen. The list mounts after the fonts (below), so
+    // the page has its text by then.
+    const [listLaidOut, setListLaidOut] = useState(false);
+    const handleContentSizeChange = useCallback(() => setListLaidOut(true), []);
+    useFirstContent(listLaidOut, onFirstContent);
+    // @ai-end
 
     // Surah header fonts (computed once from quranCommon typeface).
     // `fontMgr` dep mirrors the SkiaPage memo: when the preload completes
@@ -380,6 +395,7 @@ const ContinuousMushafView = forwardRef<
         scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        onContentSizeChange={handleContentSizeChange} // @ai
       />
     );
   },
