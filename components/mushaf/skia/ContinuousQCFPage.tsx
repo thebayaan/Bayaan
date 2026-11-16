@@ -1,7 +1,7 @@
 // @ai-start
 import React, {useMemo} from 'react';
 import QCFPage, {type QCFPageFrame} from '../qcf/QCFPage';
-import type {RenderConstants} from './ContinuousMushafView';
+import type {RenderConstants} from './continuousRenderConstants';
 
 // A Mushaf 1440 page in the vertical scroll: the same text block as the
 // DigitalKhatt page it replaces (its lines stacked from the top).

@@ -60,7 +60,7 @@ import {useRecitationMarkColors} from './useRecitationMarkColors';
 import {SheetManager} from 'react-native-actions-sheet';
 import {markAtChar} from './recitationTap';
 import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
-import type {RenderConstants} from './ContinuousMushafView'; // @ai
+import type {RenderConstants} from './continuousRenderConstants'; // @ai
 
 interface ParagraphInfo {
   paragraph: SkParagraph;
