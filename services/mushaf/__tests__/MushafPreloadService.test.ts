@@ -1,10 +1,9 @@
 // @ai RFC-023 step 2: the fonts load while the data loads.
 /**
  * When the data load rejects, the run must not end before its font load
- * does: a retry that found no provider yet would start a second font load,
- * and a first load that ended later would write its own provider over the one
- * the retry published, with no subscriber told. A retry keeps the fonts that
- * loaded.
+ * does: a retry keeps the fonts that loaded, so a run that ended first would
+ * leave its retry no fonts, and the retry would start a second font load
+ * that races the first one.
  *
  * Skia, the data service, the text service and the diff service are mocked.
  * The first font of each load waits on that load's gate, so the test decides
@@ -100,8 +99,8 @@ afterEach(() => {
 });
 
 describe('the font load and a retry after a data failure', () => {
-  it('the run waits for its font load, and a retry keeps that provider', async () => {
-    const releaseFirstFonts = gate();
+  it('the run waits for its fonts, and the retry keeps them', async () => {
+    const releaseFonts = gate();
     const notified: string[] = [];
     mushafPreloadService.subscribe(() =>
       notified.push(mushafPreloadService.state),
@@ -113,23 +112,22 @@ describe('the font load and a retry after a data failure', () => {
     await flush();
     // The data failed, and the run waits for its fonts.
     expect(mushafPreloadService.state).toBe('loading');
-    releaseFirstFonts();
+    releaseFonts();
     await first;
     expect(mushafPreloadService.state).toBe('failed');
-
     expect(providerId()).toBe(1);
 
     await mushafPreloadService.initialize();
-    expect(mockProviders).toBe(1); // the retry started no font load
-    expect(mushafPreloadService.state).toBe('ready');
-    const atReady = providerId();
-    expect(atReady).toBe(1);
-
-    await flush();
-
-    expect({notified, fontMgrAfter: providerId()}).toEqual({
+    expect({
+      state: mushafPreloadService.state,
+      notified,
+      providers: mockProviders, // the retry started no font load
+      fontMgr: providerId(),
+    }).toEqual({
+      state: 'ready',
       notified: ['failed', 'ready'],
-      fontMgrAfter: atReady,
+      providers: 1,
+      fontMgr: 1,
     });
   });
 });

@@ -476,7 +476,7 @@ const createStyles = (theme: Theme) =>
     emptyStateText: {
       fontSize: moderateScale(12.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       lineHeight: moderateScale(18),
       paddingHorizontal: moderateScale(16),
@@ -534,14 +534,14 @@ const createStyles = (theme: Theme) =>
     selectorOptionNative: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: verticalScale(1),
     },
     // Tafseer label
     tafseerLabel: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: verticalScale(6),
@@ -549,20 +549,20 @@ const createStyles = (theme: Theme) =>
     rangeBadge: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       marginBottom: verticalScale(8),
     },
     noTafseer: {
       fontSize: moderateScale(14),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
     // @ai-start
     sharedNote: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: theme.colors.textTertiary,
       lineHeight: moderateScale(18),
       marginTop: verticalScale(8),
     },
@@ -606,7 +606,7 @@ const createStyles = (theme: Theme) =>
     footerCounter: {
       fontSize: moderateScale(12.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(0.3),
     },
   });

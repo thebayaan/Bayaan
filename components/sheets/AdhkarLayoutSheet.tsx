@@ -278,7 +278,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(4),
       letterSpacing: latinLetterSpacing(1.2),

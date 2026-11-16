@@ -528,7 +528,7 @@ const createStyles = (theme: Theme) =>
     subtitle: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
     },
     card: {

@@ -1315,6 +1315,45 @@ describe('chunk reads (WordStore)', () => {
     expect(service.getRewayahLoadState('hafs')).toBe('ready');
   });
 
+  // A read fails while its store is still open: the service drops the store
+  // a microtask later. A switch to its rewayah in that turn must not commit
+  // it, or the rewayah reads ready with every word empty and no retry.
+  describe.each([
+    ['the switch takes the store, then a read of it fails', 'after'],
+    ['a read fails, then the switch asks for the store', 'before'],
+  ] as const)('a switch and a failed read in one turn: %s', (_name, order) => {
+    it('serves no failed store, and the rewayah reads again', async () => {
+      const service = await initialized();
+      await service.ensureRewayahLoaded('warsh');
+      const failRead = () => {
+        fake.chunkFaults.set('dk_words_warsh', 'throw');
+        expect(service.getVerseWords('1:1', 'warsh')).toEqual([]);
+      };
+      if (order === 'before') failRead();
+      const switched = service.switchRewayah('warsh');
+      if (order === 'after') failRead();
+      const outcome = await switched.then(
+        () => 'committed',
+        error => error,
+      );
+      await flush();
+
+      expect(outcome).toBeInstanceOf(RewayahLoadError);
+      expect(service.rewayah).toBe('hafs');
+      expect(service.getWordText(1)).toBe('H1');
+      expect(service.getRewayahLoadState('warsh')).toBe('error');
+      expect(fake.files.has(N.warsh)).toBe(false); // its copy went
+      expect(fake.violations).toEqual([]);
+
+      fake.log.length = 0;
+      await service.switchRewayah('warsh');
+      expect(count(`import:${N.warsh}`)).toBe(1);
+      expect(service.rewayah).toBe('warsh');
+      expect(service.getWordText(1)).toBe('W1');
+      expect(service.getLayoutIdentityKey()).not.toBeNull();
+    });
+  });
+
   it('a reset in the same turn wins over the failed read', async () => {
     const service = await initialized();
     fake.chunkFaults.set('dk_words', 'throw');

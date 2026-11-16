@@ -33,9 +33,11 @@ import i18n from '@/i18n';
 import {getSurahDisplayName} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 // @ai-start
-import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
-import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+import {
+  savedVerseRouteParams,
+  savedVerseSubtitle,
+} from '@/services/verse-annotations/unitAnnotations';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
   CollectionOptionsMenu,
@@ -114,7 +116,7 @@ const BookmarksScreen = () => {
       openingRef.current = true;
       router.push({
         pathname: '/mushaf',
-        params: savedVerseOpenParams(bookmark),
+        params: savedVerseRouteParams(bookmark),
       });
     },
     [router],
