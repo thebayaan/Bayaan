@@ -11,3 +11,11 @@ export const nativeMenusAvailable =
  * scroll performance on a device.
  */
 export const rowContextMenusEnabled = true;
+
+/**
+ * The same menus on surah and track list rows (iPad). Off: each row's
+ * context menu wraps it in a host that sizes it, and the reciter page lays
+ * out all 114 rows at once, so it took long to settle after a tab switch.
+ * Cards keep theirs. The rows' ••• still opens a native menu.
+ */
+export const listRowContextMenusEnabled = false;

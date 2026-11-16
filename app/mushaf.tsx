@@ -1,4 +1,8 @@
-import React, {useEffect, useCallback} from 'react';
+import React, {
+  useEffect,
+  useCallback,
+  useContext, // @ai
+} from 'react';
 import {
   View,
   ActivityIndicator,
@@ -13,6 +17,7 @@ import {
   useMushafOpenTarget,
   type MushafOpenTarget,
 } from '@/hooks/useMushafOpenTarget'; // @ai
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore'; // @ai
 // @ai-start
@@ -23,6 +28,7 @@ import {
 } from '@/services/mushaf/MushafVerseMapService';
 // @ai-end
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {ReaderRestoreContext} from '@/hooks/readerRestoreState'; // @ai
 import {
   formatPlaybackInfo, // @ai
   getPlaybackNotice, // @ai
@@ -79,6 +85,13 @@ export default function MushafScreen() {
   // The data loads after the splash, so this screen can open first. The reader
   // mounts when the data, the fonts and its page are ready, and then stays.
   const open = useMushafOpenTarget(params);
+  // The restore of this launch (app/_layout.tsx) waits for the first content:
+  // the page that the reader opens on, or the failed view (it reports itself).
+  const reportRestore = useContext(ReaderRestoreContext);
+  const onFirstContent = useCallback(
+    () => reportRestore('content'),
+    [reportRestore],
+  );
   // @ai-end
 
   // Phones may turn to landscape while the mushaf screen is open and go back
@@ -91,13 +104,16 @@ export default function MushafScreen() {
     mushafSessionStore.setLastScreenWasMushaf(true);
     return () => {
       mushafSessionStore.setLastScreenWasMushaf(false);
+      // With no reader there is nothing to wait for: a return to Home renders
+      // it at once. @ai
+      reportRestore('closed'); // @ai
       // Reset UI state in store when leaving mushaf
       useMushafPlayerStore.setState({
         isImmersive: false,
         isSearchMode: false,
       });
     };
-  }, []);
+  }, [reportRestore]); // @ai
 
   // @ai-start
   if (open.state === 'ready') {
@@ -108,6 +124,7 @@ export default function MushafScreen() {
           target={open.target}
           playerOptions={params.playerOptions === '1'}
           covered={open.data !== 'ready'}
+          onFirstContent={onFirstContent}
         />
         {open.data !== 'ready' && (
           <View style={StyleSheet.absoluteFill}>
@@ -141,6 +158,14 @@ function MushafLoading() {
 function MushafLoadFailed({retry}: {retry: () => void}) {
   const {theme} = useTheme();
   const {t} = useTranslation(['reader', 'common']);
+  // The failed view is the first content of a restored launch, also when it
+  // shows over the mounted reader before the reader's page drew.
+  const reportRestore = useContext(ReaderRestoreContext);
+  const onFirstContent = useCallback(
+    () => reportRestore('content'),
+    [reportRestore],
+  );
+  useFirstContent(true, onFirstContent);
   return (
     <View
       style={[styles.loading, {backgroundColor: theme.colors.background}]}
@@ -176,6 +201,7 @@ function MushafReader({
   target,
   playerOptions,
   covered,
+  onFirstContent,
 }: {
   target: MushafOpenTarget;
   /** The player's Repeat opened the reader: show the player options. */
@@ -185,6 +211,8 @@ function MushafReader({
    * would stay above it, so it goes, and a screen reader skips the pages.
    */
   covered: boolean;
+  /** Called once, when the page of the target has content. */
+  onFirstContent: () => void;
 }) {
   const {theme} = useTheme();
   const {page, anchor, verseKey, words} = target;
@@ -252,6 +280,7 @@ function MushafReader({
         pageNumber={page}
         initialSurahId={target.surahId}
         initialVerseKey={verseKey}
+        onFirstContent={onFirstContent}
       />
     </View>
   );

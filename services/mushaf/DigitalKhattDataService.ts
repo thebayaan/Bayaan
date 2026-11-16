@@ -5,24 +5,28 @@ import {
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
-import {REWAYAH_DATA_MANIFEST, REWAYAH_DATA_MD5} from './rewayahDataManifest';
 import {
-  readVerseIndex,
+  MUSHAF_TABLES_SHA256,
+  REWAYAH_DATA_MANIFEST,
+  REWAYAH_DATA_MD5,
+} from './rewayahDataManifest';
+import {
+  checkWordsTable,
   WordStore,
   type VerseIndex,
   type WordSlot,
 } from './wordStore'; // @ai
+import {loadVerseIndex} from './mushafTables'; // @ai
+import {buildMushafLayout, type MushafLayout} from './mushafLayout'; // @ai
+import {RETIRED_DB_BASES} from './retiredDbBases'; // @ai
 import {WordStores} from './wordStores'; // @ai
 import {joinSlotTexts, layoutLineSlots, visibleWords} from './lineWordSpans';
 // @ai-start
-import {
-  basmalaLineSurahs,
-  layoutLineKey,
-  rewayahBasmalaService,
-} from './RewayahBasmalaService';
+import {layoutLineKey, rewayahBasmalaService} from './RewayahBasmalaService';
 // @ai-end
 
-const TOTAL_PAGES = 604;
+// @ai: what the surah getters give before the data is loaded.
+const NO_PAGES: Record<number, number> = Object.freeze({});
 
 // Every Digital Khatt SQLite asset the app bundles, keyed by file basename.
 // Keep each key equal to its file name: it indexes the generated content
@@ -33,7 +37,6 @@ const TOTAL_PAGES = 604;
 // while the manifest is stale.
 const DK_DB_ASSETS = {
   'digital-khatt-v2.db': require('../../data/mushaf/digitalkhatt/digital-khatt-v2.db'),
-  'digital-khatt-15-lines.db': require('../../data/mushaf/digitalkhatt/digital-khatt-15-lines.db'),
   'dk_words_shouba.db': require('../../data/mushaf/digitalkhatt/dk_words_shouba.db'),
   'dk_words_bazzi.db': require('../../data/mushaf/digitalkhatt/dk_words_bazzi.db'),
   'dk_words_qumbul.db': require('../../data/mushaf/digitalkhatt/dk_words_qumbul.db'),
@@ -46,11 +49,9 @@ const DK_DB_ASSETS = {
 
 type DkDbAssetFile = keyof typeof DK_DB_ASSETS;
 
-// Each rewayah ships its own words DB. Rewayat within the same qari pair
-// share a layout DB (same ayah boundaries → same line breaks); rewayat from
-// different qaris have their own layout DB because verse numbering and line
-// placement differ. `fontFamily` is the Skia typeface to render this rewayah's
-// text with; KFGQPC-per-qiraat fonts carry the correct OpenType features
+// Each rewayah ships its own words DB. All of them share one layout, generated
+// at build time (mushafTables.ts). `fontFamily` is the Skia typeface to render
+// this rewayah's text with; KFGQPC-per-qiraat fonts carry the correct OpenType features
 // for narration-specific marks (silah, imalah, etc.).
 interface RewayahAssetConfig {
   // On-device DB names without the content hash. The copy actually opened is
@@ -60,8 +61,6 @@ interface RewayahAssetConfig {
   // used; the stale-copy sweep deletes them.
   wordsDbName: string;
   wordsAssetFile: DkDbAssetFile;
-  layoutDbName: string;
-  layoutAssetFile: DkDbAssetFile;
   fontFamily: string | null;
 }
 
@@ -78,57 +77,41 @@ const REWAYAH_DATA: Partial<Record<RewayahId, RewayahAssetConfig>> = {
   hafs: {
     wordsDbName: 'dk_words.db',
     wordsAssetFile: 'digital-khatt-v2.db',
-    layoutDbName: 'dk_layout.db',
-    layoutAssetFile: 'digital-khatt-15-lines.db',
     fontFamily: null, // defer to user's uthmaniFont/mushafRenderer choice
   },
   shubah: {
     wordsDbName: 'dk_words_shouba.db',
     wordsAssetFile: 'dk_words_shouba.db',
-    layoutDbName: 'dk_layout.db',
-    layoutAssetFile: 'digital-khatt-15-lines.db',
     fontFamily: null,
   },
   'al-bazzi': {
     wordsDbName: 'dk_words_bazzi.db',
     wordsAssetFile: 'dk_words_bazzi.db',
-    layoutDbName: 'dk_layout.db',
-    layoutAssetFile: 'digital-khatt-15-lines.db',
     fontFamily: null, // render with DK font; sibling of Hafs, shares layout
   },
   qunbul: {
     wordsDbName: 'dk_words_qumbul.db',
     wordsAssetFile: 'dk_words_qumbul.db',
-    layoutDbName: 'dk_layout.db',
-    layoutAssetFile: 'digital-khatt-15-lines.db',
     fontFamily: null,
   },
   warsh: {
     wordsDbName: 'dk_words_warsh.db',
     wordsAssetFile: 'dk_words_warsh.db',
-    layoutDbName: 'dk_layout.db',
-    layoutAssetFile: 'digital-khatt-15-lines.db',
     fontFamily: null,
   },
   qalun: {
     wordsDbName: 'dk_words_qaloon.db',
     wordsAssetFile: 'dk_words_qaloon.db',
-    layoutDbName: 'dk_layout.db',
-    layoutAssetFile: 'digital-khatt-15-lines.db',
     fontFamily: null,
   },
   'al-duri-abi-amr': {
     wordsDbName: 'dk_words_doori.db',
     wordsAssetFile: 'dk_words_doori.db',
-    layoutDbName: 'dk_layout.db',
-    layoutAssetFile: 'digital-khatt-15-lines.db',
     fontFamily: null,
   },
   'al-susi': {
     wordsDbName: 'dk_words_soosi.db',
     wordsAssetFile: 'dk_words_soosi.db',
-    layoutDbName: 'dk_layout.db',
-    layoutAssetFile: 'digital-khatt-15-lines.db',
     fontFamily: null,
   },
 };
@@ -326,7 +309,7 @@ export function getRewayahDataIdentity(
   return makeDataIdentity(
     rewayah,
     assetSha256(cfg.wordsAssetFile).slice(0, SHA8_LENGTH),
-    assetSha256(cfg.layoutAssetFile).slice(0, SHA8_LENGTH),
+    MUSHAF_TABLES_SHA256.slice(0, SHA8_LENGTH),
   );
   // @ai-end
 }
@@ -344,28 +327,25 @@ export function getBundledDkDbAssetFiles(): string[] {
 
 /**
  * Current content-addressed on-device name for every DB base the app uses
- * (`dk_words_warsh` → `dk_words_warsh.<sha8>.db`, `dk_layout` → ...). Throws if
+ * (`dk_words_warsh` → `dk_words_warsh.<sha8>.db`). Throws if
  * a base would map to two different assets.
  */
 export function getCurrentDbNamesByBase(): Map<string, string> {
   const byBase = new Map<string, string>();
   for (const cfg of Object.values(REWAYAH_DATA)) {
     if (!cfg) continue;
-    const pairs: [string, DkDbAssetFile][] = [
-      [cfg.wordsDbName, cfg.wordsAssetFile],
-      [cfg.layoutDbName, cfg.layoutAssetFile],
-    ];
-    for (const [dbName, assetFile] of pairs) {
-      const base = dbBaseName(dbName);
-      const name = contentAddressedDbName(dbName, assetSha256(assetFile));
-      const existing = byBase.get(base);
-      if (existing !== undefined && existing !== name) {
-        throw new Error(
-          `[DigitalKhatt] On-device DB base "${base}" maps to two assets`,
-        );
-      }
-      byBase.set(base, name);
+    const base = dbBaseName(cfg.wordsDbName);
+    const name = contentAddressedDbName(
+      cfg.wordsDbName,
+      assetSha256(cfg.wordsAssetFile),
+    );
+    const existing = byBase.get(base);
+    if (existing !== undefined && existing !== name) {
+      throw new Error(
+        `[DigitalKhatt] On-device DB base "${base}" maps to two assets`,
+      );
     }
+    byBase.set(base, name);
   }
   // @ai-start
   // The auxiliary DBs too, so stale-copy sweeps and resetDatabases cover
@@ -401,19 +381,29 @@ export function getBundledAssetSha256(file: string): string | null {
 }
 // @ai-end
 
+/**
+ * getCurrentDbNamesByBase() plus each retired base with an empty current name,
+ * which makes every copy of it stale (selectStaleDbFiles).
+ */
+function sweepNamesByBase(): Map<string, string> {
+  const byBase = getCurrentDbNamesByBase();
+  for (const base of RETIRED_DB_BASES) byBase.set(base, '');
+  return byBase;
+}
+
 interface BundledDbSpec {
   name: string; // content-addressed on-device file name
   base: string; // e.g. dk_words_warsh
   assetId: number;
   assetFile: DkDbAssetFile;
   sha8: string;
-  table: 'words' | 'pages' | 'slots'; // @ai
+  table: 'words' | 'slots'; // @ai: a table every good copy has
 }
 
 function bundledDbSpec(
   dbName: string,
   assetFile: DkDbAssetFile,
-  table: BundledDbSpec['table'],
+  table: BundledDbSpec['table'] = 'words', // @ai
 ): BundledDbSpec {
   const sha256 = assetSha256(assetFile);
   return {
@@ -422,7 +412,7 @@ function bundledDbSpec(
     assetId: DK_DB_ASSETS[assetFile],
     assetFile,
     sha8: sha256.slice(0, SHA8_LENGTH),
-    table,
+    table, // @ai
   };
 }
 
@@ -517,22 +507,9 @@ export type RewayahLoadState =
 
 // ── Row → cache builders ────────────────────────────────────────────────────
 
-interface LayoutData {
-  pageLines: Map<number, DKLine[]>;
-  surahStartPages: Record<number, number>;
-  pageToSurah: Record<number, number>;
-  // @ai-start
-  // Surah each basmallah line opens, keyed by layoutLineKey(page, line).
-  basmalaSurahs: Map<string, number>;
-  // @ai-end
-}
-
 interface MainSnapshot {
   rewayah: RewayahId;
   words: WordStore; // @ai: read on demand (WordStore)
-  // null: the active layout is reused (same layout DB copy).
-  layout: LayoutData | null;
-  layoutDbName: string;
   identity: DKDataIdentity;
 }
 
@@ -543,64 +520,9 @@ interface MainWaiter {
   reject: (error: unknown) => void;
 }
 
-function buildLayoutData(
-  rows: readonly DKLine[],
-  surahOfWord: (wordId: number) => number | undefined, // @ai: WordStore
-): LayoutData {
-  const pageLines = new Map<number, DKLine[]>();
-  const surahStartPages: Record<number, number> = {};
-  const pageToSurah: Record<number, number> = {};
-
-  for (const row of rows) {
-    const existing = pageLines.get(row.page_number);
-    if (existing) existing.push(row);
-    else pageLines.set(row.page_number, [row]);
-  }
-
-  // Build surah mappings by identifying the first Ayah of each surah.
-  // This solves the "header at bottom of previous page" issue by anchoring the
-  // surah to the page where its actual verse content begins.
-  for (const row of rows) {
-    if (row.line_type !== 'ayah') continue;
-    const surahId = surahOfWord(row.first_word_id); // @ai
-    if (surahId && !surahStartPages[surahId]) {
-      surahStartPages[surahId] = row.page_number;
-    }
-  }
-
-  // Fallback: If any surahs are missing ayahs in the DB (unlikely),
-  // use the surah_name lines as a secondary source.
-  for (const row of rows) {
-    if (row.line_type !== 'surah_name') continue;
-    if (row.surah_number && !surahStartPages[row.surah_number]) {
-      surahStartPages[row.surah_number] = row.page_number;
-    }
-  }
-
-  // Fill pageToSurah for all pages
-  const surahIds = Object.keys(surahStartPages)
-    .map(Number)
-    .sort((a, b) => surahStartPages[a] - surahStartPages[b]);
-  for (let i = 0; i < surahIds.length; i++) {
-    const surahId = surahIds[i];
-    const startPage = surahStartPages[surahId];
-    const endPage =
-      i < surahIds.length - 1
-        ? surahStartPages[surahIds[i + 1]] - 1
-        : TOTAL_PAGES;
-    for (let page = startPage; page <= endPage; page++) {
-      if (!pageToSurah[page]) pageToSurah[page] = surahId;
-    }
-  }
-
-  // @ai-start
-  // Rows arrive sorted by page and line (readLayoutRows), as
-  // basmalaLineSurahs requires.
-  const basmalaSurahs = basmalaLineSurahs(rows);
-  return {pageLines, surahStartPages, pageToSurah, basmalaSurahs};
-  // @ai-end
-}
-
+// @ai-start
+// `table` is the spec's: words for the words DBs, slots for the readings
+// index (an auxiliary DB read through readAuxDb).
 async function hasTable(
   db: SQLite.SQLiteDatabase,
   table: BundledDbSpec['table'],
@@ -614,74 +536,18 @@ async function hasTable(
     .catch(() => null);
   return row != null;
 }
-
-// @ai-start
-/** Verse key → the page of its first word (getPageForVerse). */
-function buildVerseToPage(
-  pageLines: ReadonlyMap<number, DKLine[]>,
-  index: VerseIndex,
-): Map<string, number> {
-  const lines: DKLine[] = [];
-  for (const pageRows of pageLines.values()) {
-    for (const line of pageRows) {
-      if (line.line_type === 'ayah') lines.push(line);
-    }
-  }
-  lines.sort((a, b) => a.first_word_id - b.first_word_id);
-  const verseToPage = new Map<string, number>();
-  for (let i = 0; i < index.keys.length; i++) {
-    const wordId = index.first[i];
-    let lo = 0;
-    let hi = lines.length - 1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const line = lines[mid];
-      if (wordId < line.first_word_id) hi = mid - 1;
-      else if (wordId > line.last_word_id) lo = mid + 1;
-      else {
-        verseToPage.set(index.keys[i], line.page_number);
-        break;
-      }
-    }
-  }
-  return verseToPage;
-}
 // @ai-end
 
 // @ai-start
-const LINE_TYPES: ReadonlySet<unknown> = new Set<DKLine['line_type']>([
-  'surah_name',
-  'basmallah',
-  'ayah',
-]);
-
-const isWholeNumber = (value: unknown): boolean =>
-  typeof value === 'number' && Number.isInteger(value);
-// @ai-end
-
-async function readLayoutRows(db: SQLite.SQLiteDatabase): Promise<DKLine[]> {
-  const rows = await db.getAllAsync<DKLine>(
-    'SELECT * FROM pages ORDER BY page_number, line_number;',
-  );
-  if (rows.length === 0) throw new Error('pages table is empty');
-  // @ai-start
-  // Same check as readVerseIndex: a damaged copy must not drop a line.
-  for (const row of rows) {
-    if (
-      !isWholeNumber(row.page_number) ||
-      !isWholeNumber(row.line_number) ||
-      !LINE_TYPES.has(row.line_type) ||
-      (row.line_type === 'ayah' &&
-        (!isWholeNumber(row.first_word_id) || !isWholeNumber(row.last_word_id)))
-    ) {
-      throw new Error(
-        `pages table has a malformed row (page ${row.page_number}, line ${row.line_number})`,
-      );
-    }
-  }
-  // @ai-end
-  return rows;
+/** The generated verse index, after the checks on a copy of a words table. */
+async function checkedVerseIndex(
+  db: SQLite.SQLiteDatabase,
+): Promise<VerseIndex> {
+  const index = loadVerseIndex();
+  await checkWordsTable(db, index);
+  return index;
 }
+// @ai-end
 
 // Background work (worker loop, stale-copy sweeps) handles its own errors;
 // this only keeps an unexpected bug from becoming an unhandled rejection.
@@ -700,11 +566,8 @@ export class DigitalKhattDataService {
   // @ai: its words are a WordStore, read on demand.
   private words: WordStore | null = null;
   private mainTextFailed = false; // @ai: see announceMainCommit
-  private pageLines: Map<number, DKLine[]> = new Map();
-  private surahStartPages: Record<number, number> = {};
-  private pageToSurah: Record<number, number> = {};
-  private basmalaSurahs: Map<string, number> = new Map(); // @ai
-  private verseToPage: Map<string, number> | null = null;
+  // @ai: the layout is fixed build-time data, built on first use (layout).
+  private layoutMemo: MushafLayout | null = null;
   private currentRewayah: RewayahId = 'hafs';
   private rewayahListeners: Set<RewayahChangeListener> = new Set();
   // Monotonic version for reactive consumers (useRewayahWords via
@@ -724,9 +587,8 @@ export class DigitalKhattDataService {
   private _initialized = false;
   private _initializing: Promise<void> | null = null;
 
-  // Identity (asset hashes) of the main cache, and the layout copy it uses.
+  // Identity of the main cache: its words DB and the generated tables.
   private activeIdentity: DKDataIdentity | null = null;
-  private activeLayoutDbName: string | null = null;
   // Main-cache load queue. `desiredRewayah` is the latest requested rewayah
   // (null when nothing is pending); one worker loads it, and commits only if
   // it is still the latest request when the load finishes.
@@ -928,10 +790,10 @@ export class DigitalKhattDataService {
 
   /**
    * Dev-only: delete every runtime SQLite copy this service manages (current
-   * and stale content-addressed names, per-rewayah words DBs and the shared
-   * layout DB) and drop all caches. On next launch the assets are re-imported
-   * from source. Pair with `mushafLayoutCacheService.clearAll()` in dev
-   * tooling.
+   * and stale content-addressed names of the per-rewayah words DBs, and any
+   * copy of a RETIRED_DB_BASES DB, such as the layout DB of older releases)
+   * and drop all caches. On next launch the assets are re-imported from
+   * source. Pair with `mushafLayoutCacheService.clearAll()` in dev tooling.
    */
   async resetDatabases(): Promise<void> {
     this.epoch += 1;
@@ -943,13 +805,7 @@ export class DigitalKhattDataService {
     this._initialized = false;
     this._initializing = null;
     this.words = null; // @ai
-    this.pageLines = new Map();
-    this.surahStartPages = {};
-    this.pageToSurah = {};
-    this.basmalaSurahs = new Map(); // @ai
-    this.verseToPage = null;
     this.activeIdentity = null;
-    this.activeLayoutDbName = null;
     this.sideLoading.clear();
     this.loadErrors.clear();
     this.sweptBases.clear();
@@ -958,10 +814,10 @@ export class DigitalKhattDataService {
     // @ai: open words connections close before their files are deleted.
     await this.stores.closeAll();
 
-    const currentByBase = getCurrentDbNamesByBase();
+    const currentByBase = sweepNamesByBase();
     const names = new Set<string>();
     for (const [base, current] of currentByBase) {
-      names.add(current);
+      if (current) names.add(current);
       names.add(`${base}${DB_EXTENSION}`);
     }
     try {
@@ -1151,46 +1007,24 @@ export class DigitalKhattDataService {
 
   private async loadMainSnapshot(target: RewayahId): Promise<MainSnapshot> {
     const cfg = requireRewayahAssets(target);
-    const wordsSpec = bundledDbSpec(
-      cfg.wordsDbName,
-      cfg.wordsAssetFile,
-      'words',
-    );
-    const layoutSpec = bundledDbSpec(
-      cfg.layoutDbName,
-      cfg.layoutAssetFile,
-      'pages',
-    );
-    // Layout only reloads if the target uses a different layout DB copy (all
-    // 8 bundled rewayat share the Hafs layout today) or none is loaded yet.
-    const reuseLayout =
-      this._initialized &&
-      this.activeLayoutDbName === layoutSpec.name &&
-      this.pageLines.size > 0;
+    const wordsSpec = bundledDbSpec(cfg.wordsDbName, cfg.wordsAssetFile);
     // @ai-start
     // The words are the rewayah's WordStore: the open one, or a new one,
     // checked inside the read (a copy that fails the checks is deleted,
     // re-imported and read again like any unreadable copy).
-    const [words, layoutRows] = await Promise.all([
-      this.stores.load(target),
-      reuseLayout ? null : this.readBundledDb(layoutSpec, readLayoutRows),
-    ]);
-    // Surah start pages come from the words' verse keys, so build the layout
-    // after the words.
-    const layout = layoutRows
-      ? buildLayoutData(layoutRows, wordId => words.surahOfWord(wordId))
-      : null;
+    const words = await this.stores.load(target);
     console.log(
-      `[DigitalKhattDataService] Loaded ${target}: ${words.wordCount} words, ${words.index.keys.length} verses` +
-        (layout ? `, layout for ${layout.pageLines.size} pages` : ''),
+      `[DigitalKhattDataService] Loaded ${target}: ${words.wordCount} words, ${words.index.keys.length} verses`,
     );
     // @ai-end
     return {
       rewayah: target,
       words,
-      layout,
-      layoutDbName: layoutSpec.name,
-      identity: makeDataIdentity(target, wordsSpec.sha8, layoutSpec.sha8), // @ai
+      identity: makeDataIdentity(
+        target,
+        wordsSpec.sha8,
+        MUSHAF_TABLES_SHA256.slice(0, SHA8_LENGTH),
+      ), // @ai
     };
   }
 
@@ -1199,14 +1033,6 @@ export class DigitalKhattDataService {
   // follow in the same synchronous block.
   private swapMain(next: MainSnapshot): void {
     this.words = next.words; // @ai
-    if (next.layout) {
-      this.pageLines = next.layout.pageLines;
-      this.surahStartPages = next.layout.surahStartPages;
-      this.pageToSurah = next.layout.pageToSurah;
-      this.basmalaSurahs = next.layout.basmalaSurahs; // @ai
-    }
-    this.activeLayoutDbName = next.layoutDbName;
-    this.verseToPage = null;
     this.currentRewayah = next.rewayah;
     this.activeIdentity = next.identity;
     this._initialized = true;
@@ -1387,6 +1213,7 @@ export class DigitalKhattDataService {
     let imported = false; // @ai
     try {
       if (!(await hasTable(db, spec.table))) {
+        // @ai: the spec's table (slots for the readings index), not always words.
         // First use of this data version (or a damaged copy): import the
         // bundled asset under its content-addressed name. Opening a missing
         // file created an empty one, which must go first: the import skips
@@ -1412,9 +1239,11 @@ export class DigitalKhattDataService {
         }
         // @ai-end
         db = await this.openDb(spec.name);
+        // @ai-start
         if (!(await hasTable(db, spec.table))) {
           throw new Error(`table "${spec.table}" missing after import`);
         }
+        // @ai-end
         imported = true; // @ai
       }
       await this.verifyCopy(spec, imported); // @ai
@@ -1483,7 +1312,7 @@ export class DigitalKhattDataService {
   ): Promise<void> {
     let currentByBase: Map<string, string>;
     try {
-      currentByBase = getCurrentDbNamesByBase();
+      currentByBase = sweepNamesByBase();
     } catch (error) {
       console.warn(
         '[DigitalKhattDataService] Stale-copy sweep skipped:',
@@ -1557,17 +1386,17 @@ export class DigitalKhattDataService {
   }
 
   // @ai-start
-  /** Opens the words of `rewayah` as a WordStore (see readVerseIndex). */
+  /** Opens the words of `rewayah` as a WordStore (see checkedVerseIndex). */
   private async openWordStore(rewayah: RewayahId): Promise<WordStore> {
     const cfg = requireRewayahAssets(rewayah);
-    const spec = bundledDbSpec(cfg.wordsDbName, cfg.wordsAssetFile, 'words');
+    const spec = bundledDbSpec(cfg.wordsDbName, cfg.wordsAssetFile);
     return this.readBundledDb(
       spec,
       async db =>
         new WordStore(
           spec.name,
           db,
-          await readVerseIndex(db),
+          await checkedVerseIndex(db),
           (name, open) => this.closeDb(name, open),
           (store, error) => this.onWordReadFailed(store, error),
         ),
@@ -1627,8 +1456,17 @@ export class DigitalKhattDataService {
   }
   // @ai-end
 
+  // @ai-start
+  /** The layout once the data is loaded (mushafLayout.ts), else null. */
+  private get layout(): MushafLayout | null {
+    if (!this._initialized) return null;
+    if (!this.layoutMemo) this.layoutMemo = buildMushafLayout();
+    return this.layoutMemo;
+  }
+  // @ai-end
+
   getPageLines(pageNum: number): DKLine[] {
-    return this.pageLines.get(pageNum) || [];
+    return this.layout?.pageLines.get(pageNum) || []; // @ai
   }
 
   getWordText(wordId: number): string {
@@ -1666,7 +1504,7 @@ export class DigitalKhattDataService {
   getBasmalaSurah(line: DKLine): number | null {
     if (line.line_type !== 'basmallah') return null;
     return (
-      this.basmalaSurahs.get(
+      this.layout?.basmalaSurahs.get(
         layoutLineKey(line.page_number, line.line_number),
       ) ?? null
     );
@@ -1678,11 +1516,11 @@ export class DigitalKhattDataService {
   }
 
   getSurahStartPages(): Record<number, number> {
-    return this.surahStartPages;
+    return this.layout?.surahStartPages ?? NO_PAGES; // @ai
   }
 
   getPageToSurah(): Record<number, number> {
-    return this.pageToSurah;
+    return this.layout?.pageToSurah ?? NO_PAGES; // @ai
   }
 
   /**
@@ -1860,19 +1698,8 @@ export class DigitalKhattDataService {
   }
 
   getPageForVerse(verseKey: string): number | undefined {
-    if (!this.verseToPage) {
-      // Never cache a map built from an empty cache (before the first load);
-      // commits replace the maps atomically, so a built map is never partial.
-      // @ai-start
-      // From the verse index and the layout: no word is read.
-      const words = this.words;
-      if (!this._initialized || !words || this.pageLines.size === 0) {
-        return undefined;
-      }
-      this.verseToPage = buildVerseToPage(this.pageLines, words.index);
-      // @ai-end
-    }
-    return this.verseToPage.get(verseKey);
+    // @ai: from the verse index and the layout: no word is read.
+    return this.layout?.verseToPage.get(verseKey);
   }
 
   // @ai-start

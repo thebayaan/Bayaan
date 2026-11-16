@@ -4,11 +4,11 @@ import React, {
   useRef,
   useEffect,
   useImperativeHandle,
+  useState, // @ai
   useSyncExternalStore,
   forwardRef,
 } from 'react';
-import {View, Platform} from 'react-native';
-import {FlashList, type FlashListRef} from '@shopify/flash-list';
+import {View, Platform, FlatList} from 'react-native'; // @ai
 import {
   Canvas,
   Skia,
@@ -17,6 +17,7 @@ import {
   type SkTypefaceFontProvider,
 } from '@shopify/react-native-skia';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
+import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -81,6 +82,7 @@ import {markAtChar} from './recitationTap';
 import QCFPage, {type QCFPageFrame} from '../qcf/QCFPage';
 import {useDrawsQCF} from '../qcf/useDrawsQCF';
 import {qcfDataService} from '@/services/mushaf/QCFDataService';
+import {buildPageOffsets, pageItemLayout} from './continuousPageOffsets';
 // @ai-end
 import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 
@@ -118,6 +120,8 @@ function buildRenderConstants(metrics: MushafLayoutMetrics): RenderConstants {
   // On phone: centers the content within the view (legacy behavior).
   // On iPad: adds `pageOffsetX` so the (capped) page sits centered in the
   // full container width.
+  // @ai On an iOS phone in landscape, pageOffsetX is the left cutout inset
+  // and pageWidth leaves out both insets.
   const canvasMarginX = pageOffsetX + (metrics.pageWidth - contentWidth) / 2;
   // Decouple line-height from container-height for the continuous view so
   // each page's vertical footprint scales with its width (preserves the
@@ -168,6 +172,7 @@ interface ContinuousMushafViewProps {
   metrics: MushafLayoutMetrics;
   /** Whether a tap on the status bar scrolls back to page 1. Default on. @ai */
   scrollsToTop?: boolean; // @ai
+  onFirstContent?: () => void; // @ai
 }
 
 // ── Per-page content with gestures + highlights ──────────
@@ -195,6 +200,11 @@ interface MushafPageContentProps {
   onTap?: () => void;
   /** Live render constants derived from `metrics`. */
   render: RenderConstants;
+  // @ai-start
+  /** The page's height in the list (its getItemLayout entry): the one value
+   *  the list and the page both use. */
+  pageHeight: number;
+  // @ai-end
 }
 
 const EMPTY_BG_MAP = new Map<
@@ -221,6 +231,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     nameFontSize,
     onTap,
     render,
+    pageHeight, // @ai
   }) => {
     const {isDarkMode} = useTheme();
     // @ai-start
@@ -357,7 +368,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       ],
     );
 
-    const canvasHeight = pageLines.length * baseLineHeight;
+    const canvasHeight = pageHeight; // @ai
 
     // ── Paragraph refs for hit testing ─────────────────────
     const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
@@ -729,32 +740,35 @@ const ContinuousQCFPage: React.FC<{
   dividerColor: string;
   onTap?: () => void;
   render: RenderConstants;
-}> = React.memo(({pageNumber, textColor, dividerColor, onTap, render}) => {
-  const {screenWidth, contentWidth, canvasMarginX, baseLineHeight} = render;
-  const lineCount = qcfDataService.getPage(pageNumber).lines.length;
-  const frame = useMemo<QCFPageFrame>(
-    () => ({
-      width: screenWidth,
-      height: lineCount * baseLineHeight,
-      contentLeft: canvasMarginX,
-      contentTop: 0,
-      contentWidth,
-      contentHeight: lineCount * baseLineHeight,
-      lineHeight: baseLineHeight,
-      centerOpeningPages: false,
-    }),
-    [screenWidth, lineCount, baseLineHeight, canvasMarginX, contentWidth],
-  );
-  return (
-    <QCFPage
-      pageNumber={pageNumber}
-      textColor={textColor}
-      dividerColor={dividerColor}
-      frame={frame}
-      onTap={onTap}
-    />
-  );
-});
+  /** The page's height in the list (its getItemLayout entry). */
+  pageHeight: number;
+}> = React.memo(
+  ({pageNumber, textColor, dividerColor, onTap, render, pageHeight}) => {
+    const {screenWidth, contentWidth, canvasMarginX, baseLineHeight} = render;
+    const frame = useMemo<QCFPageFrame>(
+      () => ({
+        width: screenWidth,
+        height: pageHeight,
+        contentLeft: canvasMarginX,
+        contentTop: 0,
+        contentWidth,
+        contentHeight: pageHeight,
+        lineHeight: baseLineHeight,
+        centerOpeningPages: false,
+      }),
+      [screenWidth, pageHeight, baseLineHeight, canvasMarginX, contentWidth],
+    );
+    return (
+      <QCFPage
+        pageNumber={pageNumber}
+        textColor={textColor}
+        dividerColor={dividerColor}
+        frame={frame}
+        onTap={onTap}
+      />
+    );
+  },
+);
 ContinuousQCFPage.displayName = 'ContinuousQCFPage';
 // @ai-end
 
@@ -771,18 +785,30 @@ const ContinuousMushafView = forwardRef<
       onCurrentPageChange,
       metrics,
       scrollsToTop = true, // @ai
+      onFirstContent, // @ai
     },
     ref,
   ) => {
     const insets = useSafeAreaInsets();
     const {theme} = useTheme();
-    const flashListRef = useRef<FlashListRef<number>>(null);
+    const listRef = useRef<FlatList<number>>(null); // @ai
     const render = useMemo(() => buildRenderConstants(metrics), [metrics]);
     const {lineWidth} = render;
 
     // Subscribe to preloaded fontMgr; no useFonts fallback that races
     // at first-mount.
     const fontMgr = useMushafFontMgr();
+
+    // @ai-start
+    // The list's first content size comes when the pages it renders first (the
+    // page asked for and the next) have their layout, and VirtualizedList
+    // scrolls to initialScrollIndex just before it passes that size on: the
+    // page asked for is on screen. The list mounts after the fonts (below), so
+    // the page has its text by then.
+    const [listLaidOut, setListLaidOut] = useState(false);
+    const handleContentSizeChange = useCallback(() => setListLaidOut(true), []);
+    useFirstContent(listLaidOut, onFirstContent);
+    // @ai-end
 
     // Surah header fonts (computed once from quranCommon typeface).
     // `fontMgr` dep mirrors the SkiaPage memo: when the preload completes
@@ -828,6 +854,33 @@ const ContinuousMushafView = forwardRef<
     );
     // @ai-end
 
+    // @ai-start
+    // Every page's height is known before it renders (its line count times
+    // the line height), so the list is told where each page is instead of
+    // estimating it: an estimate put the first scroll pages past the one asked
+    // for. The DK lines are read again after a data reload (textIdentity).
+    const contentTop = insets.top + verticalScale(60);
+    const pageOffsets = useMemo(
+      () =>
+        buildPageOffsets(
+          TOTAL_PAGES,
+          page =>
+            drawsQCF
+              ? qcfDataService.getLineCount(page)
+              : digitalKhattDataService.getPageLines(page).length,
+          render.baseLineHeight,
+          contentTop,
+        ),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [drawsQCF, render.baseLineHeight, contentTop, textIdentity],
+    );
+    const getItemLayout = useCallback(
+      (_: ArrayLike<number> | null | undefined, index: number) =>
+        pageItemLayout(pageOffsets, index),
+      [pageOffsets],
+    );
+    // @ai-end
+
     const fontFamily =
       getRewayahFontFamily(
         rewayah as Parameters<typeof getRewayahFontFamily>[0],
@@ -853,12 +906,12 @@ const ContinuousMushafView = forwardRef<
 
     useImperativeHandle(ref, () => ({
       scrollToPage: (page: number, animated = false) => {
-        flashListRef.current?.scrollToIndex({index: page - 1, animated});
+        listRef.current?.scrollToIndex({index: page - 1, animated});
       },
       scrollToSurah: (surahId: number, animated = false) => {
         const targetPage = surahStartPages[surahId];
         if (targetPage) {
-          flashListRef.current?.scrollToIndex({
+          listRef.current?.scrollToIndex({
             index: targetPage - 1,
             animated,
           });
@@ -875,7 +928,7 @@ const ContinuousMushafView = forwardRef<
           loc ? `${loc.surah}:${loc.ayah}` : verseKey,
         );
         if (page) {
-          flashListRef.current?.scrollToIndex({index: page - 1, animated});
+          listRef.current?.scrollToIndex({index: page - 1, animated});
         }
       },
     }));
@@ -903,6 +956,9 @@ const ContinuousMushafView = forwardRef<
       ({item}: {item: number}) => {
         if (!fontMgr) return null;
         // @ai-start
+        // The page is as tall as its layout entry says: the list and the
+        // page read the one value.
+        const pageHeight = pageItemLayout(pageOffsets, item - 1).length;
         if (drawsQCF) {
           return (
             <ContinuousQCFPage
@@ -911,6 +967,7 @@ const ContinuousMushafView = forwardRef<
               dividerColor={dividerColor}
               onTap={onTap}
               render={render}
+              pageHeight={pageHeight}
             />
           );
         }
@@ -934,6 +991,7 @@ const ContinuousMushafView = forwardRef<
             nameFontSize={surahHeaderFonts.nameFontSize}
             onTap={onTap}
             render={render}
+            pageHeight={pageHeight} // @ai
           />
         );
       },
@@ -954,35 +1012,43 @@ const ContinuousMushafView = forwardRef<
         surahHeaderFonts,
         onTap,
         render,
+        pageOffsets, // @ai
       ],
     );
 
     const keyExtractor = useCallback((item: number) => `page-${item}`, []);
 
     // @ai-start
-    // An item with no fontMgr draws nothing and has no height, so a list mounted
-    // now would mount all 604 pages to fill the screen, then draw them all when
-    // the fonts arrive. The reader can open before them: they finish after the
-    // data.
+    // The one font wait: the reader can open before the fonts (they finish
+    // after the data), and the list mounts once they are there. Its first
+    // layout then has the text of the page it opens on, and no page is drawn
+    // blank first.
     if (!fontMgr) return null;
     // @ai-end
 
     return (
-      <FlashList
-        ref={flashListRef}
+      <FlatList
+        ref={listRef} // @ai
         data={pages}
         renderItem={renderItem}
         extraData={`${drawsQCF}-${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}-${textIdentity}`} // @ai
         keyExtractor={keyExtractor}
         initialScrollIndex={initialPage - 1}
+        // @ai-start
+        getItemLayout={getItemLayout}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={5}
+        // @ai-end
         contentContainerStyle={{
-          paddingTop: insets.top + verticalScale(60),
+          paddingTop: contentTop, // @ai
           paddingBottom: insets.bottom + verticalScale(80),
         }}
         showsVerticalScrollIndicator={false}
         scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        onContentSizeChange={handleContentSizeChange} // @ai
       />
     );
   },

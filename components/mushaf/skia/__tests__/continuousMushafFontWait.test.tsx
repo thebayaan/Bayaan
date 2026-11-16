@@ -1,9 +1,10 @@
 // @ai-generated
 /**
- * An item of the continuous view has no height until the fonts are there, and
- * the fonts finish after the data. So the view mounts no list until then: a
- * list mounted earlier mounts all 604 pages to fill the screen, and draws all
- * of them when the fonts arrive.
+ * The fonts finish after the data, so the reader can open before them. The
+ * continuous view mounts no list until they are there: its first layout then
+ * has the text of the page it opens on, and no page is drawn blank first. The
+ * view reports its first content once, when the list has laid out the page
+ * asked for (RFC-023 step 5).
  */
 
 import React, {act} from 'react';
@@ -12,6 +13,7 @@ import TestRenderer from 'react-test-renderer';
 interface MockListProps {
   data: number[];
   initialScrollIndex: number;
+  onContentSizeChange?: (width: number, height: number) => void;
 }
 
 // Shared with the mock factories below (read lazily, after module init).
@@ -46,17 +48,17 @@ jest.mock('@/hooks/useMushafFontMgr', () => {
   };
 });
 
-jest.mock('@shopify/flash-list', () => {
+jest.mock('react-native/Libraries/Lists/FlatList', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const FlashList = (props: MockListProps) => {
+  const FlatList = ReactActual.forwardRef((props: MockListProps, _ref) => {
     ReactActual.useEffect(() => {
       mockList.mounts.push(props);
       // Mount only: the props of this first render are the ones to check.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     return null;
-  };
-  return {FlashList};
+  });
+  return {__esModule: true, default: FlatList};
 });
 
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
@@ -68,6 +70,7 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     getLayoutIdentityKey: () => 'hafs@test',
     getSurahStartPages: () => ({}),
     getPageToSurah: () => ({}),
+    getPageLines: () => [],
   },
   getRewayahFontFamily: () => 'DigitalKhattV2',
 }));
@@ -147,10 +150,12 @@ function fontsArrive(): void {
 
 describe('ContinuousMushafView while the fonts load', () => {
   let renderer: TestRenderer.ReactTestRenderer;
+  const onFirstContent = jest.fn();
 
   beforeEach(() => {
     mockFonts.current = null;
     mockList.mounts = [];
+    onFirstContent.mockClear();
     act(() => {
       renderer = TestRenderer.create(
         <ContinuousMushafView
@@ -158,6 +163,7 @@ describe('ContinuousMushafView while the fonts load', () => {
           dividerColor="#666666"
           initialPage={68}
           metrics={getMushafLayout({width: 390, height: 844, isTablet: false})}
+          onFirstContent={onFirstContent}
         />,
       );
     });
@@ -175,5 +181,17 @@ describe('ContinuousMushafView while the fonts load', () => {
     fontsArrive();
     expect(mockList.mounts).toHaveLength(1);
     expect(mockList.mounts[0].initialScrollIndex).toBe(67);
+  });
+
+  // FlatList's first onContentSizeChange: the cells of the page asked for
+  // have their layout, and the list has scrolled to it.
+  it('reports its first content once, when the list has laid out its page', () => {
+    fontsArrive();
+    expect(onFirstContent).not.toHaveBeenCalled();
+    const {onContentSizeChange} = mockList.mounts[0];
+    expect(onContentSizeChange).toBeDefined();
+    act(() => onContentSizeChange?.(390, 50000));
+    act(() => onContentSizeChange?.(390, 50000));
+    expect(onFirstContent).toHaveBeenCalledTimes(1);
   });
 });
