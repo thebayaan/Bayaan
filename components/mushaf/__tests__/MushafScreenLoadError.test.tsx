@@ -422,6 +422,28 @@ describe('a launch that restores the reader', () => {
     expect(readerRestoreHoldsSplash()).toBe(false);
   });
 
+  // From the review of the merge with the in-place error: a chunk read that
+  // fails with the reader mounted shows the failed view over it, while the
+  // open state stays 'ready'. That view reports too: the splash goes at once,
+  // not at the deadline.
+  it('a read that fails over the mounted reader: the error shows and the splash goes', () => {
+    mockPreload.state = 'ready';
+    mockDk.initialized = true;
+    renderRestored();
+    // The reader is mounted; its page has not reported content yet.
+    expect(mockViewer.mounts).toBe(1);
+    expect(readerRestoreHoldsSplash()).toBe(true);
+
+    act(() => {
+      mockDk.initialized = false;
+      mockDk.loadState = 'error';
+      mockDk.listeners.forEach(listener => listener());
+    });
+    expect(texts()).toContain("Couldn't load the mushaf");
+    expect(mockViewer.mounts).toBe(1);
+    expect(readerRestoreHoldsSplash()).toBe(false);
+  });
+
   it('ends the wait when the reader closes', () => {
     mockPreload.state = 'loading';
     const report = jest.fn();

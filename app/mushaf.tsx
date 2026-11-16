@@ -79,13 +79,12 @@ export default function MushafScreen() {
   // mounts when the data, the fonts and its page are ready, and then stays.
   const open = useMushafOpenTarget(params);
   // The restore of this launch (app/_layout.tsx) waits for the first content:
-  // the page that the reader opens on, or the failed view.
+  // the page that the reader opens on, or the failed view (it reports itself).
   const reportRestore = useContext(ReaderRestoreContext);
   const onFirstContent = useCallback(
     () => reportRestore('content'),
     [reportRestore],
   );
-  useFirstContent(open.state === 'failed', onFirstContent);
   // @ai-end
 
   // Phones may turn to landscape while the mushaf screen is open and go back
@@ -152,6 +151,14 @@ function MushafLoading() {
 function MushafLoadFailed({retry}: {retry: () => void}) {
   const {theme} = useTheme();
   const {t} = useTranslation(['reader', 'common']);
+  // The failed view is the first content of a restored launch, also when it
+  // shows over the mounted reader before the reader's page drew.
+  const reportRestore = useContext(ReaderRestoreContext);
+  const onFirstContent = useCallback(
+    () => reportRestore('content'),
+    [reportRestore],
+  );
+  useFirstContent(true, onFirstContent);
   return (
     <View
       style={[styles.loading, {backgroundColor: theme.colors.background}]}
