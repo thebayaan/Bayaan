@@ -1125,7 +1125,7 @@ const createStyles = (theme: Theme) =>
     activeBadgeText: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.55).toString(),
+      color: theme.colors.textSecondary,
       letterSpacing: latinLetterSpacing(0.3),
     },
 
