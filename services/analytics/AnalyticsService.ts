@@ -39,6 +39,7 @@ import {
 } from './events';
 import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
+import {ListenSession} from './ListenSession'; // @ai
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 
 function isAnalyticsEnabled(): boolean {
@@ -64,6 +65,8 @@ class AnalyticsServiceImpl {
   private deviceId: string = '';
   private enabled: boolean = true;
   private meaningfulListenTracker: MeaningfulListenTracker;
+  /** The listening session of the current track. @ai */
+  readonly listenSession: ListenSession;
   private sessionStartTime: number = Date.now();
   private sessionListenMs: number = 0;
   // @ai-start
@@ -81,6 +84,24 @@ class AnalyticsServiceImpl {
         this.trackMeaningfulListen(props);
       },
     );
+    // @ai-start
+    this.listenSession = new ListenSession({
+      started: props => this.trackPlaybackStarted(props),
+      paused: props => this.trackPlaybackPaused(props),
+      resumed: props => this.trackPlaybackResumed(props),
+      completed: props => this.trackPlaybackCompleted(props),
+      skipped: props => this.trackPlaybackSkipped(props),
+      listened: (ms, track) => {
+        localAggregationStore.addListeningTime(
+          localAggregationStore.getToday(),
+          ms,
+          String(track.surahId),
+          track.reciterId,
+        );
+        this.sessionListenMs += ms;
+      },
+    });
+    // @ai-end
     // Keep the live PostHog instance in lock-step with the consent flag so a
     // caller can never desync the SDK from the store: any change to
     // `analyticsEnabled` (e.g. the Settings → Privacy toggle) pushes straight
@@ -189,13 +210,6 @@ class AnalyticsServiceImpl {
 
   trackPlaybackPaused(props: PlaybackPausedProps): void {
     this.capture(ANALYTICS_EVENTS.PLAYBACK_PAUSED, {...props});
-    localAggregationStore.addListeningTime(
-      localAggregationStore.getToday(),
-      props.listened_ms,
-      String(props.surah_id),
-      props.reciter_id,
-    );
-    this.sessionListenMs += props.listened_ms;
   }
 
   trackPlaybackResumed(props: PlaybackResumedProps): void {
@@ -204,24 +218,10 @@ class AnalyticsServiceImpl {
 
   trackPlaybackCompleted(props: PlaybackCompletedProps): void {
     this.capture(ANALYTICS_EVENTS.PLAYBACK_COMPLETED, {...props});
-    localAggregationStore.addListeningTime(
-      localAggregationStore.getToday(),
-      props.listened_ms,
-      String(props.surah_id),
-      props.reciter_id,
-    );
-    this.sessionListenMs += props.listened_ms;
   }
 
   trackPlaybackSkipped(props: PlaybackSkippedProps): void {
     this.capture(ANALYTICS_EVENTS.PLAYBACK_SKIPPED, {...props});
-    localAggregationStore.addListeningTime(
-      localAggregationStore.getToday(),
-      props.listened_ms,
-      String(props.surah_id),
-      props.reciter_id,
-    );
-    this.sessionListenMs += props.listened_ms;
   }
 
   trackPlaybackSeeked(props: PlaybackSeekedProps): void {

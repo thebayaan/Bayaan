@@ -104,12 +104,8 @@ export function ExpoAudioProvider({
   });
   const isHandlingTrackEnd = useRef(false);
   const wasPlaying = useRef(false);
-
-  // Analytics refs
-  const playbackStartTimeRef = useRef(0);
-  const accumulatedListenMsRef = useRef(0);
+  const wasBuffering = useRef(false); // @ai
   const lastTrackIdRef = useRef<string | null>(null);
-  const hasFiredStartedRef = useRef(false);
 
   // Get store actions
   const updatePlaybackState = usePlayerStore(
@@ -224,14 +220,12 @@ export function ExpoAudioProvider({
 
   // Merged progress + playback state effect (throttled)
   useEffect(() => {
-    if (!status.isLoaded) return;
-
     const now = Date.now();
     const shouldUpdateProgress =
       now - lastProgressUpdate.current >= PROGRESS_UPDATE_INTERVAL;
 
     // Throttled position/duration update
-    if (shouldUpdateProgress) {
+    if (status.isLoaded && shouldUpdateProgress) {
       lastProgressUpdate.current = now;
       updatePlaybackState({
         position: status.currentTime,
@@ -254,27 +248,51 @@ export function ExpoAudioProvider({
     const currentTrack =
       trackStore.queue.tracks[trackStore.queue.currentIndex] ?? null;
     const currentTrackId = currentTrack?.id ?? null;
+    const {listenSession} = analyticsService; // @ai
 
     if (currentTrackId !== lastTrackIdRef.current) {
-      // Track changed — reset accumulated listen time
-      accumulatedListenMsRef.current = 0;
-      playbackStartTimeRef.current = 0;
-      hasFiredStartedRef.current = false;
+      // A new queue took over, unless a skip or a completion ended it. @ai
+      listenSession.end('replaced'); // @ai
       lastTrackIdRef.current = currentTrackId;
     }
 
-    // Fire playback_started and set track duration when a new track starts playing
+    // @ai-start
+    // The native playing and buffering edges, so a button press and an
+    // outside pause take one path. ListenSession reads a stall from
+    // isBuffering: iOS reports playing false in a stall, Android true. On
+    // Android isLoaded is also false in a stall, so the check for it comes
+    // after this.
+    if (
+      (status.isLoaded || status.isBuffering) &&
+      (status.playing !== wasPlaying.current ||
+        status.isBuffering !== wasBuffering.current)
+    ) {
+      const stopped = wasPlaying.current && !status.playing;
+      wasPlaying.current = status.playing;
+      wasBuffering.current = status.isBuffering;
+      listenSession.playingChanged(status.playing, {
+        positionMs: Math.round(status.currentTime * 1000),
+        durationMs: Math.round(status.duration * 1000),
+        didJustFinish: status.didJustFinish,
+        isBuffering: status.isBuffering,
+      });
+      // Save the final position when playback stops.
+      if (stopped && status.isLoaded && status.duration > 0) {
+        persistCurrentProgress(status.currentTime, status.duration, true);
+      }
+    }
+    if (!status.isLoaded) return;
+    // @ai-end
+
+    // Start a listening session when a track starts playing
     if (
       currentTrack &&
       !currentTrack.isUserUpload &&
       currentTrack.surahId &&
       status.playing &&
       status.duration > 0 &&
-      !hasFiredStartedRef.current
+      !listenSession.isOpen // @ai
     ) {
-      hasFiredStartedRef.current = true;
-      playbackStartTimeRef.current = Date.now();
-
       analyticsService.setTrackDuration(
         Math.round(status.duration * 1000),
         parseInt(currentTrack.surahId, 10),
@@ -283,14 +301,17 @@ export function ExpoAudioProvider({
         currentTrack.rewayatId ?? '',
       );
 
-      analyticsService.trackPlaybackStarted({
-        surah_id: parseInt(currentTrack.surahId, 10),
-        reciter_id: currentTrack.reciterId,
-        reciter_name: currentTrack.reciterName,
-        rewayah_id: currentTrack.rewayatId ?? '',
-        source: 'queue',
-        position_ms: Math.round(status.currentTime * 1000),
-      });
+      // @ai-start
+      listenSession.start(
+        {
+          surahId: parseInt(currentTrack.surahId, 10),
+          reciterId: currentTrack.reciterId,
+          reciterName: currentTrack.reciterName,
+          rewayahId: currentTrack.rewayatId ?? '',
+        },
+        Math.round(status.currentTime * 1000),
+      );
+      // @ai-end
     }
 
     // Playback state mapping (always check, not throttled)
@@ -319,55 +340,11 @@ export function ExpoAudioProvider({
       }
 
       updatePlaybackState({state});
-
-      // Analytics: track play/pause transitions for non-user-upload tracks
-      const analyticsTrack =
-        trackStore.queue.tracks[trackStore.queue.currentIndex];
-      if (
-        analyticsTrack &&
-        !analyticsTrack.isUserUpload &&
-        analyticsTrack.surahId
-      ) {
-        const surahId = parseInt(analyticsTrack.surahId, 10);
-
-        if (state === 'playing' && currentState === 'paused') {
-          // Resumed from pause
-          playbackStartTimeRef.current = Date.now();
-          analyticsService.trackPlaybackResumed({
-            surah_id: surahId,
-            reciter_id: analyticsTrack.reciterId,
-            reciter_name: analyticsTrack.reciterName,
-            position_ms: Math.round(status.currentTime * 1000),
-          });
-        } else if (
-          state === 'paused' &&
-          wasPlaying.current &&
-          playbackStartTimeRef.current > 0
-        ) {
-          // Paused from playing — calculate listened time
-          const sessionMs = Date.now() - playbackStartTimeRef.current;
-          accumulatedListenMsRef.current += sessionMs;
-          analyticsService.trackPlaybackPaused({
-            surah_id: surahId,
-            reciter_id: analyticsTrack.reciterId,
-            reciter_name: analyticsTrack.reciterName,
-            position_ms: Math.round(status.currentTime * 1000),
-            listened_ms: sessionMs,
-          });
-          playbackStartTimeRef.current = 0;
-        }
-      }
-
-      // Save progress when pausing (to capture final position)
-      if (state === 'paused' && wasPlaying.current && status.duration > 0) {
-        persistCurrentProgress(status.currentTime, status.duration, true);
-      }
     }
-
-    wasPlaying.current = status.playing;
   }, [
     status.currentTime,
     status.duration,
+    status.didJustFinish, // @ai
     status.isLoaded,
     status.isBuffering,
     status.playing,
@@ -411,37 +388,16 @@ export function ExpoAudioProvider({
       const store = usePlayerStore.getState();
       const {repeatMode} = store.settings;
       const {currentIndex, tracks} = store.queue;
+      // @ai-start
+      const hasNext =
+        currentIndex < tracks.length - 1 || repeatMode === 'queue';
 
-      // Analytics: track completion
-      const completedTrack = tracks[currentIndex];
-      if (
-        completedTrack &&
-        !completedTrack.isUserUpload &&
-        completedTrack.surahId
-      ) {
-        const sessionMs =
-          playbackStartTimeRef.current > 0
-            ? Date.now() - playbackStartTimeRef.current
-            : 0;
-        const totalListened = accumulatedListenMsRef.current + sessionMs;
-        const durationMs = Math.round(latestStatusRef.current.duration * 1000);
-
-        analyticsService.trackPlaybackCompleted({
-          surah_id: parseInt(completedTrack.surahId, 10),
-          reciter_id: completedTrack.reciterId,
-          reciter_name: completedTrack.reciterName,
-          duration_ms: durationMs,
-          listened_ms: totalListened,
-          completion_pct:
-            durationMs > 0
-              ? Math.round((totalListened / durationMs) * 100)
-              : 100,
-        });
-
-        // Reset listen tracking refs
-        playbackStartTimeRef.current = 0;
-        accumulatedListenMsRef.current = 0;
-      }
+      // The session ends here, once, so the skipToNext() below sends no skip.
+      analyticsService.listenSession.end('completed', {
+        durationMs: Math.round(latestStatusRef.current.duration * 1000),
+        autoplayNext: repeatMode === 'track' || hasNext,
+      });
+      // @ai-end
 
       if (repeatMode === 'track') {
         // Repeat current track
@@ -449,8 +405,8 @@ export function ExpoAudioProvider({
           console.log('[ExpoAudioProvider] Repeat mode: track - restarting');
         await expoAudioService.seekTo(0);
         await expoAudioService.play();
-      } else if (currentIndex < tracks.length - 1 || repeatMode === 'queue') {
-        // Auto-advance to next track
+      } else if (hasNext) {
+        // Auto-advance to next track // @ai
         if (__DEV__)
           console.log('[ExpoAudioProvider] Auto-advancing to next track');
         await skipToNext();
