@@ -12,7 +12,8 @@
  * Run it after a change of any of these DBs, then gen-manifest.mjs: the module
  * records the sha256 of each DB it was generated from, gen-manifest.mjs fails
  * when one of them changed (so every release build does, see package.json),
- * and the manifest keys the saved layouts on the sha256 of the module.
+ * and the manifest keys the saved layouts on the sha256 of the module
+ * without its header (the comment lines that name the DBs above).
  * services/mushaf/__tests__/rewayahDataManifest.test.ts runs the check.
  *
  * Needs Node >= 22.13 (node:sqlite). No other dependency.
