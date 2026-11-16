@@ -3,8 +3,8 @@
  * The fonts finish after the data, so the reader can open before them. The
  * continuous view mounts no list until they are there: its first layout then
  * has the text of the page it opens on, and no page is drawn blank first. The
- * view reports its first content once, when the list has drawn (RFC-023 step
- * 5).
+ * view reports its first content once, when the list has laid out the page
+ * asked for (RFC-023 step 5).
  */
 
 import React, {act} from 'react';
@@ -13,6 +13,7 @@ import TestRenderer from 'react-test-renderer';
 interface MockListProps {
   data: number[];
   initialScrollIndex: number;
+  onContentSizeChange?: (width: number, height: number) => void;
 }
 
 // Shared with the mock factories below (read lazily, after module init).
@@ -182,14 +183,15 @@ describe('ContinuousMushafView while the fonts load', () => {
     expect(mockList.mounts[0].initialScrollIndex).toBe(67);
   });
 
-  it('reports its first content once, when the list has drawn', () => {
+  // FlatList's first onContentSizeChange: the cells of the page asked for
+  // have their layout, and the list has scrolled to it.
+  it('reports its first content once, when the list has laid out its page', () => {
     fontsArrive();
     expect(onFirstContent).not.toHaveBeenCalled();
-    const {onLoad} = mockList.mounts[0] as {
-      onLoad?: (info: {elapsedTimeInMs: number}) => void;
-    };
-    act(() => onLoad?.({elapsedTimeInMs: 1}));
-    act(() => onLoad?.({elapsedTimeInMs: 1}));
+    const {onContentSizeChange} = mockList.mounts[0];
+    expect(onContentSizeChange).toBeDefined();
+    act(() => onContentSizeChange?.(390, 50000));
+    act(() => onContentSizeChange?.(390, 50000));
     expect(onFirstContent).toHaveBeenCalledTimes(1);
   });
 });

@@ -787,11 +787,14 @@ const ContinuousMushafView = forwardRef<
     const fontMgr = useMushafFontMgr();
 
     // @ai-start
-    // FlashList raises onLoad once it has drawn the visible items. The list
-    // mounts after the fonts (below), so the items have their text by then.
-    const [listDrawn, setListDrawn] = useState(false);
-    const handleListLoad = useCallback(() => setListDrawn(true), []);
-    useFirstContent(listDrawn, onFirstContent);
+    // The list's first content size comes when the pages it renders first (the
+    // page asked for and the next) have their layout, and VirtualizedList
+    // scrolls to initialScrollIndex just before it passes that size on: the
+    // page asked for is on screen. The list mounts after the fonts (below), so
+    // the page has its text by then.
+    const [listLaidOut, setListLaidOut] = useState(false);
+    const handleContentSizeChange = useCallback(() => setListLaidOut(true), []);
+    useFirstContent(listLaidOut, onFirstContent);
     // @ai-end
 
     // Surah header fonts (computed once from quranCommon typeface).
@@ -1032,7 +1035,7 @@ const ContinuousMushafView = forwardRef<
         scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{itemVisiblePercentThreshold: 50}}
-        onLoad={handleListLoad} // @ai
+        onContentSizeChange={handleContentSizeChange} // @ai
       />
     );
   },
