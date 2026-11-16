@@ -9,7 +9,6 @@ import {
   type ListViewToken,
   StatusBar,
   BackHandler,
-  Platform,
   useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
@@ -720,15 +719,12 @@ export default function MushafViewer({
   const metrics = useMushafLayout({
     insets,
     // @ai-start
-    // The side insets the page keeps clear of. The header and toolbar below
-    // pad by them on both platforms; the page does so on iOS only, where
-    // they are the cutout (the sensor housing, 59/59 on a Dynamic Island
-    // phone in landscape). On Android they carry the navigation bar of the
-    // edge-to-edge app, and the page may sit under it.
-    sideInsets:
-      Platform.OS === 'ios'
-        ? {left: insets.left, right: insets.right}
-        : undefined,
+    // The side insets the page keeps clear of, as the header and toolbar
+    // below do. On iOS they are the cutout (the sensor housing, 59/59 on a
+    // Dynamic Island phone in landscape). On Android they are the display
+    // cutout (a punch-hole camera) and, with button navigation, the
+    // translucent navigation bar of the edge-to-edge app.
+    sideInsets: {left: insets.left, right: insets.right},
     // @ai-end
     toolbarHeight: USE_GLASS ? 0 : 60,
     headerHeight: USE_GLASS ? 0 : 60,
