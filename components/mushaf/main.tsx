@@ -42,6 +42,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   getJuzForPage,
   getPageEdgeLayout,
+  getPageLabelOffsets, // @ai
   readerListKey, // @ai
   singlePageLayout, // @ai
   useMushafLayout,
@@ -231,10 +232,8 @@ const DKPageView: React.FC<{
   // with all four corners rounded instead. `facingPages` is still the source
   // of truth: once we add the real two-page spread, that path will use the
   // asymmetric decoration on each half of the spread.
-  const useSymmetricEdges =
-    isBookLayout &&
-    !metrics.facingPages &&
-    metrics.pageWidth < metrics.screenWidth;
+  // @ai getMushafLayout marks those layouts with `symmetricEdges`.
+  const useSymmetricEdges = isBookLayout && metrics.symmetricEdges; // @ai
 
   // In fullscreen mode, use symmetric padding; in book mode the content sits
   // against the spine. When we force symmetric edges on tablet single-page
@@ -262,7 +261,7 @@ const DKPageView: React.FC<{
       contentWidth: metrics.contentWidth,
       contentHeight: metrics.contentHeight,
       lineHeight: metrics.baseLineHeight,
-      centerOpeningPages: true,
+      centerOpeningPages: metrics.centerShortPages, // @ai
     }),
     [
       metrics.pageWidth,
@@ -272,13 +271,15 @@ const DKPageView: React.FC<{
       metrics.contentWidth,
       metrics.contentHeight,
       metrics.baseLineHeight,
+      metrics.centerShortPages,
     ],
   );
 
-  // Center page number vertically between content bottom and bottom border
-  const pageNumberBottom = isBookLayout
-    ? insets.top + (metrics.paddingBottom - insets.top) / 2 - 8
-    : metrics.paddingBottom - 35;
+  // @ai The label offsets live next to the gutter floors in constants.ts.
+  const {labelTop, pageNumberBottom} = getPageLabelOffsets(metrics, {
+    isBookLayout,
+    insetTop: insets.top,
+  });
 
   return (
     <View
@@ -353,6 +354,7 @@ const DKPageView: React.FC<{
           baseLineHeight={metrics.baseLineHeight}
           paddingHorizontal={metrics.paddingHorizontal}
           paddingTop={metrics.paddingTop}
+          centerShortPages={metrics.centerShortPages} // @ai
         />
       )}
       {isBookLayout && (
@@ -369,7 +371,7 @@ const DKPageView: React.FC<{
           styles.pageLabel,
           {
             color: labelColor,
-            top: metrics.paddingTop - 30,
+            top: labelTop,
             left: effectiveLabelLeft,
           },
         ]}
@@ -382,7 +384,7 @@ const DKPageView: React.FC<{
           styles.pageLabel,
           {
             color: labelColor,
-            top: metrics.paddingTop - 30,
+            top: labelTop,
             right: effectiveOuterMargin + 8,
             textAlign: 'right',
           },
@@ -447,7 +449,9 @@ const DKSpreadView: React.FC<{
 }) => {
   const spreadBg = isBookLayout ? edgeBg : cardColor;
 
-  // Phone landscape: full-width scrollable page.
+  // Phone landscape: scrollable page, offset past the cutout.
+  // @ai pageOffsetX is the left cutout inset, and 0 where there is none. The
+  // inverted list flips both the list and each cell, so left stays left.
   if (metrics.scrollContainerHeight) {
     return (
       <ScrollView
@@ -456,7 +460,10 @@ const DKSpreadView: React.FC<{
           height: metrics.scrollContainerHeight,
           backgroundColor: spreadBg,
         }}
-        contentContainerStyle={{height: metrics.screenHeight}}
+        contentContainerStyle={{
+          height: metrics.screenHeight,
+          paddingLeft: metrics.pageOffsetX, // @ai
+        }}
         showsVerticalScrollIndicator={false}
         bounces={false}>
         <DKPageView
@@ -712,6 +719,17 @@ export default function MushafViewer({
   // Tablet path: always use measured dims (falls back to window on first frame).
   const metrics = useMushafLayout({
     insets,
+    // @ai-start
+    // The side insets the page keeps clear of. The header and toolbar below
+    // pad by them on both platforms; the page does so on iOS only, where
+    // they are the cutout (the sensor housing, 59/59 on a Dynamic Island
+    // phone in landscape). On Android they carry the navigation bar of the
+    // edge-to-edge app, and the page may sit under it.
+    sideInsets:
+      Platform.OS === 'ios'
+        ? {left: insets.left, right: insets.right}
+        : undefined,
+    // @ai-end
     toolbarHeight: USE_GLASS ? 0 : 60,
     headerHeight: USE_GLASS ? 0 : 60,
     containerWidth: isTablet ? containerSize?.width : undefined,
