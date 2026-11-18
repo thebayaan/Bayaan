@@ -35,12 +35,17 @@ jest.mock('@/components/mushaf/RecitationMicButton', () => ({
   }),
 }));
 let mockParams: Record<string, string> = {};
+const mockRoute = {params: {}}; // @ai
 jest.mock('expo-router', () => {
   const Toolbar = Object.assign(() => null, {
     Button: () => null,
     Spacer: () => null,
   });
-  return {Stack: {Toolbar}, useLocalSearchParams: () => mockParams};
+  return {
+    Stack: {Toolbar},
+    useLocalSearchParams: () => mockParams,
+    useRoute: () => mockRoute, // @ai a stable route: no link comes
+  };
 });
 
 jest.mock('expo-screen-orientation', () => ({

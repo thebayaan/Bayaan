@@ -47,7 +47,8 @@ export type MushafOpenState =
       retry: () => void;
     };
 
-function resolveTarget(params: MushafOpenParams): MushafOpenTarget {
+// Also used for a link to the open reader (hooks/useReaderLinkPage.ts).
+export function resolveTarget(params: MushafOpenParams): MushafOpenTarget {
   const {surah, page, ayah, anchor} = params;
   const verseKey = surah && ayah ? `${surah}:${ayah}` : undefined;
   const p = page ? parseInt(page, 10) : NaN;
