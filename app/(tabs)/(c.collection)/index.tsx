@@ -48,13 +48,6 @@ type CategoryItem = CollectionHomeCategory;
 /** Muted squares behind the surah-name glyphs in the Loved preview. */
 const COVER_COLORS = ['#2F5D50', '#7A5A3E', '#3D4E6B', '#5C4470', '#8A4F4F'];
 
-function formatSize(bytes: number): string {
-  if (bytes >= 1024 * 1024 * 1024) {
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  }
-  return `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB`;
-}
-
 // @ai-start
 export default function CollectionScreen() {
   const {theme} = useTheme();
@@ -109,12 +102,20 @@ export default function CollectionScreen() {
   }, []);
 
   // Live summaries: what's inside each category, newest first.
-  const summarize = (names: string[], total: number): string | undefined => {
+  const summarize = (
+    names: string[],
+    total: number,
+    moreKey: 'more' | 'moreReciters' = 'more',
+  ): string | undefined => {
     const [a, b] = names;
     if (!a) return undefined;
     if (!b || total <= 1) return a;
     if (total === 2) return t('collectionScreen.summary.two', {a, b});
-    return t('collectionScreen.summary.more', {a, b, count: total - 2});
+    return t(`collectionScreen.summary.${moreKey}`, {
+      a,
+      b,
+      count: total - 2,
+    });
   };
   const verseLabel = (surahNumber: number, ayahNumber: number) => {
     const surah = getSurahById(surahNumber);
@@ -170,7 +171,18 @@ export default function CollectionScreen() {
           surahs: t('common:counts.surahs', {
             count: completedDownloads.length,
           }),
-          size: localizeDigits(formatSize(downloadBytes)),
+          size:
+            downloadBytes >= 1024 * 1024 * 1024
+              ? t('collectionScreen.summary.sizeGB', {
+                  size: localizeDigits(
+                    (downloadBytes / (1024 * 1024 * 1024)).toFixed(1),
+                  ),
+                })
+              : t('collectionScreen.summary.sizeMB', {
+                  size: localizeDigits(
+                    Math.max(1, Math.round(downloadBytes / (1024 * 1024))),
+                  ),
+                }),
         })
       : undefined;
 
@@ -180,7 +192,7 @@ export default function CollectionScreen() {
   const recitersPreview =
     recitersNewest.length > 0 ? (
       <View style={styles.previewRow}>
-        {recitersNewest.slice(0, 3).map((reciter, i) => (
+        {recitersNewest.slice(0, 2).map((reciter, i) => (
           <View
             key={reciter.id}
             style={[
@@ -229,6 +241,7 @@ export default function CollectionScreen() {
       summary: summarize(
         recitersNewest.map(r => getReciterDisplayName(r)),
         recitersNewest.length,
+        'moreReciters',
       ),
       preview: recitersPreview,
     },
@@ -252,7 +265,7 @@ export default function CollectionScreen() {
       count: lovedTracks.length,
       emptyText: t('collectionScreen.empty.loved'),
       route: '/collection/loved',
-      summary: summarize(lovedNames, lovedNames.length),
+      summary: summarize(lovedNames, lovedTracks.length),
       preview: lovedPreview,
     },
     {

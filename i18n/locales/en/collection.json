@@ -24,7 +24,11 @@
       "more_one": "{{a}}, {{b}} and {{count}} more",
       "more_other": "{{a}}, {{b}} and {{count}} more",
       "downloads": "{{surahs}} · {{size}}",
-      "quote": "“{{text}}”"
+      "quote": "“{{text}}”",
+      "moreReciters_one": "{{a}}, {{b}} and {{count}} more",
+      "moreReciters_other": "{{a}}, {{b}} and {{count}} more",
+      "sizeMB": "{{size}} MB",
+      "sizeGB": "{{size}} GB"
     }
   },
   "bookmarksScreen": {
