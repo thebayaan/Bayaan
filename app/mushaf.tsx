@@ -18,6 +18,7 @@ import {
   type MushafOpenTarget,
 } from '@/hooks/useMushafOpenTarget'; // @ai
 import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
+import {useReaderLinkPage} from '@/hooks/useReaderLinkPage'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 // @ai-start
 import {
@@ -78,6 +79,8 @@ export default function MushafScreen() {
   // The data loads after the splash, so this screen can open first. The reader
   // mounts when the data, the fonts and its page are ready, and then stays.
   const open = useMushafOpenTarget(params);
+  // A link to the open reader turns it to the link's page.
+  useReaderLinkPage(params, open.state === 'ready');
   // The restore of this launch (app/_layout.tsx) waits for the first content:
   // the page that the reader opens on, or the failed view (it reports itself).
   const reportRestore = useContext(ReaderRestoreContext);

@@ -1194,8 +1194,12 @@ export default function MushafViewer({
     if (navRequestId === 0) return;
     const {targetPage, targetVerseKey, clear} =
       useMushafNavigationStore.getState();
+    const {targetSurahId} = useMushafNavigationStore.getState(); // @ai
     if (targetPage) {
       navigateToPage(targetPage);
+      // A surah link names its surah, as at mount. @ai
+      if (targetSurahId)
+        setAskedSurah({surahId: targetSurahId, page: targetPage}); // @ai
       if (targetVerseKey) {
         useMushafVerseSelectionStore
           .getState()
