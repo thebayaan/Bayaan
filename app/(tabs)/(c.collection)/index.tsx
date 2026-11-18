@@ -71,7 +71,7 @@ export default function CollectionScreen() {
             ),
           );
         })
-        .catch(() => undefined);
+        .catch(() => {});
       verseAnnotationService
         .getAllNotes()
         .then(n => {
@@ -83,7 +83,7 @@ export default function CollectionScreen() {
             ),
           );
         })
-        .catch(() => undefined);
+        .catch(() => {});
     }, []),
   );
 
