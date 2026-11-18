@@ -84,7 +84,9 @@ export default function CollectionScreen() {
             [...b].sort((x, y) => y.createdAt - x.createdAt).slice(0, 2),
           );
         })
-        .catch(() => {});
+        .catch(() => {
+          /* keep the last counts if the read fails */
+        });
       verseAnnotationService
         .getAllNotes()
         .then(n => {
@@ -96,7 +98,9 @@ export default function CollectionScreen() {
             ),
           );
         })
-        .catch(() => {});
+        .catch(() => {
+          /* keep the last counts if the read fails */
+        });
     }, []),
   );
 
