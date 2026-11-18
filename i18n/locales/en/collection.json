@@ -13,6 +13,18 @@
       "bookmarks": "No bookmarks yet",
       "notes": "No notes yet",
       "uploads": "No uploads yet"
+    },
+    "groups": {
+      "listening": "Listening",
+      "reading": "Reading",
+      "yours": "Yours"
+    },
+    "summary": {
+      "two": "{{a}}, {{b}}",
+      "more_one": "{{a}}, {{b}} and {{count}} more",
+      "more_other": "{{a}}, {{b}} and {{count}} more",
+      "downloads": "{{surahs}} · {{size}}",
+      "quote": "“{{text}}”"
     }
   },
   "bookmarksScreen": {

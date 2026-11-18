@@ -17,6 +17,22 @@
       "bookmarks": "لا توجد علامات مرجعية بعد",
       "notes": "لا توجد ملاحظات بعد",
       "uploads": "لا توجد ملفات مستوردة بعد"
+    },
+    "groups": {
+      "listening": "الاستماع",
+      "reading": "القراءة",
+      "yours": "خاصّتك"
+    },
+    "summary": {
+      "two": "{{a}}، {{b}}",
+      "more_zero": "{{a}}، {{b}}",
+      "more_one": "{{a}}، {{b}} وواحدة أخرى",
+      "more_two": "{{a}}، {{b}} واثنتان أخريان",
+      "more_few": "{{a}}، {{b}} و{{count}} أخرى",
+      "more_many": "{{a}}، {{b}} و{{count}} أخرى",
+      "more_other": "{{a}}، {{b}} و{{count}} أخرى",
+      "downloads": "{{surahs}} · {{size}}",
+      "quote": "«{{text}}»"
     }
   },
   "bookmarksScreen": {

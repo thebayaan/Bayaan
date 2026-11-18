@@ -1,8 +1,7 @@
 import React, {useCallback, useState} from 'react';
-import {View, ScrollView, Text, Pressable} from 'react-native';
+import {View, ScrollView, Text} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useRouter} from 'expo-router';
 import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
@@ -27,15 +26,34 @@ import {useBottomInset} from '@/hooks/useBottomInset';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
-import {flipX} from '@/utils/rtl';
 import {useResponsive} from '@/hooks/useResponsive';
+import {TabletCollectionHome} from '@/components/collection/TabletCollectionHome';
 import {
-  TabletCollectionHome,
-  type CollectionCategory,
-} from '@/components/collection/TabletCollectionHome';
+  CollectionHomeList,
+  type CollectionHomeCategory,
+} from '@/components/collection/CollectionHomeList';
+import {ReciterImage} from '@/components/ReciterImage';
+import {getSurahById} from '@/services/dataService';
+import {
+  getReciterDisplayName,
+  getSurahDisplayName,
+  localizeDigits,
+} from '@/i18n/format';
+import {surahGlyphMap} from '@/utils/surahGlyphMap';
+import type {VerseBookmark, VerseNote} from '@/types/verse-annotations';
 // @ai-end
 
-type CategoryItem = CollectionCategory;
+type CategoryItem = CollectionHomeCategory;
+
+/** Muted squares behind the surah-name glyphs in the Loved preview. */
+const COVER_COLORS = ['#2F5D50', '#7A5A3E', '#3D4E6B', '#5C4470', '#8A4F4F'];
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+  return `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB`;
+}
 
 // @ai-start
 export default function CollectionScreen() {
@@ -43,7 +61,6 @@ export default function CollectionScreen() {
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
-  const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
   const {isTablet} = useResponsive();
   const {lovedTracks} = useLoved();
@@ -54,16 +71,31 @@ export default function CollectionScreen() {
 
   const [bookmarkCount, setBookmarkCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
+  const [recentBookmarks, setRecentBookmarks] = useState<VerseBookmark[]>([]);
+  const [latestNote, setLatestNote] = useState<VerseNote | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       verseAnnotationService
         .getAllBookmarks()
-        .then(b => setBookmarkCount(b.length))
+        .then(b => {
+          setBookmarkCount(b.length);
+          setRecentBookmarks(
+            [...b].sort((x, y) => y.createdAt - x.createdAt).slice(0, 2),
+          );
+        })
         .catch(() => {});
       verseAnnotationService
         .getAllNotes()
-        .then(n => setNoteCount(n.length))
+        .then(n => {
+          setNoteCount(n.length);
+          setLatestNote(
+            n.reduce<VerseNote | null>(
+              (a, x) => (!a || x.updatedAt > a.updatedAt ? x : a),
+              null,
+            ),
+          );
+        })
         .catch(() => {});
     }, []),
   );
@@ -71,6 +103,94 @@ export default function CollectionScreen() {
   const handleAddPress = useCallback(() => {
     SheetManager.show('add-to-collection');
   }, []);
+
+  // Live summaries: what's inside each category, newest first.
+  const summarize = (names: string[], total: number): string | undefined => {
+    const [a, b] = names;
+    if (!a) return undefined;
+    if (!b || total <= 1) return a;
+    if (total === 2) return t('collectionScreen.summary.two', {a, b});
+    return t('collectionScreen.summary.more', {a, b, count: total - 2});
+  };
+  const verseLabel = (surahNumber: number, ayahNumber: number) => {
+    const surah = getSurahById(surahNumber);
+    const ref = localizeDigits(`${surahNumber}:${ayahNumber}`);
+    return surah ? `${getSurahDisplayName(surah)} ${ref}` : ref;
+  };
+
+  const lovedNewest = [...lovedTracks].sort(
+    (x, y) => y.timestamp - x.timestamp,
+  );
+  const lovedNames: string[] = [];
+  lovedNewest.forEach(track => {
+    const surah = getSurahById(Number(track.surahId));
+    const name = surah ? getSurahDisplayName(surah) : track.surahId;
+    if (!lovedNames.includes(name)) lovedNames.push(name);
+  });
+  const lovedPreview =
+    lovedNewest.length > 0 ? (
+      <View style={styles.previewRow}>
+        {lovedNewest.slice(0, 2).map((track, i) => (
+          <View
+            key={`${track.reciterId}-${track.surahId}-${track.rewayatId}`}
+            style={[
+              styles.cover,
+              {
+                backgroundColor:
+                  COVER_COLORS[Number(track.surahId) % COVER_COLORS.length],
+                borderColor: theme.colors.background,
+                marginStart: i === 0 ? 0 : -moderateScale(10),
+              },
+            ]}>
+            <Text style={styles.coverGlyph}>
+              {surahGlyphMap[Number(track.surahId)] ?? ''}
+            </Text>
+          </View>
+        ))}
+      </View>
+    ) : null;
+
+  const completedDownloads = downloads.filter(d => d.status === 'completed');
+  const downloadBytes = completedDownloads.reduce(
+    (sum, d) => sum + (d.fileSize || 0),
+    0,
+  );
+  const downloadsSummary =
+    completedDownloads.length > 0
+      ? t('collectionScreen.summary.downloads', {
+          surahs: t('common:counts.surahs', {
+            count: completedDownloads.length,
+          }),
+          size: localizeDigits(formatSize(downloadBytes)),
+        })
+      : undefined;
+
+  const recitersNewest = [...favoriteReciters].sort(
+    (x, y) => y.favoritedAt - x.favoritedAt,
+  );
+  const recitersPreview =
+    recitersNewest.length > 0 ? (
+      <View style={styles.previewRow}>
+        {recitersNewest.slice(0, 3).map((reciter, i) => (
+          <View
+            key={reciter.id}
+            style={[
+              styles.face,
+              {
+                borderColor: theme.colors.background,
+                marginStart: i === 0 ? 0 : -moderateScale(9),
+              },
+            ]}>
+            <ReciterImage
+              imageUrl={reciter.image_url ?? undefined}
+              reciterName={reciter.name}
+              style={styles.faceImage}
+              profileIconSize={moderateScale(12)}
+            />
+          </View>
+        ))}
+      </View>
+    ) : null;
 
   const categories: CategoryItem[] = [
     {
@@ -81,6 +201,10 @@ export default function CollectionScreen() {
       count: playlists.length,
       emptyText: t('collectionScreen.empty.playlists'),
       route: '/collection/playlists',
+      summary: summarize(
+        playlists.map(p => p.name),
+        playlists.length,
+      ),
     },
     {
       id: 'reciters',
@@ -92,15 +216,21 @@ export default function CollectionScreen() {
       count: favoriteReciters.length,
       emptyText: t('collectionScreen.empty.reciters'),
       route: '/collection/favorite-reciters',
+      summary: summarize(
+        recitersNewest.map(r => getReciterDisplayName(r)),
+        recitersNewest.length,
+      ),
+      preview: recitersPreview,
     },
     {
       id: 'downloads',
       label: t('common:terms.downloads'),
       icon: <DownloadIcon color="#10AC84" size={moderateScale(22)} />,
       color: '#10AC84',
-      count: downloads.length,
       emptyText: t('collectionScreen.empty.downloads'),
       route: '/collection/downloads',
+      count: completedDownloads.length,
+      summary: downloadsSummary,
     },
     {
       id: 'loved',
@@ -112,6 +242,8 @@ export default function CollectionScreen() {
       count: lovedTracks.length,
       emptyText: t('collectionScreen.empty.loved'),
       route: '/collection/loved',
+      summary: summarize(lovedNames, lovedNames.length),
+      preview: lovedPreview,
     },
     {
       id: 'bookmarks',
@@ -123,6 +255,10 @@ export default function CollectionScreen() {
       count: bookmarkCount,
       emptyText: t('collectionScreen.empty.bookmarks'),
       route: '/collection/bookmarks',
+      summary: summarize(
+        recentBookmarks.map(b => verseLabel(b.surahNumber, b.ayahNumber)),
+        bookmarkCount,
+      ),
     },
     {
       id: 'notes',
@@ -134,6 +270,11 @@ export default function CollectionScreen() {
       count: noteCount,
       emptyText: t('collectionScreen.empty.notes'),
       route: '/collection/notes',
+      summary: latestNote
+        ? t('collectionScreen.summary.quote', {
+            text: latestNote.content.split('\n')[0],
+          })
+        : undefined,
     },
     {
       id: 'uploads',
@@ -143,6 +284,9 @@ export default function CollectionScreen() {
       count: uploadsTotalCount,
       emptyText: t('collectionScreen.empty.uploads'),
       route: '/collection/uploads',
+      summary: t('uploadsScreen.recitationsCount', {
+        count: uploadsTotalCount,
+      }),
     },
   ];
 
@@ -169,62 +313,7 @@ export default function CollectionScreen() {
             ? moderateScale(16)
             : insets.top + moderateScale(16),
         }}>
-        {/* Add to Collection Bar */}
-        <Pressable style={styles.addBar} onPress={handleAddPress}>
-          <Feather
-            name="plus"
-            size={moderateScale(16)}
-            color={theme.colors.textSecondary}
-          />
-          <Text
-            style={[styles.addBarText, {color: theme.colors.textSecondary}]}>
-            {t('collectionScreen.addToCollection')}
-          </Text>
-        </Pressable>
-
-        {/* Category List */}
-        <View style={styles.categoryList}>
-          {categories.map(category => (
-            <Pressable
-              key={category.id}
-              style={styles.categoryRow}
-              onPress={() => router.push(category.route as never)}>
-              <View
-                style={[
-                  styles.categoryIcon,
-                  {
-                    backgroundColor: Color(category.color)
-                      .alpha(0.15)
-                      .toString(),
-                  },
-                ]}>
-                {category.icon}
-              </View>
-              <View style={styles.categoryInfo}>
-                <Text
-                  style={[styles.categoryLabel, {color: theme.colors.text}]}>
-                  {category.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.categorySubtitle,
-                    {color: theme.colors.textSecondary},
-                  ]}
-                  numberOfLines={1}>
-                  {category.count > 0
-                    ? t('collectionScreen.itemsCount', {count: category.count})
-                    : category.emptyText}
-                </Text>
-              </View>
-              <Feather
-                name="chevron-right"
-                size={moderateScale(18)}
-                color={theme.colors.textSecondary}
-                style={flipX}
-              />
-            </Pressable>
-          ))}
-        </View>
+        <CollectionHomeList categories={categories} onAdd={handleAddPress} />
 
         <View style={{height: bottomInset}} />
       </ScrollView>
@@ -235,6 +324,35 @@ export default function CollectionScreen() {
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
+    previewRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    cover: {
+      width: '28@ms',
+      height: '28@ms',
+      borderRadius: '7@ms',
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    coverGlyph: {
+      fontFamily: 'SurahNames',
+      fontSize: '17@ms',
+      color: '#FFFFFF',
+    },
+    face: {
+      width: '26@ms',
+      height: '26@ms',
+      borderRadius: '13@ms',
+      borderWidth: 1.5,
+      overflow: 'hidden',
+    },
+    faceImage: {
+      width: '100%',
+      height: '100%',
+    },
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
