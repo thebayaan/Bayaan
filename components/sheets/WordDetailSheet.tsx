@@ -296,7 +296,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
       fontStyle: 'italic',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       marginBottom: moderateScale(4),
     },
@@ -310,7 +310,7 @@ const createStyles = (theme: Theme) =>
     contextText: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
     },
   });

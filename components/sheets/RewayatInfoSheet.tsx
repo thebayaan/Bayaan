@@ -170,7 +170,7 @@ const createStyles = (theme: Theme) =>
     sectionTitle: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: moderateScale(16),
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',

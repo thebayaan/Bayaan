@@ -179,7 +179,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'left',
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: moderateScale(24),
       lineHeight: moderateScale(18),
     },
@@ -216,7 +216,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'left',
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       lineHeight: moderateScale(17),
     },
   });

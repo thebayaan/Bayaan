@@ -33,9 +33,11 @@ import i18n from '@/i18n';
 import {getSurahDisplayName} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 // @ai-start
-import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
-import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+import {
+  savedVerseRouteParams,
+  savedVerseSubtitle,
+} from '@/services/verse-annotations/unitAnnotations';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
   CollectionOptionsMenu,
@@ -96,6 +98,7 @@ const BookmarksScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      openingRef.current = false; // @ai: ignores taps after one opened the reader
       loadBookmarks();
     }, [loadBookmarks]),
   );
@@ -108,17 +111,13 @@ const BookmarksScreen = () => {
 
   // @ai-start
   const handleOpenBookmark = useCallback(
-    async (bookmark: VerseBookmark) => {
+    (bookmark: VerseBookmark) => {
       if (openingRef.current) return;
       openingRef.current = true;
-      try {
-        router.push({
-          pathname: '/mushaf',
-          params: await savedVerseOpenParams(bookmark),
-        });
-      } finally {
-        openingRef.current = false;
-      }
+      router.push({
+        pathname: '/mushaf',
+        params: savedVerseRouteParams(bookmark),
+      });
     },
     [router],
   );

@@ -89,6 +89,7 @@ import {TranslationContent} from './verse-actions/TranslationContent';
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
+import {IrabContent} from './verse-actions/IrabContent';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
@@ -109,6 +110,7 @@ type ActiveScreen =
   | 'tafseer'
   | 'theme'
   | 'wbw'
+  | 'irab'
   | 'community-reflections'
   | null;
 
@@ -123,6 +125,7 @@ const SCREEN_TITLE_KEYS = {
   tafseer: 'verseActions.tafseer',
   theme: 'verseActions.theme',
   wbw: 'verseActions.wordByWord',
+  irab: 'verseActions.irab',
   'community-reflections': 'verseActions.communityReflections',
 } as const;
 // @ai-end
@@ -457,6 +460,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setActiveScreen('wbw');
   }, []);
 
+  const handleIrab = useCallback(() => {
+    setActiveScreen('irab');
+  }, []);
+
   // RFC-018 — open the community-reflections popup. Only reachable when a
   // fork wires branding.communityReflectionsProvider (the row is gated).
   const handleCommunityReflections = useCallback(() => {
@@ -669,16 +676,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     const trackRewayatId = currentTrack?.rewayatId;
     const trackReciterName = currentTrack?.reciterName;
 
-    const page =
-      digitalKhattDataService.getPageForVerse(firstKey) ||
-      useMushafPlayerStore.getState().currentPage ||
-      1;
-
     const mushafStore = useMushafPlayerStore.getState();
     if (trackRewayatId && trackReciterName) {
       mushafStore.setReciter(trackRewayatId, trackReciterName);
     }
-    useMushafPlayerStore.setState({currentPage: page});
 
     if (playerState.playback.state === 'playing') {
       playerState.pause();
@@ -687,26 +688,25 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     await SheetManager.hide(props.sheetId);
     playerState.setSheetMode('hidden');
 
-    useMushafPlayerStore.setState({
-      currentPage: page,
-      pendingStartVerseKey: firstKey,
-    });
+    useMushafPlayerStore.setState({pendingStartVerseKey: firstKey});
     // Start at the selected verse itself, in its own rewayah. @ai
     if (ready.units) mushafStore.setPendingStart(ready.units[0]);
 
+    // @ai-start
+    // The player can show this sheet before the Mushaf data loads, and a page
+    // lookup here then gave an old page or page 1. Open the reader at once with
+    // the verse and no page. The reader opens the page of the verse and shows
+    // the options when the data is ready (app/mushaf.tsx).
     router.push({
       pathname: '/mushaf',
       params: {
-        page: String(page),
         surah: String(sNum),
         ayah: String(aNum),
-        ...(anchorKey !== null ? {anchor: anchorKey} : {}), // @ai
+        ...(anchorKey !== null ? {anchor: anchorKey} : {}),
+        playerOptions: '1',
       },
     });
-
-    SheetManager.show('mushaf-player-options', {
-      payload: {currentPage: page},
-    });
+    // @ai-end
   }, [readySelection, requireSelection, props.sheetId]); // @ai
 
   useEffect(() => {
@@ -719,7 +719,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   }, [activeScreen]);
 
   const handleOnClose = useCallback(() => {
-    setActiveScreen(null);
+    // @ai No LayoutAnimation on close. The sheet library calls onClose in the
+    // task that unmounts the sheet's React Native Modal, so an animation
+    // configured here also covers that unmount. On iOS (React Native 0.88.1),
+    // when "Play from Here" started playback at the same time, the animation
+    // lost the removal of the Modal host: UIKit kept the Modal's empty
+    // full-screen view on top, and the Mushaf ignored every touch until a
+    // restart. Screen changes inside the open sheet still animate.
+    setActiveScreenRaw(null);
     useVerseSelectionStore.getState().clearSelection();
     useMushafVerseSelectionStore.getState().clearSelection();
   }, []);
@@ -740,6 +747,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     activeScreen === 'tafseer' ||
     activeScreen === 'theme' ||
     activeScreen === 'wbw' ||
+    activeScreen === 'irab' ||
     activeScreen === 'community-reflections';
 
   return (
@@ -849,6 +857,15 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 )}
                 {activeScreen === 'wbw' && (
                   <WBWContent
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    rewayah={resolvedRewayah}
+                    unitStart={unitStart}
+                    onBack={handleBack}
+                  />
+                )}
+                {activeScreen === 'irab' && (
+                  <IrabContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     rewayah={resolvedRewayah}
@@ -1101,6 +1118,22 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       {t('verseActions.wordByWord')}
                     </Text>
                   </Pressable>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleIrab}>
+                    <MaterialCommunityIcons
+                      name="file-tree-outline"
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>
+                      {t('verseActions.irab')}
+                    </Text>
+                  </Pressable>
                 </>
               ) : null}
               {/* RFC-018 — Community Reflections row. Gated on a fork wiring
@@ -1257,7 +1290,7 @@ const createStyles = (theme: Theme) =>
     verseRef: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
     },
     card: {

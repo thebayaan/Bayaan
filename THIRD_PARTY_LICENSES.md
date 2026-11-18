@@ -51,6 +51,65 @@ The word text of the seven non-Hafs rewayah databases (`data/mushaf/digitalkhatt
 
 **Licence status.** KFGQPC offers these packages to developers on its developer page (https://qurancomplex.gov.sa/en/techquran/dev/). No licence or terms of use for the text was found in the packages. The end-user licence embedded in their riwayah fonts covers only those fonts, and Bayaan does not ship them. No written permission from KFGQPC for these texts is recorded in this repository yet. Until one is, this section records where the text comes from, not a licence grant. Details are in `scripts/rewayah/sources/SOURCES.md` (Licence status).
 
+## Recitation follow-along model (Tilawa)
+
+Recitation follow-along runs the **Tilawa** recogniser on the device
+(https://github.com/yazinsai/tilawa). The JavaScript SDK `@tilawa/core` is MIT
+and is listed with the npm dependencies below. The acoustic model
+(`zipformer_a0w_ep1_a05.int8.onnx`) and the phoneme corpus
+(`zipformer_quran.json`) are not bundled: the app downloads them on first use
+from the Tilawa GitHub releases. Both are Derivatives of **Quran-Lab**'s
+`zipformer_p-arabic-v3` (https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3)
+and are licensed under the **Quran-Lab NPL-1.2**, whose full text is in
+`licenses/NPL-1.2.txt`. NPL-1.2 forbids charging for the Work or any feature it
+powers: follow-along is and will stay free, with no paywall or ads. Any copy of
+the model Bayaan hosts itself must be served with that licence file.
+
+`services/recitation/followerConstants.npl.json` holds the numbers that were tuned
+on this model's output (the word marks and the checks behind them). It is a Derivative
+of the model too, so that one file is under the **Quran-Lab NPL-1.2**, not the app's
+licence. In the app, numbers tuned on the model's output go in that file and nowhere
+else. The app's tests (`__tests__` folders and their fixtures) and the bench under
+`scripts/recitation-bench` and `scripts/second-look` use copies of them for their own
+checks and replays, and those numbers stay under the same licence wherever they appear
+there.
+
+For now that file is built into the app's JavaScript, with no licence file beside it.
+That is a known gap: before a public release it must be delivered with the model and
+its licence file, as the model is.
+
+## Recitation second look model (quran-asr-small)
+
+Before follow-along marks a word as a mistake, it checks the word with
+**quran-asr-small** on the device
+(https://huggingface.co/Abdou/quran-asr-small). The model
+(`model.int8.onnx`, revision `004f898639f3127a74eac1b898a2cb3ef0b5268d`) is not
+bundled: the app downloads it with the others. It is MIT licensed; the full text
+is in `licenses/quran-asr-small-MIT.txt`. Its card says the training data keeps its
+own terms: 36 EveryAyah Hafs reciters, 3 Warsh reciters, `tarteel-ai/tlog` (CC-BY-4.0)
+and `IqraEval/Iqra_train` (now under non-commercial terms).
+
+## Quran i'rab (grammatical analysis)
+
+`assets/data/irab-v1.db` is built by `scripts/irab/build-irab-db.ts` from:
+
+- **The Quranic Treebank** — https://github.com/NoorBayan/Quranic
+  (commit `e791af79`), MIT License, Copyright (c) 2025 NoorBayan. Word-level
+  syntax (i'rab relations) for the whole Quran.
+- **Quranic Arabic Corpus** v0.4 — https://corpus.quran.com, Dr. Kais Dukes,
+  University of Leeds, GNU General Public License. The morphology (part of
+  speech, case, mood, root, lemma) inside the Quranic Treebank comes from it.
+- **MASAQ: Morphologically-Analyzed and Syntactically-Annotated Quran
+  Dataset** v5 — https://data.mendeley.com/datasets/9yvrzxktmr/5, Majdi
+  Sawalha et al., University of Jordan, CC BY 4.0. Used to cross-check every
+  word; where it reads a word differently its reading is shown as «وجه آخر»,
+  and the build drops case signs it does not confirm. Changes were made:
+  roles and cases are mapped to Arabic grammar terms.
+- **Quranpedia** data dumps — https://quranpedia.net/dumps (version
+  2026-08-10): the classical i'rab books *al-Tibyan fi I'rab al-Qur'an* of
+  al-Ukbari (d. 616 AH) and *I'rab al-Qur'an* of al-Nahhas (d. 338 AH),
+  converted to plain text.
+
 ## Adhkar content & audio
 
 The Arabic adhkar text and English translations in `data/adhkar.json` are

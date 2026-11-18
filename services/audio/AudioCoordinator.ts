@@ -46,6 +46,7 @@ class AudioCoordinator {
    * Pauses the main player if it's currently playing.
    */
   mushafWillPlay(): void {
+    this.stopRecitation();
     this.pauseAdhkarIfActive();
     if (this.activeSource === 'main') {
       const store = usePlayerStore.getState();
@@ -66,6 +67,7 @@ class AudioCoordinator {
    * Pauses the mushaf player if it's currently playing.
    */
   mainWillPlay(): void {
+    this.stopRecitation();
     this.pauseAdhkarIfActive();
     if (this.activeSource === 'mushaf') {
       // Lazy import to avoid circular dependency
@@ -113,6 +115,21 @@ class AudioCoordinator {
     this.setActiveSource('none');
     const {useAdhkarSessionStore} = require('@/store/adhkarSessionStore');
     useAdhkarSessionStore.getState().dispatch({type: 'otherAudioStarted'});
+  }
+
+  /**
+   * Quran audio must never play into the mic: playback stops any recitation
+   * session (follow-along or identify).
+   */
+  private stopRecitation(): void {
+    // Lazy imports: the check is cheap, and the session runner (which loads
+    // the model and the mic) is only required when a session runs.
+    const {
+      activeSessionPurpose,
+    } = require('@/services/recitation/activeSession');
+    if (activeSessionPurpose() === null) return;
+    const {stopSession} = require('@/services/recitation/sessionRunner');
+    void stopSession('playback_started');
   }
 
   /**

@@ -2,7 +2,6 @@ import {create} from 'zustand';
 import type {AyahTimestamp, AyahTrackingState} from '@/types/timestamps';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import {timestampFetchService} from '@/services/timestamps/TimestampFetchService'; // @ai
-import {RECITERS} from '@/data/reciterData';
 // @ai-start
 import {
   getPlayFromHereTarget,
@@ -179,17 +178,12 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
   // @ai-end
 
   loadFollowAlongRegistry: () => {
-    const rewayatIds = new Set<string>();
-    const reciterIds = new Set<string>();
-
-    for (const reciter of RECITERS) {
-      for (const rewayat of reciter.rewayat) {
-        if (rewayat.has_timestamps) {
-          rewayatIds.add(rewayat.id);
-          reciterIds.add(reciter.id);
-        }
-      }
-    }
+    // @ai-start
+    // The same rewayat as mushafPlayerStore.computeAvailableReciters.
+    const timed = timestampFetchService.rewayatWithSource();
+    const rewayatIds = new Set(timed.map(t => t.rewayat.id));
+    const reciterIds = new Set(timed.map(t => t.reciter.id));
+    // @ai-end
 
     console.log(
       `[FollowAlong] Registry loaded: ${rewayatIds.size} rewayat, ${reciterIds.size} reciters`,

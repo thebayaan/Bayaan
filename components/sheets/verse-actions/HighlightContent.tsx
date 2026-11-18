@@ -139,7 +139,7 @@ const createStyles = (theme: Theme) =>
     sectionLabel: {
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       marginBottom: moderateScale(4),
       marginLeft: moderateScale(2),

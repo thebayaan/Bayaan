@@ -38,11 +38,12 @@ const migrate = (state: Record<string, unknown>, version: number) => {
 };
 
 describe('renderer helpers', () => {
-  it('treats only the Madani DigitalKhatt fonts as able to draw non-Hafs text', () => {
+  it('treats every font but IndoPak as able to show non-Hafs text', () => {
     expect(isRendererCompatibleWithRewayah('dk_v1', 'warsh')).toBe(true);
     expect(isRendererCompatibleWithRewayah('dk_v2', 'qalun')).toBe(true);
     expect(isRendererCompatibleWithRewayah('dk_indopak', 'warsh')).toBe(false);
-    expect(isRendererCompatibleWithRewayah('qcf_v2', 'warsh')).toBe(false);
+    // @ai — Mushaf 1440 draws another rewayah in the Madani font.
+    expect(isRendererCompatibleWithRewayah('qcf_v2', 'warsh')).toBe(true);
     for (const renderer of [
       'dk_v1',
       'dk_v2',
@@ -100,15 +101,18 @@ describe('setRewayah', () => {
     expect(state.uthmaniFont).toBe('v1');
   });
 
-  it('still refuses a non-Hafs rewayah under Mushaf 1440', () => {
+  // @ai-start
+  it('accepts any rewayah under Mushaf 1440 and keeps the font', () => {
     reset('qcf_v2', 'hafs');
 
     useMushafSettingsStore.getState().setRewayah('warsh');
 
     const state = useMushafSettingsStore.getState();
-    expect(state.rewayah).toBe('hafs');
+    expect(state.rewayah).toBe('warsh');
     expect(state.mushafRenderer).toBe('qcf_v2');
+    expect(state.uthmaniFont).toBe('v2');
   });
+  // @ai-end
 });
 
 describe('setMushafRenderer', () => {
@@ -132,33 +136,29 @@ describe('setMushafRenderer', () => {
     expect(state.uthmaniFont).toBe('v2');
   });
 
-  it('keeps Mushaf 1440 on Hafs with tajweed preview and no rewayah diffs', () => {
-    // @ai
-    reset('dk_v2', 'hafs');
+  // @ai-start
+  it('chooses Mushaf 1440 without touching tajweed, differences or the rewayah', () => {
+    for (const rewayah of ['hafs', 'warsh'] as const) {
+      reset('dk_v2', rewayah);
+      useMushafSettingsStore.setState({showTajweed: false});
 
-    useMushafSettingsStore.getState().setMushafRenderer('qcf_v2');
+      useMushafSettingsStore.getState().setMushafRenderer('qcf_v2');
 
-    const state = useMushafSettingsStore.getState();
-    expect(state.mushafRenderer).toBe('qcf_v2');
-    expect(state.rewayah).toBe('hafs');
-    expect(state.showTajweed).toBe(true); // @ai
-    expect(state.showRewayahDiffs).toBe(false);
+      const state = useMushafSettingsStore.getState();
+      expect(state.mushafRenderer).toBe('qcf_v2');
+      expect(state.rewayah).toBe(rewayah);
+      expect(state.showTajweed).toBe(false);
+      expect(state.showRewayahDiffs).toBe(true);
+      expect(state.uthmaniFont).toBe('v2');
+    }
   });
 
-  // @ai-start
-  it('refuses Mushaf 1440 while a non-Hafs rewayah is active, without touching the rewayah', () => {
-    // Pinning Hafs from the store would leave the data service on the other
-    // rewayah's words under a Hafs label; the settings flow switches the
-    // service to Hafs first (selectMushafRenderer).
-    reset('dk_v2', 'warsh');
-
-    useMushafSettingsStore.getState().setMushafRenderer('qcf_v2');
-
-    const state = useMushafSettingsStore.getState();
-    expect(state.mushafRenderer).toBe('dk_v2');
-    expect(state.rewayah).toBe('warsh');
-    expect(state.showTajweed).toBe(true);
-    expect(state.showRewayahDiffs).toBe(true);
+  it('lets Show differences be toggled under Mushaf 1440', () => {
+    reset('qcf_v2', 'warsh');
+    useMushafSettingsStore.getState().toggleRewayahDiffs();
+    expect(useMushafSettingsStore.getState().showRewayahDiffs).toBe(false);
+    useMushafSettingsStore.getState().toggleRewayahDiffs();
+    expect(useMushafSettingsStore.getState().showRewayahDiffs).toBe(true);
   });
   // @ai-end
 
@@ -234,3 +234,22 @@ describe('persist migration v18', () => {
     expect(state.mushafRenderer).toBe(REWAYAH_FALLBACK_RENDERER);
   });
 });
+
+// @ai-start
+describe('persist migration v21', () => {
+  it('turns Show differences back on for Mushaf 1440, which forced it off', () => {
+    expect(
+      migrate({mushafRenderer: 'qcf_v2', showRewayahDiffs: false}, 20)
+        .showRewayahDiffs,
+    ).toBe(true);
+    expect(
+      migrate({mushafRenderer: 'dk_v1', showRewayahDiffs: false}, 20)
+        .showRewayahDiffs,
+    ).toBe(false);
+    expect(
+      migrate({mushafRenderer: 'qcf_v2', showRewayahDiffs: false}, 21)
+        .showRewayahDiffs,
+    ).toBe(false);
+  });
+});
+// @ai-end

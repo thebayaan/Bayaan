@@ -48,6 +48,9 @@ jest.mock('../verse-actions/ThemeContent', () => ({
 jest.mock('../verse-actions/WBWContent', () => ({
   WBWContent: (props: Record<string, unknown>) => mockRecord('wbw', props),
 }));
+jest.mock('../verse-actions/IrabContent', () => ({
+  IrabContent: (props: Record<string, unknown>) => mockRecord('irab', props),
+}));
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: (props: Record<string, unknown>) =>
     mockRecord('reflections', props),
@@ -446,8 +449,28 @@ describe('Hafs (unchanged)', () => {
     await press('Repeat');
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/mushaf',
-      params: {page: '3', surah: '2', ayah: '255'},
+      params: {surah: '2', ayah: '255', playerOptions: '1'},
     });
+  });
+
+  // RFC-023 step 1: the player can show this sheet before the Mushaf data
+  // loads. The reader finds the page and shows the options (app/mushaf.tsx).
+  it('a player Repeat looks up no page and leaves the options to the reader', async () => {
+    const {SheetManager} = jest.requireMock('react-native-actions-sheet');
+    const setStoreState = jest.requireMock('@/store/mushafPlayerStore')
+      .useMushafPlayerStore.setState as jest.Mock;
+    SheetManager.show.mockClear();
+    setStoreState.mockClear();
+    await openSheet({...payload, source: 'player'});
+    await press('Repeat');
+    expect(SheetManager.show).not.toHaveBeenCalledWith(
+      'mushaf-player-options',
+      expect.anything(),
+    );
+    expect(setStoreState).toHaveBeenCalledWith({
+      pendingStartVerseKey: '2:255',
+    });
+    expect(setStoreState).toHaveBeenCalledTimes(1);
   });
 
   it('passes the screens the payload as before', async () => {
@@ -466,6 +489,14 @@ describe('Hafs (unchanged)', () => {
     expect(last('translation')).toMatchObject({
       surahNumber: 2,
       ayahNumber: 255,
+      unitStart: undefined,
+    });
+    await openSheet(payload);
+    await press("I'rab");
+    expect(last('irab')).toMatchObject({
+      surahNumber: 2,
+      ayahNumber: 255,
+      rewayah: 'hafs',
       unitStart: undefined,
     });
   });
@@ -549,6 +580,11 @@ describe('Warsh verses in their own numbering', () => {
     expect((translation.unitStart as {unit: {key: string}}).unit.key).toBe(
       '1:7',
     );
+    await openSheet(warshUnitPayload(['1:7']));
+    await press("I'rab");
+    expect((last('irab').unitStart as {unit: {key: string}}).unit.key).toBe(
+      '1:7',
+    );
   });
 
   // @ai-start
@@ -619,7 +655,7 @@ describe('Warsh verses in their own numbering', () => {
     await press('Repeat');
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/mushaf',
-      params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:5'},
+      params: {surah: '1', ayah: '7', anchor: '1:7:5', playerOptions: '1'},
     });
     // The mushaf player starts at Warsh 1:7 itself. @ai
     expect(mockPlayer.setPendingStart).toHaveBeenCalledWith(
@@ -634,7 +670,7 @@ describe('Warsh verses in their own numbering', () => {
     await press('Repeat');
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/mushaf',
-      params: {page: '3', surah: '1', ayah: '7', anchor: '1:7:1'},
+      params: {surah: '1', ayah: '7', anchor: '1:7:1', playerOptions: '1'},
     });
   });
 

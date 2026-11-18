@@ -1,14 +1,25 @@
 /**
  * useMushafAutoPageTurn
  *
- * Watches the mushaf player's current verse key during playback.
- * When the active ayah crosses a page boundary, triggers an animated
- * FlatList scroll to the new page.
+ * Watches the mushaf player's current verse key during playback, or the
+ * ayah being recited while recitation follow-along listens. When the active
+ * ayah crosses a page boundary, triggers an animated FlatList scroll to the
+ * new page.
  */
 
 import {useEffect, useRef} from 'react';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  isTakeActive,
+  useRecitationTrackingStore,
+} from '@/store/recitationTrackingStore';
+import {
+  dkWordPosition,
+  lastWordOnPage,
+} from '@/components/mushaf/skia/recitedWord';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 export function useMushafAutoPageTurn(
   currentPage: number,
@@ -16,8 +27,47 @@ export function useMushafAutoPageTurn(
   navigateToVerse?: (verseKey: string) => void,
 ) {
   const playbackState = useMushafPlayerStore(s => s.playbackState);
-  const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+  const playerVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+  const recitedVerseKey = useRecitationTrackingStore(s =>
+    isTakeActive(s.status) ? s.verseKey : null,
+  );
+  const isFollowing = playbackState === 'playing' || recitedVerseKey !== null;
+  const currentVerseKey = recitedVerseKey ?? playerVerseKey;
+  // The word being recited, as a comparable id ('' when not listening).
+  const recitedWord = useRecitationTrackingStore(s =>
+    isTakeActive(s.status) && s.verseKey && s.wordIndex !== null
+      ? `${s.verseKey}|${s.wordIndex}|${s.totalWords}`
+      : '',
+  );
   const lastNavigatedPage = useRef<number>(currentPage);
+  const hideText = useMushafSettingsStore(s => s.recitationHideText);
+
+  // Reciting the last word on the page turns it at once, without waiting for
+  // the next page's first ayah, so the reader sees what comes next (paged
+  // mode only). With the text hidden the reader recites from memory: the
+  // page turns only on the next page's first word, so the next page (and a
+  // surah heading on it) is not given away.
+  useEffect(() => {
+    if (!recitedWord || navigateToVerse) return;
+    const [verseKey, wordIndex, totalWords] = recitedWord.split('|');
+    const page = lastNavigatedPage.current;
+    const last = lastWordOnPage(
+      digitalKhattDataService.getPageLines(page),
+      digitalKhattDataService,
+    );
+    if (!last || last.verseKey !== verseKey) return;
+    const position = dkWordPosition(
+      digitalKhattDataService.getVerseWords(verseKey),
+      Number(wordIndex),
+      Number(totalWords),
+    );
+    if (position === null) return;
+    if (hideText ? position <= last.position : position < last.position) {
+      return;
+    }
+    lastNavigatedPage.current = page + 1;
+    navigateToPage(page + 1);
+  }, [recitedWord, navigateToPage, navigateToVerse, hideText]);
 
   // Keep the ref in sync when the user manually scrolls
   useEffect(() => {
@@ -25,7 +75,7 @@ export function useMushafAutoPageTurn(
   }, [currentPage]);
 
   useEffect(() => {
-    if (playbackState !== 'playing' || !currentVerseKey) return;
+    if (!isFollowing || !currentVerseKey) return;
 
     // In verse-level navigation mode (vertical/list view), scroll to every ayah
     if (navigateToVerse) {
@@ -37,6 +87,16 @@ export function useMushafAutoPageTurn(
       return;
     }
 
+    // An ayah running over a page break is still on the page being recited.
+    if (
+      recitedVerseKey &&
+      mushafVerseMapService
+        .getOrderedVerseKeysForPage(lastNavigatedPage.current)
+        .includes(recitedVerseKey)
+    ) {
+      return;
+    }
+
     const targetPage = digitalKhattDataService.getPageForVerse(currentVerseKey);
     if (!targetPage) return;
 
@@ -45,5 +105,11 @@ export function useMushafAutoPageTurn(
       lastNavigatedPage.current = targetPage;
       navigateToPage(targetPage);
     }
-  }, [playbackState, currentVerseKey, navigateToPage, navigateToVerse]);
+  }, [
+    isFollowing,
+    currentVerseKey,
+    recitedVerseKey,
+    navigateToPage,
+    navigateToVerse,
+  ]);
 }

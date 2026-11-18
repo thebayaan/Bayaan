@@ -14,14 +14,32 @@ import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 
 const mockParams: Record<string, string> = {};
+const mockRoute = {params: mockParams}; // @ai
 const mockShown: {pending: boolean; built: (() => void) | null} = {
   pending: false,
   built: null,
 };
 
+// Recitation follow-along pulls in native audio and ONNX modules.
+jest.mock('@/services/recitation/RecitationTrackingService', () => ({
+  stopRecitationTracking: jest.fn(),
+}));
+jest.mock('@/components/mushaf/RecitationMicButton', () => ({
+  RecitationMicButton: () => null,
+  useRecitationFollowAlong: jest.fn(),
+  useRecitationStatusText: () => null,
+  useRecitationMic: () => ({
+    enabled: false,
+    status: 'off',
+    progress: 0,
+    busy: false,
+    toggle: jest.fn(),
+  }),
+}));
 jest.mock('expo-router', () => ({
   Stack: {Toolbar: () => null},
   useLocalSearchParams: () => mockParams,
+  useRoute: () => mockRoute, // @ai a stable route: no link comes
 }));
 
 jest.mock('expo-screen-orientation', () => ({
@@ -46,15 +64,19 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     initialized: true,
     rewayah: 'warsh',
     getSurahStartPages: () => ({1: 1}),
+    getPageForVerse: () => undefined,
     switchRewayah: jest.fn(() => Promise.resolve()),
+    subscribeCacheChanges: () => () => undefined,
   },
 }));
 
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
   mushafPreloadService: {
+    initialized: true,
     state: 'ready',
     subscribe: () => () => undefined,
     initialize: () => Promise.resolve(),
+    startIfIdle: jest.fn(),
   },
 }));
 

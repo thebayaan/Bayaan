@@ -5,7 +5,9 @@
  * labelled in its numbering, each drawn from exactly its own slots; the
  * follow-along band lights rows by unit keys; long-press acts on the verse
  * unit; navigation lands on the row holding a slot. Never a Hafs verse row
- * under the rewayah's name, not even while its verse units load.
+ * under the rewayah's name, not even while its verse units load. Each view
+ * reports its first content once (RFC-023 step 5): its rows, or the message of
+ * a rewayah whose verse units failed, never the spinner.
  *
  * The data service is the fixture-backed stand-in with real Release 1 slots
  * (verseUnitsFixture.json on the real page-1 layout and synthetic pages);
@@ -27,6 +29,7 @@ interface MockFlashListProps {
   initialScrollIndex?: number;
   renderItem: (info: {item: unknown; index: number}) => React.ReactNode;
   onViewableItemsChanged?: (info: {viewableItems: {item: unknown}[]}) => void;
+  onLoad?: (info: {elapsedTimeInMs: number}) => void;
 }
 
 const mockRecorded = {
@@ -187,6 +190,8 @@ import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import type {RewayahVerseUnits} from '@/services/mushaf/RewayahVerseUnits';
+import {rewayahVerseUnitsService} from '@/services/mushaf/RewayahVerseUnitsService';
+import type {VerseUnitsServiceStub} from '@/services/mushaf/__fixtures__/verseUnitsServiceStub';
 import type {FakeDKService} from '@/services/mushaf/__fixtures__/rewayahOverlayFixture';
 import {
   buildFixtureUnits,
@@ -209,6 +214,7 @@ const BASMALA = UNNUMBERED_BASMALA_ROW_KEY;
 
 let renderer: TestRenderer.ReactTestRenderer | null = null;
 const listRef = React.createRef<ContinuousListViewHandle>();
+const onFirstContent = jest.fn();
 
 /**
  * The fixture's synthetic pages (1000 + surah) moved into the mushaf's 604
@@ -249,6 +255,7 @@ const views = {
       initialPage={page}
       onCurrentPageChange={p => mockRecorded.pages.push(p)}
       onCurrentSurahChange={s => mockRecorded.surahs.push(s)}
+      onFirstContent={onFirstContent}
     />
   ),
   ReadingPageView: (page: number) => (
@@ -263,6 +270,7 @@ const views = {
       cardColor="#ffffff"
       bgColor="#ffffff"
       isBookLayout={false}
+      onFirstContent={onFirstContent}
     />
   ),
 };
@@ -313,6 +321,7 @@ beforeEach(() => {
   mockRecorded.pages.length = 0;
   mockRecorded.surahs.length = 0;
   mockUnits.status = 'loading';
+  onFirstContent.mockClear();
   useMushafSettingsStore.setState({showThemes: false});
   useMushafPlayerStore.setState({
     playbackState: 'idle',
@@ -614,6 +623,47 @@ describe.each(['ReadingPageView', 'ContinuousListView'] as const)(
         '1:7',
       ]);
       expect(rows().get('1:1')!.unitRow!.rewayah).toBe('al-bazzi');
+    });
+  },
+);
+
+describe.each(['ReadingPageView', 'ContinuousListView'] as const)(
+  '%s: reports its first content once',
+  name => {
+    // The vertical list has drawn its rows when FlashList raises onLoad.
+    const drawn = () => {
+      if (name !== 'ContinuousListView') return;
+      act(() => mockRecorded.flashList?.onLoad?.({elapsedTimeInMs: 1}));
+    };
+
+    it('its Hafs rows', () => {
+      show('hafs');
+      render(name, 1);
+      drawn();
+      drawn();
+      expect(onFirstContent).toHaveBeenCalledTimes(1);
+    });
+
+    it('not the spinner of a rewayah: its rows, once they are built', () => {
+      show('warsh', {units: false});
+      render(name, 1);
+      expect(onFirstContent).not.toHaveBeenCalled();
+      mockUnits.byRewayah.set(
+        UNITS_FIXTURE_REWAYAH.warsh,
+        buildFixtureUnits('warsh'),
+      );
+      act(() =>
+        (rewayahVerseUnitsService as unknown as VerseUnitsServiceStub).notify(),
+      );
+      drawn();
+      expect(onFirstContent).toHaveBeenCalledTimes(1);
+    });
+
+    it('the message of a rewayah whose verse units failed', () => {
+      show('warsh', {units: false});
+      mockUnits.status = 'error';
+      render(name, 1);
+      expect(onFirstContent).toHaveBeenCalledTimes(1);
     });
   },
 );

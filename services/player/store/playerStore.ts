@@ -83,7 +83,7 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
 }
 
 // Monotonic id for the in-flight play operation. Every loadTrackAtIndex()
-// claims a fresh id at entry; cleanup() bumps it via invalidatePlayOps().
+// claims a fresh id at entry; cleanup() bumps it via pauseForEmptyQueue().
 // Without this, two overlapping loads both run to completion: a second tap (a
 // rapid skip, or re-queueing while the first load is still awaiting the
 // network) starts its own load, then the OLDER one's play() lands after the
@@ -112,6 +112,7 @@ export function currentPlayOpId(): number {
  * player, so nothing could stop the audio): end the in-flight loads, then
  * pause. A pause failure must not block the write. Returns false when a
  * newer load started during the pause, the same as loadTrackAtIndex().
+ * LockScreenService relies on every such write to pause first.
  */
 async function pauseForEmptyQueue(): Promise<boolean> {
   const opId = ++playOpId;
@@ -284,19 +285,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const {tracks, currentIndex} = state.queue;
         const {repeatMode} = state.settings;
 
-        // Fire analytics before advancing
-        const currentTrack = tracks[currentIndex];
-        if (currentTrack?.surahId && !currentTrack.isUserUpload) {
-          analyticsService.trackPlaybackSkipped({
-            surah_id: parseInt(currentTrack.surahId, 10),
-            reciter_id: currentTrack.reciterId,
-            reciter_name: currentTrack.reciterName,
-            position_ms: Math.round(state.playback.position * 1000),
-            listened_ms: Math.round(state.playback.position * 1000),
-            direction: 'next',
-          });
-        }
-
         try {
           let nextIndex = currentIndex + 1;
 
@@ -316,6 +304,15 @@ export const usePlayerStore = create<PlayerStoreState>()(
               return;
             }
           }
+
+          // @ai-start
+          // Below the end-of-queue return: there the audio plays on, so the
+          // press sends nothing. After a completion the session already ended.
+          analyticsService.listenSession.end('skipped', {
+            direction: 'next',
+            positionMs: Math.round(state.playback.position * 1000),
+          });
+          // @ai-end
 
           // Optimistic update: set currentIndex immediately so UI updates instantly
           set(state => ({
@@ -363,18 +360,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const {repeatMode} = state.settings;
         const position = expoAudioService.getPosition();
 
-        // Fire analytics before going back
-        const currentTrack = tracks[currentIndex];
-        if (currentTrack?.surahId && !currentTrack.isUserUpload) {
-          analyticsService.trackPlaybackSkipped({
-            surah_id: parseInt(currentTrack.surahId, 10),
-            reciter_id: currentTrack.reciterId,
-            reciter_name: currentTrack.reciterName,
-            position_ms: Math.round(state.playback.position * 1000),
-            listened_ms: Math.round(state.playback.position * 1000),
-            direction: 'prev',
-          });
-        }
+        // @ai-start
+        analyticsService.listenSession.end('skipped', {
+          direction: 'prev',
+          positionMs: Math.round(state.playback.position * 1000),
+        });
+        // @ai-end
 
         try {
           // If more than 3 seconds into the track, restart it (no index change needed)
@@ -898,8 +889,8 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       // Cleanup method
       cleanup: async () => {
-        // In-flight loads must not play()/write state into a cleaned service.
-        invalidatePlayOps();
+        // @ai Pause first: no load may play() or write state after the reset.
+        if (!(await pauseForEmptyQueue())) invalidatePlayOps();
         const state = get();
         if (
           typeof state.settings.sleepTimerInterval === 'object' &&

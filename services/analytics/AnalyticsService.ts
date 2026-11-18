@@ -1,4 +1,5 @@
 import {PostHog} from 'posthog-react-native';
+import {AppState, AppStateStatus} from 'react-native'; // @ai
 import {getOrCreateDeviceId} from './deviceId';
 import {
   ANALYTICS_EVENTS,
@@ -28,9 +29,17 @@ import {
   SearchPerformedProps,
   TranslationViewedProps,
   AppBackgroundedProps,
+  RecitationTrackingStartedProps,
+  RecitationTrackingLockedProps,
+  RecitationTrackingStoppedProps,
+  RecitationModelDownloadedProps,
+  RecitationTrackingErrorProps,
+  RecitationIdentifyStartedProps,
+  RecitationIdentifyEndedProps,
 } from './events';
 import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
+import {ListenSession} from './ListenSession'; // @ai
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 
 function isAnalyticsEnabled(): boolean {
@@ -56,8 +65,17 @@ class AnalyticsServiceImpl {
   private deviceId: string = '';
   private enabled: boolean = true;
   private meaningfulListenTracker: MeaningfulListenTracker;
+  /** The listening session of the current track. @ai */
+  readonly listenSession: ListenSession;
   private sessionStartTime: number = Date.now();
   private sessionListenMs: number = 0;
+  // @ai-start
+  /**
+   * True after a real background, until the next app_opened. A launch that
+   * starts in the background counts, so its first `active` sends app_opened.
+   */
+  private backgrounded = AppState.currentState === 'background';
+  // @ai-end
   private readyListeners = new Set<() => void>();
 
   constructor() {
@@ -66,6 +84,24 @@ class AnalyticsServiceImpl {
         this.trackMeaningfulListen(props);
       },
     );
+    // @ai-start
+    this.listenSession = new ListenSession({
+      started: props => this.trackPlaybackStarted(props),
+      paused: props => this.trackPlaybackPaused(props),
+      resumed: props => this.trackPlaybackResumed(props),
+      completed: props => this.trackPlaybackCompleted(props),
+      skipped: props => this.trackPlaybackSkipped(props),
+      listened: (ms, track) => {
+        localAggregationStore.addListeningTime(
+          localAggregationStore.getToday(),
+          ms,
+          String(track.surahId),
+          track.reciterId,
+        );
+        this.sessionListenMs += ms;
+      },
+    });
+    // @ai-end
     // Keep the live PostHog instance in lock-step with the consent flag so a
     // caller can never desync the SDK from the store: any change to
     // `analyticsEnabled` (e.g. the Settings → Privacy toggle) pushes straight
@@ -174,13 +210,6 @@ class AnalyticsServiceImpl {
 
   trackPlaybackPaused(props: PlaybackPausedProps): void {
     this.capture(ANALYTICS_EVENTS.PLAYBACK_PAUSED, {...props});
-    localAggregationStore.addListeningTime(
-      localAggregationStore.getToday(),
-      props.listened_ms,
-      String(props.surah_id),
-      props.reciter_id,
-    );
-    this.sessionListenMs += props.listened_ms;
   }
 
   trackPlaybackResumed(props: PlaybackResumedProps): void {
@@ -189,24 +218,10 @@ class AnalyticsServiceImpl {
 
   trackPlaybackCompleted(props: PlaybackCompletedProps): void {
     this.capture(ANALYTICS_EVENTS.PLAYBACK_COMPLETED, {...props});
-    localAggregationStore.addListeningTime(
-      localAggregationStore.getToday(),
-      props.listened_ms,
-      String(props.surah_id),
-      props.reciter_id,
-    );
-    this.sessionListenMs += props.listened_ms;
   }
 
   trackPlaybackSkipped(props: PlaybackSkippedProps): void {
     this.capture(ANALYTICS_EVENTS.PLAYBACK_SKIPPED, {...props});
-    localAggregationStore.addListeningTime(
-      localAggregationStore.getToday(),
-      props.listened_ms,
-      String(props.surah_id),
-      props.reciter_id,
-    );
-    this.sessionListenMs += props.listened_ms;
   }
 
   trackPlaybackSeeked(props: PlaybackSeekedProps): void {
@@ -324,10 +339,40 @@ class AnalyticsServiceImpl {
   // --- Lifecycle ---
 
   trackAppOpened(): void {
+    this.backgrounded = false; // @ai
     this.sessionStartTime = Date.now();
     this.sessionListenMs = 0;
     this.capture(ANALYTICS_EVENTS.APP_OPENED, {});
   }
+
+  // @ai-start
+  /**
+   * The mount's app_opened. While the app is in the background (a CarPlay
+   * launch), it sends nothing, and the first `active` sends app_opened.
+   */
+  trackAppOpenedOnMount(): void {
+    if (AppState.currentState === 'background') return;
+    this.trackAppOpened();
+  }
+
+  /**
+   * The AppState listener for app_backgrounded and app_opened. Only
+   * `background` is a background. iOS reports `inactive` while the app is
+   * still on screen (Control Center, the notification list, the app switcher,
+   * a system alert) and on the way to `background`, so `inactive` sends
+   * nothing. The mount sends the first app_opened, unless it comes while the
+   * app is in the background.
+   */
+  handleAppStateChange(state: AppStateStatus): void {
+    if (state === 'background') {
+      if (this.backgrounded) return;
+      this.backgrounded = true;
+      this.trackAppBackgrounded();
+    } else if (state === 'active' && this.backgrounded) {
+      this.trackAppOpened();
+    }
+  }
+  // @ai-end
 
   trackAppBackgrounded(): void {
     const props: AppBackgroundedProps = {
@@ -344,6 +389,38 @@ class AnalyticsServiceImpl {
     // generic event), so it must honor the same opt-out / hydration gate.
     if (!isConsentGranted()) return;
     this.posthog?.identify(userId);
+  }
+
+  // --- Recitation follow-along ---
+
+  trackRecitationTrackingStarted(props: RecitationTrackingStartedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_STARTED, {...props});
+  }
+
+  trackRecitationTrackingLocked(props: RecitationTrackingLockedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_LOCKED, {...props});
+  }
+
+  trackRecitationTrackingStopped(props: RecitationTrackingStoppedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_STOPPED, {...props});
+  }
+
+  trackRecitationModelDownloaded(props: RecitationModelDownloadedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_MODEL_DOWNLOADED, {...props});
+  }
+
+  trackRecitationTrackingError(props: RecitationTrackingErrorProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_TRACKING_ERROR, {...props});
+  }
+
+  // --- Which ayah? ---
+
+  trackRecitationIdentifyStarted(props: RecitationIdentifyStartedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_IDENTIFY_STARTED, {...props});
+  }
+
+  trackRecitationIdentifyEnded(props: RecitationIdentifyEndedProps): void {
+    this.capture(ANALYTICS_EVENTS.RECITATION_IDENTIFY_ENDED, {...props});
   }
 
   // --- Helpers ---

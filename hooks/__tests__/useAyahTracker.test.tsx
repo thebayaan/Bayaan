@@ -7,6 +7,7 @@
 
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
+import {AppState, type AppStateStatus} from 'react-native'; // @ai
 
 const mockPosition = {sec: 0};
 
@@ -69,7 +70,19 @@ jest.mock('@/services/timestamps/TimestampService', () => ({
 }));
 
 jest.mock('@/services/timestamps/TimestampFetchService', () => ({
-  timestampFetchService: {hasSurah: () => true, hasSource: () => true},
+  timestampFetchService: {
+    hasSurah: () => true,
+    hasSource: () => true,
+    // @ai-start
+    // Every fixture rewayah has a source, as hasSource says.
+    rewayatWithSource: () =>
+      jest
+        .requireMock('@/data/reciterData')
+        .RECITERS.flatMap((reciter: {rewayat: unknown[]}) =>
+          reciter.rewayat.map(rewayat => ({reciter, rewayat})),
+        ),
+    // @ai-end
+  },
 }));
 
 jest.mock('@/services/audio/ExpoAudioService', () => ({
@@ -491,6 +504,35 @@ describe('useAyahTracker', () => {
         6000,
       );
     });
+  });
+  // @ai-end
+
+  // @ai-start
+  it('runs no interval in the background; the first tick on return publishes the verse recited', async () => {
+    const appState = AppState as unknown as {currentState: AppStateStatus};
+    const changeAppState = async (next: AppStateStatus) => {
+      await act(async () => {
+        appState.currentState = next;
+        (AppState.addEventListener as jest.Mock).mock.calls
+          .filter(([type]) => type === 'change')
+          .forEach(([, listener]) => listener(next));
+      });
+    };
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(t[3].timestampFrom + 50);
+    expect(current()?.verseKey).toBe('2:4');
+    await changeAppState('background');
+    const published = jest.fn();
+    const unsubscribe = useTimestampStore.subscribe(published);
+    for (const e of t.slice(4, 20)) await tickAt(e.timestampFrom + 50);
+    expect(published).not.toHaveBeenCalled();
+    expect(current()?.verseKey).toBe('2:4');
+    await changeAppState('active');
+    expect(current()?.verseKey).toBe('2:4'); // nothing before the first tick
+    await tickAt(t[19].timestampFrom + 60);
+    expect(current()?.verseKey).toBe('2:20');
+    unsubscribe();
   });
   // @ai-end
 

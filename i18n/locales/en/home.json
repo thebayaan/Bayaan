@@ -39,7 +39,9 @@
     "noRecentHint": "Your search history will appear here",
     "noResultsHint": "Try different keywords or check the spelling",
     "all": "All",
-    "topResult": "Top result"
+    "topResult": "Top result",
+    "reciteToSearch": "Recite to search",
+    "reciteToSearchHint": "Recite a few words and Bayaan finds the ayah."
   },
   "systemPlaylist": {
     "invalidId": "Invalid playlist ID",
