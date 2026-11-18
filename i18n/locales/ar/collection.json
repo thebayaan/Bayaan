@@ -33,14 +33,16 @@
       "more_other": "{{a}}، {{b}} و{{count}} أخرى",
       "downloads": "{{surahs}} · {{size}}",
       "quote": "«{{text}}»",
-      "moreReciters_zero": "{{a}}، {{b}}",
-      "moreReciters_one": "{{a}}، {{b}} وواحد آخر",
-      "moreReciters_two": "{{a}}، {{b}} واثنان آخران",
-      "moreReciters_few": "{{a}}، {{b}} و{{count}} آخرون",
-      "moreReciters_many": "{{a}}، {{b}} و{{count}} آخرين",
-      "moreReciters_other": "{{a}}، {{b}} و{{count}} آخرين",
       "sizeMB": "{{size}} ميغابايت",
-      "sizeGB": "{{size}} غيغابايت"
+      "sizeGB": "{{size}} غيغابايت",
+      "countThenNames": "{{countText}} · {{names}}",
+      "separator": "، ",
+      "firstAndMoreReciters_zero": "{{a}}",
+      "firstAndMoreReciters_one": "{{a}} وواحد آخر",
+      "firstAndMoreReciters_two": "{{a}} واثنان آخران",
+      "firstAndMoreReciters_few": "{{a}} و{{count}} آخرون",
+      "firstAndMoreReciters_many": "{{a}} و{{count}} آخرين",
+      "firstAndMoreReciters_other": "{{a}} و{{count}} آخرين"
     }
   },
   "bookmarksScreen": {

@@ -25,10 +25,12 @@
       "more_other": "{{a}}, {{b}} and {{count}} more",
       "downloads": "{{surahs}} · {{size}}",
       "quote": "“{{text}}”",
-      "moreReciters_one": "{{a}}, {{b}} and {{count}} more",
-      "moreReciters_other": "{{a}}, {{b}} and {{count}} more",
       "sizeMB": "{{size}} MB",
-      "sizeGB": "{{size}} GB"
+      "sizeGB": "{{size}} GB",
+      "countThenNames": "{{countText}} · {{names}}",
+      "separator": ", ",
+      "firstAndMoreReciters_one": "{{a}} and {{count}} more",
+      "firstAndMoreReciters_other": "{{a}} and {{count}} more"
     }
   },
   "bookmarksScreen": {

@@ -102,16 +102,12 @@ export default function CollectionScreen() {
   }, []);
 
   // Live summaries: what's inside each category, newest first.
-  const summarize = (
-    names: string[],
-    total: number,
-    moreKey: 'more' | 'moreReciters' = 'more',
-  ): string | undefined => {
+  const summarize = (names: string[], total: number): string | undefined => {
     const [a, b] = names;
     if (!a) return undefined;
     if (!b || total <= 1) return a;
     if (total === 2) return t('collectionScreen.summary.two', {a, b});
-    return t(`collectionScreen.summary.${moreKey}`, {
+    return t('collectionScreen.summary.more', {
       a,
       b,
       count: total - 2,
@@ -238,11 +234,15 @@ export default function CollectionScreen() {
       count: favoriteReciters.length,
       emptyText: t('collectionScreen.empty.reciters'),
       route: '/collection/favorite-reciters',
-      summary: summarize(
-        recitersNewest.map(r => getReciterDisplayName(r)),
-        recitersNewest.length,
-        'moreReciters',
-      ),
+      summary:
+        recitersNewest.length === 0
+          ? undefined
+          : recitersNewest.length === 1
+            ? getReciterDisplayName(recitersNewest[0])
+            : t('collectionScreen.summary.firstAndMoreReciters', {
+                a: getReciterDisplayName(recitersNewest[0]),
+                count: recitersNewest.length - 1,
+              }),
       preview: recitersPreview,
     },
     {
@@ -265,7 +265,13 @@ export default function CollectionScreen() {
       count: lovedTracks.length,
       emptyText: t('collectionScreen.empty.loved'),
       route: '/collection/loved',
-      summary: summarize(lovedNames, lovedTracks.length),
+      summary:
+        lovedNames.length > 0
+          ? t('collectionScreen.summary.countThenNames', {
+              countText: t('common:counts.tracks', {count: lovedTracks.length}),
+              names: lovedNames.join(t('collectionScreen.summary.separator')),
+            })
+          : undefined,
       preview: lovedPreview,
     },
     {
