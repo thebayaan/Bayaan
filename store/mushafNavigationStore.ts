@@ -8,8 +8,8 @@ interface MushafNavigationState {
   targetSurahId: number | null;
   requestId: number;
   navigateToVerse: (verseKey: string, page: number) => void;
-  // A page with no verse to select (a link to the open reader). @ai
-  navigateToPage: (page: number, surahId?: number) => void;
+  // A link to the open reader: its page, and its verse to select, if any. @ai
+  navigateToPage: (page: number, surahId?: number, verseKey?: string) => void;
   clear: () => void;
 }
 
@@ -26,10 +26,10 @@ export const useMushafNavigationStore = create<MushafNavigationState>(set => ({
       requestId: s.requestId + 1,
     })),
   // @ai-start
-  navigateToPage: (page, surahId) =>
+  navigateToPage: (page, surahId, verseKey) =>
     set(s => ({
       targetPage: page,
-      targetVerseKey: null,
+      targetVerseKey: verseKey ?? null,
       targetSurahId: surahId ?? null,
       requestId: s.requestId + 1,
     })),

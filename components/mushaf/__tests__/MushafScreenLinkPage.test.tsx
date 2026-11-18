@@ -5,8 +5,9 @@
  * new params without a remount; the screen then asks the open viewer to turn
  * (mushafNavigationStore.requestId rises). A surah-only link
  * (bayaan://quran/86) also names its surah, so the header shows At-Tariq on
- * page 591, where At-Tariq and Al-A'la start. Lives outside app/ because
- * every file there is bundled as a route.
+ * page 591, where At-Tariq and Al-A'la start. A verse link also asks the
+ * viewer to select its verse. Lives outside app/ because every file there is
+ * bundled as a route.
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
@@ -182,6 +183,32 @@ it('a verse link with no page asks for the page of the verse', () => {
   route({page: '50'});
   route({surah: '2', ayah: '255'});
   expect(request()).toMatchObject({requestId: 1, targetPage: 42});
+});
+
+it('a page link asks for no verse to select', () => {
+  route({surah: '2', ayah: '255', page: '42'});
+  route({page: '100'});
+  expect(request()).toMatchObject({requestId: 1, targetVerseKey: null});
+});
+
+it('a verse link to the open reader asks to select that verse', () => {
+  route({page: '50'});
+  route({surah: '2', ayah: '255'});
+  expect(request()).toMatchObject({
+    requestId: 1,
+    targetPage: 42,
+    targetVerseKey: '2:255',
+  });
+});
+
+it('a second link to the open verse asks to select it again', () => {
+  route({surah: '2', ayah: '255', page: '42'});
+  route({surah: '2', ayah: '255', page: '42'});
+  expect(request()).toMatchObject({
+    requestId: 1,
+    targetPage: 42,
+    targetVerseKey: '2:255',
+  });
 });
 
 it('a link while the reader still loads: the viewer mounts on its page', () => {
