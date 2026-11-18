@@ -144,9 +144,14 @@ export default function CollectionScreen() {
                   COVER_COLORS[Number(track.surahId) % COVER_COLORS.length],
                 borderColor: theme.colors.background,
                 marginStart: i === 0 ? 0 : -moderateScale(10),
+                zIndex: 2 - i,
               },
             ]}>
-            <Text style={styles.coverGlyph}>
+            <Text
+              style={styles.coverGlyph}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.5}>
               {surahGlyphMap[Number(track.surahId)] ?? ''}
             </Text>
           </View>
@@ -183,6 +188,7 @@ export default function CollectionScreen() {
               {
                 borderColor: theme.colors.background,
                 marginStart: i === 0 ? 0 : -moderateScale(9),
+                zIndex: 3 - i,
               },
             ]}>
             <ReciterImage
@@ -343,8 +349,10 @@ const createStyles = (theme: Theme) =>
     },
     coverGlyph: {
       fontFamily: 'SurahNames',
-      fontSize: '17@ms',
+      fontSize: '11@ms',
       color: '#FFFFFF',
+      width: '100%',
+      textAlign: 'center',
     },
     face: {
       width: '26@ms',
