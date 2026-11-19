@@ -195,7 +195,7 @@ class ExpoAudioService {
       if (!this.player?.isLoaded) {
         break;
       }
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      await this.nextStatusOrDelay(pollInterval);
     }
 
     // Phase 2: Wait for the new track to finish loading
@@ -203,12 +203,36 @@ class ExpoAudioService {
       if (this.player?.isLoaded) {
         return;
       }
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      await this.nextStatusOrDelay(pollInterval);
     }
 
     if (__DEV__)
       console.warn('[ExpoAudioService] Timeout waiting for track to load');
   }
+
+  // @ai-start
+  /**
+   * Resolves at the player's next status update, or after ms if that comes
+   * first. Android runs no JS timers while the app is in the background, but
+   * the player's status updates still reach JS. A wait on a timer alone never
+   * ended there, so the track end handler never finished and the next track
+   * end found it still busy.
+   */
+  private nextStatusOrDelay(ms: number): Promise<void> {
+    return new Promise(resolve => {
+      const done = (): void => {
+        clearTimeout(timer);
+        subscription?.remove();
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      const subscription = this.player?.addListener(
+        'playbackStatusUpdate',
+        done,
+      );
+    });
+  }
+  // @ai-end
 
   /**
    * Get the currently loaded track URL
