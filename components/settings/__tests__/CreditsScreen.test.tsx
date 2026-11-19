@@ -121,6 +121,10 @@ describe('Credits, in Arabic', () => {
     expect(credits.get('Wikipedia contributors')?.description).toContain(
       'CC BY-SA 4.0',
     );
+    // CC BY 3.0 asks for the licence or its URI with each copy of the text.
+    expect(credits.get('Tanzil Quran Text')?.description).toContain(
+      'CC BY 3.0: https://creativecommons.org/licenses/by/3.0/',
+    );
   });
 
   it("spells the MASAQ author's family name as he does", async () => {

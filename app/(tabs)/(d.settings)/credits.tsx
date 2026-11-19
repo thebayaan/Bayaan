@@ -73,7 +73,8 @@ function getCredits(
         },
         {
           title: 'Tanzil Quran Text',
-          description: t('credits.items.tanzilText'),
+          // The licence version and its URI keep Latin digits in Arabic.
+          description: t('credits.items.tanzilText', {postProcess: []}),
           link: 'https://tanzil.net',
         },
       ],

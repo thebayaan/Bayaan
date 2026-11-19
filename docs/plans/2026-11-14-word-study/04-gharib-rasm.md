@@ -721,7 +721,7 @@ A manual pass of the screenshots against the UI review checklist.
 - Source drift: Quranpedia corrects its dumps continuously and Tanzil updates its text. A rebuild on a new version can move placements or notes. SHA-256 pins, pinned row counts and the reviewed-lines tests catch it; plan a re-review on every refresh.
 - The 55 wbw words with U+FFFD need DK text in the build, and the app shows no Uthmani row for them. The app's word 5:52:12 'دَآئِرَ ةٌۭ' has a space inside it and would read as a fake wasl unless skipped.
 - Coverage: Quranpedia's meanings cover 4,799 of 6,236 verses, so many words will have no gharib section. That is by design, but users may read the gap as missing content.
-- The evidence comes from local, unverified copies of downloads made earlier in this session, outside this task. The percentages and counts are indicative and must be re-measured on the official downloads.
+- The evidence comes from local, unverified copies of the source files (see **Evidence** under Ground rules). The percentages and counts are indicative and must be re-measured on the official downloads.
 - Merge conflicts: T8 edits IrabContent.tsx, which the word-view and readings designs also change. Keep the T8 diff small, or land it inside the word-view PR.
 
 ## Open questions (answered in README.md)
