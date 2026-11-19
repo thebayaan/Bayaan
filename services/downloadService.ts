@@ -244,10 +244,12 @@ export async function downloadSurah(
     // @ai-start
     // iOS hands the download to a background URLSession, which waits for a
     // connection instead of failing: one started offline sat at 0% for good,
-    // with no error and no way to stop it. Android is left to try. It fails
-    // by itself within seconds, and its "network validated" flag can read
-    // offline on networks that do work.
-    if (Platform.OS === 'ios' && !useNetworkStore.getState().isOnline) {
+    // with no error and no way to stop it. Only having no network at all
+    // stops it here, not a failed internet check: that check asks a Google
+    // URL, which some networks block while the audio server works. Android
+    // is left to try. It fails by itself within seconds, and its "network
+    // validated" flag can read offline on networks that do work.
+    if (Platform.OS === 'ios' && !useNetworkStore.getState().isConnected) {
       throw new DownloadError('No internet connection', 'offline');
     }
     // @ai-end

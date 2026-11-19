@@ -51,7 +51,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
-  useNetworkStore.setState({isOnline: true});
+  useNetworkStore.setState({isOnline: true, isConnected: true});
   files = new Map();
   transfer = async uri => {
     files.set(uri, 5000);
@@ -212,15 +212,24 @@ it('shares one transfer between two calls for the same file', async () => {
 
 describe('offline', () => {
   it('does not start a download on iOS, where it would wait for good', async () => {
-    useNetworkStore.setState({isOnline: false});
+    // Airplane mode: no network at all.
+    useNetworkStore.setState({isOnline: false, isConnected: false});
     const error = await download().catch((e: unknown) => e);
     expect(downloadFailureReason(error)).toBe('offline');
     expect(fs.createDownloadResumable).not.toHaveBeenCalled();
   });
 
+  it('still downloads on iOS when only the internet check failed', async () => {
+    // On a network that blocks the Google URL NetInfo checks, or where the
+    // check timed out. The audio server can still answer there.
+    useNetworkStore.setState({isOnline: false, isConnected: true});
+    await expect(download()).resolves.toMatchObject({fileSize: 5000});
+    expect(fs.createDownloadResumable).toHaveBeenCalledTimes(1);
+  });
+
   it('still tries on Android, which fails by itself', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
-    useNetworkStore.setState({isOnline: false});
+    useNetworkStore.setState({isOnline: false, isConnected: false});
     await expect(download()).resolves.toMatchObject({fileSize: 5000});
   });
 });
