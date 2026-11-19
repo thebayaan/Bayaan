@@ -82,10 +82,11 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
 jest.mock('@/services/mushaf/TajweedAlignmentService', () => ({
   // Rule of the first char of a word with QPC data; tafkhim on the second
   // char of one without.
-  alignWordTajweed: () => new Map([[0, 'ghunnah']]),
+  alignWordTajweed: jest.fn(() => new Map([[0, 'ghunnah']])),
   detectWordTafkhim: () => new Map([[1, 'tafkhim']]),
 }));
 
+import {alignWordTajweed} from '@/services/mushaf/TajweedAlignmentService';
 import {
   headerCharColors,
   headerWordText,
@@ -151,6 +152,29 @@ describe('headerWordText and headerCharColors', () => {
       headerCharColors([{text: ALLAH, wordPositionInVerse: 1}], null, undefined)
         .size,
     ).toBe(0);
+  });
+
+  it('aligns «إِلْ يَاسِينَ» (37:130), one slot, with both of its QPC words', () => {
+    // QPC numbers it as two words, 3 and 4; Digital Khatt as slot 3.
+    const il = [{text: 'إِلۡ', rule: null}];
+    const yasin = [
+      {text: 'يَاس', rule: null},
+      {text: 'ِي', rule: 'madda_permissible'},
+      {text: 'نَ', rule: null},
+    ];
+    const verse = [
+      {word_index: 3, location: '37:130:3', segments: il},
+      {word_index: 4, location: '37:130:4', segments: yasin},
+    ] as unknown as IndexedTajweedData[string];
+    const slot = {text: 'إِلْ يَاسِينَ', wordPositionInVerse: 3};
+    (alignWordTajweed as jest.Mock).mockClear();
+    headerCharColors([slot], verse, undefined);
+    expect(alignWordTajweed).toHaveBeenCalledTimes(1);
+    expect(alignWordTajweed).toHaveBeenCalledWith(slot.text, [
+      ...il,
+      {text: ' ', rule: null},
+      ...yasin,
+    ]);
   });
 });
 
