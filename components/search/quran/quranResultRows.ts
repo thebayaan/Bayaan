@@ -9,6 +9,7 @@ import type {
   QuranLemma,
   QuranRoot,
   QuranSearchOutcome,
+  RootSearchResult,
 } from '@/services/search/QuranSearchDataService';
 import type {QuranVerseHit} from '@/utils/search/quranSearch';
 
@@ -77,6 +78,21 @@ function verseRows(
   return rows;
 }
 
+/**
+ * The lemma chosen, when it is one of this root's. A surface keeps the
+ * chosen lemma for the query on screen, so a chip of the last root tapped
+ * while the next one searches would filter the new root to no ayahs: it
+ * chooses nothing (all forms) instead.
+ */
+function rootLemma(
+  result: RootSearchResult,
+  lemmaId: number | null,
+): number | null {
+  return lemmaId !== null && result.lemmas.some(lemma => lemma.id === lemmaId)
+    ? lemmaId
+    : null;
+}
+
 function suggestionRows(roots: readonly QuranRoot[]): QuranResultRow[] {
   return roots.map(root => ({
     type: 'quran-root-suggestion',
@@ -105,7 +121,8 @@ function outcomeRows(
           ]
         : [];
     }
-    const hits = result.hits(view.selectedLemma);
+    const lemma = rootLemma(result, view.selectedLemma);
+    const hits = result.hits(lemma);
     return [
       {
         type: 'quran-root-header',
@@ -118,7 +135,7 @@ function outcomeRows(
         key: `quran-lemmas-${first.id}`,
         root: first,
         lemmas: result.lemmas,
-        selected: view.selectedLemma,
+        selected: lemma,
       },
       ...verseRows(hits, view.shown),
       ...suggestionRows(others),
@@ -190,7 +207,8 @@ export function quranAyahCount(
   const outcome = shownOutcome(state);
   if (!outcome || outcome.kind === 'none') return 0;
   if (outcome.kind === 'text') return outcome.result.ayahCount;
-  return outcome.result?.hits(selectedLemma).length ?? 0;
+  const result = outcome.result;
+  return result ? result.hits(rootLemma(result, selectedLemma)).length : 0;
 }
 
 /**

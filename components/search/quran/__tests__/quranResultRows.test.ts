@@ -159,6 +159,43 @@ describe('quranResultRows', () => {
     ).toMatchObject({type: 'quran-root-header', note: 'hafs'});
   });
 
+  it("shows every form when the chosen lemma is not the root's", () => {
+    // A chip of the last root, tapped while this one was searched: no chip
+    // of this root is selected and all its ayahs show, never none.
+    const kataba = {id: 8, root: 'ك ت ب', words: 319, ayahs: 2};
+    const result: RootSearchResult = {
+      root: kataba,
+      lemmas: [
+        {id: 21, rootId: 8, lemma: 'كِتَٰب', words: 1, ayahs: 1},
+        {id: 22, rootId: 8, lemma: 'كَتَبَ', words: 1, ayahs: 1},
+      ],
+      hits: lemmaId => {
+        if (lemmaId === null) return [hit(1), hit(7)];
+        if (lemmaId === 21) return [hit(1)];
+        if (lemmaId === 22) return [hit(7)];
+        return [];
+      },
+    };
+    const outcome: QuranSearchOutcome = {
+      kind: 'root',
+      letters: 'كتب',
+      candidates: [kataba],
+      result,
+    };
+    const RAHIM = 1; // a lemma of ر ح م
+    const rows = quranResultRows(done(outcome), view({selectedLemma: RAHIM}));
+    expect(rows[1]).toMatchObject({type: 'quran-lemmas', selected: null});
+    expect(
+      rows.filter(row => row.type === 'quran-verse').map(row => row.key),
+    ).toEqual(['quran-verse-1:2', 'quran-verse-2:1']);
+    expect(quranAyahCount(done(outcome), RAHIM)).toBe(2);
+    // Its own lemmas still filter.
+    expect(
+      quranResultRows(done(outcome), view({selectedLemma: 22}))[1],
+    ).toMatchObject({selected: 22});
+    expect(quranAyahCount(done(outcome), 22)).toBe(1);
+  });
+
   it('adds an empty row only when asked', () => {
     expect(quranResultRows(done(text([])), view())).toEqual([]);
     expect(quranResultRows(done(text([])), view({includeEmpty: true}))).toEqual(

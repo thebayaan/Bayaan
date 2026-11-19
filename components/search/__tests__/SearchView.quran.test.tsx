@@ -77,7 +77,7 @@ jest.mock('@/hooks/useQuranSearch', () => {
 });
 
 // Rows render as text: the row key (and a header's note); a press acts on
-// the verse or the root suggestion.
+// the verse, the root suggestion, or the first lemma chip.
 jest.mock('@/components/search/quran/QuranResultRowView', () => {
   const {Text: MockText} = jest.requireActual('react-native');
   return {
@@ -85,12 +85,14 @@ jest.mock('@/components/search/quran/QuranResultRowView', () => {
       row,
       onVersePress,
       onRootPress,
+      onLemmaPress,
     }: QuranResultRowViewProps) => (
       <MockText
         testID="quran-row"
         onPress={() => {
           if (row.type === 'quran-verse') onVersePress(row.hit);
           if (row.type === 'quran-root-suggestion') onRootPress(row.root);
+          if (row.type === 'quran-lemmas') onLemmaPress(row.lemmas[0].id);
         }}>
         {row.type === 'quran-header' ? `${row.key}:${row.note}` : row.key}
       </MockText>
@@ -503,6 +505,40 @@ describe('SearchView: Quran results', () => {
       'quran-row|quran-root-7',
       'quran-row|quran-lemmas-7',
       'quran-row|quran-verse-1:1',
+    ]);
+  });
+
+  it("a lemma chip of the last root, tapped while the next one searches, hides none of the new root's ayahs", async () => {
+    mockQuranStates.set('root:رحم', rootDone([hit('1:1', 3)]));
+    await open('root:رحم');
+    // root:كتب searches; the rows on screen are still ر ح م's.
+    mockQuranStates.set('root:كتب', {
+      status: 'searching',
+      previous: rootOutcome([hit('1:1', 3)]),
+    });
+    await retype('root:كتب');
+    press('quran-row', 'quran-lemmas-7');
+    const kataba: QuranRoot = {id: 8, root: 'ك ت ب', words: 319, ayahs: 2};
+    mockQuranStates.set('root:كتب', {
+      status: 'done',
+      outcome: {
+        kind: 'root',
+        letters: 'كتب',
+        candidates: [kataba],
+        result: {
+          root: kataba,
+          lemmas: [{id: 21, rootId: 8, lemma: 'كِتَٰب', words: 1, ayahs: 1}],
+          // Like the service: no ayahs for a lemma of another root.
+          hits: lemmaId =>
+            lemmaId === null || lemmaId === 21 ? [hit('2:2', 1)] : [],
+        },
+      },
+    });
+    await retype('root:كتب');
+    expect(rows()).toEqual([
+      'quran-row|quran-root-8',
+      'quran-row|quran-lemmas-8',
+      'quran-row|quran-verse-2:2',
     ]);
   });
 
