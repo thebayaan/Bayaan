@@ -14,9 +14,11 @@ const POSITION_SEPARATOR = ',';
 /**
  * Adds the word flash (the words a Quran search matched) to a Digital Khatt
  * page's line highlights, as a band in the colour of the word being
- * recited. Pages without the flashed verse keep `base` and do not re-render
- * when a flash starts or ends elsewhere. Positions are Hafs slots, which
- * every rewayah's text keeps; a blank slot paints nothing.
+ * recited. SkiaPage and MushafPageContent draw them; QCFPage maps them onto
+ * the words of the Mushaf 1440 page. Pages without the flashed verse keep
+ * `base` and do not re-render when a flash starts or ends elsewhere.
+ * Positions are Hafs slots, which every rewayah's text keeps; a blank slot
+ * paints nothing.
  */
 export function useWordFlashHighlights(
   pageNumber: number,

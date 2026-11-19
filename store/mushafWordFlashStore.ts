@@ -1,9 +1,10 @@
 // @ai-generated
 /**
  * Words of one Hafs verse the mushaf flashes for a moment: the words a Quran
- * search matched, when the reader opens there. Digital Khatt pages paint
- * them (components/mushaf/skia/useWordFlashHighlights.ts); positions are
- * Hafs slots, which every rewayah's words keep.
+ * search matched, when the reader opens there. The mushaf pages paint them
+ * (components/mushaf/skia/useWordFlashHighlights.ts; Mushaf 1440 pages map
+ * the Digital Khatt bands onto their words); positions are Hafs slots, which
+ * every rewayah's words keep.
  */
 import {create} from 'zustand';
 
