@@ -316,3 +316,51 @@ describe('Android: play asked for while the player buffers after a seek', () => 
     });
   });
 });
+
+describe('Android: a stream that stalls', () => {
+  it('reads as waiting for data while it is meant to play', async () => {
+    Platform.OS = 'android';
+    mockAudio.wantsToPlay.mockReturnValue(true);
+    mockStatus = {
+      ...mockStatus,
+      isLoaded: false,
+      isBuffering: true,
+      playing: true,
+    };
+    await act(async () => {
+      renderer = create(<ExpoAudioProvider>{null}</ExpoAudioProvider>);
+    });
+    await flush();
+    expect(mockStore.updatePlaybackState).toHaveBeenCalledWith({
+      state: 'buffering',
+    });
+  });
+
+  // A pause during a stall changes nothing in Android's status: it goes on
+  // reporting the playing from before the stall. A seek of the paused player
+  // then showed a spinner and a Pause button.
+  it('stays paused when it was paused during the stall', async () => {
+    Platform.OS = 'android';
+    mockAudio.wantsToPlay.mockReturnValue(false);
+    mockStore.playback = {
+      state: 'paused',
+      rate: 1,
+      position: 30,
+      duration: 120,
+    };
+    mockStatus = {
+      ...mockStatus,
+      isLoaded: false,
+      isBuffering: true,
+      playing: true,
+      currentTime: 90,
+    };
+    await act(async () => {
+      renderer = create(<ExpoAudioProvider>{null}</ExpoAudioProvider>);
+    });
+    await flush();
+    expect(mockStore.updatePlaybackState).not.toHaveBeenCalledWith({
+      state: 'buffering',
+    });
+  });
+});

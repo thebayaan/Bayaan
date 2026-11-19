@@ -471,6 +471,143 @@ it('repeat one: each loop completes once and starts again as autoplay', async ()
   expect(listenedTotal()).toBe(118_000);
 });
 
+// The completion of surah 1 says the queue goes on by itself. When surah 2
+// then does not start (held paused during its load, or not loaded), the
+// play that starts it later is the listener's.
+describe('an auto-advance that did not play', () => {
+  /** Holds the next loadTrack() open; returns its release. */
+  function holdNextLoad(): () => Promise<void> {
+    let finish: () => void = () => undefined;
+    jest.mocked(expoAudioService.loadTrack).mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          finish = resolve;
+        }),
+    );
+    return async () => {
+      await act(async () => finish());
+    };
+  }
+
+  /** The listener plays surah 2 later; returns the source of that start. */
+  async function laterPlaySource(): Promise<unknown> {
+    await wait(300);
+    await storeAction(() => usePlayerStore.getState().play());
+    await native({isLoaded: true, playing: true, currentTime: 0, duration: 90});
+    expect(events()).toEqual([
+      'playback_started',
+      'playback_completed',
+      'playback_started',
+    ]);
+    expect(eventProps('playback_started')[1]).toMatchObject({surah_id: 2});
+    return eventProps('playback_started')[1].source;
+  }
+
+  it('a pause while the next surah loads: the later play is not an autoplay', async () => {
+    await playQueue(120);
+    await wait(119);
+    const finishLoad = holdNextLoad();
+    await native({playing: false, currentTime: 120, didJustFinish: true});
+    await storeAction(() => usePlayerStore.getState().pause());
+    await finishLoad();
+    await native({
+      isLoaded: true,
+      playing: false,
+      currentTime: 0,
+      duration: 90,
+    });
+    expect(usePlayerStore.getState().playback.state).toBe('paused');
+
+    expect(await laterPlaySource()).toBe('queue');
+  });
+
+  it('the sleep timer ending while the next surah loads: the same', async () => {
+    await playQueue(120);
+    await wait(119);
+    usePlayerStore.setState(state => ({
+      settings: {...state.settings, sleepTimerEnd: mockNow + 1500},
+    }));
+    const finishLoad = holdNextLoad();
+    await native({playing: false, currentTime: 120, didJustFinish: true});
+    // A status during the load checks the timer, which has run out by then.
+    mockNow += 2000;
+    await native({currentTime: 120});
+    await finishLoad();
+    await native({
+      isLoaded: true,
+      playing: false,
+      currentTime: 0,
+      duration: 90,
+    });
+    expect(usePlayerStore.getState().playback.state).toBe('paused');
+
+    expect(await laterPlaySource()).toBe('queue');
+  });
+
+  it('a next surah that fails to load: the retry is not an autoplay', async () => {
+    const isSourceReady = jest.mocked(expoAudioService.isSourceReady);
+    await playQueue(120);
+    await wait(119);
+    let failLoad: () => void = () => undefined;
+    jest.mocked(expoAudioService.loadTrack).mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          failLoad = () => reject(new Error('offline'));
+        }),
+    );
+    isSourceReady.mockImplementation(() => false);
+    try {
+      await native({playing: false, currentTime: 120, didJustFinish: true});
+      await native({isLoaded: false, currentTime: 0, duration: 0});
+      await act(async () => failLoad());
+      expect(usePlayerStore.getState().queue.currentIndex).toBe(1);
+      expect(usePlayerStore.getState().playback.state).toBe('paused');
+
+      // The retry reloads surah 2 and plays it.
+      await wait(60);
+      await storeAction(() => usePlayerStore.getState().play());
+      isSourceReady.mockImplementation(() => true);
+      await native({
+        isLoaded: true,
+        playing: true,
+        currentTime: 0,
+        duration: 90,
+      });
+    } finally {
+      isSourceReady.mockImplementation(() => true);
+    }
+
+    expect(events()).toEqual([
+      'playback_started',
+      'playback_completed',
+      'playback_started',
+    ]);
+    expect(eventProps('playback_started')[1]).toMatchObject({
+      surah_id: 2,
+      source: 'queue',
+    });
+  });
+
+  it('an auto-advance that plays is still an autoplay', async () => {
+    await playQueue(120);
+    await wait(119);
+    const finishLoad = holdNextLoad();
+    await native({playing: false, currentTime: 120, didJustFinish: true});
+    await finishLoad();
+    await native({isLoaded: true, playing: true, currentTime: 0, duration: 90});
+
+    expect(events()).toEqual([
+      'playback_started',
+      'playback_completed',
+      'playback_started',
+    ]);
+    expect(eventProps('playback_started')[1]).toMatchObject({
+      surah_id: 2,
+      source: 'autoplay',
+    });
+  });
+});
+
 /**
  * Ends surah 1 of 2 with `statuses`, rendered together, while the load of
  * surah 2 is held open, as waitForLoaded holds it on a device. Returns the

@@ -6,6 +6,7 @@
  * Queue management is handled by playerStore.
  */
 
+import {Platform} from 'react-native';
 import {setAudioModeAsync, AudioPlayer, AudioSource} from 'expo-audio';
 
 type PlaybackState =
@@ -52,8 +53,9 @@ class ExpoAudioService {
   // error for it). play() on such a source is silent, so callers reload.
   private sourceFailed = false;
   private statusSubscription: {remove: () => void} | null = null;
-  // Whether the app last asked the player to play (true) or to pause.
-  // Android's status cannot say it while the player buffers after a seek.
+  // Whether the player was last asked to play (true) or to pause, in the
+  // app or outside it (see followPlayIntent). Android's status cannot say it
+  // while the player buffers.
   private playRequested = false;
   // The source that pause() was asked for before it had loaded. On iOS a
   // source that replaces a playing one starts by itself when it becomes
@@ -321,7 +323,9 @@ class ExpoAudioService {
   /**
    * Remember when the player reports an error for the current source.
    * expo-audio sends it as an `error` string on a status update, on both
-   * platforms, and then goes back to plain updates.
+   * platforms, and then goes back to plain updates. The same listener keeps
+   * a held pause (keepHeld) and follows plays and pauses from outside the app
+   * (followPlayIntent).
    */
   private watchForErrors(player: AudioPlayer): void {
     this.statusSubscription?.remove();
@@ -330,6 +334,7 @@ class ExpoAudioService {
     this.statusSubscription = player.addListener(
       'playbackStatusUpdate',
       status => {
+        this.followPlayIntent(status);
         this.keepHeld(status);
         const error = (status as {error?: unknown}).error;
         if (typeof error !== 'string' || error.length === 0) return;
@@ -337,6 +342,31 @@ class ExpoAudioService {
         this.lastError = new Error(error);
       },
     );
+  }
+
+  /**
+   * Follows a play or a pause that did not go through play() or pause():
+   * the lock screen, the notification, headphones, a call taking the audio.
+   * A pause from there left wantsToPlay() true, so on Android a seek of the
+   * paused player then showed it as buffering, with a Pause button.
+   *
+   * Only a status that is not buffering says it: while Android's player
+   * buffers, `playing` is the play or pause from before the buffering began
+   * (a pause asked for during a stall still reads as playing). The end of a
+   * track is not a pause either: what follows it is the app's to ask for.
+   */
+  private followPlayIntent(status: {
+    isLoaded?: boolean;
+    playing?: boolean;
+    isBuffering?: boolean;
+    didJustFinish?: boolean;
+  }): void {
+    if (status.isBuffering) return;
+    if (status.playing) {
+      this.playRequested = true;
+    } else if (status.isLoaded && !status.didJustFinish) {
+      this.playRequested = false;
+    }
   }
 
   private clearHold(): void {
@@ -372,7 +402,10 @@ class ExpoAudioService {
     }
   }
 
-  /** True when the app last asked the player to play, false after a pause. */
+  /**
+   * True when the player was last asked to play, false after a pause, in
+   * the app or outside it (see followPlayIntent).
+   */
   wantsToPlay(): boolean {
     return this.playRequested;
   }
@@ -420,7 +453,15 @@ class ExpoAudioService {
       // @ai-start
       this.playRequested = false;
       // Not loaded yet: the pause has to be repeated once it is (holdUrl).
-      if (this.currentUrl !== null && !this.player.isLoaded) {
+      // iOS only: Android's player keeps a pause through a load. There
+      // isLoaded is also false in a stall and at the end of a track, and a
+      // hold set then paused again a later play from the lock screen or
+      // headphones.
+      if (
+        Platform.OS === 'ios' &&
+        this.currentUrl !== null &&
+        !this.player.isLoaded
+      ) {
         this.holdUrl = this.currentUrl;
         this.holdReadyAt = null;
       }

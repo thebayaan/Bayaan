@@ -13,9 +13,16 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn(() => Promise.resolve()),
 }));
 
+import {Platform} from 'react-native';
 import {ExpoAudioService} from '../ExpoAudioService';
 
-type Status = {isLoaded?: boolean; playing?: boolean; error?: string | null};
+type Status = {
+  isLoaded?: boolean;
+  playing?: boolean;
+  isBuffering?: boolean;
+  didJustFinish?: boolean;
+  error?: string | null;
+};
 type StatusListener = (status: Status) => void;
 
 class FakeAudioPlayer {
@@ -163,6 +170,70 @@ describe('a pause on a loaded source', () => {
   });
 });
 
+// Android's isLoaded is false in a stall and at the end of a track as well,
+// and its player keeps a pause through a load: nothing is held there. A play
+// from the lock screen or headphones goes straight to the player, so a hold
+// would undo it.
+describe('Android: a pause on a source that had loaded', () => {
+  const originalOS = Platform.OS;
+
+  beforeEach(() => {
+    Platform.OS = 'android';
+  });
+
+  afterEach(() => {
+    Platform.OS = originalOS;
+  });
+
+  async function loadedAndPlaying(): Promise<{
+    service: ExpoAudioService;
+    player: FakeAudioPlayer;
+  }> {
+    const {service, player} = makeService();
+    const load = service.loadTrack(URL_B);
+    await Promise.resolve();
+    await Promise.resolve();
+    player.emit({isLoaded: true, playing: false, isBuffering: false});
+    await load;
+    await service.play();
+    player.emit({isLoaded: true, playing: true, isBuffering: false});
+    return {service, player};
+  }
+
+  it('in a stall: a play from the headphones is not paused again', async () => {
+    const {service, player} = await loadedAndPlaying();
+    // The stream stalls: not loaded, and still reported as playing.
+    player.emit({isLoaded: false, playing: true, isBuffering: true});
+    await service.pause();
+    expect(player.pause).toHaveBeenCalledTimes(1);
+
+    // Play on the headphones while it still buffers, then the data comes.
+    player.emit({isLoaded: false, playing: true, isBuffering: true});
+    player.emit({isLoaded: true, playing: true, isBuffering: false});
+    expect(player.pause).toHaveBeenCalledTimes(1);
+  });
+
+  it('at the end of a track: a play from the lock screen is not paused again', async () => {
+    const {service, player} = await loadedAndPlaying();
+    player.emit({
+      isLoaded: true,
+      playing: false,
+      isBuffering: false,
+      didJustFinish: true,
+    });
+    // Ended: the player's isLoaded reads false there.
+    player.isLoaded = false;
+    await service.pause();
+    expect(player.pause).toHaveBeenCalledTimes(1);
+
+    // The lock screen starts the track again: it buffers, then plays.
+    jest.advanceTimersByTime(60_000);
+    player.emit({isLoaded: false, playing: false, isBuffering: true});
+    player.emit({isLoaded: true, playing: true, isBuffering: false});
+    expect(player.pause).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('wantsToPlay()', () => {
   it('follows the last play or pause the app asked for', async () => {
     const {service} = makeService();
@@ -174,5 +245,52 @@ describe('wantsToPlay()', () => {
     await service.play();
     service.cleanup();
     expect(service.wantsToPlay()).toBe(false);
+  });
+
+  // The notification, the lock screen, headphones, a call: the player
+  // reports the stop, nothing in the app asked for it. Left at true, a seek
+  // of the paused player on Android then showed it as buffering.
+  it('follows a pause from outside the app', async () => {
+    const {service, player} = makeService();
+    await service.play();
+    player.emit({isLoaded: true, playing: true, isBuffering: false});
+    player.emit({isLoaded: true, playing: false, isBuffering: false});
+    expect(service.wantsToPlay()).toBe(false);
+  });
+
+  it('follows a play from outside the app', async () => {
+    const {service, player} = makeService();
+    await service.pause();
+    player.emit({isLoaded: true, playing: true, isBuffering: false});
+    expect(service.wantsToPlay()).toBe(true);
+  });
+
+  // While Android's player buffers, `playing` is what it was before.
+  it('keeps a pause asked for during a stall, which still reads as playing', async () => {
+    const {service, player} = makeService();
+    await service.play();
+    player.emit({isLoaded: false, playing: true, isBuffering: true});
+    await service.pause();
+    player.emit({isLoaded: false, playing: true, isBuffering: true});
+    expect(service.wantsToPlay()).toBe(false);
+  });
+
+  it('keeps a play asked for while the player buffers after a seek', async () => {
+    const {service, player} = makeService();
+    await service.play();
+    player.emit({isLoaded: false, playing: false, isBuffering: true});
+    expect(service.wantsToPlay()).toBe(true);
+  });
+
+  it('does not take the end of a track for a pause', async () => {
+    const {service, player} = makeService();
+    await service.play();
+    player.emit({
+      isLoaded: true,
+      playing: false,
+      isBuffering: false,
+      didJustFinish: true,
+    });
+    expect(service.wantsToPlay()).toBe(true);
   });
 });

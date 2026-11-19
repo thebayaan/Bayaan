@@ -57,19 +57,19 @@ interface PlayIntent {
  * player whose buffer is empty (a restored track before its first play), and
  * that showed a spinner on a paused player and made the first tap call play
  * when the user meant pause. iOS says "waiting to play" in
- * `timeControlStatus`; on Android `playing` holds the intent while the
- * player buffers, but only once it has played: a play asked for while it
- * buffers after a seek (a surah resumed at its saved position) reads as not
- * playing, so what the app last asked for counts too. Without it the
- * controls fell back to paused for a moment on a slow connection.
+ * `timeControlStatus`. On Android `playing` is no guide while the player
+ * buffers: it is the play or pause from before the buffering began. A play
+ * asked for while it buffers after a seek (a surah resumed at its saved
+ * position) reads as not playing, and the controls fell back to paused for a
+ * moment on a slow connection; a pause asked for during a stall reads as
+ * playing. So the last play or pause asked for counts, in the app or outside
+ * it (wantsToPlay).
  */
 function isWaitingToPlay(status: PlayIntent): boolean {
   if (Platform.OS === 'ios') {
     return status.timeControlStatus === 'waitingToPlayAtSpecifiedRate';
   }
-  return (
-    status.isBuffering && (status.playing || expoAudioService.wantsToPlay())
-  );
+  return status.isBuffering && expoAudioService.wantsToPlay();
 }
 // @ai-end
 
@@ -577,6 +577,13 @@ export function ExpoAudioProvider({
         if (__DEV__)
           console.log('[ExpoAudioProvider] Auto-advancing to next track');
         await skipToNext();
+        // The next surah did not start: a pause or the sleep timer held it
+        // during its load, or it failed to load. The play that starts it
+        // later is the listener's own, not an autoplay.
+        const {state} = usePlayerStore.getState().playback;
+        if (state !== 'playing' && state !== 'buffering') {
+          analyticsService.listenSession.cancelAutoplay();
+        }
       } else {
         // End of queue, no repeat
         if (__DEV__) console.log('[ExpoAudioProvider] End of queue reached');
