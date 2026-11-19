@@ -158,7 +158,7 @@ UI strings live in locale files. Content that comes with the data has its own ru
 | Tafsir editions | Titles come from `home.tafseerNames` in the active locale, then the edition's Arabic or English name (by `bilingualContent`). |
 | Adhkar categories | `getSuperCategoryDisplayTitle` picks the Arabic title when the language shows Arabic content. |
 | User uploads | Shown exactly as the user named them. |
-| Word-by-word meaning and transliteration | The Word by Word options start off where the language `understandsArabic` (`defaultShowEnglishReadingAids`); after that, the reader's choice applies in every UI language. Exception: Word Study never shows them in such a UI (`showsWordGloss` in `components/sheets/verse-actions/wordStudy.ts`). |
+| Word-by-word meaning and transliteration | The Word by Word options start off where the language `understandsArabic` (`defaultShowEnglishReadingAids`); after that, the reader's choice applies in every UI language, in Word by Word, the player and Word Study alike. |
 
 When a backend field exists only in Arabic and English, the registry's `bilingualContent` decides which one a language shows.
 
