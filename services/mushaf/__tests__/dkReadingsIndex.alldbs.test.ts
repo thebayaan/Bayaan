@@ -14,11 +14,13 @@
  *  - every row decodes (wordReadingsFormat);
  *  - for each of the 77,432 Hafs content slots: the groups of its readings
  *    follow the 7 diff files (Hafs's group: the untinted, non-blank rewayat;
- *    differing: the tinted ones; not read: the blank ones; a listed misprint
- *    sits with its sibling), every text is a member's stored text, and own
- *    texts, silah, verse ends, word counts and the basmala are the DBs'; a
- *    slot with no row reads alike (no tint, no silah, no blank, Hafs's word
- *    count and verse end, not 1:1, not half of a two-slot word);
+ *    differing: the tinted ones; not read: the blank ones), every text is a
+ *    member's stored text, and own texts, silah, verse ends, word counts and
+ *    the basmala are the DBs'; a slot with no row reads alike (no tint, no
+ *    silah, no blank, Hafs's word count and verse end, not 1:1, not half of
+ *    a two-slot word);
+ *  - each suspected misprint of reading_upstream_issues.json is shown as
+ *    written: the official text, as a reading that differs from Hafs;
  *  - the word-by-word data differs from the DK positions exactly at
  *    WBW_JOINED_WORDS, and those DK slots have no row.
  */
@@ -242,13 +244,15 @@ run('dk_readings.db against the bundled data', () => {
     const fail = (where: string, message: string) => {
       if (errors.length < 30) errors.push(`${where}: ${message}`);
     };
-    const folded = new Map<string, ReadingsRewayah>(); // "loc|rewayah" -> sibling
+    // "loc|rewayah" -> the official text of a suspected misprint
+    const misprints = new Map<string, string>();
     for (const i of issues) {
       const r = READINGS_REWAYAT.find(x => FILE_ID[x] === i.rid);
       const s = READINGS_REWAYAT.find(x => FILE_ID[x] === i.sibling);
       if (!r || !s || SIBLING[r] !== s) throw new Error(`bad issue ${i.rid}`);
-      folded.set(`${i.location}|${r}`, s);
+      misprints.set(`${i.location}|${r}`, i.text);
     }
+    const misprintsShown = new Set<string>();
     const fatihaMarker = markerText.get(5); // the Hafs marker slot of 1:1
     if (!fatihaMarker) throw new Error('no marker slot at 1:1:5');
     let used = 0;
@@ -294,9 +298,10 @@ run('dk_readings.db against the bundled data', () => {
           if (ends && !hafsEnds) verseEnd = inline;
           else if (hafsEnds && !ends) verseEnd = 0;
         }
-        const foldedInto =
-          span.map(s => folded.get(`${s.location}|${r}`)).find(Boolean) ?? null;
-        return {text, chars, tinted, verseEnd, foldedInto};
+        const misprint =
+          span.map(s => misprints.get(`${s.location}|${r}`)).find(Boolean) ??
+          null;
+        return {text, chars, tinted, verseEnd, misprint};
       };
       const m = Object.fromEntries(
         READINGS_REWAYAT.map(r => [r, member(r)]),
@@ -336,25 +341,17 @@ run('dk_readings.db against the bundled data', () => {
       ) {
         fail(where, `positions ${readings.positions}`);
       }
-      const kindOf = new Map(
-        readings.groups.flatMap(g => g.members.map(x => [x.rewayah, g.kind])),
-      );
       const expectedKind = (r: ReadingsRewayah) => {
         const e = m[r];
         if (r === 'hafs') return 'asHafs';
         if (!e.text) return 'notRead';
-        if (e.foldedInto) return kindOf.get(e.foldedInto);
         return e.tinted ? 'differs' : 'asHafs';
       };
       for (const g of readings.groups) {
-        const firstOwn = g.members.find(x => !x.questioned);
         if (g.kind === 'asHafs' && g.text !== m.hafs.text) {
           fail(where, "Hafs's group text is not Hafs's");
         }
-        if (
-          g.kind === 'differs' &&
-          (!firstOwn || g.text !== m[firstOwn.rewayah].text)
-        ) {
+        if (g.kind === 'differs' && g.text !== m[g.members[0].rewayah].text) {
           fail(where, "a differing text is not its first member's");
         }
         if (g.kind === 'notRead' && g.text !== '') {
@@ -375,19 +372,9 @@ run('dk_readings.db against the bundled data', () => {
               `${x.rewayah}: blank but not a declared Hafs-only word`,
             );
           }
-          if (
-            e.foldedInto &&
-            !g.members.some(y => y.rewayah === e.foldedInto)
-          ) {
-            fail(where, `${x.rewayah}: a misprint not read with its sibling`);
-          }
-          if (x.questioned !== Boolean(e.foldedInto)) {
-            fail(where, `${x.rewayah}: questioned ${x.questioned}`);
-          }
           const shows =
             x.rewayah !== 'hafs' &&
             g.kind !== 'notRead' &&
-            !e.foldedInto &&
             (e.chars.length > 0 || (g.kind === 'differs' && e.text !== g.text));
           if (x.ownText !== (shows ? e.text : null)) {
             fail(where, `${x.rewayah}: own text ${x.ownText}`);
@@ -395,8 +382,14 @@ run('dk_readings.db against the bundled data', () => {
           if (x.silahChars.join() !== (shows ? e.chars : []).join()) {
             fail(where, `${x.rewayah}: silah ${x.silahChars}`);
           }
-          if (e.foldedInto && e.chars.length) {
-            fail(where, `${x.rewayah}: a misprint with silah`);
+          if (e.misprint !== null) {
+            // the official text verbatim, as a reading of its own
+            const shown = x.ownText ?? g.text;
+            if (g.kind !== 'differs' || shown !== e.misprint) {
+              fail(where, `${x.rewayah}: misprint shown as ${g.kind} ${shown}`);
+            } else {
+              misprintsShown.add(`${x.rewayah} ${where}`);
+            }
           }
           if (x.verseEnd !== e.verseEnd) {
             fail(
@@ -430,6 +423,7 @@ run('dk_readings.db against the bundled data', () => {
     }
     expect(errors).toEqual([]);
     expect(used).toBe(indexRows.length); // every row belongs to a slot read here
+    expect(misprintsShown.size).toBe(issues.length);
   });
 
   it('word-by-word positions differ from the DK positions exactly at WBW_JOINED_WORDS, which have no rows', () => {

@@ -281,9 +281,7 @@ const GroupRow: React.FC<GroupRowProps> = ({
   // The group's text is its first member's own text ('differs'), Hafs's
   // ('asHafs'): drawn in that rewayah's font.
   const textOwner: ReadingsRewayah =
-    group.kind === 'asHafs'
-      ? 'hafs'
-      : (group.members.find(m => !m.questioned) ?? group.members[0]).rewayah;
+    group.kind === 'asHafs' ? 'hafs' : group.members[0].rewayah;
   // A reading of one reader whose own text is the group's: its silah is
   // coloured on the group's text instead of a second, identical line.
   const sole =

@@ -264,10 +264,21 @@ it('notes a span, verse ends, the basmala, and joined or apart words', () => {
   );
 });
 
-it('shows no note for a suspected misprint, which is read with its sibling', () => {
+it('shows a suspected misprint as written, as its own reading, with no note', () => {
   mockState.result = ready('17:62', 1);
-  const shown = texts(render('17:62', 1, 'qalun'));
-  expect(shown).toContain('Read the same way in all 8 rewayat');
+  const root = render('17:62', 1, 'qalun');
+  const shown = texts(root);
+  expect(shown).toContain('Read differently across the rewayat');
+  const r = mockState.result.status === 'ready' ? mockState.result : null;
+  // Qalun's official text, drawn in his own reading under Current
+  expect(mockReadingTexts.map(p => [p.text, p.rewayah])).toEqual([
+    [r?.readings.groups[0].text, 'hafs'],
+    [r?.readings.groups[1].text, 'qalun'],
+  ]);
+  expect(r?.readings.groups[1].text).not.toBe(r?.readings.groups[0].text);
+  expect(labels(root).filter(l => l.endsWith('current rewayah'))).toEqual([
+    `${r?.readings.groups[1].text}, read by Qalun (Nafi'), including the current rewayah`,
+  ]);
   expect(shown.some(s => /misprint|KFGQPC text/.test(s))).toBe(false);
   expect(shown.filter(s => s === 'Current')).toHaveLength(1);
 });

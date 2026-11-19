@@ -1,5 +1,5 @@
 {
-  "__doc": "Reviewed groupings of the per-word readings index (build_readings_index.py, gate G6). Each span is keyed by its first Hafs word slot (s:a:w) and lists its groups in display order, as file ids: Hafs's group first, then the groups that read the word differently from Hafs, then the rewayat that do not read it. 'groups' holds one entry per rule: add an entry when a review settles a reading, and never edit one to make a build pass. 'toConfirm' pins what the build produces today for the open questions a qualified reader must answer (reading_review.md lists them); a decision moves a span into 'groups', or changes highlights.py or reading_upstream_issues.json together with the expected result here.",
+  "__doc": "Reviewed groupings of the per-word readings index (build_readings_index.py, gate G6). Each span is keyed by its first Hafs word slot (s:a:w) and lists its groups in display order, as file ids: Hafs's group first, then the groups that read the word differently from Hafs, then the rewayat that do not read it. 'groups' holds one entry per rule: add an entry when a review settles a reading, and never edit one to make a build pass. 'toConfirm' pins what the build produces today for the open questions a qualified reader must answer (reading_review.md lists them); a decision moves a span into 'groups', or changes highlights.py together with the expected result here.",
   "groups": [
     {
       "rule": "A general rule of one rewayah does not split a reading: al-Susi's idgham kabir (1:4:1 مَّلِكِ after ٱلرَّحِيم) and his ibdal of a vowelless hamza (2:67:7 يَامُرْكُمْ), Ibn Kathir's silah of the meem al-jam' (2:85:18 تَفْدُوهُمُۥ with Abu 'Amr's تَفْدُوهُمْ).",
@@ -40,12 +40,12 @@
       }
     },
     {
-      "rule": "A suspected KFGQPC misprint is read with its sibling narrator and never shown as a reading of its own (docs/plans/2026-11-14-word-study/README.md; reading_upstream_issues.json).",
+      "rule": "A suspected KFGQPC misprint is shown as written: the official text verbatim, as its rewayah's own reading, never folded into another rewayah's text (docs/plans/2026-11-14-word-study/README.md; reading_upstream_issues.json lists them to report upstream).",
       "spans": {
-        "4:136:14": [["hafs", "shouba", "warsh", "qaloon"], ["bazzi", "qumbul", "doori", "soosi"]],
-        "17:62:1": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
-        "43:58:10": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]],
-        "43:78:2": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "doori", "soosi"]]
+        "4:136:14": [["hafs", "shouba", "warsh", "qaloon"], ["bazzi", "doori", "soosi"], ["qumbul"]],
+        "17:62:1": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "doori", "soosi"], ["qaloon"]],
+        "43:58:10": [["hafs", "shouba", "bazzi", "qumbul", "qaloon", "doori", "soosi"], ["warsh"]],
+        "43:78:2": [["hafs", "shouba", "bazzi", "qumbul", "warsh", "qaloon", "soosi"], ["doori"]]
       }
     },
     {
@@ -93,7 +93,7 @@
       }
     },
     {
-      "question": "Qunbul writes Ibn Kathir's stop-only ya at 6 of 10 places (scripts/rewayah/sources/SOURCES.md, Known upstream issues), so his text there is shown as a reading of its own, apart from al-Bazzi. Keep it, or list these with the suspected misprints in reading_upstream_issues.json?",
+      "question": "Qunbul writes Ibn Kathir's stop-only ya at 6 of 10 places (scripts/rewayah/sources/SOURCES.md, Known upstream issues), so his text there is shown as a reading of its own, apart from al-Bazzi. It stays as written either way: is it Qunbul's reading there, or should these be listed with the suspected misprints in reading_upstream_issues.json, to report upstream?",
       "spans": {
         "13:7:15": [["hafs", "shouba", "bazzi", "warsh", "qaloon", "doori", "soosi"], ["qumbul"]],
         "13:11:35": [["hafs", "shouba", "bazzi", "warsh", "qaloon", "doori", "soosi"], ["qumbul"]],

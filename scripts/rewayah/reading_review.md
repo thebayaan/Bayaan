@@ -5,9 +5,10 @@ The grouping of the 8 rewayat in `data/mushaf/digitalkhatt/dk_readings.db`, for 
 qualified reader to sign off before release (docs/features/rewayat.md, Per-word readings).
 Which rewayat read a word as Hafs does is the reviewed highlight decision of
 `<id>-diff.json`. What is new, and listed here, is how the rewayat that differ from
-Hafs are grouped among themselves (`highlights.reads_alike`), and the misprints read
-with their sibling. A decision goes into `reading_groups_cases.json` (a group per
-rule); a change of grouping is a change to `highlights.py` or the issue list.
+Hafs are grouped among themselves (`highlights.reads_alike`). Every text is the
+official one, verbatim, suspected misprints included. A decision goes into
+`reading_groups_cases.json` (a group per rule); a change of grouping is a change to
+`highlights.py`.
 
 How a differing rewayah is placed: it joins the group of the other narrator of its
 reader when they store the same words or the reviewed sibling rule says they read
@@ -24,8 +25,8 @@ member's own text is shown under its group when it differs, with its silah in co
 |---|---|
 | Spans with a row | 9,499 |
 | Rows (a two-slot span has two) | 9,505 |
-| Spans with 2 or more readings | 2,239 |
-| Spans with 3 or more readings (section 4) | 100 |
+| Spans with 2 or more readings | 2,242 |
+| Spans with 3 or more readings (section 4) | 101 |
 | Joins of a differing rewayah to a group: same | 4,319 |
 | Joins of a differing rewayah to a group: sibling | 87 |
 | Joins of a differing rewayah to a group: both | 66 |
@@ -38,18 +39,18 @@ the other's rules; `across` one reads like the other under rules that read only 
 the two encodings; `oneway` both directions can be checked and only one holds, i.e. one
 rewayah's general rule excused the difference (section 3).
 
-## 1. Suspected KFGQPC misprints read with their sibling
+## 1. Suspected KFGQPC misprints, shown as written
 
-Decision (docs/plans/2026-11-14-word-study/README.md): each is placed in its sibling
-narrator's group and is not shown as a reading of its own; the app shows no note.
-Source: `reading_upstream_issues.json`.
+Decision (docs/plans/2026-11-14-word-study/README.md): the official text is shown
+verbatim, as its rewayah's own reading; the app corrects nothing and shows no note.
+`reading_upstream_issues.json` lists them, each with a note, to report them to KFGQPC.
 
-| Rewayah | Hafs word | Stored text | Read with | Group |
+| Rewayah | Hafs word | Stored text | Its sibling's text | Group |
 |---|---|---|---|---|
-| Qunbul | 4:136:14 | `أُنزَلَ` | al-Bazzi | `أُنزِلَ` (differs): al-Bazzi, Qunbul, al-Duri, al-Susi |
-| Qalun | 17:62:1 | `قَال۟` | Warsh | `قَالَ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi |
-| Warsh | 43:58:10 | `جَدَلاَ` | Qalun | `جَدَلَۢاۚ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi |
-| al-Duri | 43:78:2 | `جِّئْنَٰكُم` | al-Susi | `جِئْنَٰكُم` (as Hafs): Hafs, Shu'bah, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi; own text: al-Bazzi `جِئْنَٰكُمُۥ`; Qunbul `جِئْنَٰكُمُۥ` |
+| Qunbul | 4:136:14 | `أُنزَلَ` | al-Bazzi `أُنزِلَ` | `أُنزَلَ` (differs): Qunbul |
+| Qalun | 17:62:1 | `قَال۟` | Warsh `قَالَ` | `قَال۟` (differs): Qalun |
+| Warsh | 43:58:10 | `جَدَلاَ` | Qalun `جَدَلاَۢ` | `جَدَلاَ` (differs): Warsh |
+| al-Duri | 43:78:2 | `جِّئْنَٰكُم` | al-Susi `جِّينَٰكُم` | `جِّئْنَٰكُم` (differs): al-Duri |
 
 ## 2. To confirm
 
@@ -83,7 +84,7 @@ Source: `reading_upstream_issues.json`.
   - 20:94:7: `بِرَأْسِيٓۖ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Qunbul
   - 20:94:7: `بِرَأ۟سِيَ` (differs): Warsh, Qalun, al-Duri; own text: al-Duri `بِرَأْسِيَۖ`
   - 20:94:7: `بِرَاسِيَۖ` (differs): al-Susi
-- Qunbul writes Ibn Kathir's stop-only ya at 6 of 10 places (scripts/rewayah/sources/SOURCES.md, Known upstream issues), so his text there is shown as a reading of its own, apart from al-Bazzi. Keep it, or list these with the suspected misprints in reading_upstream_issues.json?
+- Qunbul writes Ibn Kathir's stop-only ya at 6 of 10 places (scripts/rewayah/sources/SOURCES.md, Known upstream issues), so his text there is shown as a reading of its own, apart from al-Bazzi. It stays as written either way: is it Qunbul's reading there, or should these be listed with the suspected misprints in reading_upstream_issues.json, to report upstream?
   - 13:7:15: `هَادٍ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Warsh, Qalun, al-Duri, al-Susi
   - 13:7:15: `هَادِۦ` (differs): Qunbul; own text: Qunbul `هَادِۦ`
   - 13:11:35: `وَالٍ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Warsh, Qalun, al-Duri, al-Susi
@@ -256,6 +257,10 @@ the difference.
   - `وَنُصْلِهِۦ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh
   - `وَنُصْلِهْ` (differs): Shu'bah, al-Duri, al-Susi
   - `وَنُص۟لِهِ` (differs): Qalun
+- **4:136:14**
+  - `أَنزَلَ` (as Hafs): Hafs, Shu'bah, Warsh, Qalun
+  - `أُنزِلَ` (differs): al-Bazzi, al-Duri, al-Susi
+  - `أُنزَلَ` (differs): Qunbul
 - **4:153:17**
   - `أَرِنَا` (as Hafs): Hafs, Shu'bah, Warsh, Qalun
   - `أَرْنَا` (differs): al-Bazzi, Qunbul, al-Susi

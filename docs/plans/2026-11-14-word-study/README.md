@@ -55,7 +55,7 @@ The design docs were written by read-only design agents. **Where this README dis
   - 04 owns those strings under `sheets:wordStudy.*`.
 
 ### Readings (02)
-- **The 4 suspected KFGQPC misprints** are folded into their sibling's group (they are not shown as readings of their own). Each is recorded in `scripts/rewayah/reading_upstream_issues.json`. No UI note.
+- **The 4 suspected KFGQPC misprints** are shown as written: each rewayah's official text verbatim, as its own reading, never folded into another rewayah's text (the standing rule: follow the KFGQPC text, never correct a suspected typo, report it). Each is recorded in `scripts/rewayah/reading_upstream_issues.json` to report it upstream. No UI note.
 - **Not listed per word:** general-rule differences (madd, tashil, ibdal, imala, naql).
 - **Group order:** the Hafs group first; the rewayah shown in the mushaf is marked *Current*.
 - **Review:** the grouping review list (`--report`) is committed with the data. A qualified reader signs it off before release; it does not block merging.

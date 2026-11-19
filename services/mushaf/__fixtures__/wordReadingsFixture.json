@@ -37,8 +37,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -46,8 +45,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -55,8 +53,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -64,8 +61,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -73,8 +69,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -82,8 +77,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -91,8 +85,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -100,8 +93,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -137,8 +129,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -146,8 +137,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -155,8 +145,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -164,8 +153,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -173,8 +161,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -182,8 +169,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -191,8 +177,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -200,8 +185,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -237,8 +221,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -246,8 +229,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -261,8 +243,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -270,8 +251,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -279,8 +259,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -288,8 +267,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -297,8 +275,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -306,8 +283,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -338,8 +314,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -347,8 +322,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -359,8 +333,7 @@
          10
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -371,8 +344,7 @@
          10
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -380,8 +352,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 6,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -389,8 +360,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 6,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -398,8 +368,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 6,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -407,8 +376,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 6,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -439,8 +407,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -448,8 +415,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -457,8 +423,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -466,8 +431,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -475,8 +439,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -484,8 +447,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -493,8 +455,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -502,8 +463,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": 0,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -534,8 +494,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -543,8 +502,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -558,8 +516,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -567,8 +524,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -576,8 +532,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -585,8 +540,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -594,8 +548,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -603,8 +556,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -635,8 +587,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -644,8 +595,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -656,8 +606,7 @@
          9
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -668,8 +617,7 @@
          9
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -677,8 +625,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -686,8 +633,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -695,8 +641,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -704,8 +649,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -736,8 +680,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -745,8 +688,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -757,8 +699,7 @@
          13
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -769,8 +710,7 @@
          13
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -781,8 +721,7 @@
          11
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -790,8 +729,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -805,8 +743,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -814,8 +751,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -846,8 +782,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -855,8 +790,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -864,8 +798,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -873,8 +806,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -891,8 +823,7 @@
          11
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -903,8 +834,7 @@
          11
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -912,8 +842,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -921,8 +850,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -953,8 +881,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -962,8 +889,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -974,8 +900,7 @@
          11
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -992,8 +917,7 @@
          10
         ],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1007,8 +931,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1022,8 +945,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1031,8 +953,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -1040,8 +961,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -1072,8 +992,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -1081,8 +1000,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -1090,8 +1008,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -1099,8 +1016,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1108,8 +1024,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -1117,8 +1032,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1132,8 +1046,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -1141,8 +1054,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -1173,8 +1085,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1188,8 +1099,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1203,8 +1113,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -1212,8 +1121,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -1221,8 +1129,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1236,8 +1143,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1245,8 +1151,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -1254,8 +1159,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -1286,8 +1190,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -1295,8 +1198,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1310,8 +1212,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -1319,8 +1220,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1334,8 +1234,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -1343,8 +1242,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1358,8 +1256,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -1367,8 +1264,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -1400,8 +1296,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -1409,8 +1304,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-bazzi",
@@ -1418,8 +1312,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "qunbul",
@@ -1427,8 +1320,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "warsh",
@@ -1436,8 +1328,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "qalun",
@@ -1445,8 +1336,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1454,8 +1344,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-susi",
@@ -1463,8 +1352,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        }
       ]
      }
@@ -1496,8 +1384,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -1505,8 +1392,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-bazzi",
@@ -1514,8 +1400,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "qunbul",
@@ -1523,8 +1408,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "warsh",
@@ -1532,8 +1416,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "qalun",
@@ -1541,8 +1424,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1550,8 +1432,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-susi",
@@ -1559,8 +1440,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        }
       ]
      }
@@ -1573,7 +1453,7 @@
    "verseKey": "17:62",
    "position": 1,
    "wordId": 38935,
-   "data": "{\"g\":[[\"h\",0,[0,1,2,3,4,5,6,7]]],\"m\":{\"5\":{\"q\":1}},\"t\":[\"قَالَ\"]}",
+   "data": "{\"g\":[[\"h\",0,[0,1,2,3,4,6,7]],[\"d\",1,[5]]],\"t\":[\"قَالَ\",\"قَال۟\"]}",
    "expected": {
     "verseKey": "17:62",
     "positions": [
@@ -1591,8 +1471,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -1600,8 +1479,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -1609,8 +1487,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -1618,8 +1495,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -1627,17 +1503,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
-       },
-       {
-        "rewayah": "qalun",
-        "ownText": null,
-        "category": null,
-        "silahChars": [],
-        "verseEnd": null,
-        "wordCount": null,
-        "questioned": true
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1645,8 +1511,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -1654,13 +1519,26 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
+       }
+      ]
+     },
+     {
+      "kind": "differs",
+      "text": "قَال۟",
+      "members": [
+       {
+        "rewayah": "qalun",
+        "ownText": null,
+        "category": "mukhtalif",
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
        }
       ]
      }
     ],
-    "alike": true,
+    "alike": false,
     "basmalaUnnumberedIn": []
    }
   },
@@ -1687,8 +1565,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -1696,8 +1573,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-bazzi",
@@ -1705,8 +1581,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "qunbul",
@@ -1714,8 +1589,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        }
       ]
      },
@@ -1729,8 +1603,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -1738,8 +1611,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1747,8 +1619,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -1756,8 +1627,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -1789,8 +1659,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -1798,8 +1667,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-bazzi",
@@ -1807,8 +1675,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "qunbul",
@@ -1816,8 +1683,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        }
       ]
      },
@@ -1831,8 +1697,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -1840,8 +1705,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1849,8 +1713,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -1858,8 +1721,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -1890,8 +1752,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -1899,8 +1760,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -1908,8 +1768,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -1917,8 +1776,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -1926,8 +1784,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -1935,8 +1792,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -1950,8 +1806,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -1959,8 +1814,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -1992,8 +1846,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2001,8 +1854,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -2016,8 +1868,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2025,8 +1876,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2034,8 +1884,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2043,8 +1892,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2052,8 +1900,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -2061,8 +1908,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -2094,8 +1940,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2103,8 +1948,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -2118,8 +1962,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2127,8 +1970,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2136,8 +1978,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2145,8 +1986,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2154,8 +1994,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -2163,8 +2002,7 @@
         "category": "mukhtalif",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -2195,8 +2033,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2204,8 +2041,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -2213,8 +2049,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2222,8 +2057,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2231,8 +2065,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -2240,8 +2073,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -2255,8 +2087,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2264,8 +2095,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -2296,8 +2126,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2305,8 +2134,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -2314,8 +2142,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2323,8 +2150,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2332,8 +2158,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 2,
-        "questioned": false
+        "wordCount": 2
        },
        {
         "rewayah": "qalun",
@@ -2341,8 +2166,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 2,
-        "questioned": false
+        "wordCount": 2
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2350,8 +2174,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 2,
-        "questioned": false
+        "wordCount": 2
        },
        {
         "rewayah": "al-susi",
@@ -2359,8 +2182,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 2,
-        "questioned": false
+        "wordCount": 2
        }
       ]
      }
@@ -2392,8 +2214,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2401,8 +2222,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -2410,8 +2230,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2419,8 +2238,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2428,8 +2246,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2437,8 +2254,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2446,8 +2262,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-susi",
@@ -2455,8 +2270,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        }
       ]
      }
@@ -2488,8 +2302,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2497,8 +2310,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -2506,8 +2318,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2515,8 +2326,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2524,8 +2334,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2533,8 +2342,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2542,8 +2350,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        },
        {
         "rewayah": "al-susi",
@@ -2551,8 +2358,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": 1,
-        "questioned": false
+        "wordCount": 1
        }
       ]
      }
@@ -2584,8 +2390,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2593,8 +2398,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2602,8 +2406,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2611,8 +2414,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2620,8 +2422,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -2629,8 +2430,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -2644,8 +2444,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2653,8 +2452,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -2686,8 +2484,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2695,8 +2492,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2704,8 +2500,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2713,8 +2508,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2722,8 +2516,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -2731,8 +2524,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      },
@@ -2746,8 +2538,7 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2755,8 +2546,298 @@
         "category": "major",
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
+       }
+      ]
+     }
+    ],
+    "alike": false,
+    "basmalaUnnumberedIn": []
+   }
+  },
+  {
+   "verseKey": "4:136",
+   "position": 14,
+   "wordId": 13221,
+   "data": "{\"g\":[[\"h\",0,[0,1,4,5]],[\"d\",1,[2,6,7]],[\"d\",2,[3]]],\"t\":[\"أَنزَلَ\",\"أُنزِلَ\",\"أُنزَلَ\"]}",
+   "expected": {
+    "verseKey": "4:136",
+    "positions": [
+     14
+    ],
+    "hafsText": "أَنزَلَ",
+    "groups": [
+     {
+      "kind": "asHafs",
+      "text": "أَنزَلَ",
+      "members": [
+       {
+        "rewayah": "hafs",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "shubah",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "warsh",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "qalun",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       }
+      ]
+     },
+     {
+      "kind": "differs",
+      "text": "أُنزِلَ",
+      "members": [
+       {
+        "rewayah": "al-bazzi",
+        "ownText": null,
+        "category": "major",
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "al-duri-abi-amr",
+        "ownText": null,
+        "category": "mukhtalif",
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "al-susi",
+        "ownText": null,
+        "category": "mukhtalif",
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       }
+      ]
+     },
+     {
+      "kind": "differs",
+      "text": "أُنزَلَ",
+      "members": [
+       {
+        "rewayah": "qunbul",
+        "ownText": null,
+        "category": "major",
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       }
+      ]
+     }
+    ],
+    "alike": false,
+    "basmalaUnnumberedIn": []
+   }
+  },
+  {
+   "verseKey": "43:58",
+   "position": 10,
+   "wordId": 67983,
+   "data": "{\"g\":[[\"h\",0,[0,1,2,3,5,6,7]],[\"d\",1,[4]]],\"t\":[\"جَدَلَۢاۚ\",\"جَدَلاَ\"]}",
+   "expected": {
+    "verseKey": "43:58",
+    "positions": [
+     10
+    ],
+    "hafsText": "جَدَلَۢاۚ",
+    "groups": [
+     {
+      "kind": "asHafs",
+      "text": "جَدَلَۢاۚ",
+      "members": [
+       {
+        "rewayah": "hafs",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "shubah",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "al-bazzi",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "qunbul",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "qalun",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "al-duri-abi-amr",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "al-susi",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       }
+      ]
+     },
+     {
+      "kind": "differs",
+      "text": "جَدَلاَ",
+      "members": [
+       {
+        "rewayah": "warsh",
+        "ownText": null,
+        "category": "mukhtalif",
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       }
+      ]
+     }
+    ],
+    "alike": false,
+    "basmalaUnnumberedIn": []
+   }
+  },
+  {
+   "verseKey": "43:78",
+   "position": 2,
+   "wordId": 68170,
+   "data": "{\"g\":[[\"h\",0,[0,1,2,3,4,5,7]],[\"d\",1,[6]]],\"m\":{\"2\":{\"s\":[11,12],\"x\":2},\"3\":{\"s\":[11,12],\"x\":2}},\"t\":[\"جِئْنَٰكُم\",\"جِّئْنَٰكُم\",\"جِئْنَٰكُمُۥ\"]}",
+   "expected": {
+    "verseKey": "43:78",
+    "positions": [
+     2
+    ],
+    "hafsText": "جِئْنَٰكُم",
+    "groups": [
+     {
+      "kind": "asHafs",
+      "text": "جِئْنَٰكُم",
+      "members": [
+       {
+        "rewayah": "hafs",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "shubah",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "al-bazzi",
+        "ownText": "جِئْنَٰكُمُۥ",
+        "category": null,
+        "silahChars": [
+         11,
+         12
+        ],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "qunbul",
+        "ownText": "جِئْنَٰكُمُۥ",
+        "category": null,
+        "silahChars": [
+         11,
+         12
+        ],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "warsh",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "qalun",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       },
+       {
+        "rewayah": "al-susi",
+        "ownText": null,
+        "category": null,
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
+       }
+      ]
+     },
+     {
+      "kind": "differs",
+      "text": "جِّئْنَٰكُم",
+      "members": [
+       {
+        "rewayah": "al-duri-abi-amr",
+        "ownText": null,
+        "category": "mukhtalif",
+        "silahChars": [],
+        "verseEnd": null,
+        "wordCount": null
        }
       ]
      }
@@ -2787,8 +2868,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2796,8 +2876,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -2805,8 +2884,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2814,8 +2892,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2823,8 +2900,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2832,8 +2908,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2841,8 +2916,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -2850,8 +2924,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
@@ -2882,8 +2955,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "shubah",
@@ -2891,8 +2963,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-bazzi",
@@ -2900,8 +2971,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qunbul",
@@ -2909,8 +2979,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "warsh",
@@ -2918,8 +2987,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "qalun",
@@ -2927,8 +2995,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-duri-abi-amr",
@@ -2936,8 +3003,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        },
        {
         "rewayah": "al-susi",
@@ -2945,8 +3011,7 @@
         "category": null,
         "silahChars": [],
         "verseEnd": null,
-        "wordCount": null,
-        "questioned": false
+        "wordCount": null
        }
       ]
      }
