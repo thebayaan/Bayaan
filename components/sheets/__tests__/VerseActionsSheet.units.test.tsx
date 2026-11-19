@@ -738,6 +738,55 @@ describe('Hafs (unchanged)', () => {
     });
     expect(texts()).toContain('Word Study');
   });
+
+  /** Word by Word, then a long-press on word 5: Word Study at that word. */
+  async function studyFromWordByWord() {
+    await press('Word by Word');
+    const onOpenWord = last('wbw').onOpenWord as (word: unknown) => void;
+    await act(async () => onOpenWord({verseKey: '2:255', position: 5}));
+    expect(texts()).toContain('Word Study');
+  }
+
+  it('Back from Word Study opened in Word by Word returns to Word by Word, then to the menu', async () => {
+    await openSheet(payload);
+    await studyFromWordByWord();
+    const wbwShown = (mockScreens.wbw ?? []).length;
+    await press('Word Study');
+    expect(texts()).toContain('Word by Word');
+    expect(texts()).not.toContain('Copy');
+    expect((mockScreens.wbw ?? []).length).toBeGreaterThan(wbwShown);
+    await press('Word by Word');
+    expect(texts()).toEqual(expect.arrayContaining(['Copy', '2:255']));
+    // Word Study from the menu row still goes back to the menu.
+    await press('Word Study');
+    await press('Word Study');
+    expect(texts()).toEqual(expect.arrayContaining(['Copy', '2:255']));
+  });
+
+  it("Android's back from Word Study opened in Word by Word, and from its root search, steps back to Word by Word", async () => {
+    await openSheet(payload);
+    const request = closeRequests();
+    await studyFromWordByWord();
+    const onRootPress = last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+    await act(async () =>
+      onRootPress('ء ل ه', null, {verseKey: '2:255', position: 5}),
+    );
+    expect(await request(BACK_PRESS)).toBe(false);
+    expect(last('words')).toMatchObject({
+      initialWord: {verseKey: '2:255', position: 5},
+    });
+    expect(await request(BACK_PRESS)).toBe(false);
+    expect(texts()).toContain('Word by Word');
+    expect(texts()).not.toContain('Copy');
+    expect(await request(BACK_PRESS)).toBe(false);
+    expect(texts()).toContain('Copy');
+    expect(await request(BACK_PRESS)).toBe(true);
+    expect(SheetManager.hide).not.toHaveBeenCalled();
+  });
   // @ai-end
 });
 

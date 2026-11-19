@@ -44,7 +44,7 @@ The design docs were written by read-only design agents. **Where this README dis
 - **Sections:** open/closed state resets each time the screen opens.
 - **`WordDetailSheet` is retired (01 T9).**
   - A word long-press in a list or the player opens the verse sheet on Word Study at that word.
-  - A long-press in the Word by Word screen does the same (01 T10).
+  - A long-press in the Word by Word screen does the same (01 T10); Back then returns to Word by Word.
   - Arrow-key stepping on iPad is in scope (01 T12). The arrows stay bound while Word Study shows, greyed out outside one-word mode, and the sheet covers Space, ⇧Space and the arrows on its other screens: no key turns the page or seeks the recitation behind the sheet.
 - **Readings section:** comes from 02 (`WordReadingsSection`). 01's `WordReadings.tsx` and `mergeSlotReadings` are **dropped**.
 - **Root chip:**

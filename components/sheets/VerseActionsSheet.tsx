@@ -271,6 +271,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     lemma: string | null;
   } | null>(null);
   // @ai-end
+  // Word Study opened by a long-press in Word by Word goes back there.
+  const [wordStudyFromWbw, setWordStudyFromWbw] = useState(false);
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
     LayoutAnimation.configureNext(
@@ -556,6 +558,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // The row opens Word Study on the selection's first word.
   const handleWordStudy = useCallback(() => {
     setWordTarget(undefined);
+    setWordStudyFromWbw(false);
     setActiveScreen('words');
   }, [setActiveScreen]);
 
@@ -564,6 +567,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const handleOpenWord = useCallback(
     (word: WordRef) => {
       setWordTarget(word);
+      setWordStudyFromWbw(true);
       setActiveScreen('words');
     },
     [setActiveScreen],
@@ -850,13 +854,27 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   // @ai-start
   // Back from a screen (the back row and Android's back button): root
-  // search returns to Word Study; any other screen to the verse menu, or,
+  // search returns to Word Study, and Word Study opened by a long-press in
+  // Word by Word to Word by Word; any other screen to the verse menu, or,
   // in Word Study only mode (no verse, so no menu), closes the sheet.
   const handleBack = useCallback(() => {
-    if (activeScreen === 'root') setActiveScreen('words');
-    else if (wordStudyOnly) hideCurrentSheet();
-    else setActiveScreen(null);
-  }, [activeScreen, wordStudyOnly, setActiveScreen, hideCurrentSheet]);
+    if (activeScreen === 'root') {
+      setActiveScreen('words');
+    } else if (activeScreen === 'words' && wordStudyFromWbw) {
+      setWordStudyFromWbw(false);
+      setActiveScreen('wbw');
+    } else if (wordStudyOnly) {
+      hideCurrentSheet();
+    } else {
+      setActiveScreen(null);
+    }
+  }, [
+    activeScreen,
+    wordStudyFromWbw,
+    wordStudyOnly,
+    setActiveScreen,
+    hideCurrentSheet,
+  ]);
   // Back closes the sheet from the verse menu, and from Word Study in Word
   // Study only mode; anywhere else it steps back a screen.
   const backCloses =
