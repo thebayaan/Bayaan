@@ -5,9 +5,10 @@ The grouping of the 8 rewayat in `data/mushaf/digitalkhatt/dk_readings.db`, for 
 qualified reader to sign off before release (docs/features/rewayat.md, Per-word readings).
 Which rewayat read a word as Hafs does is the reviewed highlight decision of
 `<id>-diff.json`. What is new, and listed here, is how the rewayat that differ from
-Hafs are grouped among themselves (`highlights.reads_alike`), and the misprints read
-with their sibling. A decision goes into `reading_groups_cases.json` (a group per
-rule); a change of grouping is a change to `highlights.py` or the issue list.
+Hafs are grouped among themselves (`highlights.reads_alike`). Every text is the
+official one, verbatim, suspected misprints included. A decision goes into
+`reading_groups_cases.json` (a group per rule); a change of grouping is a change to
+`highlights.py`.
 
 How a differing rewayah is placed: it joins the group of the other narrator of its
 reader when they store the same words or the reviewed sibling rule says they read
@@ -24,8 +25,9 @@ member's own text is shown under its group when it differs, with its silah in co
 |---|---|
 | Spans with a row | 9,499 |
 | Rows (a two-slot span has two) | 9,505 |
-| Spans with 2 or more readings | 2,239 |
-| Spans with 3 or more readings (section 4) | 100 |
+| Spans with 2 or more readings | 2,242 |
+| Spans with 3 or more readings (section 4) | 101 |
+| Spans with the same stored text on both sides of the Hafs line (section 5) | 44 |
 | Joins of a differing rewayah to a group: same | 4,319 |
 | Joins of a differing rewayah to a group: sibling | 87 |
 | Joins of a differing rewayah to a group: both | 66 |
@@ -38,18 +40,18 @@ the other's rules; `across` one reads like the other under rules that read only 
 the two encodings; `oneway` both directions can be checked and only one holds, i.e. one
 rewayah's general rule excused the difference (section 3).
 
-## 1. Suspected KFGQPC misprints read with their sibling
+## 1. Suspected KFGQPC misprints, shown as written
 
-Decision (docs/plans/2026-11-14-word-study/README.md): each is placed in its sibling
-narrator's group and is not shown as a reading of its own; the app shows no note.
-Source: `reading_upstream_issues.json`.
+Decision (docs/plans/2026-11-14-word-study/README.md): the official text is shown
+verbatim, as its rewayah's own reading; the app corrects nothing and shows no note.
+`reading_upstream_issues.json` lists them, each with a note, to report them to KFGQPC.
 
-| Rewayah | Hafs word | Stored text | Read with | Group |
+| Rewayah | Hafs word | Stored text | Its sibling's text | Group |
 |---|---|---|---|---|
-| Qunbul | 4:136:14 | `أُنزَلَ` | al-Bazzi | `أُنزِلَ` (differs): al-Bazzi, Qunbul, al-Duri, al-Susi |
-| Qalun | 17:62:1 | `قَال۟` | Warsh | `قَالَ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi |
-| Warsh | 43:58:10 | `جَدَلاَ` | Qalun | `جَدَلَۢاۚ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi |
-| al-Duri | 43:78:2 | `جِّئْنَٰكُم` | al-Susi | `جِئْنَٰكُم` (as Hafs): Hafs, Shu'bah, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi; own text: al-Bazzi `جِئْنَٰكُمُۥ`; Qunbul `جِئْنَٰكُمُۥ` |
+| Qunbul | 4:136:14 | `أُنزَلَ` | al-Bazzi `أُنزِلَ` | `أُنزَلَ` (differs): Qunbul |
+| Qalun | 17:62:1 | `قَال۟` | Warsh `قَالَ` | `قَال۟` (differs): Qalun |
+| Warsh | 43:58:10 | `جَدَلاَ` | Qalun `جَدَلاَۢ` | `جَدَلاَ` (differs): Warsh |
+| al-Duri | 43:78:2 | `جِّئْنَٰكُم` | al-Susi `جِّينَٰكُم` | `جِّئْنَٰكُم` (differs): al-Duri |
 
 ## 2. To confirm
 
@@ -83,7 +85,7 @@ Source: `reading_upstream_issues.json`.
   - 20:94:7: `بِرَأْسِيٓۖ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Qunbul
   - 20:94:7: `بِرَأ۟سِيَ` (differs): Warsh, Qalun, al-Duri; own text: al-Duri `بِرَأْسِيَۖ`
   - 20:94:7: `بِرَاسِيَۖ` (differs): al-Susi
-- Qunbul writes Ibn Kathir's stop-only ya at 6 of 10 places (scripts/rewayah/sources/SOURCES.md, Known upstream issues), so his text there is shown as a reading of its own, apart from al-Bazzi. Keep it, or list these with the suspected misprints in reading_upstream_issues.json?
+- Qunbul writes Ibn Kathir's stop-only ya at 6 of 10 places (scripts/rewayah/sources/SOURCES.md, Known upstream issues), so his text there is shown as a reading of its own, apart from al-Bazzi. It stays as written either way: is it Qunbul's reading there, or should these be listed with the suspected misprints in reading_upstream_issues.json, to report upstream?
   - 13:7:15: `هَادٍ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Warsh, Qalun, al-Duri, al-Susi
   - 13:7:15: `هَادِۦ` (differs): Qunbul; own text: Qunbul `هَادِۦ`
   - 13:11:35: `وَالٍ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Warsh, Qalun, al-Duri, al-Susi
@@ -96,6 +98,97 @@ Source: `reading_upstream_issues.json`.
   - 13:37:20: `وَاقِۦ` (differs): Qunbul; own text: Qunbul `وَاقِۦ`
   - 16:96:7: `بَاقࣲۗ` (as Hafs): Hafs, Shu'bah, al-Bazzi, Warsh, Qalun, al-Duri, al-Susi
   - 16:96:7: `بَاقِۦۗ` (differs): Qunbul; own text: Qunbul `بَاقِۦۗ`
+- The same stored text on both sides of the Hafs line (reading_review.md, section 5). The diff files tint the word in one rewayah and leave untinted another that stores exactly the same text, so one official text is shown as a reading that differs from Hafs for the first and is listed under Hafs's text for the second. 40 spans are Shu'bah's imala dot (U+065C), counted in Shu'bah and not in Warsh, al-Duri or al-Susi; 52:24:6 and 76:19:8 are Shu'bah's text with the first, vowelless hamza as a waw, as al-Susi stores it; 24:15:2 and 67:8:2 are al-Bazzi's doubled ta', as al-Susi (and al-Duri at 24:15:2) store it. Pick one rule: the untinted rewayat with that text join the differing reading, or the split stays and their own text is shown under Hafs's group.
+  - 6:76:5: `رَءَا` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 6:76:5: `رٜءٜا` (differs): Shu'bah
+  - 8:17:12: `رَمَىٰ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 8:17:12: `رَمٜىٰ` (differs): Shu'bah
+  - 9:109:17: `هَارࣲ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 9:109:17: `هٜارࣲ` (differs): Shu'bah
+  - 10:1:1: `الٓرۚ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 10:1:1: `الٓرٜۚ` (differs): Shu'bah
+  - 10:16:9: `أَدْرَىٰكُم` (as Hafs): Hafs, Qunbul, Warsh, Qalun, al-Duri, al-Susi; own text: Qunbul `أَدْرَىٰكُمُۥ`
+  - 10:16:9: `أَدْرٜىٰكُم` (differs): Shu'bah
+  - 10:16:9: `ا۟دْرَىٰكُمُۥ` (differs): al-Bazzi; own text: al-Bazzi `ا۟دْرَىٰكُمُۥ`
+  - 11:1:1: `الٓرۚ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 11:1:1: `الٓرٜۚ` (differs): Shu'bah
+  - 11:70:2: `رَءَآ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 11:70:2: `رٜءٜآ` (differs): Shu'bah
+  - 12:1:1: `الٓرۚ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 12:1:1: `الٓرٜۚ` (differs): Shu'bah
+  - 12:24:8: `رَّءَا` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 12:24:8: `رّٜءٜا` (differs): Shu'bah
+  - 12:28:2: `رَءَا` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 12:28:2: `رٜءٜا` (differs): Shu'bah
+  - 13:1:1: `الٓمٓرۚ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 13:1:1: `الٓمٓرٜۚ` (differs): Shu'bah
+  - 14:1:1: `الٓرۚ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 14:1:1: `الٓرٜۚ` (differs): Shu'bah
+  - 15:1:1: `الٓرۚ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 15:1:1: `الٓرٜۚ` (differs): Shu'bah
+  - 17:83:6: `وَنَـَٔا` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 17:83:6: `وَنَـٜٔا` (differs): Shu'bah
+  - 20:10:2: `رَءَا` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 20:10:2: `رٜءٜا` (differs): Shu'bah
+  - 21:36:2: `رَءَاكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 21:36:2: `رٜءٜاكَ` (differs): Shu'bah
+  - 24:15:2: `تَلَقَّوْنَهُۥ` (as Hafs): Hafs, Shu'bah, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 24:15:2: `تَّلَقَّوْنَهُۥ` (differs): al-Bazzi
+  - 27:10:4: `رَءَاهَا` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 27:10:4: `رٜءٜاهَا` (differs): Shu'bah
+  - 27:40:16: `رَءَاهُ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi; own text: al-Bazzi `رَءَاهُۥ`; Qunbul `رَءَاهُۥ`
+  - 27:40:16: `رٜءٜاهُ` (differs): Shu'bah
+  - 28:31:5: `رَءَاهَا` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 28:31:5: `رٜءٜاهَا` (differs): Shu'bah
+  - 35:8:6: `فَرَءَاهُ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi; own text: al-Bazzi `فَرَءَاهُۥ`; Qunbul `فَرَءَاهُۥ`
+  - 35:8:6: `فَرٜءٜاهُ` (differs): Shu'bah
+  - 37:55:2: `فَرَءَاهُ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi; own text: al-Bazzi `فَرَءَاهُۥ`; Qunbul `فَرَءَاهُۥ`
+  - 37:55:2: `فَرٜءٜاهُ` (differs): Shu'bah
+  - 42:1:1: `حمٓ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 42:1:1: `حٜمٓ` (differs): Shu'bah
+  - 52:24:6: `لُؤْلُؤࣱ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 52:24:6: `لُولُؤࣱ` (differs): Shu'bah
+  - 53:11:5: `رَأَىٰٓ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 53:11:5: `رٜأٜىٰٓ` (differs): Shu'bah
+  - 53:13:2: `رَءَاهُ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi; own text: al-Bazzi `رَءَاهُۥ`; Qunbul `رَءَاهُۥ`
+  - 53:13:2: `رٜءٜاهُ` (differs): Shu'bah
+  - 53:18:2: `رَأَىٰ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 53:18:2: `رٜأٜىٰ` (differs): Shu'bah
+  - 67:8:2: `تَمَيَّزُ` (as Hafs): Hafs, Shu'bah, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 67:8:2: `تَّمَيَّزُ` (differs): al-Bazzi
+  - 69:3:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 69:3:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 74:27:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 74:27:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 76:19:8: `لُؤْلُؤࣰا` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 76:19:8: `لُولُؤࣰا` (differs): Shu'bah
+  - 77:14:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 77:14:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 81:23:2: `رَءَاهُ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi; own text: al-Bazzi `رَءَاهُۥ`; Qunbul `رَءَاهُۥ`
+  - 81:23:2: `رٜءٜاهُ` (differs): Shu'bah
+  - 82:17:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 82:17:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 82:18:3: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 82:18:3: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 83:8:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 83:8:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 83:19:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 83:19:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 86:2:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 86:2:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 90:12:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 90:12:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 96:7:2: `رَّءَاهُ` (as Hafs): Hafs, al-Bazzi, Warsh, Qalun, al-Duri, al-Susi
+  - 96:7:2: `رّٜءٜاهُ` (differs): Shu'bah
+  - 96:7:2: `رَّأَهُ` (differs): Qunbul
+  - 97:2:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 97:2:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 101:3:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 101:3:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 101:10:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 101:10:2: `أَدْرٜىٰكَ` (differs): Shu'bah
+  - 104:5:2: `أَدْرَىٰكَ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh, Qalun, al-Duri, al-Susi
+  - 104:5:2: `أَدْرٜىٰكَ` (differs): Shu'bah
 
 ## 3. Joins where one rewayah's general rules excused the difference
 
@@ -256,6 +349,10 @@ the difference.
   - `وَنُصْلِهِۦ` (as Hafs): Hafs, al-Bazzi, Qunbul, Warsh
   - `وَنُصْلِهْ` (differs): Shu'bah, al-Duri, al-Susi
   - `وَنُص۟لِهِ` (differs): Qalun
+- **4:136:14**
+  - `أَنزَلَ` (as Hafs): Hafs, Shu'bah, Warsh, Qalun
+  - `أُنزِلَ` (differs): al-Bazzi, al-Duri, al-Susi
+  - `أُنزَلَ` (differs): Qunbul
 - **4:153:17**
   - `أَرِنَا` (as Hafs): Hafs, Shu'bah, Warsh, Qalun
   - `أَرْنَا` (differs): al-Bazzi, Qunbul, al-Susi
@@ -573,3 +670,61 @@ the difference.
   - `رَّءَاهُ` (as Hafs): Hafs, al-Bazzi, Warsh, Qalun, al-Duri, al-Susi
   - `رّٜءٜاهُ` (differs): Shu'bah
   - `رَّأَهُ` (differs): Qunbul
+
+## 5. Same stored text on both sides of the Hafs line
+
+The Hafs line follows each rewayah's own `<id>-diff.json`, so a text tinted in one
+rewayah can be stored, untinted, by another: the same official text is then shown as a
+reading that differs from Hafs for the first and listed under Hafs's text for the
+second (mostly Shu'bah's imala dot, which the highlight maps count in Shu'bah and not
+in the far rewayat). Each span is pinned in `reading_groups_cases.json` (`toConfirm`,
+section 2) and the build fails on any other (gate G2) until a qualified reader picks
+one rule: the untinted rewayat with that text join the differing reading, or the split
+stays and their own text is shown under Hafs's group.
+
+| Hafs word | Hafs's text | Differs from Hafs | Same text, listed with Hafs |
+|---|---|---|---|
+| 6:76:5 | `رَءَا` | Shu'bah `رٜءٜا` | Warsh |
+| 8:17:12 | `رَمَىٰ` | Shu'bah `رَمٜىٰ` | Warsh |
+| 9:109:17 | `هَارࣲ` | Shu'bah `هٜارࣲ` | Warsh, Qalun, al-Duri, al-Susi |
+| 10:1:1 | `الٓرۚ` | Shu'bah `الٓرٜۚ` | al-Duri, al-Susi |
+| 10:16:9 | `أَدْرَىٰكُم` | Shu'bah `أَدْرٜىٰكُم` | al-Duri, al-Susi |
+| 11:1:1 | `الٓرۚ` | Shu'bah `الٓرٜۚ` | al-Duri, al-Susi |
+| 11:70:2 | `رَءَآ` | Shu'bah `رٜءٜآ` | Warsh |
+| 12:1:1 | `الٓرۚ` | Shu'bah `الٓرٜۚ` | al-Duri, al-Susi |
+| 12:24:8 | `رَّءَا` | Shu'bah `رّٜءٜا` | Warsh |
+| 12:28:2 | `رَءَا` | Shu'bah `رٜءٜا` | Warsh |
+| 13:1:1 | `الٓمٓرۚ` | Shu'bah `الٓمٓرٜۚ` | al-Duri, al-Susi |
+| 14:1:1 | `الٓرۚ` | Shu'bah `الٓرٜۚ` | al-Duri, al-Susi |
+| 15:1:1 | `الٓرۚ` | Shu'bah `الٓرٜۚ` | al-Duri, al-Susi |
+| 17:83:6 | `وَنَـَٔا` | Shu'bah `وَنَـٜٔا` | Warsh |
+| 20:10:2 | `رَءَا` | Shu'bah `رٜءٜا` | Warsh |
+| 21:36:2 | `رَءَاكَ` | Shu'bah `رٜءٜاكَ` | Warsh |
+| 24:15:2 | `تَلَقَّوْنَهُۥ` | al-Bazzi `تَّلَقَّوْنَهُۥ` | al-Duri, al-Susi |
+| 27:10:4 | `رَءَاهَا` | Shu'bah `رٜءٜاهَا` | Warsh |
+| 27:40:16 | `رَءَاهُ` | Shu'bah `رٜءٜاهُ` | Warsh |
+| 28:31:5 | `رَءَاهَا` | Shu'bah `رٜءٜاهَا` | Warsh |
+| 35:8:6 | `فَرَءَاهُ` | Shu'bah `فَرٜءٜاهُ` | Warsh |
+| 37:55:2 | `فَرَءَاهُ` | Shu'bah `فَرٜءٜاهُ` | Warsh |
+| 42:1:1 | `حمٓ` | Shu'bah `حٜمٓ` | al-Duri, al-Susi |
+| 52:24:6 | `لُؤْلُؤࣱ` | Shu'bah `لُولُؤࣱ` | al-Susi |
+| 53:11:5 | `رَأَىٰٓ` | Shu'bah `رٜأٜىٰٓ` | Warsh |
+| 53:13:2 | `رَءَاهُ` | Shu'bah `رٜءٜاهُ` | Warsh |
+| 53:18:2 | `رَأَىٰ` | Shu'bah `رٜأٜىٰ` | Warsh |
+| 67:8:2 | `تَمَيَّزُ` | al-Bazzi `تَّمَيَّزُ` | al-Susi |
+| 69:3:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 74:27:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 76:19:8 | `لُؤْلُؤࣰا` | Shu'bah `لُولُؤࣰا` | al-Susi |
+| 77:14:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 81:23:2 | `رَءَاهُ` | Shu'bah `رٜءٜاهُ` | Warsh |
+| 82:17:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 82:18:3 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 83:8:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 83:19:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 86:2:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 90:12:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 96:7:2 | `رَّءَاهُ` | Shu'bah `رّٜءٜاهُ` | Warsh |
+| 97:2:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 101:3:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 101:10:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |
+| 104:5:2 | `أَدْرَىٰكَ` | Shu'bah `أَدْرٜىٰكَ` | al-Duri, al-Susi |

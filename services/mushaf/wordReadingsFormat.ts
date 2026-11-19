@@ -20,12 +20,11 @@
  *   t: string[]              stored span texts; t[0] is Hafs's; '' only for 'o'
  *   g: [kind, text, members][]  'h' (as Hafs, first, holds 0), 'd' (differs),
  *                            'o' (not read, last); every member exactly once
- *   m?: {member: {x?, s?, v?, w?, q?}}
+ *   m?: {member: {x?, s?, v?, w?}}
  *        x own text (index into t), s silah char indices into it (UTF-16),
  *        v its own verse number where it ends a verse after the word and Hafs
  *        does not, 0 where Hafs ends one and it does not, w its word count
- *        ('h' members writing the span as more or fewer words), q 1 for a
- *        suspected KFGQPC misprint read with its sibling narrator (never shown)
+ *        ('h' members writing the span as more or fewer words)
  *   span?: [firstWordId, lastWordId]  two Hafs slots read as one span
  *   u?: member[]             1:1 only: members that do not number the basmala
  */
@@ -77,9 +76,6 @@ export interface ReadingMember {
   readonly verseEnd: number | null;
   /** The number of words it writes the span as, when not Hafs's (asHafs). */
   readonly wordCount: number | null;
-  /** A suspected KFGQPC misprint read with its sibling narrator. Data only:
-   *  the app shows no note (plan README, Readings). */
-  readonly questioned: boolean;
 }
 
 export interface ReadingGroup {
@@ -166,7 +162,7 @@ const KINDS: Readonly<Record<string, ReadingGroupKind>> = {
   o: 'notRead',
 };
 const KIND_ORDER = 'hdo';
-const DETAIL_KEYS = new Set(['x', 's', 'v', 'w', 'q']);
+const DETAIL_KEYS = new Set(['x', 's', 'v', 'w']);
 const SILAH_MARKS = new Set(['\u06E5', '\u06E6']);
 const SILAH_CARRIERS = new Set(['\u064F', '\u0650']);
 
@@ -268,7 +264,7 @@ export function decodeReadingsRow(
   if (!isObject(details)) return fail('m is not an object');
   const decodedDetails = new Map<
     number,
-    {x?: number; s?: number[]; v?: number; w?: number; q?: 1}
+    {x?: number; s?: number[]; v?: number; w?: number}
   >();
   for (const [key, value] of Object.entries(details)) {
     const member = Number(key);
@@ -287,7 +283,7 @@ export function decodeReadingsRow(
       if (!DETAIL_KEYS.has(k)) fail(`m.${key} has an unknown detail "${k}"`);
     }
     const kind = kindOf.get(member);
-    const out: {x?: number; s?: number[]; v?: number; w?: number; q?: 1} = {};
+    const out: {x?: number; s?: number[]; v?: number; w?: number} = {};
     if (d.x !== undefined) {
       if (!isIndex(d.x, texts.length) || texts[d.x] === '') {
         fail(`m.${key}.x out of range`);
@@ -327,12 +323,6 @@ export function decodeReadingsRow(
         fail(`m.${key}.w is not a word count of an as-Hafs member`);
       }
       out.w = d.w as number;
-    }
-    if (d.q !== undefined) {
-      if (d.q !== 1 || out.x !== undefined || kind === 'o') {
-        fail(`m.${key}.q is malformed`);
-      }
-      out.q = 1;
     }
     decodedDetails.set(member, out);
   }
@@ -392,7 +382,6 @@ export function decodeReadingsRow(
           silahChars: d.s ?? [],
           verseEnd: d.v ?? null,
           wordCount: d.w ?? null,
-          questioned: d.q === 1,
         };
       }),
     };
@@ -445,7 +434,6 @@ export function alikeReadings(
           silahChars: [],
           verseEnd: null,
           wordCount: null,
-          questioned: false,
         })),
       },
     ],

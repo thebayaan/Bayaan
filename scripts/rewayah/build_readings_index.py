@@ -34,17 +34,16 @@ Model (docs/plans/2026-11-14-word-study/02-word-readings.md and its README):
                (highlights.py), else starts one; its text is its first
                member's stored text;
            'o' rewayat that do not read the word (a P2 blank: 57:24:10).
-           The suspected KFGQPC misprints of reading_upstream_issues.json are
-           read with their sibling narrator: placed in the sibling's group,
-           never shown as text of their own (q).
+           Every text is the official one, verbatim: the suspected KFGQPC
+           misprints of reading_upstream_issues.json are grouped like any
+           other text (the list is kept to report them upstream, G7).
   details  per member (m): x own text (a 'd' member whose text is not the
            group's, any member with silah), s silah chars from the diff
            (offset across a span), v its own verse number where it ends a
            verse after the span and Hafs does not, 0 where Hafs ends one and
            it does not, w its word count for an 'h' member that writes the
-           span as more or fewer words than Hafs, q a misprint read with its
-           sibling. u (1:1:1-4 only): members that do not number al-Fatiha's
-           basmala.
+           span as more or fewer words than Hafs. u (1:1:1-4 only): members
+           that do not number al-Fatiha's basmala.
   rows     only spans with something to show: two or more groups, a member
            detail, a two-slot span, or the basmala. A slot with no row reads
            the same way in all 8 rewayat at word level.
@@ -57,11 +56,12 @@ Gates (the build fails on any of them):
      surah, ayah, word); slot grammar; diff JSONs are format 2 with only the
      whole-word category of their rewayah and silah, on non-blank slots
   G2 partition: every member in exactly one group; 'h' = Hafs + the
-     untinted non-blank rewayat, 'd' = the tinted ones, 'o' = the P2 blanks,
-     except that a listed misprint sits in its sibling's group
+     untinted non-blank rewayat, 'd' = the tinted ones, 'o' = the P2 blanks;
+     a 'd' member that stores the same text as an 'h' member (the same text
+     on both sides of the Hafs line) only on a span listed in
+     reading_groups_cases.json, for a qualified reader to decide
   G3 texts: every text of a row is the stored span text of a member (never
-     synthesised): 'h' Hafs, 'd' its first member that is not a misprint,
-     'o' '', x the member's own
+     synthesised): 'h' Hafs, 'd' its first member, 'o' '', x the member's own
   G4 silah: s equals the diff's silah entries (offset across a span), on
      U+06E5 / U+06E6 or the damma / kasra before one; every entry is used
   G5 completeness: a content slot without a row has no tint, no silah, no
@@ -379,7 +379,6 @@ class Member:
     tinted: bool
     silah: list[int]  # offset into text
     verse_end: int | None  # v, or None = as Hafs
-    folded: bool = False
 
 
 @dataclass
@@ -407,9 +406,9 @@ class SpanReadings:
 
     def own_text(self, rid: str) -> str | None:
         """x: the member's own text, shown under its group (a 'd' member whose
-        text is not the group's, any member with silah); never a misprint's."""
+        text is not the group's, any member with silah)."""
         mem, g = self.members[rid], self.group_of(rid)
-        if rid == "hafs" or g.kind == "o" or mem.folded:
+        if rid == "hafs" or g.kind == "o":
             return None
         if mem.silah or (g.kind == "d" and mem.text != g.text):
             return mem.text
@@ -464,7 +463,7 @@ def _member(inp: Inputs, rid: str, span: list[Slot]) -> Member:
     return Member(rid, text, len(text.split(" ")) if text else 0, tinted, chars, _verse_end_detail(inp, rid, span))
 
 
-def build_span(inp: Inputs, nb: Neighbours, first: int, last: int, issues_at: dict[str, dict]) -> SpanReadings:
+def build_span(inp: Inputs, nb: Neighbours, first: int, last: int) -> SpanReadings:
     span = inp.slots[first : last + 1]
     hafs_text = " ".join(s.hafs for s in span)
     members: dict[str, Member] = {"hafs": Member("hafs", hafs_text, len(hafs_text.split(" ")), False, [], None)}
@@ -479,14 +478,6 @@ def build_span(inp: Inputs, nb: Neighbours, first: int, last: int, issues_at: di
         bas = inp.basmala_lead[rid].get(tail.surah + 1, "") if surah_end else ""
         return HL.Side(rid, members[rid].text, nb.prev[rid][head.index], nb.next[rid][tail.index], bas)
 
-    # misprints read with their sibling (README decision)
-    folded: dict[str, str] = {}
-    for s in span:
-        for issue in issues_at.get(s.location, {}).values():
-            folded[issue["rid"]] = issue["sibling"]
-    for rid in folded:
-        members[rid].folded = True
-
     h = Group("h", ["hafs"], hafs_text)
     blank: list[str] = []
     differ: list[str] = []
@@ -496,8 +487,6 @@ def build_span(inp: Inputs, nb: Neighbours, first: int, last: int, issues_at: di
             if not any(PLACEMENT_EVENTS[rid].get(s.location) == "P2" for s in span):
                 raise GateError(f"G2 {rid} {head.location}: blank span that is not a declared P2")
             blank.append(rid)
-        elif rid in folded:
-            continue
         elif m.tinted:
             differ.append(rid)
         else:
@@ -528,15 +517,6 @@ def build_span(inp: Inputs, nb: Neighbours, first: int, last: int, issues_at: di
         else:
             groups.append(Group("d", [rid], members[rid].text))
     all_groups = [h, *groups]
-    for rid, sib in folded.items():
-        if not members[rid].text or rid in blank:
-            raise GateError(f"G7 {rid} {head.location}: a misprint entry on a blank span")
-        if members[rid].silah:
-            raise GateError(f"G7 {rid} {head.location}: a misprint entry with silah (its own text would show)")
-        home = next((g for g in all_groups if sib in g.members), None)
-        if home is None:
-            raise GateError(f"G7 {rid} {head.location}: its sibling {sib} is not read here")
-        home.members.append(rid)
     for g in all_groups:
         g.members.sort(key=mi)
     if blank:
@@ -574,8 +554,6 @@ def row_data(sr: SpanReadings) -> dict | None:
             d["v"] = mem.verse_end
         if kind_of[rid] == "h" and mem.words != hafs_count:
             d["w"] = mem.words
-        if mem.folded:
-            d["q"] = 1
         if d:
             m[str(mi(rid))] = d
     data: dict[str, object] = {"t": t, "g": g}
@@ -599,11 +577,8 @@ class Build:
 
 
 def build(inp: Inputs) -> Build:
-    issues_at: dict[str, dict] = {}
-    for issue in inp.issues:
-        issues_at.setdefault(issue["location"], {})[issue["rid"]] = issue
     nb = Neighbours(inp)
-    spans = [build_span(inp, nb, a, b, issues_at) for a, b in make_spans(inp)]
+    spans = [build_span(inp, nb, a, b) for a, b in make_spans(inp)]
     rows: list[tuple[str, int, int, str]] = []
     for sr in spans:
         data = row_data(sr)
@@ -637,7 +612,29 @@ def _expected_silah(inp: Inputs, rid: str, span_slots: list[Slot]) -> list[int]:
     return out
 
 
-def _check_span_row(inp: Inputs, sr: SpanReadings, data: dict, issue_rids: set[tuple[str, str]]) -> list[str]:
+def reviewed_spans(inp: Inputs) -> set[str]:
+    """First slots of the spans reading_groups_cases.json lists (groups and toConfirm)."""
+    return {loc for section in ("groups", "toConfirm") for e in inp.cases.get(section, []) for loc in e.get("spans", {})}
+
+
+def same_text_across(groups: list[tuple[str, list[str]]], members: dict[str, Member]) -> list[tuple[str, list[str]]]:
+    """The same stored text on both sides of the Hafs line: each 'd' member
+    with the 'h' members (Hafs included) that store exactly its text. The
+    tint of one is the reviewed highlight decision; the other's absence of a
+    tint is one too, so neither side is wrong by itself."""
+    h = [r for kind, rids in groups if kind == "h" for r in rids]
+    out: list[tuple[str, list[str]]] = []
+    for kind, rids in groups:
+        if kind != "d":
+            continue
+        for rid in rids:
+            same = [r for r in h if members[r].text == members[rid].text]
+            if same:
+                out.append((rid, same))
+    return out
+
+
+def _check_span_row(inp: Inputs, sr: SpanReadings, data: dict, reviewed: set[str]) -> list[str]:
     """G2-G4 of one row (any source) against the inputs."""
     errors: list[str] = []
     loc = sr.first.location
@@ -651,19 +648,17 @@ def _check_span_row(inp: Inputs, sr: SpanReadings, data: dict, issue_rids: set[t
     if [k for k, _, _ in groups] != sorted((k for k, _, _ in groups), key="hdo".index):
         errors.append(f"G2 {loc}: groups not in the order h, d, o")
     kind = {x: k for k, _, ms in groups for x in ms}
-    home = {x: tuple(ms) for _, _, ms in groups for x in ms}
     for rid in MEMBERS[1:]:
         mem, x = sr.members[rid], mi(rid)
-        if any((s.location, rid) in issue_rids for s in span_slots):
-            sib = SIBLING[rid]
-            if home[x] != home[mi(sib)] or m.get(str(x), {}).get("q") != 1:
-                errors.append(f"G2 {loc} {rid}: a listed misprint not read with {sib}")
-            continue
         want = "o" if not mem.text else "d" if mem.tinted else "h"
         if kind[x] != want:
             errors.append(f"G2 {loc} {rid}: in group '{kind[x]}', expected '{want}'")
-        if m.get(str(x), {}).get("q"):
-            errors.append(f"G2 {loc} {rid}: q on a member that is not a listed misprint")
+    if loc not in reviewed:
+        for rid, same in same_text_across([(k, [MEMBERS[x] for x in ms]) for k, _, ms in groups], sr.members):
+            errors.append(
+                f"G2 {loc}: the same stored text on both sides of the Hafs line ({NAMES[rid]} differs, "
+                f"{_names(same)} as Hafs); list the span in {CASES_FILE.name} for review"
+            )
     # G3 texts: never synthesised
     if len(set(t)) != len(t):
         errors.append(f"G3 {loc}: duplicate texts")
@@ -676,22 +671,20 @@ def _check_span_row(inp: Inputs, sr: SpanReadings, data: dict, issue_rids: set[t
             errors.append(f"G3 {loc}: 'h' text is not the Hafs text")
         elif k == "o" and (text != "" or any(sr.members[MEMBERS[x]].text for x in ms)):
             errors.append(f"G3 {loc}: an 'o' group with text")
-        elif k == "d":
-            firsts = [x for x in ms if not m.get(str(x), {}).get("q")]
-            if not firsts or text != sr.members[MEMBERS[firsts[0]]].text:
-                errors.append(f"G3 {loc}: 'd' text is not its first member's stored text")
+        elif k == "d" and text != sr.members[MEMBERS[ms[0]]].text:
+            errors.append(f"G3 {loc}: 'd' text is not its first member's stored text")
         if k != "o" and not text:
             errors.append(f"G3 {loc}: an empty text in a '{k}' group")
     group_text = {x: t[ti] for _, ti, ms in groups for x in ms}
     for rid in MEMBERS[1:]:
         x, d = mi(rid), m.get(str(mi(rid)), {})
         mem = sr.members[rid]
-        if kind[x] == "d" and not d.get("q") and mem.text != group_text[x] and "x" not in d:
+        if kind[x] == "d" and mem.text != group_text[x] and "x" not in d:
             errors.append(f"G3 {loc} {rid}: reads its own text but the row shows the group's")
         if "x" in d and not ("s" in d or (kind[x] == "d" and mem.text != group_text[x])):
             errors.append(f"G3 {loc} {rid}: own text without silah or a different text")
-        if ("x" in d or "s" in d) and (d.get("q") or kind[x] == "o"):
-            errors.append(f"G3 {loc} {rid}: own text on a misprint or a word not read")
+        if ("x" in d or "s" in d) and kind[x] == "o":
+            errors.append(f"G3 {loc} {rid}: own text on a word not read")
     for key, d in m.items():
         rid = MEMBERS[int(key)]
         if "x" in d and t[d["x"]] != sr.members[rid].text:
@@ -711,12 +704,11 @@ def _check_span_row(inp: Inputs, sr: SpanReadings, data: dict, issue_rids: set[t
                     errors.append(f"G4 {loc} {rid}: silah index {c} is not on a silah mark or its vowel")
     for rid in MEMBERS[1:]:
         if _expected_silah(inp, rid, span_slots) and "s" not in m.get(str(mi(rid)), {}):
-            if not sr.members[rid].folded:
-                errors.append(f"G4 {loc} {rid}: diff silah missing from the row")
+            errors.append(f"G4 {loc} {rid}: diff silah missing from the row")
     # the other details: verse ends, word counts, the basmala (G2: from the DBs)
     members = {str(i) for i in range(1, len(MEMBERS))}
     for key, d in m.items():
-        if key not in members or not isinstance(d, dict) or not d or set(d) - {"x", "s", "v", "w", "q"}:
+        if key not in members or not isinstance(d, dict) or not d or set(d) - {"x", "s", "v", "w"}:
             errors.append(f"G2 {loc}: bad member detail {key}: {d}")
     hafs_words = sr.members["hafs"].words
     for rid in MEMBERS[1:]:
@@ -756,7 +748,7 @@ def check_rows(inp: Inputs, spans: list[SpanReadings], rows: list[tuple]) -> lis
             errors.append(f"G1 {s.location}: malformed row JSON ({e})")
             continue
         by_word[word_id] = data
-    issue_rids = {(i["location"], i["rid"]) for i in inp.issues}
+    reviewed = reviewed_spans(inp)
     groups_at: dict[str, list[list[str]]] = {}
     for sr in spans:
         loc = sr.first.location
@@ -778,7 +770,7 @@ def check_rows(inp: Inputs, spans: list[SpanReadings], rows: list[tuple]) -> lis
             groups_at[loc] = [list(MEMBERS)]
             continue
         try:
-            errors.extend(_check_span_row(inp, sr, data, issue_rids))
+            errors.extend(_check_span_row(inp, sr, data, reviewed))
             groups_at[loc] = [[MEMBERS[x] for x in ms] for _, _, ms in data["g"]]
         except (KeyError, IndexError, TypeError, ValueError) as e:
             errors.append(f"G2 {loc}: malformed row ({type(e).__name__}: {e})")
@@ -916,6 +908,7 @@ def review_markdown(b: Build) -> str:
     indexed = [sr for sr in b.spans if sr.first.word_id in row_words]
     multi = [sr for sr in indexed if len(sr.groups) >= 2]
     three = [sr for sr in indexed if len(sr.groups) >= 3]
+    across = [(sr, pairs) for sr in indexed if (pairs := same_text_across([(g.kind, g.members) for g in sr.groups], sr.members))]
     bases = Counter(j[2] for sr in b.spans for j in sr.joins)
     oneway = [(sr, j) for sr in b.spans for j in sr.joins if j[2] == "oneway"]
     lines = [
@@ -926,9 +919,10 @@ def review_markdown(b: Build) -> str:
         "qualified reader to sign off before release (docs/features/rewayat.md, Per-word readings).",
         "Which rewayat read a word as Hafs does is the reviewed highlight decision of",
         "`<id>-diff.json`. What is new, and listed here, is how the rewayat that differ from",
-        "Hafs are grouped among themselves (`highlights.reads_alike`), and the misprints read",
-        "with their sibling. A decision goes into `reading_groups_cases.json` (a group per",
-        "rule); a change of grouping is a change to `highlights.py` or the issue list.",
+        "Hafs are grouped among themselves (`highlights.reads_alike`). Every text is the",
+        "official one, verbatim, suspected misprints included. A decision goes into",
+        "`reading_groups_cases.json` (a group per rule); a change of grouping is a change to",
+        "`highlights.py`.",
         "",
         "How a differing rewayah is placed: it joins the group of the other narrator of its",
         "reader when they store the same words or the reviewed sibling rule says they read",
@@ -947,6 +941,7 @@ def review_markdown(b: Build) -> str:
         f"| Rows (a two-slot span has two) | {len(b.rows):,} |",
         f"| Spans with 2 or more readings | {len(multi):,} |",
         f"| Spans with 3 or more readings (section 4) | {len(three):,} |",
+        f"| Spans with the same stored text on both sides of the Hafs line (section 5) | {len(across):,} |",
     ]
     for basis in HL.ALIKE_BASES:
         lines.append(f"| Joins of a differing rewayah to a group: {basis} | {bases.get(basis, 0):,} |")
@@ -958,21 +953,23 @@ def review_markdown(b: Build) -> str:
         "the two encodings; `oneway` both directions can be checked and only one holds, i.e. one",
         "rewayah's general rule excused the difference (section 3).",
         "",
-        "## 1. Suspected KFGQPC misprints read with their sibling",
+        "## 1. Suspected KFGQPC misprints, shown as written",
         "",
-        "Decision (docs/plans/2026-11-14-word-study/README.md): each is placed in its sibling",
-        "narrator's group and is not shown as a reading of its own; the app shows no note.",
-        "Source: `reading_upstream_issues.json`.",
+        "Decision (docs/plans/2026-11-14-word-study/README.md): the official text is shown",
+        "verbatim, as its rewayah's own reading; the app corrects nothing and shows no note.",
+        "`reading_upstream_issues.json` lists them, each with a note, to report them to KFGQPC.",
         "",
-        "| Rewayah | Hafs word | Stored text | Read with | Group |",
+        "| Rewayah | Hafs word | Stored text | Its sibling's text | Group |",
         "|---|---|---|---|---|",
     ]
     by_first = {s.location: sr for sr in b.spans for s in inp.slots[sr.first.index : sr.last.index + 1]}
     for issue in inp.issues:
         sr = by_first[issue["location"]]
         g = next(g for g in sr.groups if issue["rid"] in g.members)
+        sib = issue["sibling"]
         lines.append(
-            f"| {NAMES[issue['rid']]} | {issue['location']} | `{issue['text']}` | {NAMES[issue['sibling']]} | {_group_line(sr, g)} |"
+            f"| {NAMES[issue['rid']]} | {issue['location']} | `{issue['text']}` | {NAMES[sib]} "
+            f"`{sr.members[sib].text}` | {_group_line(sr, g)} |"
         )
     lines += ["", "## 2. To confirm", ""]
     for entry in inp.cases.get("toConfirm", []):
@@ -1002,6 +999,28 @@ def review_markdown(b: Build) -> str:
         lines.append(f"- **{loc}**")
         for g in sr.groups:
             lines.append(f"  - {_group_line(sr, g)}")
+    lines += [
+        "",
+        "## 5. Same stored text on both sides of the Hafs line",
+        "",
+        "The Hafs line follows each rewayah's own `<id>-diff.json`, so a text tinted in one",
+        "rewayah can be stored, untinted, by another: the same official text is then shown as a",
+        "reading that differs from Hafs for the first and listed under Hafs's text for the",
+        "second (mostly Shu'bah's imala dot, which the highlight maps count in Shu'bah and not",
+        "in the far rewayat). Each span is pinned in `reading_groups_cases.json` (`toConfirm`,",
+        "section 2) and the build fails on any other (gate G2) until a qualified reader picks",
+        "one rule: the untinted rewayat with that text join the differing reading, or the split",
+        "stays and their own text is shown under Hafs's group.",
+        "",
+        "| Hafs word | Hafs's text | Differs from Hafs | Same text, listed with Hafs |",
+        "|---|---|---|---|",
+    ]
+    for sr, pairs in across:
+        loc = sr.first.location if not sr.two_slots else f"{sr.first.location}-{sr.last.word}"
+        for rid, same in pairs:
+            lines.append(
+                f"| {loc} | `{sr.members['hafs'].text}` | {NAMES[rid]} `{sr.members[rid].text}` | {_names(same)} |"
+            )
     return "\n".join(lines) + "\n"
 
 

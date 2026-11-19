@@ -17,11 +17,11 @@ highlight maps and the reviewed files:
            span; notRead: blank members; differs: the tinted ones, split as
            reading_groups_cases.json says for that span, or one group when
            they all store the same words (any other span is refused here).
-           A misprint of reading_upstream_issues.json sits in its sibling's
-           group and is questioned
+           The suspected misprints of reading_upstream_issues.json are no
+           exception: every text is the official one, as written
   details  ownText for a differing member whose text is not its group's
-           (the group's first member that is not a misprint) and for any
-           member with silah; silahChars from the diff, offset across the
+           (the group's first member) and for any member with silah;
+           silahChars from the diff, offset across the
            span; verseEnd from the marker slots (own number where only it
            ends a verse after the span, 0 where only Hafs does); wordCount
            for an asHafs member writing another number of words than Hafs;
@@ -58,6 +58,8 @@ WORDS = [
     ("10:35", [22]), ("12:12", [4]), ("15:7", [1, 2]), ("17:62", [1]), ("27:20", [4, 5]),
     ("37:130", [3]), ("40:26", [13, 14]), ("57:24", [10]), ("72:16", [1]),
     ("73:20", [21, 22]), ("75:1", [1, 2]),
+    # the other suspected misprints (17:62 above), shown as written
+    ("4:136", [14]), ("43:58", [10]), ("43:78", [2]),
     # no rows: the two DK slots of the word-by-word بَعْدَ مَا
     ("2:181", [3]), ("2:181", [4]),
 ]
@@ -108,7 +110,6 @@ def main() -> None:
                         silah[fid][f"{key}:{pos}"] = chars
                     else:
                         tint[fid].add(f"{key}:{pos}")
-    issues = json.loads((a.rewayah_dir / "reading_upstream_issues.json").read_text(encoding="utf-8"))["issues"]
     cases = json.loads((a.rewayah_dir / "reading_groups_cases.json").read_text(encoding="utf-8"))
     reviewed = {loc: groups for sec in ("groups", "toConfirm") for e in cases[sec] for loc, groups in e["spans"].items()}
 
@@ -150,11 +151,10 @@ def main() -> None:
                 "silah": chars,
                 "verseEnd": verse_end,
             }
-        folded = {i["rid"]: i["sibling"] for i in issues if i["location"] in locs}
         fids = [fid for _, fid, _ in MEMBERS]
-        as_hafs = ["hafs"] + [f for f in fids[1:] if member[f]["text"] and not member[f]["tinted"] and f not in folded]
+        as_hafs = ["hafs"] + [f for f in fids[1:] if member[f]["text"] and not member[f]["tinted"]]
         not_read = [f for f in fids[1:] if not member[f]["text"]]
-        differ = [f for f in fids[1:] if member[f]["text"] and member[f]["tinted"] and f not in folded]
+        differ = [f for f in fids[1:] if member[f]["text"] and member[f]["tinted"]]
         first_loc = locs[0]
         if first_loc in reviewed:
             want = [g for g in reviewed[first_loc] if not set(g) & {"hafs"} and not set(g) <= set(not_read)]
@@ -166,19 +166,17 @@ def main() -> None:
             raise SystemExit(f"{first_loc}: differing texts not pinned in reading_groups_cases.json")
         assert sorted(f for g in d_groups for f in g) == sorted(differ), first_loc
         groups = [["h", as_hafs]] + [["d", g] for g in d_groups] + ([["o", not_read]] if not_read else [])
-        for f, sib in folded.items():
-            next(g for _, g in groups if sib in g).append(f)
         for _, g in groups:
             g.sort(key=fids.index)
         hafs_text = member["hafs"]["text"]
         expected_groups = []
         for kind, g in groups:
-            text = hafs_text if kind == "h" else "" if kind == "o" else member[[f for f in g if f not in folded][0]]["text"]
+            text = hafs_text if kind == "h" else "" if kind == "o" else member[g[0]]["text"]
             ms = []
             for f in g:
                 m = member[f]
                 own = None
-                if f != "hafs" and kind != "o" and f not in folded and (m["silah"] or (kind == "d" and m["text"] != text)):
+                if f != "hafs" and kind != "o" and (m["silah"] or (kind == "d" and m["text"] != text)):
                     own = m["text"]
                 count = len(m["text"].split(" "))
                 ms.append({
@@ -188,7 +186,6 @@ def main() -> None:
                     "silahChars": m["silah"] if own is not None else [],
                     "verseEnd": m["verseEnd"],
                     "wordCount": count if kind == "h" and f != "hafs" and count != len(hafs_text.split(" ")) else None,
-                    "questioned": f in folded,
                 })
             expected_groups.append({"kind": {"h": "asHafs", "d": "differs", "o": "notRead"}[kind], "text": text, "members": ms})
         basmala = []

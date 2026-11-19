@@ -13,7 +13,7 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
   'digital-khatt-v2.db':
     'd6f5ffbd13ed208d735a8cf569b8b889993f8f086e55f7354533ae4f784d3798',
   'dk_readings.db':
-    'dae3b14574c9708057bb404497e1d025bf0f110dc82dc7cc930594373bf7c5f2',
+    'eeea3fdbc3b2976c8d9d3c75747511a396cd5878091c5bdb9ccfe990c106e720',
   'dk_words_bazzi.db':
     '4cd66022127aef9c059d0197548e65ef93c28e19021de4476f846cedcf138099',
   'dk_words_doori.db':
@@ -36,7 +36,7 @@ export const REWAYAH_DATA_MANIFEST: Readonly<Record<string, string>> = {
 // last words silently altered).
 export const REWAYAH_DATA_MD5: Readonly<Record<string, string>> = {
   'digital-khatt-v2.db': '53c536a769d8a05eebb1f5229d01f966',
-  'dk_readings.db': 'f8f7cb99057b99bbad14b63ca0bcc25f',
+  'dk_readings.db': 'bd5626863acf0061f62359c5cc15e6c5',
   'dk_words_bazzi.db': '634ac32cd1e70a891c13f76d4f856290',
   'dk_words_doori.db': '891a18a77bd74f035ca257b8d2ee19c6',
   'dk_words_qaloon.db': '9fb3d2ab3094ae0a947fc995348726d3',

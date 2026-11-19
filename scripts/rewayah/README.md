@@ -37,7 +37,7 @@ build or CI on any difference.
 | `requirements-ci.txt` | pinned `uharfbuzz` / `fonttools` for the glyph gate |
 | `build_readings_index.py` | the per-word readings index `data/mushaf/digitalkhatt/dk_readings.db` (how each of the 8 rewayat reads every Hafs word) and its review list; `--check` (CI) rebuilds, runs the gates and compares, `--report` prints the review list |
 | `reading_groups_cases.json` | reviewed groupings of the readings index (gate G6), one group per rule, plus the open questions (`toConfirm`) |
-| `reading_upstream_issues.json` | the suspected KFGQPC misprints, read with their sibling narrator in the readings index (gate G7) |
+| `reading_upstream_issues.json` | the suspected KFGQPC misprints, to report upstream; the readings index shows them as written (gate G7 keeps the list current) |
 | `reading_review.md` | the grouping review list for a qualified reader, written by `build_readings_index.py` (never by hand) |
 
 ## Rebuild
@@ -288,8 +288,9 @@ Hafs's group holds Hafs and every rewayah the diff JSON leaves untinted (the
 reviewed highlight decision); the tinted rewayat are grouped among themselves
 with `highlights.reads_alike` (a doubt splits, it never merges); a P2 blank is
 "not read". Two Hafs slots that a rewayah writes as one word (P3) form one
-span. The four suspected KFGQPC misprints of `reading_upstream_issues.json`
-are read with their sibling narrator. Only words with something to show get
+span. Every text is the official one, as written: the four suspected KFGQPC
+misprints of `reading_upstream_issues.json` (kept to report them upstream)
+are each their rewayah's own reading. Only words with something to show get
 a row (9,499 spans in 9,505 rows); the format is documented in the module
 docstring and decoded and checked by `services/mushaf/wordReadingsFormat.ts`.
 
@@ -298,9 +299,12 @@ reviewed cases, the misprint entries, determinism) fail the build; `--check`
 also runs G1-G6 on the committed rows and compares them, and the review list,
 with a fresh build. The build writes `reading_review.md`, the list a qualified
 reader signs off before release: the misprints, the open questions, the joins
-where a general rule of one rewayah excused a difference, and every word with
-three or more readings. A decision becomes a group in
-`reading_groups_cases.json`; never edit a group to make a build pass.
+where a general rule of one rewayah excused a difference, every word with
+three or more readings, and the words where one rewayah's tinted text is
+stored, untinted, by another (the same text on both sides of the Hafs line;
+G2 fails on a new one until `reading_groups_cases.json` lists it). A decision
+becomes a group in `reading_groups_cases.json`; never edit a group to make a
+build pass.
 
 ## Render review
 

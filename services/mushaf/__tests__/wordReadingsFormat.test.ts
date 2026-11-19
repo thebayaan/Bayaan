@@ -17,6 +17,7 @@ import {
   READINGS_REWAYAT,
   ReadingsFormatError,
   WBW_JOINED_WORDS,
+  type ReadingsRewayah,
   type WordReadings,
 } from '../wordReadingsFormat';
 
@@ -146,13 +147,55 @@ describe('decodeReadingsRow on the bundled rows', () => {
     ]);
   });
 
-  it('a suspected misprint is read with its sibling and marked, never its own reading', () => {
+  it('17:62:1: a suspected misprint is its rewayah`s own reading, as written', () => {
     const r = decode(word('17:62', 1));
-    expect(r.groups).toHaveLength(1);
-    const qalun = r.groups[0].members.find(m => m.rewayah === 'qalun');
-    expect(qalun).toMatchObject({questioned: true, ownText: null});
-    expect(r.alike).toBe(true); // nothing the app shows
+    expect(r.groups.map(g => [g.kind, g.members.map(m => m.rewayah)])).toEqual([
+      [
+        'asHafs',
+        [
+          'hafs',
+          'shubah',
+          'al-bazzi',
+          'qunbul',
+          'warsh',
+          'al-duri-abi-amr',
+          'al-susi',
+        ],
+      ],
+      ['differs', ['qalun']],
+    ]);
+    expect(r.alike).toBe(false);
   });
+
+  // The suspected KFGQPC misprints are listed only to report them upstream:
+  // the index shows each official text verbatim (plan README, Readings).
+  const ISSUE_REWAYAH: Readonly<Record<string, ReadingsRewayah>> = {
+    shouba: 'shubah',
+    bazzi: 'al-bazzi',
+    qumbul: 'qunbul',
+    warsh: 'warsh',
+    qaloon: 'qalun',
+    doori: 'al-duri-abi-amr',
+    soosi: 'al-susi',
+  };
+  const issues = (
+    require('../../../scripts/rewayah/reading_upstream_issues.json') as {
+      issues: {rid: string; location: string; text: string}[];
+    }
+  ).issues;
+
+  it.each(issues.map(i => [i.location, i] as const))(
+    '%s: the suspected misprint is shown as written, as a reading of its own',
+    (location, issue) => {
+      const [surah, ayah, position] = location.split(':');
+      const r = decode(word(`${surah}:${ayah}`, Number(position)));
+      const rewayah = ISSUE_REWAYAH[issue.rid];
+      const group = findGroup(r, rewayah);
+      const member = group?.members.find(m => m.rewayah === rewayah);
+      expect(group?.kind).toBe('differs');
+      expect(member?.ownText ?? group?.text).toBe(issue.text);
+    },
+  );
 });
 
 describe('words with no row', () => {
@@ -263,8 +306,8 @@ describe('malformed rows', () => {
     ['a silah index off the silah mark', r => (r.m = {'7': {x: 2, s: [0]}})],
     ['a word count on a differing member', r => (r.m = {'7': {x: 2, w: 2}})],
     ['a negative verse number', r => (r.m = {'7': {x: 2, v: -1}})],
-    ['q other than 1', r => (r.m = {'7': {x: 2}, '6': {q: 2}})],
-    ['q with an own text', r => (r.m = {'7': {x: 2, q: 1}})],
+    // misprints are shown as written: the format has no flag to hide one
+    ['a misprint flag (q)', r => (r.m = {'7': {x: 2}, '6': {q: 1}})],
     ['a malformed span', r => (r.span = [14])],
     ['a span not holding the word', r => (r.span = [20, 21])],
     ['a basmala list outside 1:1', r => (r.u = [4])],
