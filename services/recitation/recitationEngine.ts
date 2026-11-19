@@ -23,6 +23,7 @@ import {
 } from './addedWord';
 import followerConstants from './followerConstants.npl.json';
 import type {RecitationAssetPaths} from './recitationAssets';
+import type {V1MarkMessage} from './v1/types';
 import type {
   AddedBefore,
   EngineWord,
@@ -45,8 +46,14 @@ export interface WordVerdictsMessage {
   lock?: EngineWord;
 }
 
-/** What the engine reports: Tilawa's messages plus word verdicts. */
-export type EngineMessage = WorkerOutbound | WordVerdictsMessage;
+/**
+ * What the engine reports: Tilawa's messages plus word verdicts, and the 1.0
+ * preview's possible mistakes (v1/engine).
+ */
+export type EngineMessage =
+  | WorkerOutbound
+  | WordVerdictsMessage
+  | V1MarkMessage;
 
 export interface RecitationStats {
   /** Seconds of audio fed to the engine. */
@@ -285,7 +292,9 @@ export async function createRecitationEngine(
   ): AddedBefore | null {
     const gap = v.gap;
     if (!gap) return null;
-    const seenKey = `${v.wordIndex}:${gap.from}:${gap.to}:${atThreeDecimals(gap.fitL)}:${atThreeDecimals(gap.fitR)}`;
+    const seenKey = `${v.wordIndex}:${gap.from}:${gap.to}:${atThreeDecimals(
+      gap.fitL,
+    )}:${atThreeDecimals(gap.fitR)}`;
     let passes = gapsSeen.get(seenKey);
     if (passes === undefined) {
       if (!locking && !vocab) return null;

@@ -92,10 +92,10 @@ function reportEnded(run: IdentifyRun, reason: RecitationStopReason): void {
     outcome: run.match
       ? 'found'
       : reason === 'not_found'
-        ? 'not_found'
-        : STOP_ERRORS[reason]
-          ? 'error'
-          : 'cancelled',
+      ? 'not_found'
+      : STOP_ERRORS[reason]
+      ? 'error'
+      : 'cancelled',
     time_to_match_ms:
       run.matchedAt !== null && run.listenedAt !== null
         ? run.matchedAt - run.listenedAt
@@ -176,7 +176,9 @@ function handlersFor(run: IdentifyRun): SessionHandlers {
   }
 
   function onEvent(msg: EngineMessage): void {
-    if (!owns() || msg.type === 'word_verdicts') return;
+    if (!owns() || msg.type === 'word_verdicts' || msg.type === 'v1_mark') {
+      return;
+    }
     const ayah = placedAyah(msg);
     if (!ayah) return;
     if (!run.match) {
