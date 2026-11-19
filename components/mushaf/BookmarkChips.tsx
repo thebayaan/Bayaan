@@ -74,11 +74,7 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
 
     return (
       <View style={styles.container}>
-        <Text
-          style={[
-            styles.label,
-            {color: Color(theme.colors.textSecondary).alpha(0.5).toString()},
-          ]}>
+        <Text style={[styles.label, {color: theme.colors.textTertiary}]}>
           {t('common:terms.bookmarks')}
         </Text>
         <ScrollView

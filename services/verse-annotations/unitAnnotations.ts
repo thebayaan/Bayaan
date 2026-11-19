@@ -407,7 +407,6 @@ export type SavedVerseRouteParams = {
   /** Hafs surah / ayah of the row (its anchor's Hafs verse), as before. */
   surah: string;
   ayah: string;
-  page: string;
   /**
    * The row's storage anchor ("S:A" or "S:A:W"), for a row saved in a
    * non-Hafs rewayah only: the mushaf selects exactly the verse unit holding
@@ -417,6 +416,8 @@ export type SavedVerseRouteParams = {
    * the first of them. Hafs rows keep today's params (no anchor).
    */
   anchor?: string;
+  /** The rewayah the row was saved in, which the reader restores. */
+  rewayah?: RewayahId;
 };
 
 /**
@@ -466,25 +467,24 @@ export function routeAnchorSelection(
 }
 
 /**
- * Params that open a saved row on its page with its verse selected. For a
- * Hafs row (and a legacy row without rewayah) exactly today's params.
+ * Params that open a saved row with its verse selected, in the rewayah it was
+ * saved in. They hold no page: a page lookup needs the Mushaf data, which
+ * loads after the splash, so the reader opens the page of the verse when the
+ * data is ready. For a Hafs row (and a legacy row without rewayah) no anchor.
  */
-export function savedVerseRouteParams(
-  row: {
-    verseKey: string;
-    surahNumber: number;
-    ayahNumber: number;
-    rewayahId?: RewayahId | null;
-  },
-  page: number,
-): SavedVerseRouteParams {
+export function savedVerseRouteParams(row: {
+  verseKey: string;
+  surahNumber: number;
+  ayahNumber: number;
+  rewayahId?: RewayahId | null;
+}): SavedVerseRouteParams {
   const params: SavedVerseRouteParams = {
     surah: String(row.surahNumber),
     ayah: String(row.ayahNumber),
-    page: String(page),
   };
   if (!isHafsSaved(row) && parseAnchorKey(row.verseKey)) {
     params.anchor = row.verseKey;
   }
+  if (row.rewayahId) params.rewayah = row.rewayahId;
   return params;
 }

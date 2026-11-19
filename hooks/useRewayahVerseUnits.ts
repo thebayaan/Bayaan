@@ -16,10 +16,9 @@ import {REWAYAH_WORDS_RETRY_INTERVAL_MS} from '@/hooks/useRewayahWords';
  * - 'ready': `units` holds the rewayah's verse units;
  * - 'loading': its words are loading or its units are being built (also
  *   briefly before either starts);
- * - 'error': its words failed to load, its units were refused, or startup
- *   failed to load the main cache they are read with: show no rewayah verse
- *   numbers (never Hafs numbers under the rewayah's name), and offer
- *   `retry`;
+ * - 'error': its words failed to load or its units were refused: show no
+ *   rewayah verse numbers (never Hafs numbers under the rewayah's name), and
+ *   offer `retry`;
  * - 'unavailable': no words DB is bundled for it (or no rewayah given).
  */
 export type RewayahVerseUnitsStatus =
@@ -32,8 +31,8 @@ export interface RewayahVerseUnitsResult {
   units: RewayahVerseUnits | null;
   status: RewayahVerseUnitsStatus;
   /**
-   * Tries again what failed ('error'): the words' load, startup's load of
-   * the main cache, or the build of units that were refused.
+   * Tries again what failed ('error'): the words' load, or the build of
+   * units that were refused.
    */
   retry: () => void;
 }
@@ -55,23 +54,16 @@ function claimAutoRetry(rewayah: RewayahId): boolean {
   return true;
 }
 
-/**
- * Tries again what failed for `rewayah`: its words or startup's main cache,
- * else its units.
- */
+/** Tries again what failed for `rewayah`: its words, else its units. */
 function retryVerseUnits(rewayah: RewayahId): void {
   const dk = digitalKhattDataService;
-  const wordsReady = dk.getRewayahLoadState(rewayah) === 'ready';
-  if (wordsReady && dk.initialized) {
+  if (dk.getRewayahLoadState(rewayah) === 'ready') {
     // The words are in memory: the units were refused. Build them again.
     rewayahVerseUnitsService.retry(rewayah);
     return;
   }
-  // Its words failed to load; or they are in memory but startup failed to
-  // load the main cache their units are read with: load that again.
-  const target = wordsReady ? dk.rewayah : rewayah;
-  dk.ensureRewayahLoaded(target, {retry: true}).catch(err => {
-    console.warn(`[useRewayahVerseUnits] Loading ${target} failed:`, err);
+  dk.ensureRewayahLoaded(rewayah, {retry: true}).catch(err => {
+    console.warn(`[useRewayahVerseUnits] Loading ${rewayah} failed:`, err);
   });
 }
 

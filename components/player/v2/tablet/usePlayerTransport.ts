@@ -62,7 +62,8 @@ export function usePlayerTransport() {
     await skipToNext();
   }, [trackLoading, isLastTrack, skipToNext]);
   // seekBy() jumps from where the audio really is; the progress shown here
-  // can be two seconds old.
+  // can be two seconds old. The position is read at the press, so the seek
+  // handlers do not change on every tick.
   const seekBack = useCallback(async () => {
     if (trackLoading) return;
     await seekBy(-SEEK_INTERVAL);

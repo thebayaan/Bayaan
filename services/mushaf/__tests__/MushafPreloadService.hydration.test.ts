@@ -2,11 +2,12 @@
 /**
  * The preload waits for the saved mushaf settings so it loads the reader's
  * rewayah, not the default. That wait had no end: when the settings could not
- * be read (a locked device, a full disk) the app stayed on its splash screen.
+ * be read (a locked device, a full disk) the reader stayed on its loading view.
  *
  * Real preload, real settings store and real data service; storage and
- * expo-sqlite are fakes whose reads can fail or be held. Every words DB holds
- * verse 1:1 tagged by DB (H1 H2 for Hafs, W1 W2 for Warsh, Q1 Q2 for Qalun).
+ * expo-sqlite are fakes whose reads can fail or be held, and the generated
+ * tables (mushafTables) are a fake for verse 1:1. Every words DB holds verse
+ * 1:1 tagged by DB (H1 H2 for Hafs, W1 W2 for Warsh, Q1 Q2 for Qalun).
  */
 // Every launch below loads the store and the services afresh, which is slow
 // on a busy machine.
@@ -37,7 +38,31 @@ const mockSqlite = {
   broken: new Set<string>(),
 };
 
+// The generated verse index and page lines, for the two words of verse 1:1.
+jest.mock('@/services/mushaf/mushafTables', () =>
+  jest
+    .requireActual('@/services/mushaf/__fixtures__/wordStoreQueries')
+    .fakeMushafTables(
+      ['1:1:1', '1:1:2'],
+      [
+        {
+          page_number: 1,
+          line_number: 1,
+          line_type: 'ayah',
+          is_centered: 0,
+          first_word_id: 1,
+          last_word_id: 2,
+          surah_number: 1,
+        },
+      ],
+    ),
+);
+
 jest.mock('expo-sqlite', () => {
+  // The WordStore's queries (DigitalKhattDataService).
+  const {withWordStoreQueries} = jest.requireActual(
+    '@/services/mushaf/__fixtures__/wordStoreQueries',
+  );
   const TAGS: Record<string, string> = {
     dk_words: 'H',
     dk_words_warsh: 'W',
@@ -49,29 +74,16 @@ jest.mock('expo-sqlite', () => {
     defaultDatabaseDirectory: '/data/user/0/app.test/files/SQLite',
     async openDatabaseAsync(name: string) {
       const base = baseOf(name);
-      return {
+      return withWordStoreQueries({
         async getFirstAsync(sql: string) {
           if (!mockSqlite.files.has(name)) return null;
           return {name: /name='(\w+)'/.exec(sql)?.[1]};
         },
-        async getAllAsync(sql: string) {
+        async getAllAsync() {
           const held = mockSqlite.gates.get(base);
           if (held) await held;
           if (mockSqlite.broken.has(base)) {
             throw new Error('database disk image is malformed');
-          }
-          if (sql.includes('FROM pages')) {
-            return [
-              {
-                page_number: 1,
-                line_number: 1,
-                line_type: 'ayah',
-                is_centered: 0,
-                first_word_id: 1,
-                last_word_id: 2,
-                surah_number: 1,
-              },
-            ];
           }
           const tag = TAGS[base] ?? '?';
           return [
@@ -80,7 +92,7 @@ jest.mock('expo-sqlite', () => {
           ];
         },
         closeAsync: async () => undefined,
-      };
+      });
     },
     async importDatabaseFromAssetAsync(name: string) {
       mockSqlite.files.add(name);
@@ -225,7 +237,7 @@ describe('mushaf preload and the saved settings', () => {
     await jest.advanceTimersByTimeAsync(1);
     await flush();
 
-    // The boot step settles, so the splash screen can go.
+    // The preload settles, so the reader can leave its loading view.
     expect(preload.finished()).toBe(true);
     expect(app.preload.state).toBe('ready');
     expect(app.settings.persist.hasHydrated()).toBe(false);

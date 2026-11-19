@@ -17,7 +17,19 @@ jest.mock('@/services/timestamps/TimestampService', () => ({
   timestampService: {getTimestampsForSurah: jest.fn()},
 }));
 jest.mock('@/services/timestamps/TimestampFetchService', () => ({
-  timestampFetchService: {hasSurah: () => true, hasSource: () => true},
+  timestampFetchService: {
+    hasSurah: () => true,
+    hasSource: () => true,
+    // @ai-start
+    // Every fixture rewayah has a source, as hasSource says.
+    rewayatWithSource: () =>
+      jest
+        .requireMock('@/data/reciterData')
+        .RECITERS.flatMap((reciter: {rewayat: unknown[]}) =>
+          reciter.rewayat.map(rewayat => ({reciter, rewayat})),
+        ),
+    // @ai-end
+  },
 }));
 
 type Store = typeof import('@/store/timestampStore');

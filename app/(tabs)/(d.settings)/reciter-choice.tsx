@@ -179,7 +179,7 @@ const createStyles = (theme: Theme) =>
     subtitle: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: moderateScale(24),
       lineHeight: moderateScale(18),
     },
@@ -189,7 +189,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: moderateScale(6),
@@ -227,7 +227,7 @@ const createStyles = (theme: Theme) =>
     settingDescription: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       lineHeight: moderateScale(17),
     },
     switchStyle: {
@@ -259,7 +259,7 @@ const createStyles = (theme: Theme) =>
     optionDescription: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       lineHeight: moderateScale(17),
     },
   });

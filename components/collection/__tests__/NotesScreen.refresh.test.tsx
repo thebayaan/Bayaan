@@ -69,9 +69,7 @@ jest.mock('@/hooks/useSavedVerseDescription', () => ({
 }));
 jest.mock('@/services/verse-annotations/unitAnnotations', () => ({
   savedVerseSubtitle: () => '',
-}));
-jest.mock('@/services/verse-annotations/openSavedVerse', () => ({
-  savedVerseOpenParams: jest.fn(),
+  savedVerseRouteParams: jest.fn(),
 }));
 jest.mock('@/components/sheets/options/OptionsMenu', () => ({
   useNativeOptionsMenu: () => false,

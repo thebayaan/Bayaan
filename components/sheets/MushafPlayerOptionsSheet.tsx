@@ -881,7 +881,7 @@ const createStyles = (theme: Theme) =>
     chipText: {
       fontSize: ms(13),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
     chipTextActive: {
       color: theme.colors.text,

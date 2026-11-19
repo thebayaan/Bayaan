@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect, // @ai
   useRef,
+  useState, // @ai
   useImperativeHandle,
   forwardRef,
 } from 'react';
@@ -42,6 +43,7 @@ import {
 } from '../constants';
 // @ai-start
 import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
+import {useFirstContent} from '@/hooks/useFirstContent';
 import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits';
 import {shownVerseUnitsOf} from '@/services/mushaf/MushafVerseMapService';
 import {isVerseUnitRow} from '@/components/player/v2/PlayerContent/QuranView/verseUnitRows';
@@ -149,36 +151,6 @@ function getVerseIndex(verseKey: string): number {
   return verseIndexMap.get(verseKey) ?? 0;
 }
 
-// Reverse lookup: verseKey → page number (built lazily from all 604 pages,
-// rebuilt whenever the active rewayah or the DK words cache changes).
-let verseToPageMap: Map<string, number> | null = null;
-let verseToPageMapRewayah: string | null = null;
-let verseToPageMapVersion = -1;
-
-function getPageForVerse(verseKey: string): number | null {
-  const rewayah = digitalKhattDataService.rewayah;
-  const version = digitalKhattDataService.getCacheVersion();
-  if (rewayah !== verseToPageMapRewayah || version !== verseToPageMapVersion) {
-    verseToPageMap = null;
-    verseToPageMapRewayah = rewayah;
-    verseToPageMapVersion = version;
-  }
-  if (!verseToPageMap) {
-    if (!digitalKhattDataService.initialized) return null;
-    verseToPageMap = new Map();
-    for (let page = 1; page <= 604; page++) {
-      const keys = mushafVerseMapService.getOrderedVerseKeysForPage(page);
-      for (const key of keys) {
-        // First occurrence wins — a verse spanning two pages maps to its start page
-        if (!verseToPageMap.has(key)) {
-          verseToPageMap.set(key, page);
-        }
-      }
-    }
-  }
-  return verseToPageMap.get(verseKey) ?? null;
-}
-
 // Map page number → first verse key on that page for scroll-to-page support
 function getFirstVerseKeyForPage(pageNumber: number): string | null {
   if (!digitalKhattDataService.initialized) return null;
@@ -210,6 +182,7 @@ interface ContinuousListViewProps {
   width: number;
   /** Whether a tap on the status bar scrolls back to the start. Default on. */
   scrollsToTop?: boolean;
+  onFirstContent?: () => void;
   // @ai-end
 }
 
@@ -229,12 +202,16 @@ const ContinuousListView = forwardRef<
       onCurrentPageChange,
       width,
       scrollsToTop = true,
+      onFirstContent,
     },
     ref,
   ) => {
     const {theme} = useTheme();
     const insets = useSafeAreaInsets();
     const flashListRef = useRef<FlashListRef<ContinuousListItem>>(null);
+    // FlashList raises onLoad once it has drawn the visible rows.
+    const [listDrawn, setListDrawn] = useState(false);
+    const handleListLoad = useCallback(() => setListDrawn(true), []);
 
     // Active ayah highlighting (same pattern as player QuranView): every
     // Hafs verse the reciter is reciting.
@@ -311,6 +288,14 @@ const ContinuousListView = forwardRef<
     useEffect(() => {
       unitListRef.current = unitList;
     }, [unitList]);
+    // The rows, or the message of a rewayah whose verse units failed. A spinner
+    // is no content: the restore deadline covers a long wait.
+    useFirstContent(
+      listDrawn ||
+        (unitsRewayah !== null &&
+          (verseUnitsStatus === 'error' || verseUnitsStatus === 'unavailable')),
+      onFirstContent,
+    );
     // @ai-end
 
     // Expose navigation methods to parent
@@ -452,7 +437,9 @@ const ContinuousListView = forwardRef<
           // @ai — a rewayah verse row: the page of its first word
           const page = isVerseUnitRow(firstItem.verse)
             ? unitListRef.current?.pageOfRow(firstItem.verse.verse_key)
-            : getPageForVerse(firstItem.verse.verse_key);
+            : digitalKhattDataService.getPageForVerse(
+                firstItem.verse.verse_key,
+              ); // @ai: reads no word
           if (page) onCurrentPageChange?.(page);
         }
       },
@@ -605,6 +592,7 @@ const ContinuousListView = forwardRef<
         scrollsToTop={scrollsToTop}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={VERTICAL_READER_VIEWABILITY}
+        onLoad={handleListLoad} // @ai
       />
     );
   },

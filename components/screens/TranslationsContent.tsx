@@ -1062,7 +1062,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'left',
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
     },
@@ -1079,14 +1079,14 @@ const createStyles = (theme: Theme) =>
     langHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
     },
     langCount: {
       fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.35).toString(),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textTertiary,
     },
 
     // Active card
@@ -1113,7 +1113,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'left',
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: moderateScale(2),
     },
     activeBadge: {
@@ -1125,7 +1125,7 @@ const createStyles = (theme: Theme) =>
     activeBadgeText: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.55).toString(),
+      color: theme.colors.textSecondary,
       letterSpacing: latinLetterSpacing(0.3),
     },
 
@@ -1198,7 +1198,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'left',
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: moderateScale(1),
     },
 
@@ -1219,14 +1219,14 @@ const createStyles = (theme: Theme) =>
     progressText: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
 
     // Empty
     emptyText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       paddingVertical: moderateScale(20),
     },

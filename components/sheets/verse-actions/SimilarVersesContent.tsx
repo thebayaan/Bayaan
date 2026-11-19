@@ -487,7 +487,7 @@ const createStyles = (theme: Theme) =>
     sectionLabel: {
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       marginBottom: moderateScale(6),
       marginLeft: moderateScale(2),
@@ -507,7 +507,7 @@ const createStyles = (theme: Theme) =>
     phraseCount: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: moderateScale(6),
     },
     matchRow: {
@@ -564,7 +564,7 @@ const createStyles = (theme: Theme) =>
     moreText: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       marginTop: moderateScale(4),
     },
@@ -600,7 +600,7 @@ const createStyles = (theme: Theme) =>
     emptyText: {
       fontSize: moderateScale(14),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       marginTop: verticalScale(30),
     },

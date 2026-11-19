@@ -34,9 +34,15 @@ interface MockStyle {
   fontFamilies?: string[];
   fontFeatures?: {name: string; value: number}[];
 }
-interface MockFlashListProps {
+interface MockFlatListProps {
   data: number[];
   renderItem: (info: {item: number; index: number}) => React.ReactNode;
+  initialScrollIndex?: number;
+  getItemLayout?: (
+    data: unknown,
+    index: number,
+  ) => {length: number; offset: number; index: number};
+  contentContainerStyle?: {paddingTop?: number};
 }
 
 interface MockParagraph {
@@ -334,10 +340,13 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 
-// Renders the item of page 4 only (the fixture page under test).
-jest.mock('@shopify/flash-list', () => {
+// Renders the item of page 4 only (the fixture page under test), and keeps
+// the list's props.
+const mockList: {props: MockFlatListProps | null} = {props: null};
+jest.mock('react-native/Libraries/Lists/FlatList', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const FlashList = ReactActual.forwardRef((props: MockFlashListProps, ref) => {
+  const FlatList = ReactActual.forwardRef((props: MockFlatListProps, ref) => {
+    mockList.props = props;
     ReactActual.useImperativeHandle(ref, () => ({
       scrollToIndex: () => undefined,
     }));
@@ -355,7 +364,7 @@ jest.mock('@shopify/flash-list', () => {
         ),
     );
   });
-  return {FlashList};
+  return {__esModule: true, default: FlatList};
 });
 
 jest.mock('@/store/mushafPlayerStore', () => {
@@ -606,5 +615,34 @@ describe.each([
     expect(mockSkia.paragraphs.slice(-after.length).map(p => p.text)).toEqual(
       after,
     );
+  });
+});
+
+describe('ContinuousMushafView list', () => {
+  it('opens on its page, and is told where each page is: page 4 starts after pages 1 to 3', () => {
+    mount(continuousView());
+    const props = mockList.props;
+    expect(props?.initialScrollIndex).toBe(PAGE - 1);
+    const getItemLayout = props?.getItemLayout;
+    if (!getItemLayout) throw new Error('the list estimates its pages');
+    const layoutOf = (index: number) => getItemLayout(null, index);
+    const lines = (page: number) =>
+      digitalKhattDataService.getPageLines(page).length;
+    // The line height the view draws with (a page is its lines times it).
+    const lineHeight = layoutOf(PAGE - 1).length / lines(PAGE);
+    expect(lineHeight).toBeGreaterThan(0);
+
+    let pagesAbove = 0;
+    for (let page = 1; page < PAGE; page++) pagesAbove += lines(page);
+    expect(pagesAbove).toBeGreaterThan(0);
+    expect(layoutOf(0).offset).toBe(props?.contentContainerStyle?.paddingTop);
+    expect(layoutOf(PAGE - 1).offset).toBeCloseTo(
+      layoutOf(0).offset + pagesAbove * lineHeight,
+      6,
+    );
+    // The page drawn is exactly as tall as its layout entry: a taller page
+    // would move every page below it off its offset.
+    const drawn = renderers[0].toJSON() as TestRenderer.ReactTestRendererJSON;
+    expect(drawn.props.style.height).toBe(layoutOf(PAGE - 1).length);
   });
 });

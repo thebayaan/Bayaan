@@ -36,7 +36,6 @@ import {create} from 'zustand';
 import {persist} from 'zustand/middleware';
 import {persistStorage} from '@/utils/storage'; // @ai
 import type {AyahTimestamp} from '@/types/timestamps';
-import {RECITERS} from '@/data/reciterData';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import {timestampFetchService} from '@/services/timestamps/TimestampFetchService';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
@@ -1443,21 +1442,19 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
 
         computeAvailableReciters: async () => {
           try {
-            const available: AvailableReciter[] = [];
-            for (const reciter of RECITERS) {
-              for (const rewayat of reciter.rewayat) {
-                if (timestampFetchService.hasSource(rewayat.id)) {
-                  available.push({
-                    rewayatId: rewayat.id,
-                    reciterId: reciter.id, // @ai
-                    reciterName: reciter.name,
-                    imageUrl: reciter.image_url,
-                    rewayahName: rewayat.name, // @ai
-                    style: rewayat.style,
-                  });
-                }
-              }
-            }
+            // @ai-start
+            // The same rewayat as timestampStore.loadFollowAlongRegistry.
+            const available: AvailableReciter[] = timestampFetchService
+              .rewayatWithSource()
+              .map(({reciter, rewayat}) => ({
+                rewayatId: rewayat.id,
+                reciterId: reciter.id,
+                reciterName: reciter.name,
+                imageUrl: reciter.image_url,
+                rewayahName: rewayat.name,
+                style: rewayat.style,
+              }));
+            // @ai-end
 
             set({availableReciters: available});
           } catch (error) {

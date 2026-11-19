@@ -81,8 +81,10 @@ export const Controls = () => {
     await skipToNext();
   }, [nextDisabled, skipToNext]);
 
+  // @ai-start
   // seekBy() jumps from where the audio really is; the store's position can
-  // be two seconds old.
+  // be two seconds old. The position is read at the press, so the controls
+  // do not render on every position tick.
   const handleSeekBackward = useCallback(async () => {
     if (trackLoading) return;
     await seekBy(-SEEK_INTERVAL);
@@ -92,6 +94,7 @@ export const Controls = () => {
     if (trackLoading) return;
     await seekBy(SEEK_INTERVAL);
   }, [trackLoading]);
+  // @ai-end
 
   return (
     <View style={[styles.container, forceLTR]}>

@@ -19,6 +19,8 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     },
     switchRewayah: (id: string) => mockService.switchRewayah(id),
   },
+  isRewayahSwitchSuperseded: (error: unknown) =>
+    (error as Error).name === 'RewayahSwitchSupersededError',
 }));
 
 const mockSettings = {

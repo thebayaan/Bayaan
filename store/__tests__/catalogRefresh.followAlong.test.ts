@@ -35,6 +35,14 @@ jest.mock('@/services/timestamps/TimestampFetchService', () => ({
       mockReciters.some(r =>
         r.rewayat.some(rw => rw.id === id && rw.has_timestamps),
       ),
+    // What hasSource accepts, with each rewayah's reciter, from the
+    // catalogue as it is at the call.
+    rewayatWithSource: () =>
+      mockReciters.flatMap(reciter =>
+        reciter.rewayat
+          .filter(rw => rw.has_timestamps)
+          .map(rewayat => ({reciter, rewayat})),
+      ),
   },
 }));
 jest.mock('@/services/timestamps/TimestampService', () => ({

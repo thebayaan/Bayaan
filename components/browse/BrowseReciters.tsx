@@ -889,7 +889,7 @@ const createStyles = (theme: Theme) =>
     filterChipText: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
     filterChipTextActive: {
       color: theme.colors.text,
@@ -905,7 +905,7 @@ const createStyles = (theme: Theme) =>
     activeFiltersText: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
     clearFiltersButton: {
       paddingHorizontal: moderateScale(8),
@@ -928,7 +928,7 @@ const createStyles = (theme: Theme) =>
     separatorChipText: {
       fontSize: moderateScale(14),
       fontFamily: 'Amiri-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       fontStyle: 'italic',
     },
     // @ai-start

@@ -10,6 +10,7 @@ import {
   isRewayahSwitchSuperseded,
 } from './DigitalKhattDataService';
 // @ai-end
+import {openLineFitCache} from './lineFitCache'; // @ai
 import {quranTextService} from './QuranTextService';
 import {rewayahDiffService} from './RewayahDiffService';
 import {
@@ -72,9 +73,10 @@ async function readTypeface(family: FontFamily): Promise<SkTypeface | null> {
 // @ai-end
 
 /**
- * Preloads everything the Mushaf screen needs at app startup (AppInitializer
- * priority 5). By the time the user navigates to the Mushaf tab, fonts and
- * DK data are available synchronously; no loading spinners.
+ * Loads everything the Mushaf screen needs. The root layout starts it after
+ * the splash hides (startIfIdle); a screen that needs it sooner starts it
+ * itself (useMushafData), and so does BackgroundRoot, which has no splash.
+ * Until it is ready, the reader shows its loading view.
  *
  * - DigitalKhatt SQLite data (word + layout databases)
  * - Skia TypefaceFontProvider with DK + ornamental fonts (for SkiaPage rendering)
@@ -127,6 +129,15 @@ class MushafPreloadService {
     return this._state;
   }
 
+  /**
+   * Starts the load if nothing started it yet. The boot starts it after the
+   * splash hides; a screen that needs it sooner starts it itself. A failed
+   * load waits for an explicit retry.
+   */
+  startIfIdle(): void {
+    if (this._state === 'idle') this.initialize().catch(() => undefined);
+  }
+
   get fontMgr(): SkTypefaceFontProvider | null {
     return this._fontMgr;
   }
@@ -160,6 +171,13 @@ class MushafPreloadService {
 
   private async _doInit(): Promise<void> {
     let failed = false;
+    // @ai-start
+    // The fonts need no Mushaf data, so they load while the data loads, and a
+    // failed data step still loads them for the readers that draw without it.
+    // A retry keeps fonts that loaded. `loadSkiaFonts` swallows its own errors
+    // and leaves `_fontMgr` null on failure.
+    const fonts = this._fontMgr ? undefined : this.loadSkiaFonts();
+    // @ai-end
     try {
       // Wait for Zustand persist hydration so DK service reads the user's
       // saved rewayah rather than the default (otherwise a reloaded app with
@@ -199,6 +217,12 @@ class MushafPreloadService {
 
       // Hafs (the service's starting rewayah) commits without a change event.
       this._loadDiffsFor(digitalKhattDataService.rewayah);
+
+      // @ai-start
+      // The line fits of the last launch. Opened here, before the reader can
+      // show a page, so the first page's render does not open or clear it.
+      openLineFitCache();
+      // @ai-end
     } catch (error) {
       // Any pre-font init step rejected (hydration, DK init, diff load). The
       // outer init must NOT swallow the rejection silently — surface it as
@@ -207,11 +231,9 @@ class MushafPreloadService {
       console.warn('[MushafPreload] Initialization failed:', error);
     }
     try {
-      // @ai The fonts need no Mushaf data, so a failed data step still loads
-      // them for the readers that draw without it. A retry keeps fonts that
-      // loaded. `loadSkiaFonts` swallows its own errors and leaves `_fontMgr`
-      // null on failure.
-      if (!this._fontMgr) await this.loadSkiaFonts();
+      // @ai The run ends after its fonts: a font load that outlived a failed
+      // run would race the font load of its retry.
+      await fonts;
     } finally {
       // Always transition to a terminal state and always notify. Without the
       // `finally` block a mid-pipeline rejection would leave `_state` at
@@ -229,7 +251,7 @@ class MushafPreloadService {
    *
    * zustand never reports the end of a hydration whose storage read failed (a
    * locked device, a full disk). Waiting for that alone left this preload
-   * pending for good, and the app behind its splash screen with it. After the
+   * pending for good, and the reader on its loading view with it. After the
    * timeout the preload goes on with the default rewayah; when the settings
    * do arrive (a slow read, or the retry on the next foreground),
    * _showSavedRewayah() loads the saved one in its place.

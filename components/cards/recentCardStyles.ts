@@ -85,7 +85,7 @@ export function createStyles(theme: {
     timeRemaining: {
       fontSize: moderateScale(7.5),
       fontFamily: 'Manrope-Bold',
-      color: Color(theme.colors.text).alpha(0.5).toString(),
+      color: theme.colors.textSecondary,
       minWidth: moderateScale(12),
       textAlign: 'right',
     },

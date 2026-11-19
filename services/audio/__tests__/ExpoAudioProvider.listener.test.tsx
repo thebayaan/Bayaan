@@ -70,6 +70,13 @@ jest.mock('@/services/analytics/AnalyticsService', () => ({
     trackPlaybackResumed: jest.fn(),
     updatePlaybackProgress: jest.fn(),
     setTrackDuration: jest.fn(),
+    // The provider feeds the listen session on each status and track end.
+    listenSession: {
+      isOpen: false,
+      start: jest.fn(),
+      end: jest.fn(),
+      playingChanged: jest.fn(),
+    },
   },
 }));
 

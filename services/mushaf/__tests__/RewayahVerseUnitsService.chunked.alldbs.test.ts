@@ -14,7 +14,7 @@
  * buildRewayahVerseUnits over the DB rows read directly, which the bundled
  * verse map accepts (crossCheckVerseUnits: no difference). Also when the
  * rewayah becomes the mushaf's text in the middle of a build: the build
- * starts over on the main cache and still gives the same units.
+ * goes on with the same store (@ai) and still gives the same units.
  */
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -179,7 +179,7 @@ run('chunked verse units = one-shot verse units (local only)', () => {
         expect(await done).toEqual(oneShot);
       });
 
-      it('the mushaf switches to it mid-build: starts over, same units', async () => {
+      it('the mushaf switches to it mid-build: goes on, same units', async () => {
         const scheduler = new SteppedScheduler();
         const service = new RewayahVerseUnitsService(
           dk,
@@ -189,14 +189,14 @@ run('chunked verse units = one-shot verse units (local only)', () => {
         );
         const done = service.request(rewayah);
         for (let i = 0; i < 40; i++) scheduler.step();
-        // Half way through its slots, read from the side cache, it becomes
-        // the main cache's text (and Hafs a side copy).
+        // Half way through its slots it becomes the mushaf's text (and
+        // Hafs an idle store). @ai: its store is the same one.
         await dk.switchRewayah(rewayah);
         expect(dk.rewayah).toBe(rewayah);
         const before = scheduler.chunks;
         while (scheduler.step());
-        // Started over: every slot read again, from the main cache.
-        expect(scheduler.chunks - before).toBe(CHUNKS);
+        // Not started over: no slot is read twice.
+        expect(scheduler.chunks - before).toBe(CHUNKS - 40);
         expect(await done).toEqual(oneShot);
       });
 

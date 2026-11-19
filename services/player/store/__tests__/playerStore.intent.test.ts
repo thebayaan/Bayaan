@@ -44,7 +44,7 @@ jest.mock('@/services/audio/AudioCoordinator', () => ({
 
 jest.mock('@/services/analytics/AnalyticsService', () => ({
   analyticsService: {
-    trackPlaybackSkipped: jest.fn(),
+    listenSession: {end: jest.fn()}, // @ai
     trackPlaybackSeeked: jest.fn(),
     trackRateChanged: jest.fn(),
   },

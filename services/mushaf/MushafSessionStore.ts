@@ -33,4 +33,16 @@ export const mushafSessionStore = {
     mmkv.set('lastReadSurahPage', page);
   },
   // @ai-end
+  // @ai-start
+  // The Continue Reading line the widgets last showed for a page. A snapshot
+  // taken before the Mushaf data loads reads it back.
+  getLastOpeningText: (page: number): string =>
+    mmkv.getNumber('lastOpeningPage') === page
+      ? (mmkv.getString('lastOpeningText') ?? '')
+      : '',
+  setLastOpeningText: (page: number, text: string): void => {
+    mmkv.set('lastOpeningPage', page);
+    mmkv.set('lastOpeningText', text);
+  },
+  // @ai-end
 };

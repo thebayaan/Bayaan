@@ -111,6 +111,12 @@ class QCFDataService {
     return page;
   }
 
+  /** Number of lines of a page (0 outside 1..604), without building it. */
+  getLineCount(pageNumber: number): number {
+    const rawPage = this.ensureLoaded().pages[pageNumber - 1];
+    return rawPage?.p === pageNumber ? rawPage.l.length : 0;
+  }
+
   /** Verse keys ("3:53", ...) of a page in reading order, each once. */
   getOrderedVerseKeysForPage(pageNumber: number): string[] {
     const cached = this.verseKeys.get(pageNumber);
