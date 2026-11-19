@@ -831,6 +831,18 @@ describe('rootCandidates', () => {
   it('only ever offers known roots', () => {
     expect(rootCandidates('ملك', () => false)).toEqual([]);
   });
+
+  it('finds اطمأن and اشمأز under the roots the corpus gives them', () => {
+    // The corpus writes them ط م ن and ش م ز, without the hamza.
+    const corpus = new Set(['ط م ن', 'ش م ز', 'ل ء ل ء', 'ق ر ن', 'ق ر ء']);
+    const isCorpusRoot = (root: string) => corpus.has(root);
+    expect(rootCandidates('طمأن', isCorpusRoot)).toEqual(['ط م ن']);
+    expect(rootCandidates('ط م ا ن', isCorpusRoot)).toEqual(['ط م ن']);
+    expect(rootCandidates('شمأز', isCorpusRoot)).toEqual(['ش م ز']);
+    expect(rootCandidates('لألأ', isCorpusRoot)).toEqual(['ل ء ل ء']);
+    // Other hamzas stay root letters: قرآن is no root of three letters.
+    expect(rootCandidates('قرآن', isCorpusRoot)).toEqual([]);
+  });
 });
 
 describe('rootQuery', () => {

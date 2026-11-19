@@ -352,6 +352,9 @@ export const QURAN_ROOT_QUERY_FIXTURES: readonly {
   // An opening keeps its root reachable as a suggestion.
   {letters: 'ا ل م', roots: ['ء ل م']},
   {letters: 'الم', roots: ['ء ل م']},
+  // The corpus files اطمأن and اشمأز under their other three letters.
+  {letters: 'طمأن', roots: ['ط م ن']},
+  {letters: 'شمأز', roots: ['ش م ز']},
 ];
 
 /**
@@ -372,6 +375,8 @@ export const QURAN_KIND_FIXTURES: readonly QuranKindFixture[] = [
   {query: 'ل ك ن', kind: 'text', roots: []},
   {query: 'root:رحم', kind: 'root', roots: ['ر ح م']},
   {query: 'جذر: ر ح م', kind: 'root', roots: ['ر ح م']},
+  {query: 'root:طمأن', kind: 'root', roots: ['ط م ن']},
+  {query: 'ط م أ ن', kind: 'root', roots: ['ط م ن']},
   {query: 'رحم', kind: 'text', roots: ['ر ح م']},
   {query: 'ا ل م', kind: 'text', roots: ['ء ل م']},
   {query: 'ح م', kind: 'text', roots: []},

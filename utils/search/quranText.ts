@@ -1102,7 +1102,8 @@ function rootLetterOptions(letter: string): string[] {
 /**
  * The known roots that 3-4 typed letters may spell, in the i'rab format
  * ('ر ح م'): أ إ آ ء → ء; ا → ء, و or ي; ؤ → ء or و; ئ → ء or ي; ى → ي or
- * و. `isKnownRoot` keeps the roots that occur in the Quran.
+ * و. `isKnownRoot` keeps the roots that occur in the Quran. طمأن and شمأز
+ * spell the roots the corpus writes without the hamza (ROOTS_WITHOUT_HAMZA).
  */
 export function rootCandidates(
   letters: string,
@@ -1118,11 +1119,21 @@ export function rootCandidates(
   }
   const out: string[] = [];
   for (const root of roots) {
-    const key = root.join(' ');
+    const typed = root.join(' ');
+    const key = ROOTS_WITHOUT_HAMZA[typed] ?? typed;
     if (!out.includes(key) && isKnownRoot(key)) out.push(key);
   }
   return out;
 }
+
+/**
+ * The corpus files the two verbs of the form افعألّ under their three other
+ * letters: اطمأن under ط م ن, اشمأز under ش م ز. A reader types the hamza.
+ */
+const ROOTS_WITHOUT_HAMZA: Readonly<Record<string, string>> = {
+  'ط م ء ن': 'ط م ن',
+  'ش م ء ز': 'ش م ز',
+};
 
 /** The query that searches a root: rootQuery('ر ح م') → 'root:ر ح م'. */
 export function rootQuery(root: string, keyword = 'root'): string {
