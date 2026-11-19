@@ -13,6 +13,7 @@
  *    exactly those of before.
  */
 import React, {act} from 'react';
+import {Text} from 'react-native';
 import TestRenderer from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
@@ -734,6 +735,31 @@ describe('Quran text search: the Ayahs section', () => {
       'Al-Baqarah 2:7',
       'Al-Baqarah 2:255',
     ]);
+  });
+
+  it('an Arabic query with no ayah gets the hint the Search tab gives', async () => {
+    const shownTexts = (renderer: TestRenderer.ReactTestRenderer) => {
+      const text: unknown = Text;
+      return renderer.root
+        .findAll(n => n.type === text)
+        .map(n => [n.props.children].flat().join(''));
+    };
+    // Arabic that names no surah, page or juz either.
+    mockQuranStates.set('قضظغ ثخذ', textDone([]));
+    const {renderer} = await renderSearch();
+    await searchQuran(renderer, 'قضظغ ثخذ');
+    expect(shownTexts(renderer)).toEqual(
+      expect.arrayContaining([
+        'No results found',
+        'Try fewer words or another spelling',
+      ]),
+    );
+    // Not a Quran query: no hint about words and spellings.
+    await searchQuran(renderer, 'zzzz');
+    expect(shownTexts(renderer)).toContain('No results found');
+    expect(shownTexts(renderer)).not.toContain(
+      'Try fewer words or another spelling',
+    );
   });
 
   it('a root suggestion searches the root', async () => {

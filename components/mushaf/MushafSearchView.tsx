@@ -1454,6 +1454,19 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                   ]}>
                   {t('common:status.noResults')}
                 </Text>
+                {typedQuranQuery && (
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.2)
+                          .toString(),
+                      },
+                    ]}>
+                    {t('quranSearch.noAyahsHint')}
+                  </Text>
+                )}
               </View>
             }
           />
