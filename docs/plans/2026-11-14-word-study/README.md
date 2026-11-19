@@ -15,7 +15,7 @@ This plan covers five features, each with its own design doc:
 | 4 | **Arabic word meanings (gharib)** | [04-gharib-rasm.md](04-gharib-rasm.md) |
 | 5 | **Rasm** | [04-gharib-rasm.md](04-gharib-rasm.md) |
 
-The design docs were written by read-only design agents. **Where this README disagrees with a design doc, this README wins.**
+**Where this README disagrees with a design doc, this README wins.**
 
 ## Product decisions (from the product owner)
 
@@ -137,14 +137,14 @@ buildWordSequence(parts, words): StudyWord[]; summarizeMorph(facts): MorphSummar
 
 ## Rules for every track
 
-- **Worktree setup:** run `ln -s /home/user/Bayaan/node_modules node_modules` in the worktree root. `.git/info/exclude` ignores it. Never commit it, and `git add` explicit paths only.
+- **Worktree setup:** symlink the main checkout's `node_modules` into the worktree root. `.git/info/exclude` ignores it. Never commit it, and `git add` explicit paths only.
 - **Code:**
   - Follow `CONTRIBUTING.md`.
   - Mark AI code per `docs/contributing/ai-guidelines.md`.
   - Follow the MUST rules of `docs/design/ipad-standards.md` and the checklist for UI.
   - Add English and Arabic strings and follow the RTL rules of `docs/i18n/README.md`.
 - **Commits:**
-  - Small conventional commits per task (`feat(search): …`, `test(readings): …`), each ending with the session trailer lines.
+  - Small conventional commits per task (`feat(search): …`, `test(readings): …`).
   - The author comes from the repo config (OKKHALIL3); do not change it.
 - **Before a track reports done:**
   - `npx tsc --noEmit` is clean.
@@ -152,4 +152,4 @@ buildWordSequence(parts, words): StudyWord[]; summarizeMorph(facts): MorphSummar
   - `npx eslint <changed files>` and `npx prettier --check <changed files>` are clean.
   - For touched namespaces, `npx i18next-cli extract --ci --dry-run`, `npx i18next-cli lint` and `npx i18next-cli status --unused` pass.
   - Every data build's `--check` mode passes.
-- **Do not push.** The integrator merges the `wip/*` branches into `claude/youthful-dijkstra-nqb3yg`, runs the full suite and pushes.
+- **Do not push.** The integrator merges the `wip/*` branches into the integration branch, runs the full suite and pushes.

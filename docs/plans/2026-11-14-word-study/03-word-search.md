@@ -1,7 +1,7 @@
 <!-- @ai-generated -->
 # Word and root search of the Quran text
 
-> Design written against `develop` at `b0a151ce` (2026-11-14) by a read-only design agent. Decisions that override it are in [README.md](README.md); where they disagree, README.md wins.
+> Design written against `develop` at `b0a151ce` (2026-11-14). Decisions that override it are in [README.md](README.md); where they disagree, README.md wins.
 
 ## Summary
 
@@ -164,7 +164,7 @@ Seams: an imla'i text and the other rewayat's spellings can be added to the same
 
 **Known misses (documented, not in v1):** داوود (Uthmani دَاوُۥدَ gives داود), الموءودة, لأذبحنه, مئة (`مِا۟ئَةَ` gives مايه), بأيد, and pronoun suffixes on non-final words of a phrase.
 
-**Prototype results:** 89 of 89 fixture queries pass. All 6,236 ayahs are found by pasting their first 12 or fewer DK words. 2,902 random 1-4 word Uthmani phrases are found with 0 misses. The prototype scripts are in /tmp/claude-0/-home-user-Bayaan/b400d208-815d-5932-ac11-0912e7cd503a/scratchpad/proto/ (`quranKey.mjs`, `proto2.mjs`, `queries.json`); that is a scratch folder and may be cleared.
+**Prototype results:** 89 of 89 fixture queries pass. All 6,236 ayahs are found by pasting their first 12 or fewer DK words. 2,902 random 1-4 word Uthmani phrases are found with 0 misses. The prototype scripts (`quranKey.mjs`, `proto2.mjs`, `queries.json`) were not kept.
 
 ### 1.4 Imla'i seam
 - The build script takes `--imlaei <tsv>`, with one line per DK slot: `s:a:w<TAB>imla'i word`.

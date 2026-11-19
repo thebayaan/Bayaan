@@ -1,7 +1,7 @@
 <!-- @ai-generated -->
 # Per-word readings across the 8 rewayat
 
-> Design written against `develop` at `b0a151ce` (2026-11-14) by a read-only design agent. Decisions that override it are in [README.md](README.md); where they disagree, README.md wins.
+> Design written against `develop` at `b0a151ce` (2026-11-14). Decisions that override it are in [README.md](README.md); where they disagree, README.md wins.
 
 ## Summary
 

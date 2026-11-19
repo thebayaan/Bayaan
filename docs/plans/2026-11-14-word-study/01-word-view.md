@@ -1,7 +1,7 @@
 <!-- @ai-generated -->
 # Word Study: one word view inside the ayah selection
 
-> Design written against `develop` at `b0a151ce` (2026-11-14) by a read-only design agent. Decisions that override it are in [README.md](README.md); where they disagree, README.md wins.
+> Design written against `develop` at `b0a151ce` (2026-11-14). Decisions that override it are in [README.md](README.md); where they disagree, README.md wins.
 
 ## Summary
 
@@ -539,7 +539,7 @@ WBWContent.tsx: add onOpenWord?: (word: WordRef) => void; when it is set, the gr
 
 ### T11. Docs and final i18n cleanup
 
-docs/design/screen-inventory.md: remove the word-detail row (:175) and note the Word Study screen under verse-actions (:173). Check that no removed key is still referenced, and that every wordView key has an ar value, including all six Arabic plural forms of readings.differ. Mark the Arabic as an AI draft for native review in the PR. Optionally update the word-level rows of docs/research/surah-app-feature-gaps.md to point at the new screen.
+docs/design/screen-inventory.md: remove the word-detail row (:175) and note the Word Study screen under verse-actions (:173). Check that no removed key is still referenced, and that every wordView key has an ar value, including all six Arabic plural forms of readings.differ. Mark the Arabic as a draft for native review in the PR. Optionally update the word-level rows of docs/research/surah-app-feature-gaps.md to point at the new screen.
 
 - **Files:** `docs/design/screen-inventory.md`, `i18n/locales/en/sheets.json`, `i18n/locales/ar/sheets.json`, `docs/research/surah-app-feature-gaps.md`
 - **Depends on:** T9
@@ -564,7 +564,7 @@ In WordStudyContent, call useKeyCommands (hooks/useKeyCommands.ts) while the Wor
 - The step bar follows the Quran's direction (Next on the left) in the English UI too. That goes against the i18n README's rule to mirror chevrons (docs/i18n/README.md:41) and may surprise English users; it needs UX sign-off with screenshots.
 - The Readings summary compares written text from the diff files. Rules such as imala, taqlil, tashil and naql are not in that data, so 'same text' must never be worded as 'pronounced the same'; the scope footnote must stay.
 - The verse sheet on iPad is a centered card that covers the page. That breaks the reading standard 'MUST NOT cover the verse being studied on expanded+' (04-reading-standards.md:62) and its word-detail popover row (:55), but Translation, Tafseer and I'rab do the same today; the docked Study pane is not built.
-- The Arabic strings are AI drafts, including six plural forms. They need native review before merging (docs/i18n/README.md, Translating).
+- The Arabic strings are drafts, including six plural forms. They need native review before merging (docs/i18n/README.md, Translating).
 - If PR 2 merges before the readings data module, the most important section (readings) is hidden at launch. Sequence the readings data PR first, or ship them together.
 
 ## Open questions (answered in README.md)
