@@ -92,7 +92,8 @@ export const RecitationSummarySheet = (
     const key = `${flag.surah}:${flag.ayah}`;
     const page = digitalKhattDataService.getPageForVerse(key);
     await SheetManager.hide(props.sheetId);
-    if (page) useMushafNavigationStore.getState().navigateToVerse(key, page);
+    if (page)
+      useMushafNavigationStore.getState().navigateTo({page, verseKey: key}); // @ai
   }
 
   async function retry(flag: {surah: number; ayah: number}): Promise<void> {

@@ -7,9 +7,16 @@ interface MushafNavigationState {
   // surahs share, as at mount. @ai
   targetSurahId: number | null;
   requestId: number;
-  navigateToVerse: (verseKey: string, page: number) => void;
-  // A link to the open reader: its page, and its verse to select, if any. @ai
-  navigateToPage: (page: number, surahId?: number, verseKey?: string) => void;
+  // @ai-start
+  // Turn the open reader to `page`, select `verseKey` there, if any, and name
+  // `surahId` in the header, if any (Similar Verses, a recitation mark, a
+  // link to the open reader).
+  navigateTo: (request: {
+    page: number;
+    verseKey?: string;
+    surahId?: number;
+  }) => void;
+  // @ai-end
   clear: () => void;
 }
 
@@ -18,15 +25,8 @@ export const useMushafNavigationStore = create<MushafNavigationState>(set => ({
   targetVerseKey: null,
   targetSurahId: null, // @ai
   requestId: 0,
-  navigateToVerse: (verseKey, page) =>
-    set(s => ({
-      targetPage: page,
-      targetVerseKey: verseKey,
-      targetSurahId: null, // @ai
-      requestId: s.requestId + 1,
-    })),
   // @ai-start
-  navigateToPage: (page, surahId, verseKey) =>
+  navigateTo: ({page, verseKey, surahId}) =>
     set(s => ({
       targetPage: page,
       targetVerseKey: verseKey ?? null,

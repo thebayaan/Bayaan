@@ -536,13 +536,15 @@ describe('the header after a navigation request', () => {
 
   it("names the surah the request asks for on page 591 (At-Tariq, not Al-A'la)", () => {
     renderViewer(50);
-    act(() => useMushafNavigationStore.getState().navigateToPage(591, 86));
+    act(() =>
+      useMushafNavigationStore.getState().navigateTo({page: 591, surahId: 86}),
+    );
     expect(headerSurahName()).toBe('At-Tariq');
   });
 
   it('names the last surah to start on the page when the request names none', () => {
     renderViewer(50);
-    act(() => useMushafNavigationStore.getState().navigateToPage(591));
+    act(() => useMushafNavigationStore.getState().navigateTo({page: 591}));
     expect(headerSurahName()).toBe("Al-A'la");
   });
 });

@@ -117,7 +117,7 @@ jest.mock('@/hooks/useMushafFontMgr', () => ({
   useMushafFontMgr: () => ({fake: 'fontMgr'}),
 }));
 jest.mock('@/store/mushafNavigationStore', () => ({
-  useMushafNavigationStore: {getState: () => ({navigateToVerse: jest.fn()})},
+  useMushafNavigationStore: {getState: () => ({navigateTo: jest.fn()})},
 }));
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {

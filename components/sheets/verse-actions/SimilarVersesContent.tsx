@@ -190,7 +190,9 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
   const handleVersePress = (targetVerseKey: string) => {
     const page = digitalKhattDataService.getPageForVerse(targetVerseKey);
     if (!page) return;
-    useMushafNavigationStore.getState().navigateToVerse(targetVerseKey, page);
+    useMushafNavigationStore
+      .getState()
+      .navigateTo({page, verseKey: targetVerseKey}); // @ai
     SheetManager.hideAll();
   };
 

@@ -79,7 +79,7 @@ jest.mock('@/store/tajweedStore', () => {
 });
 
 jest.mock('@/store/mushafNavigationStore', () => ({
-  useMushafNavigationStore: {getState: () => ({navigateToVerse: jest.fn()})},
+  useMushafNavigationStore: {getState: () => ({navigateTo: jest.fn()})},
 }));
 
 // QUL similar-verse data for the sheet's verse 2:5 (Hafs keys and Hafs word

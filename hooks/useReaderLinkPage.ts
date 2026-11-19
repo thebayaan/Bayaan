@@ -33,6 +33,6 @@ export function useReaderLinkPage(
     handled.current = route.params;
     if (!ready) return;
     const {page, surahId, verseKey} = resolveTarget(params);
-    useMushafNavigationStore.getState().navigateToPage(page, surahId, verseKey);
+    useMushafNavigationStore.getState().navigateTo({page, surahId, verseKey});
   }, [route.params, ready, params]);
 }
