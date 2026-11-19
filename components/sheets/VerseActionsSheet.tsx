@@ -761,6 +761,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       // reader jumped to the page but the verse it had just lit went dark.
       await SheetManager.hide(props.sheetId);
       if (isReaderOpen()) {
+        // From the full player, the open reader is under it: close the player
+        // too, or the reader jumps and flashes the verse out of sight.
+        if (source === 'player') {
+          usePlayerStore.getState().setSheetMode('hidden');
+        }
         useMushafNavigationStore
           .getState()
           .navigateToVerse(targetVerseKey, page);
@@ -777,7 +782,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         params: {page: String(page), surah, ayah},
       });
     },
-    [props.sheetId],
+    [props.sheetId, source],
   );
   // @ai-end
 

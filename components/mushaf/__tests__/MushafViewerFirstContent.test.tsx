@@ -237,7 +237,11 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   },
 }));
 jest.mock('@/services/mushaf/MushafSessionStore', () => ({
-  mushafSessionStore: {setLastReadPage: jest.fn()},
+  mushafSessionStore: {
+    setLastReadPage: jest.fn(),
+    getLastReadPage: () => null,
+    getLastReadSurahId: () => null,
+  },
 }));
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
   followShownRewayah: () => () => undefined,

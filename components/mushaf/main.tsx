@@ -638,6 +638,7 @@ type AskedSurah = {surahId: number; page: number}; // @ai
 export default function MushafViewer({
   pageNumber: initialPage,
   initialSurahId,
+  initialVerseKey,
   onFirstContent, // @ai
 }: MushafViewerProps) {
   useKeepAwake();
@@ -657,9 +658,22 @@ export default function MushafViewer({
   // surah per page, so it names the last one to start there. When the
   // reader was sent to a specific surah, remember it for as long as they
   // stay on that page; turning the page makes the question moot.
-  const [askedSurah, setAskedSurah] = useState<AskedSurah | null>(() =>
-    initialSurahId ? {surahId: initialSurahId, page: initialPage} : null,
-  );
+  const [askedSurah, setAskedSurah] = useState<AskedSurah | null>(() => {
+    if (initialSurahId) return {surahId: initialSurahId, page: initialPage};
+    // Reopened at the last-read page with nothing else asked (Continue
+    // reading, the widget, the restore at launch): the surah the header
+    // named there, saved with the page. The page alone names the last surah
+    // to start on it, which was then saved over the one being read (open
+    // Al-Ikhlas, go back, Continue reading, go back: An-Nas).
+    const resumed =
+      !initialVerseKey && mushafSessionStore.getLastReadPage() === initialPage
+        ? mushafSessionStore.getLastReadSurahId()
+        : null;
+    return resumed &&
+      digitalKhattDataService.getSurahStartPages()[resumed] === initialPage
+      ? {surahId: resumed, page: initialPage}
+      : null;
+  });
   useEffect(() => {
     setAskedSurah(prev => (prev && prev.page !== currentPage ? null : prev));
   }, [currentPage]);
@@ -1187,16 +1201,22 @@ export default function MushafViewer({
   // @ai-start
   // A jump in the paged pager. With spreads, the spread that comes into view
   // must stand for the page asked for, not its facing page. A jump to the
-  // other page of the spread already shown scrolls nowhere and the list
+  // other page of the spread already shown moves nothing and the list
   // reports nothing, so that page is made current here.
   const jumpPagerTo = useCallback(
     (page: number) => {
-      if (showsSpreads && sameSpread(page, currentPageRef.current)) {
-        jumpTargetRef.current = null;
-        if (page !== currentPageRef.current) showPage(page);
-        return;
-      }
-      jumpTargetRef.current = showsSpreads ? page : null;
+      const onShownSpread =
+        showsSpreads && sameSpread(page, currentPageRef.current);
+      if (onShownSpread && page !== currentPageRef.current) showPage(page);
+      // Kept until its spread reports. The spread shown reports nothing more,
+      // unless an earlier jump that has not reported yet sent the list away.
+      jumpTargetRef.current =
+        showsSpreads && (!onShownSpread || jumpTargetRef.current !== null)
+          ? page
+          : null;
+      // Also scrolled to the spread shown, where it does nothing: a quick
+      // second jump back there, or a jump during a swipe, must bring the list
+      // back, or the reader ends where the first jump or the swipe went.
       flatListRef.current?.scrollToIndex({
         index: pageToFlatListIndex(page),
         animated: false,

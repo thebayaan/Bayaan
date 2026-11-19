@@ -218,14 +218,17 @@ function root(): TestRenderer.ReactTestInstance {
   return renderer.root;
 }
 
-async function openSheet(rewayah?: RewayahId) {
+async function openSheet(
+  rewayah?: RewayahId,
+  source: 'player' | 'mushaf' = 'player',
+) {
   const props = {
     sheetId: 'verse-actions',
     payload: {
       verseKey: '2:5',
       surahNumber: 2,
       ayahNumber: 5,
-      source: 'player',
+      source,
       rewayah,
     },
   } as React.ComponentProps<typeof VerseActionsSheet>;
@@ -338,13 +341,26 @@ describe('a result tapped in Similar Verses', () => {
     expect(request()).toEqual({targetVerseKey: null, targetPage: null});
   });
 
-  it('with the reader open: asks it to go to the verse, without opening a second reader', async () => {
+  it('from the reader: asks it to go to the verse, without opening a second reader', async () => {
     const readerClosed = useMushafNavigationStore.getState().readerOpened();
-    await openSheet('hafs');
+    await openSheet('hafs', 'mushaf');
     await tapResult();
     expect(request()).toEqual({targetVerseKey: '2:255', targetPage: 42});
     expect(router.push).not.toHaveBeenCalled();
     expect(mockSetSheetMode).not.toHaveBeenCalled();
+    readerClosed();
+  });
+
+  // The full player can be open over a reader (a widget's bayaan://player
+  // opens it over the screen underneath). The reader jumped and flashed the
+  // verse under the player, so the tap still seemed to do nothing.
+  it('from the audio player over an open reader: closes the player, and asks the reader under it to go to the verse', async () => {
+    const readerClosed = useMushafNavigationStore.getState().readerOpened();
+    await openSheet('hafs', 'player');
+    await tapResult();
+    expect(mockSetSheetMode).toHaveBeenCalledWith('hidden');
+    expect(request()).toEqual({targetVerseKey: '2:255', targetPage: 42});
+    expect(router.push).not.toHaveBeenCalled();
     readerClosed();
   });
 
