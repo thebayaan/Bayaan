@@ -56,7 +56,9 @@ function getCredits(
         },
         {
           title: 'MASAQ',
-          description: t('credits.items.masaq'),
+          // No digit post-processing: the licence name stays "CC BY 4.0"
+          // in Arabic, not "CC BY ٤.٠".
+          description: t('credits.items.masaq', {postProcess: []}),
           link: 'https://data.mendeley.com/datasets/9yvrzxktmr/5',
         },
         {

@@ -166,8 +166,8 @@
     },
     "items": {
       "qul": "Advanced Quranic data and word-level information by Tarteel",
-      "quranicTreebank": "Word-by-word i'rab (syntax) of the whole Quran, by NoorBayan (MIT)",
-      "quranicCorpus": "Morphology behind the i'rab, by Dr. Kais Dukes, University of Leeds (GNU GPL)",
+      "quranicTreebank": "Word-by-word i'rab (syntax) of the whole Quran, by NoorBayan (MIT). Its morphology is from the Quranic Arabic Corpus (GNU GPL)",
+      "quranicCorpus": "Morphology behind the i'rab (part of speech, root, lemma, case and mood), by Dr. Kais Dukes, University of Leeds (GNU GPL, with the corpus's terms of use)",
       "masaq": "Independent i'rab annotation used to cross-check every word, by Sawalha et al., University of Jordan (CC BY 4.0)",
       "quranpedia": "Classical i'rab books of al-Ukbari and al-Nahhas",
       "quranFoundation": "Comprehensive Quran API services by Quran.com",
