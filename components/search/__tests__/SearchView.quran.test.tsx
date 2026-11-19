@@ -46,8 +46,11 @@ jest.mock('@/utils/search/catalog', () => ({
     },
   }),
 }));
+// The reciters at once, or held: on a slow network the killswitch fetch
+// keeps them (and so the catalogue) waiting for up to 3 s.
+const mockReciters: {held: Promise<unknown[]> | null} = {held: null};
 jest.mock('@/services/dataService', () => ({
-  getAllReciters: async () => [],
+  getAllReciters: () => mockReciters.held ?? Promise.resolve([]),
   getAllSurahs: async () => [],
 }));
 
@@ -327,6 +330,7 @@ beforeEach(async () => {
   mockRewayah = 'hafs';
   mockTablet = false;
   mockTabletRows.length = 0;
+  mockReciters.held = null;
   trackSearchPerformed.mockClear();
   await AsyncStorage.clear();
   // react-test-renderer prints a deprecation notice under React 19.
@@ -547,6 +551,68 @@ describe('SearchView: Quran results', () => {
         params: expect.objectContaining({anchor: '2:255:3', words: '3,4'}),
       }),
     );
+  });
+
+  describe('recent searches saved before', () => {
+    const SAVED = [
+      {type: 'surah', item: {id: 1, name: 'Al-Fatihah'}, timestamp: 2},
+      {type: 'reciter', item: {id: 'r1', name: 'A Reciter'}, timestamp: 1},
+    ];
+    const storedIds = async () =>
+      (
+        JSON.parse((await AsyncStorage.getItem('recentSearches')) ?? '[]') as {
+          verseKey?: string;
+          item?: {id: unknown};
+        }[]
+      ).map(entry => entry.verseKey ?? entry.item?.id);
+
+    it('survive an ayah opened while the catalogue still loads', async () => {
+      // The Ayahs rows can be tapped before the reciters arrive.
+      let release: (reciters: unknown[]) => void = () => undefined;
+      mockReciters.held = new Promise(resolve => {
+        release = resolve;
+      });
+      await AsyncStorage.setItem('recentSearches', JSON.stringify(SAVED));
+      mockQuranStates.set('الله لا اله', textDone([hit('2:255', 3, 2)]));
+      await open('الله لا اله');
+      press('quran-row', 'quran-verse-2:255');
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      await act(async () => undefined);
+      expect(await storedIds()).toEqual(['2:255', 1, 'r1']);
+
+      await act(async () => {
+        release([]);
+      });
+      await retype('');
+      expect(rows()).toEqual([
+        'recent-verse|2:255',
+        'catalog-row|Al-Fatihah',
+        'catalog-row|A Reciter',
+      ]);
+    });
+
+    it('survive an ayah opened before they are read', async () => {
+      // A slow read of the stored list: the ayah opens at once, and is
+      // remembered on top of the list once it is read.
+      await AsyncStorage.setItem('recentSearches', JSON.stringify(SAVED));
+      const getItem = AsyncStorage.getItem as jest.Mock;
+      const realGetItem = getItem.getMockImplementation();
+      let release: () => void = () => undefined;
+      getItem.mockImplementationOnce(
+        (key: string) =>
+          new Promise(resolve => {
+            release = () => resolve(realGetItem?.(key));
+          }),
+      );
+      mockQuranStates.set('الله لا اله', textDone([hit('2:255', 3, 2)]));
+      await open('الله لا اله');
+      press('quran-row', 'quran-verse-2:255');
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        release();
+      });
+      expect(await storedIds()).toEqual(['2:255', 1, 'r1']);
+    });
   });
 
   it('iPad: Quran rows alone open the tablet results; a root keeps the list', async () => {

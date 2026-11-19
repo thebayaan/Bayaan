@@ -106,6 +106,22 @@ function recentId(item: RecentSearchItem): string | number {
 }
 // @ai-end
 
+/**
+ * The recent searches stored on the device. The old format (plain query
+ * strings) is cleared.
+ */
+async function readStoredRecents(): Promise<RecentSearchItem[]> {
+  const stored = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
+  if (!stored) return [];
+  const parsed: unknown = JSON.parse(stored);
+  if (!Array.isArray(parsed)) return [];
+  if (parsed.length > 0 && typeof parsed[0] === 'string') {
+    await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
+    return [];
+  }
+  return (parsed as RecentSearchItem[]).filter(isUsableRecent);
+}
+
 // @ai-start
 type SearchResult = CatalogSearchResult;
 // Catalogue rows, then the Quran results ("Ayahs") section.
@@ -157,6 +173,11 @@ export function SearchView({
   const [, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
+  // The list as last set, for the writes below, and the read of the stored
+  // list, which every write waits for: a search remembered before the list
+  // was read joins it instead of replacing it.
+  const recentsRef = useRef<RecentSearchItem[]>([]);
+  const recentsRead = useRef<Promise<void> | null>(null);
   const router = useRouter();
   const [catalogSearch, setCatalogSearch] = useState<ReturnType<
     typeof createCatalogSearch
@@ -305,12 +326,48 @@ export function SearchView({
     [searchResults, quranRows],
   );
 
+  // The stored recent searches, read once. Not after the catalogue: its
+  // reciters can wait seconds on the network, and the Ayahs rows can be
+  // tapped before they arrive.
+  const readRecents = useCallback(() => {
+    recentsRead.current ??= readStoredRecents().then(
+      stored => {
+        recentsRef.current = stored;
+        setRecentSearches(stored);
+      },
+      error => {
+        console.error('Error loading recent searches:', error);
+      },
+    );
+    return recentsRead.current;
+  }, []);
+
+  // Puts `item` first in the recent searches, once (an older entry for the
+  // same surah, reciter or ayah goes), on top of the stored list.
+  const rememberSearch = useCallback(
+    async (item: RecentSearchItem) => {
+      await readRecents();
+      const id = recentId(item);
+      const updated = [
+        item,
+        ...recentsRef.current.filter(
+          search => search.type !== item.type || recentId(search) !== id,
+        ),
+      ].slice(0, MAX_RECENT_SEARCHES);
+      recentsRef.current = updated;
+      setRecentSearches(updated);
+      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    },
+    [readRecents],
+  );
+
   // Lazy-init Fuse.js when user first activates search
   const fuseInitialized = useRef(false);
   useEffect(() => {
     if (!visible || !isSearchMode || fuseInitialized.current) return;
     fuseInitialized.current = true;
     prefetchQuranSearch(); // The first Arabic query skips the DB import.
+    readRecents();
 
     const fetchData = async () => {
       try {
@@ -321,23 +378,6 @@ export function SearchView({
 
         setCatalogSearch(createCatalogSearch(reciterData, surahData)); // @ai
 
-        const storedSearches = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
-        if (storedSearches) {
-          const parsed = JSON.parse(storedSearches);
-          if (
-            Array.isArray(parsed) &&
-            parsed.length > 0 &&
-            typeof parsed[0] === 'string'
-          ) {
-            await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
-            setRecentSearches([]);
-          } else {
-            setRecentSearches(
-              Array.isArray(parsed) ? parsed.filter(isUsableRecent) : [],
-            );
-          }
-        }
-
         setLoading(false);
       } catch (error) {
         console.error('Error initializing search:', error);
@@ -345,7 +385,7 @@ export function SearchView({
       }
     };
     fetchData();
-  }, [visible, isSearchMode]);
+  }, [visible, isSearchMode, readRecents]);
 
   const performSearch = useCallback(() => {
     if (!catalogSearch || !debouncedQuery.trim()) {
@@ -392,34 +432,13 @@ export function SearchView({
   }, [performSearch, catalogueShown]);
 
   const addToRecentSearches = useCallback(
-    async (result: SearchResult) => {
-      const newItem: RecentSearchItem = {
+    (result: SearchResult) =>
+      rememberSearch({
         type: result.type,
         item: result.item,
         timestamp: Date.now(),
-      };
-
-      const filteredSearches = recentSearches.filter(search => {
-        if (search.type === 'verse' || search.type !== result.type) return true;
-        if (search.type === 'surah') {
-          return (search.item as Surah).id !== (result.item as Surah).id;
-        } else {
-          return (search.item as Reciter).id !== (result.item as Reciter).id;
-        }
-      });
-
-      const updatedSearches = [newItem, ...filteredSearches].slice(
-        0,
-        MAX_RECENT_SEARCHES,
-      );
-
-      setRecentSearches(updatedSearches);
-      await AsyncStorage.setItem(
-        RECENT_SEARCHES_KEY,
-        JSON.stringify(updatedSearches),
-      );
-    },
-    [recentSearches],
+      }),
+    [rememberSearch],
   );
 
   const handleResultPress = useCallback(
@@ -450,28 +469,17 @@ export function SearchView({
   const openVerse = useCallback(
     (verseKey: string, positions: readonly number[]) => {
       Keyboard.dismiss();
-      const newItem: RecentSearchItem = {
+      rememberSearch({
         type: 'verse',
         verseKey,
         positions: [...positions],
         timestamp: Date.now(),
-      };
-      const updatedSearches = [
-        newItem,
-        ...recentSearches.filter(
-          search => search.type !== 'verse' || search.verseKey !== verseKey,
-        ),
-      ].slice(0, MAX_RECENT_SEARCHES);
-      setRecentSearches(updatedSearches);
-      AsyncStorage.setItem(
-        RECENT_SEARCHES_KEY,
-        JSON.stringify(updatedSearches),
-      ).catch(error => {
+      }).catch(error => {
         console.error('Error saving recent searches:', error);
       });
       openQuranHit(verseKey, positions);
     },
-    [openQuranHit, recentSearches],
+    [openQuranHit, rememberSearch],
   );
 
   const quranRowAction = useMemo<Omit<QuranResultRowViewProps, 'row'>>(
@@ -657,9 +665,11 @@ export function SearchView({
   );
 
   const clearRecentSearches = useCallback(async () => {
+    await readRecents();
+    recentsRef.current = [];
     setRecentSearches([]);
     await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
-  }, []);
+  }, [readRecents]);
 
   if (!visible) return null;
 
