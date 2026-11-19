@@ -710,10 +710,11 @@ export function foldQuranQueryWord(word: string): string {
  * The keys of a token (one typed word, or two joined: يا + أيها): the token
  * itself, and each hamza seat also without its seat letter: ؤ and ئ
  * anywhere, أ and إ after a word's first letter (مسؤولا → مسوولا, مسولا;
- * يسألونك → يسالونك, يسلونك; أأنتم → اانتم, انتم), as the Uthmani text
- * often writes that hamza on the line or on a tatweel. At most 2 seats, so
- * at most 4 keys. A token that needs a hamza only matches words with one, so
- * a key without a seat letter stays specific.
+ * يسألونك → يسالونك, يسلونك; أأنتم → اانتم, انتم), as a reader may put
+ * the hamza on another seat than the index's spellings. At most 2 seats, so
+ * at most 4 keys, the token as typed first. A key without a seat letter is
+ * often another word (امرأة → امره, as أمره), so the engine looks the
+ * others up only when the first is no word of the text.
  */
 function tokenKeys(words: readonly string[]): string[] {
   const chars: string[] = [];

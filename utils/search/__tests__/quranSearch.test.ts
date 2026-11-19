@@ -254,6 +254,42 @@ describe('searchQuranText', () => {
     expect(found.hits.map(h => h.verseIndex)).toEqual([9]);
   });
 
+  it('uses the keys without a seat only when the token as typed is no word', async () => {
+    const {source} = sourceOf({
+      // امرأة (a woman) and أمره (his matter), both with a hamza
+      امراه: [{verseIndex: 3, position: 2, hasHamza: true}],
+      امره: [{verseIndex: 5, position: 4, hasHamza: true}],
+      // يسألونك as the index spells it, and the opening يس
+      يسالونك: [{verseIndex: 7, position: 1, hasHamza: true}],
+      يس: [{verseIndex: 9, position: 1}],
+      // أءلهتنا, which أإله starts, and إله
+      االهتنا: [{verseIndex: 10, position: 2, hasHamza: true}],
+      اله: [{verseIndex: 11, position: 4, hasHamza: true}],
+      // a form without a hamza for the first key, with one for the second
+      ماا: [{verseIndex: 12, position: 1}],
+      ما: [{verseIndex: 13, position: 3, hasHamza: true}],
+    });
+    const woman = await searchQuranText(
+      [token(['امراه', 'امره'], true)],
+      source,
+    );
+    expect(woman.hits.map(h => h.verseIndex)).toEqual([3]);
+    // As typed it is no word: the key without its seat letter counts.
+    const matter = await searchQuranText(
+      [token(['امرات', 'امره'], true)],
+      source,
+    );
+    expect(matter.hits.map(h => h.verseIndex)).toEqual([5]);
+    // The start of a word, as typed: its prefix matches, with the others.
+    const typing = await searchQuranText([token(['يسا', 'يس'], true)], source);
+    expect(typing.hits.map(h => h.verseIndex)).toEqual([7]);
+    const god = await searchQuranText([token(['االه', 'اله'], true)], source);
+    expect(god.hits.map(h => h.verseIndex)).toEqual([11, 10]);
+    // Postings the hamza rule skips are no word.
+    const water = await searchQuranText([token(['ماا', 'ما'], true)], source);
+    expect(water.hits.map(h => h.verseIndex)).toEqual([13]);
+  });
+
   it('falls back to every word in one ayah, closest together first', async () => {
     const {source} = sourceOf({
       رب: [

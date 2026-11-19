@@ -92,6 +92,21 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'قل لا اسالكم عليه اجرا', includes: ['6:90', '42:23']},
   {query: 'يستأذنك', includes: ['9:44', '9:45']},
   {query: 'يسأ', includes: ['2:189', '2:215']},
+  // Without its seat letter a typed hamza is often another word: امرأة is
+  // not أمره (5:95, 12:21), رئاء not رأى (6:76), امرأت not أمرت (6:14).
+  // Only a word the text does not have falls back to it (أإله, 27:60).
+  {
+    query: 'امرأة',
+    includes: ['3:35', '4:12', '27:23'],
+    excludes: ['5:95', '12:21'],
+  },
+  {query: 'امرأت', includes: ['3:35', '66:11'], excludes: ['6:14', '39:11']},
+  {
+    query: 'رئاء',
+    includes: ['2:264', '4:38', '8:47'],
+    excludes: ['6:76', '6:77'],
+  },
+  {query: 'أإله مع الله', includes: ['27:60', '27:61', '27:64']},
   // Vocative يا, ها
   {query: 'يا أيها', includes: ['2:21']},
   // A vocative typed with its conjunction is one Uthmani word (وَيَٰقَوْمِ).
