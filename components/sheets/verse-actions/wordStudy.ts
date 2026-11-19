@@ -13,8 +13,6 @@
  * where DigitalKhatt writes بَعْدَ مَا as two slots
  * (services/wbw/wordAlignment.ts).
  */
-import {currentLanguage} from '@/i18n/language'; // @ai
-import {getLanguageConfig, type AppLanguage} from '@/i18n/languages'; // @ai
 import {
   MORPH_LEMMA_LABEL,
   MORPH_ROOT_LABEL,
@@ -102,29 +100,6 @@ export function indexOfWord(
   if (!ref) return -1;
   return sequence.findIndex(word => sameWord(word, ref));
 }
-
-// @ai-start
-/**
- * Whether Word Study shows a word's word-by-word lines: its Latin
- * transliteration and its English meaning (the word-by-word data is English
- * only). In a UI whose language `understandsArabic` (the registry,
- * i18n/languages.ts), never, whatever the Word by Word options say: there
- * the card is all Arabic, and its Arabic meaning section gives the word's
- * meaning. In other UIs each line follows its Word by Word option.
- *
- * This is an exception to the app's reading-aid rule. Elsewhere the
- * language only sets the options' first value
- * (defaultShowEnglishReadingAids, i18n/language.ts), and a reader who turns
- * a line on sees it in every UI language: the Word by Word screen and the
- * player's grid still do. Word Study alone overrides that choice (01 §3 of
- * docs/plans/2026-11-14-word-study).
- */
-export function showsWordGloss(
-  language: AppLanguage = currentLanguage,
-): boolean {
-  return !getLanguageConfig(language).understandsArabic;
-}
-// @ai-end
 
 /** A word's morphology: root and lemma apart, the other facts in data order. */
 export interface MorphSummary {

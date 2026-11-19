@@ -3,8 +3,8 @@
  * The card of one word in Word Study (docs/plans/2026-11-14-word-study,
  * README decisions and 01 §3), top to bottom:
  *  - header: the mushaf's own word (WordHeaderText), its transliteration and
- *    English meaning (each when its Word by Word option is on, and never in
- *    the Arabic UI: showsWordGloss), Play, and its reference; for another
+ *    English meaning (each when its Word by Word option is on, whatever
+ *    the UI language: useWordGloss), Play, and its reference; for another
  *    rewayah a Hafs chip and a note that the word's data is Hafs; @ai
  *  - Readings: how the 8 rewayat read the word (WordReadingsSection);
  *  - I'rab, then Morphology: the root (a chip when root search is wired),
@@ -81,7 +81,6 @@ import {RasmSection} from './word-study/RasmSection';
 import {WordHeaderText} from './WordHeaderText';
 import {
   rnQuranFontFamily,
-  showsWordGloss,
   summarizeMorph,
   type StudyWord,
   type WordRef,
@@ -134,11 +133,11 @@ export interface WordCardProps extends RefProps {
 /**
  * The word's word-by-word lines the reader wants: each only when its Word by
  * Word option is on, as the old word sheet did (some readers hide the
- * meaning while memorising), and neither in the Arabic UI, whose card is all
- * Arabic, even when the reader turned them on (showsWordGloss: an exception
- * to the reading-aid rule). Trimmed: hundreds of meanings in the data end
- * with a space ('Allah ' at 2:255:1), which the quotes would show. Undefined
- * when off or missing.
+ * meaning while memorising). The options hold in every UI language, as in
+ * Word by Word and the player; the language only sets their first value,
+ * and the Arabic UI starts with both off (defaultShowEnglishReadingAids).
+ * Trimmed: hundreds of meanings in the data end with a space ('Allah ' at
+ * 2:255:1), which the quotes would show. Undefined when off or missing.
  */
 function useWordGloss(wbw: WBWWord | undefined): {
   transliteration: string | undefined;
@@ -148,9 +147,6 @@ function useWordGloss(wbw: WBWWord | undefined): {
   const showTransliteration = useMushafSettingsStore(
     s => s.wbwShowTransliteration,
   );
-  if (!showsWordGloss()) {
-    return {transliteration: undefined, translation: undefined};
-  }
   return {
     transliteration:
       (showTransliteration && wbw?.transliteration?.trim()) || undefined,

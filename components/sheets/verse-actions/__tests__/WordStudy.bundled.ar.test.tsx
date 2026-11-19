@@ -1,11 +1,12 @@
 // @ai-generated
 /**
- * Word Study in the Arabic UI over the bundled data: no English and no Latin
- * letters anywhere, with both Word by Word options on. The word-by-word data
- * is English only, so the card's transliteration and English meaning (and
- * the whole-verse list's meaning) are not drawn in an Arabic UI, whatever
- * the options say (showsWordGloss); the English UI keeps following them
- * (WordCard.render and WordStudy.bundled).
+ * Word Study in the Arabic UI over the bundled data. The card's
+ * transliteration and English meaning (and the whole-verse list's meaning)
+ * follow the Word by Word options in every UI language, as the old word
+ * sheet did: each is drawn when its option is on, and not when it is off.
+ * The Arabic UI starts with both off (defaultShowEnglishReadingAids), and
+ * with both off there is no English and no Latin letter anywhere; an option
+ * turned on adds its own line and nothing else.
  *
  * The real screen, card, Readings section (over the bundled readings index),
  * i'rab blocks, Arabic meaning and rasm sections and books tab, fed by the
@@ -14,7 +15,7 @@
  * readings' Quran text) and word audio are replaced. The app language is
  * fixed when the app starts, so this runs in its own file.
  *
- * The only Latin allowed is the two web addresses the sources lines name:
+ * The only other Latin is the two web addresses the sources lines name:
  * Tanzil's terms ask for a link to tanzil.net, and quranpedia.net is the
  * publisher's address. Every digit is Arabic-Indic, behind Show more too,
  * in Word Study only mode (the unnumbered basmala) and when the i'rab
@@ -201,7 +202,7 @@ const BUNDLED: Record<string, string> = {
   'gharib-v1.db': 'assets/data/gharib-v1.db',
   'rasm-v1.db': 'assets/data/rasm-v1.db',
 };
-/** The only Latin allowed: the sources lines' web addresses. */
+/** The only other Latin allowed: the sources lines' web addresses. */
 const WEB_ADDRESSES = /quranpedia\.net|tanzil\.net/g;
 
 let dir = '';
@@ -221,12 +222,16 @@ beforeAll(async () => {
     });
 });
 
+const initialSettings = useMushafSettingsStore.getInitialState();
+/** The Word by Word options as the Arabic UI starts them (both off). */
+const FIRST_OPTIONS = {
+  wbwShowTranslation: initialSettings.wbwShowTranslation,
+  wbwShowTransliteration: initialSettings.wbwShowTransliteration,
+};
+
 beforeEach(() => {
-  // Both Word by Word lines on: the Arabic UI still draws neither.
-  useMushafSettingsStore.setState({
-    wbwShowTranslation: true,
-    wbwShowTransliteration: true,
-  });
+  // A test that turns an option on says so.
+  useMushafSettingsStore.setState(FIRST_OPTIONS);
   announced.length = 0;
 });
 
@@ -363,11 +368,18 @@ function spoken(): string[] {
     .filter((s): s is string => typeof s === 'string' && s !== '');
 }
 
-/** What is shown or spoken that holds Latin (outside the web addresses) or ASCII digits. */
-function notArabic(): string[] {
-  return [...texts(), ...spoken(), ...announced].filter(s =>
-    /[A-Za-z0-9]/.test(s.replace(WEB_ADDRESSES, '')),
-  );
+/**
+ * What is shown or spoken that holds Latin or ASCII digits, outside the web
+ * addresses and the `allowed` word-by-word lines the reader turned on.
+ * Longest lines first: 'Him' is a meaning, and so is 'overtakes Him'.
+ */
+function notArabic(allowed: readonly string[] = []): string[] {
+  const lines = [...allowed].sort((a, b) => b.length - a.length);
+  return [...texts(), ...spoken(), ...announced].filter(s => {
+    let rest = s.replace(WEB_ADDRESSES, '');
+    for (const line of lines) rest = rest.split(line).join('');
+    return /[A-Za-z0-9]/.test(rest);
+  });
 }
 
 async function press(label: string) {
@@ -382,11 +394,15 @@ async function press(label: string) {
   await settle();
 }
 
-it('runs in the Arabic UI', () => {
+it('runs in the Arabic UI, with both Word by Word options off at first', () => {
   expect(currentLanguage).toBe('ar');
+  expect(FIRST_OPTIONS).toEqual({
+    wbwShowTranslation: false,
+    wbwShowTransliteration: false,
+  });
 });
 
-it('shows no transliteration or English meaning with both Word by Word options on', async () => {
+it('shows no transliteration or English meaning with the Word by Word options off', async () => {
   const allah = gloss('2:255', 1);
   // The data has both lines for the word.
   expect(allah.transliteration).toBe('al-lahu');
@@ -415,7 +431,41 @@ it('shows no transliteration or English meaning with both Word by Word options o
   expect(notArabic()).toEqual([]);
 });
 
-it('lists the whole verse without the English meanings', async () => {
+it.each([
+  [true, true],
+  [true, false],
+  [false, true],
+])(
+  'shows the Word by Word lines the reader turned on (translation %s, transliteration %s)',
+  async (translation, transliteration) => {
+    useMushafSettingsStore.setState({
+      wbwShowTranslation: translation,
+      wbwShowTransliteration: transliteration,
+    });
+    const allah = gloss('2:255', 1);
+    const meaning = allah.translation.trim();
+    await open(hafs('2:255'), {verseKey: '2:255', position: 1});
+    const shown = texts();
+    expect(shown.includes(allah.transliteration)).toBe(transliteration);
+    // In quotes, without the data's trailing space.
+    expect(shown.join('|').includes(`“${meaning}”`)).toBe(translation);
+    expect(shown.join('|').includes(meaning)).toBe(translation);
+    // The rest of the card is as with the options off, and all Arabic.
+    expect(shown).toEqual(
+      expect.arrayContaining([
+        mushaf('2:255', 1),
+        '٢:٢٥٥ · الكلمة ١',
+        'الإعراب',
+        'الصرف',
+        'القراءات',
+        'الكلمة ١ من ٥٠',
+      ]),
+    );
+    expect(notArabic([allah.transliteration, meaning])).toEqual([]);
+  },
+);
+
+it('lists the whole verse without the English meanings while the Translation option is off', async () => {
   await open(hafs('2:255'), {verseKey: '2:255', position: 1});
   await press('الآية كاملة');
   const shown = texts();
@@ -424,6 +474,35 @@ it('lists the whole verse without the English meanings', async () => {
   );
   expect(shown.join('|')).not.toContain('Allah');
   expect(notArabic()).toEqual([]);
+});
+
+it("lists the whole verse with each word's English meaning once the Translation option is on", async () => {
+  useMushafSettingsStore.setState({wbwShowTranslation: true});
+  const meanings = (
+    wbw
+      .prepare(
+        'SELECT translation FROM words WHERE verse_key = ? ORDER BY position',
+      )
+      .all('2:255') as {translation: string}[]
+  )
+    .map(row => row.translation.trim())
+    .filter(Boolean);
+  expect(meanings).toHaveLength(50);
+  await open(hafs('2:255'), {verseKey: '2:255', position: 1});
+  await press('الآية كاملة');
+  const shown = texts();
+  // Each word's meaning, trimmed ('Allah ' at 2:255:1 in the data).
+  expect(shown).toEqual(
+    expect.arrayContaining([
+      'كلمة واحدة',
+      'الكلمة ١',
+      'الكلمة ٥٠',
+      ...meanings,
+    ]),
+  );
+  // No transliteration in the list, and nothing else in Latin.
+  expect(shown.join('|')).not.toContain(gloss('2:255', 1).transliteration);
+  expect(notArabic(meanings)).toEqual([]);
 });
 
 it("names a word of another verse in Arabic, with its verse, in 1:4:1's i'rab", async () => {
