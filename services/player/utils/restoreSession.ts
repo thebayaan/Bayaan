@@ -89,7 +89,10 @@ export async function restoreSession(): Promise<void> {
         persistedState.queue.currentIndex,
       );
       if (restored) {
-        const startPosition = Math.max(0, persistedState.playback.position);
+        const {position: startPosition, duration} = savedPlace(
+          restored.tracks[restored.index],
+          persistedState.playback,
+        );
         persistedState.updateQueueState({
           tracks: restored.tracks,
           currentIndex: restored.index,
@@ -98,7 +101,7 @@ export async function restoreSession(): Promise<void> {
         persistedState.updatePlaybackState({
           state: 'paused',
           position: startPosition,
-          duration: persistedState.playback.duration,
+          duration,
         });
 
         if (__DEV__) {
@@ -238,17 +241,23 @@ export async function restoreSession(): Promise<void> {
  * downloads may have been added or removed), and uploads that were deleted
  * are dropped. Returns null when the current track itself is gone, so the
  * caller falls back to the recent cards.
+ *
+ * Only a list of uploads that loaded can say an upload was deleted. When the
+ * uploads database failed to open or read at launch, the list is empty and
+ * every upload is kept, with the url it was saved with.
  */
 function restorePersistedQueue(
   tracks: Track[],
   currentIndex: number,
 ): {tracks: Track[]; index: number} | null {
-  const uploads = useUploadsStore.getState().recitations;
+  const {recitations: uploads, loading, error} = useUploadsStore.getState();
+  const uploadsLoaded = loading === false && !error;
   const kept: Track[] = [];
   let index = -1;
   tracks.forEach((track, i) => {
     if (
       track.isUserUpload &&
+      uploadsLoaded &&
       !uploads.some(r => r.id === track.userRecitationId)
     ) {
       return;
@@ -257,6 +266,44 @@ function restorePersistedQueue(
     kept.push({...track, url: resolveTrackUrl(track)});
   });
   return index === -1 ? null : {tracks: kept, index};
+}
+
+/**
+ * Where the restored track starts: the position saved with the player store.
+ *
+ * Builds that restored from the recent card wrote the 0:00 status of their
+ * own load to the store and could drop the status of the seek that followed.
+ * When the app then closed without playing, the store said 0:00 while the
+ * card kept the real place, and the next launch of those builds resumed from
+ * the card. So when the store says 0:00 and the last recent card is this same
+ * recording, part-way through, the card's place is used. A card at 100% is
+ * not resumed: a queue that finished leaves its last track at 0:00.
+ */
+function savedPlace(
+  track: Track,
+  playback: {position: number; duration: number},
+): {position: number; duration: number} {
+  if (playback.position > 0) {
+    return {position: playback.position, duration: playback.duration};
+  }
+  const recent = useRecentlyPlayedStore.getState().recentTracks[0];
+  if (
+    recent &&
+    !track.isUserUpload &&
+    !recent.isUserUpload &&
+    recent.reciter?.id === track.reciterId &&
+    String(recent.surah?.id) === track.surahId &&
+    (recent.rewayatId || '') === (track.rewayatId || '') &&
+    recent.progress > 0 &&
+    recent.progress < 1 &&
+    recent.duration > 0
+  ) {
+    return {
+      position: recent.progress * recent.duration,
+      duration: recent.duration,
+    };
+  }
+  return {position: 0, duration: playback.duration};
 }
 // @ai-end
 
