@@ -116,7 +116,8 @@ jest.mock('@/utils/haptics', () => ({lightHaptics: jest.fn()}));
 jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('expo-clipboard', () => ({setStringAsync: jest.fn()}));
 // The root stack's routes when root search opens an ayah: the tabs, and the
-// reader when one is open.
+// reader when one is open. The container's state nests the app's root stack
+// under expo-router's own root route.
 const mockRootStack: {routes: {name: string}[]} = {routes: []};
 jest.mock('expo-router', () => {
   const router = {push: jest.fn(), dismissTo: jest.fn()};
@@ -125,7 +126,18 @@ jest.mock('expo-router', () => {
     useRouter: () => router,
     useNavigationContainerRef: () => ({
       isReady: () => true,
-      getRootState: () => ({routes: mockRootStack.routes}),
+      getRootState: () => ({
+        routeNames: ['__root'],
+        routes: [
+          {
+            name: '__root',
+            state: {
+              routeNames: ['(tabs)', 'mushaf', 'mushaf/[page]'],
+              routes: mockRootStack.routes,
+            },
+          },
+        ],
+      }),
     }),
   };
 });

@@ -24,10 +24,10 @@ export function useOpenQuranHit(): (
   return useCallback(
     (verseKey: string, positions: readonly number[]) => {
       const params = quranHitOpenParams(verseKey, positions);
-      const routes = navigation.isReady()
-        ? navigation.getRootState()?.routes
+      const state = navigation.isReady()
+        ? navigation.getRootState()
         : undefined;
-      if (quranHitOpenMethod(routes) === 'dismissTo') {
+      if (quranHitOpenMethod(state) === 'dismissTo') {
         router.dismissTo({pathname: '/mushaf', params});
       } else {
         router.push({pathname: '/mushaf', params});

@@ -36,21 +36,38 @@ export function quranHitOpenParams(
 /** The name of the Mushaf reader's route in the root stack (app/mushaf.tsx). */
 export const READER_ROUTE_NAME = 'mushaf';
 
+/** A navigation state, as far as quranHitOpenMethod reads it. */
+export interface QuranHitNavigationState {
+  routeNames?: readonly string[];
+  routes?: readonly {name: string; state?: QuranHitNavigationState}[];
+}
+
 /**
- * How a hit reaches the reader, from the routes of the root stack. When the
- * stack already holds the reader (the verse sheet or the player is over it,
- * or a screen above it), 'dismissTo' (POP_TO) pops back to it and gives it
- * the hit's params, as a link to the open reader does: one reader stays, and
- * it turns to the hit (hooks/useReaderLinkPage.ts). A push there would stack
- * a second reader. With no reader, 'push' opens one: a POP_TO there would
- * replace the route on top (the tabs).
+ * Whether the navigator that declares the reader route, the app's root
+ * stack, holds the reader. The navigation container's state does not start
+ * at that stack: expo-router nests it under a root route of its own.
+ */
+function holdsReader(state: QuranHitNavigationState | undefined): boolean {
+  if (!state?.routes) return false;
+  if (state.routeNames?.includes(READER_ROUTE_NAME)) {
+    return state.routes.some(route => route.name === READER_ROUTE_NAME);
+  }
+  return state.routes.some(route => holdsReader(route.state));
+}
+
+/**
+ * How a hit reaches the reader, from the navigation container's state. When
+ * the root stack already holds the reader (the verse sheet or the player is
+ * over it, or a screen above it), 'dismissTo' (POP_TO) pops back to it and
+ * gives it the hit's params, as a link to the open reader does: one reader
+ * stays, and it turns to the hit (hooks/useReaderLinkPage.ts). A push there
+ * would stack a second reader. With no reader, 'push' opens one: a POP_TO
+ * there would replace the route on top (the tabs).
  */
 export function quranHitOpenMethod(
-  rootRoutes: readonly {name: string}[] | undefined,
+  state: QuranHitNavigationState | undefined,
 ): 'dismissTo' | 'push' {
-  return rootRoutes?.some(route => route.name === READER_ROUTE_NAME)
-    ? 'dismissTo'
-    : 'push';
+  return holdsReader(state) ? 'dismissTo' : 'push';
 }
 
 /** The slots of a `words` param ('3,4' → [3, 4]); invalid parts dropped. */

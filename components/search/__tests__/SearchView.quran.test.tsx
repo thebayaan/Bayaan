@@ -30,7 +30,15 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({push: mockPush}),
   useNavigationContainerRef: () => ({
     isReady: () => true,
-    getRootState: () => ({routes: [{name: '(tabs)'}]}),
+    getRootState: () => ({
+      routeNames: ['__root'],
+      routes: [
+        {
+          name: '__root',
+          state: {routeNames: ['(tabs)', 'mushaf'], routes: [{name: '(tabs)'}]},
+        },
+      ],
+    }),
   }),
 }));
 jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));

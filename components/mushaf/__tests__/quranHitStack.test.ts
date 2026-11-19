@@ -60,7 +60,7 @@ function reduce(
 function openHit(
   state: StackNavigationState<ParamListBase>,
 ): StackNavigationState<ParamListBase> {
-  const method = quranHitOpenMethod(state.routes);
+  const method = quranHitOpenMethod(state);
   return reduce(
     state,
     method === 'dismissTo' ? 'POP_TO' : 'PUSH',
@@ -101,15 +101,53 @@ it('with no reader (the Search tab): pushes one over the tabs', () => {
   expect(next.routes[1].params).toEqual(HIT);
 });
 
-it('picks the method from the root routes', () => {
-  expect(quranHitOpenMethod([{name: '(tabs)'}, {name: 'mushaf'}])).toBe(
-    'dismissTo',
-  );
-  expect(quranHitOpenMethod([{name: '(tabs)'}])).toBe('push');
+/**
+ * The navigation container's state as expo-router builds it: its own root
+ * route, holding the app's root stack (app/_layout.tsx).
+ */
+function containerState(routes: Route[]) {
+  return {
+    routeNames: ['__root', '+not-found'],
+    routes: [{key: 'slot', name: '__root', state: stack(routes)}],
+  };
+}
+
+it("finds the reader in the app's root stack, under expo-router's own root", () => {
+  expect(quranHitOpenMethod(containerState([tabs, reader]))).toBe('dismissTo');
+  expect(
+    quranHitOpenMethod(
+      containerState([tabs, reader, {key: 'tr', name: 'translations'}]),
+    ),
+  ).toBe('dismissTo');
+  expect(quranHitOpenMethod(containerState([tabs]))).toBe('push');
+});
+
+it('counts only the reader route of the root stack', () => {
   // A link route hands off to the reader itself; it is not the reader.
-  expect(quranHitOpenMethod([{name: '(tabs)'}, {name: 'mushaf/[page]'}])).toBe(
-    'push',
-  );
+  expect(
+    quranHitOpenMethod(
+      containerState([tabs, {key: 'link', name: 'mushaf/[page]'}]),
+    ),
+  ).toBe('push');
+  // A screen of another navigator with a similar name is not the reader.
+  const settings = {
+    key: 'tabs',
+    name: '(tabs)',
+    state: {
+      routeNames: ['(a.home)', '(d.settings)'],
+      routes: [
+        {
+          key: 'settings',
+          name: '(d.settings)',
+          state: {
+            routeNames: ['index', 'mushaf-settings'],
+            routes: [{key: 'ms', name: 'mushaf-settings'}],
+          },
+        },
+      ],
+    },
+  };
+  expect(quranHitOpenMethod(containerState([settings]))).toBe('push');
   // The navigation is not ready yet.
   expect(quranHitOpenMethod(undefined)).toBe('push');
 });
