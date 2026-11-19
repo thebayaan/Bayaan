@@ -196,6 +196,18 @@ describe('placement tiers', () => {
     });
   });
 
+  it.each(['.', ''])(
+    'an entry whose gloss has no meaning text (%p) stays at verse level',
+    gloss => {
+      const e = {...entry('2:2', 'هُدىً'), gloss};
+      expect(placeAll([e], verses, NONE)[0]).toMatchObject({
+        tier: 0,
+        span: null,
+        candidate: '',
+      });
+    },
+  );
+
   it('a duplicated word goes after the previous placed entry', () => {
     const placed = placeAll(
       [

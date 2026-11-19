@@ -22,11 +22,13 @@
  * Then tiers 1-3 in a verse up to 3 before or after (moved), then none.
  * Only tiers 1-3 (and hand placements) go on words. Tier 4 and moved entries
  * keep their match as an unshown candidate and stay at verse level, like
- * entries that match nothing (README: not shown in v1).
+ * entries that match nothing and entries with no meaning text (README: not
+ * shown in v1).
  */
 import {
   ENCLITICS,
   hamzaKey,
+  isArabicLetter,
   looseKey,
   matchKey,
   plainKey,
@@ -291,6 +293,11 @@ export function textProblem(text: string): string | null {
   return null;
 }
 
+/** Has the gloss any meaning text, an Arabic letter? '' and '.' have none. */
+export function hasMeaningText(gloss: string): boolean {
+  return [...gloss].some(isArabicLetter);
+}
+
 // ---------------------------------------------------------------------------
 // Placement.
 
@@ -494,7 +501,9 @@ function wordKeys(words: readonly AppWord[]): WordKeys[] {
  * Places every entry on the app's words (see the file comment). Entries
  * are processed per verse in book order; when the winning tier gives
  * several spans, the first one starting after the previous placed entry of
- * the same source in that verse wins, else the first.
+ * the same source in that verse wins, else the first. An entry whose gloss
+ * has no meaning text (hasMeaningText) is not placed: there is nothing to
+ * show on its words. A hand placement still wins.
  */
 export function placeAll(
   entries: readonly GharibInput[],
@@ -542,7 +551,7 @@ export function placeAll(
         placement.verseKey = m[1];
         placement.span = [Number(m[2]), Number(m[3])];
       }
-    } else {
+    } else if (hasMeaningText(input.gloss)) {
       placeInVerse(placement, words, keysOf(verseKey), lastStart.get(prevKey));
       if (!placement.span && !placement.candidate) {
         placeNearby(placement, verses, keysOf);

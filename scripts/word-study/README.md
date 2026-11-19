@@ -74,10 +74,12 @@ Gates: every input locked by SHA-256 and version; no markup, link, Latin
 letter, digit, bracket or U+FFFD in a headword, gloss or note after cleaning
 (the editor's `[…]` insertions and footnote markers are removed); every span
 on real words; each book's share of entries on words at least its `minPlaced`.
+An entry whose gloss has no meaning text (empty, or punctuation only) is kept
+at verse level.
 
 `--report` lists tier-3, tier-2 and ambiguous placements (shown), and tier-4,
-moved and unplaced entries (not shown). To place an entry by hand, add to
-`gharib-reviewed.json`:
+moved, no-meaning and unplaced entries (not shown). To place an entry by
+hand, add to `gharib-reviewed.json`:
 
 ```json
 {"__format": 1, "entries": {"327 2:5 لاريبفيه": {"span": "2:2:3-5"}}}

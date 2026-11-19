@@ -13,12 +13,14 @@
  *  - an input that is not locked, or a locked input that is not given;
  *  - a dump whose version is not the locked one;
  *  - a headword, gloss or note that still has markup, a link, Latin
- *    letters, digits, brackets or U+FFFD after cleaning, or an empty gloss;
+ *    letters, digits, brackets or U+FFFD after cleaning;
  *  - a span outside its verse's words in data/wbw/wbw-en.db;
  *  - a book whose share of entries placed on words is below its minPlaced.
+ * An entry whose gloss has no meaning text (empty, or punctuation only) is
+ * kept at verse level and never shown.
  * --report lists for review: tier-3, tier-2 and ambiguous placements (shown
  * on words), tier-4 and neighbouring-verse matches (kept at verse level),
- * and entries placed nowhere.
+ * entries with no meaning text, and entries placed nowhere.
  * --check rebuilds into a temporary file and compares it with --out.
  *
  * The inputs are not committed (see SOURCES.md for where they come from),
@@ -34,6 +36,7 @@ import {compareDbs, writeGharibDb, type GharibRow} from './db';
 import {
   cleanGloss,
   cleanHeadword,
+  hasMeaningText,
   placeAll,
   readGharibReviewed,
   readJsonl,
@@ -124,13 +127,13 @@ export function build(
     if (!used.has(g)) throw new Error(`locked input ${g.file} not given`);
   }
 
-  // Clean and gate the texts.
+  // Clean and gate the texts. An empty gloss is not a problem here: like
+  // one of punctuation only, it has no meaning text and is not placed.
   for (const e of entries) {
     e.headword = cleanHeadword(e.headword);
     e.gloss = cleanGloss(e.gloss);
     e.note = cleanGloss(e.note ?? '');
     const where = `${e.sourceId} ${e.surah}:${e.ayah} #${e.ord}`;
-    if (!e.gloss) problems.push(`${where}: empty gloss`);
     for (const [field, text] of [
       ['headword', e.headword],
       ['gloss', e.gloss],
@@ -256,7 +259,14 @@ function report(
     ],
     ['Tier 4, verse level (loose match, not shown)', p => p.tier === 4],
     ['Neighbouring verse, verse level (not shown)', p => p.moved],
-    ['Placed nowhere, verse level (not shown)', p => p.tier === 0],
+    [
+      'No meaning text, verse level (not shown)',
+      p => p.tier === 0 && !hasMeaningText(p.input.gloss),
+    ],
+    [
+      'Placed nowhere, verse level (not shown)',
+      p => p.tier === 0 && hasMeaningText(p.input.gloss),
+    ],
     ['Hand-placed (gharib-reviewed.json)', p => p.tier === 5],
   ];
   return sections
