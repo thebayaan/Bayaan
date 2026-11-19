@@ -950,9 +950,13 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     // Range boundary check
     if (state.rangeEnd && state.rangeStart) {
       if (entryAyah > rangeEndEntry(state, numbering, surah)) {
+        // While paused only a seek passes the end (Next on the range's last
+        // verse): a range that starts in another surah is then cued there
+        // and stays paused, as one that starts in this surah does.
+        const keepPaused = state.playbackState === 'paused';
         if (state.rangeRepeatCount === 0) {
           set({_versePlayCount: 1});
-          loopToRangeStart(surah, false);
+          loopToRangeStart(surah, false, keepPaused);
           return;
         }
         if (state._rangePlayCount < state.rangeRepeatCount) {
@@ -960,7 +964,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
             _rangePlayCount: state._rangePlayCount + 1,
             _versePlayCount: 1,
           });
-          loopToRangeStart(surah, false);
+          loopToRangeStart(surah, false, keepPaused);
           return;
         }
         // Range exhausted — stop playback

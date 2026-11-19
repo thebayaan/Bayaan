@@ -124,6 +124,7 @@ export const analyticsModule = {analyticsService: mockAnalytics};
 // than playing / paused.
 export const playerControl = {playing: false, state: null as string | null};
 export const mockPlayerPause = jest.fn();
+export const mockPlayerPlay = jest.fn();
 
 export const playerStoreModule = {
   usePlayerStore: {
@@ -134,6 +135,7 @@ export const playerStoreModule = {
           (playerControl.playing ? 'playing' : 'paused'),
       },
       pause: mockPlayerPause,
+      play: mockPlayerPlay,
     }),
   },
 };
