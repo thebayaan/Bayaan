@@ -23,6 +23,7 @@ import {
   buildQuranSearchIndex,
   dkWordsSha256,
   irabMorphologySha256,
+  memoryPostingSource,
   ROOT_COUNT_EXCEPTIONS,
   statedRootCount,
   type QuranSearchIndexContent,
@@ -31,8 +32,12 @@ import {
 import {IRAB_DB_NAME} from '@/constants/bundledDatabases';
 import {
   decodePostings,
+  flagsOfCode,
+  hasFlag,
+  QURAN_FLAG,
   QURAN_FLAG_RANGE,
   QURAN_SEARCH_DB_NAME,
+  QURAN_SEARCH_FORMAT,
   QURAN_SLOT_STRIDE,
   verseKeyAt,
 } from '@/utils/search/quranIndexFormat';
@@ -65,7 +70,11 @@ beforeAll(() => {
 afterAll(() => db.close());
 
 describe(QURAN_SEARCH_DB_NAME, () => {
-  it('has the format 1 schema and a complete meta', () => {
+  it('has the schema of its format and a complete meta', () => {
+    const columns = (
+      db.prepare('PRAGMA table_info(forms)').all() as {name: string}[]
+    ).map(row => row.name);
+    expect(columns).toEqual(['form', 'postings', 'whole']);
     const tables = (
       db
         .prepare(
@@ -100,7 +109,8 @@ describe(QURAN_SEARCH_DB_NAME, () => {
     ]) {
       expect(meta[key]).toBeTruthy();
     }
-    expect(meta.format).toBe('1');
+    expect(meta.format).toBe(String(QURAN_SEARCH_FORMAT));
+    expect(meta.format).toBe('2');
     expect(meta.complete).toBe('1');
     expect(meta.imlaei_sha256).toBeUndefined();
   });
@@ -266,14 +276,14 @@ describe(QURAN_SEARCH_DB_NAME, () => {
   });
 
   it('stores the rebuilt rows', () => {
-    const forms = db.prepare('SELECT form, postings FROM forms').all() as {
-      form: string;
-      postings: string;
-    }[];
+    const forms = db
+      .prepare('SELECT form, postings, whole FROM forms')
+      .all() as {form: string; postings: string; whole: number}[];
     expect(forms).toHaveLength(rebuilt.forms.size);
-    for (const {form, postings} of forms) {
+    for (const {form, postings, whole} of forms) {
       expect(isFoldedForm(form)).toBe(true);
       expect(decodePostings(postings)).toEqual(rebuilt.forms.get(form));
+      expect(whole).toBe(rebuilt.wholeWordForms.has(form) ? 1 : 0);
     }
     expect(
       db.prepare('SELECT id, root, words, ayahs FROM roots ORDER BY id').all(),
@@ -297,6 +307,34 @@ describe(QURAN_SEARCH_DB_NAME, () => {
     expect(at('يقوم')).not.toContain('2:54:5');
     expect(at('الي')).not.toContain('33:4:12');
     expect(at('التي')).not.toContain('4:23:21');
+  });
+
+  it('matches the forms only the letters as drawn give as whole words', async () => {
+    const whole = rebuilt.wholeWordForms;
+    for (const form of ['يايها', 'يموسي', 'اليل', 'واليل', 'يقومنا']) {
+      expect({form, whole: whole.has(form)}).toEqual({form, whole: true});
+    }
+    for (const form of ['يقوم', 'الي', 'الليل', 'ياايها']) {
+      expect({form, whole: whole.has(form)}).toEqual({form, whole: false});
+    }
+    // Every one is a rasm-only spelling of every word it holds.
+    for (const form of whole) {
+      for (const code of rebuilt.forms.get(form) ?? []) {
+        expect(hasFlag(flagsOfCode(code), QURAN_FLAG.rasmOnly)).toBe(true);
+      }
+    }
+    // Found as typed, never as the start of a word (الي, يقوم).
+    const source = memoryPostingSource(rebuilt.forms, whole);
+    expect([...(await source.exact(['اليل', 'يقومنا'])).keys()]).toEqual([
+      'اليل',
+      'يقومنا',
+    ]);
+    expect([...(await source.prefix('الي', 4000)).keys()]).not.toContain(
+      'اليل',
+    );
+    expect([...(await source.prefix('يقوم', 4000)).keys()]).not.toContain(
+      'يقومنا',
+    );
   });
 
   it('puts a reviewed spelling only on the word it was reviewed for', () => {

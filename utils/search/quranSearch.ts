@@ -48,7 +48,11 @@ export interface QuranPostingSource {
   exact(
     forms: readonly string[],
   ): Promise<ReadonlyMap<string, readonly number[]>>;
-  /** The postings of up to `limit` forms that start with `prefix` (not it). */
+  /**
+   * The postings of up to `limit` forms that start with `prefix` (not it),
+   * leaving out the forms that match whole words only (the letters as
+   * drawn of a vocative or a one-lam word: يقومنا, اليل).
+   */
   prefix(
     prefix: string,
     limit: number,

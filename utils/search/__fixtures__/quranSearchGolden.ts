@@ -173,8 +173,25 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'يبني إسرائيل', includes: ['2:40', '2:47']},
   {query: 'اليل', includes: ['2:164', '3:27']},
   {query: 'واليل إذا يغشى', first: '92:1', exactly: ['92:1', '91:4']},
-  {query: 'يقوم', excludes: ['2:54', '5:20']},
-  {query: 'الى', excludes: ['33:4', '58:2']},
+  // The letters as drawn match whole words only, never the start of what a
+  // reader types: يقوم does not list يَٰقَوْمَنَآ (46:30-31), nor الى the
+  // ayahs of ٱلَّيْل.
+  {query: 'يقوم', excludes: ['2:54', '5:20', '46:30', '46:31']},
+  {
+    query: 'الى',
+    excludes: [
+      '33:4',
+      '58:2',
+      '2:164',
+      '2:274',
+      '3:27',
+      '17:79',
+      '36:37',
+      '73:2',
+      '92:1',
+      '93:2',
+    ],
+  },
   // An open taa (فِطْرَتَ, مَرْضَاتِ) typed as ة, also where the corpus
   // spells the lemma with ت (TAA_MARBUTA_LEMMAS).
   {query: 'فطرة الله', exactly: ['30:30']},

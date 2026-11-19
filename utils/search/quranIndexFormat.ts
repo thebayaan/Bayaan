@@ -15,14 +15,21 @@
  * crosses into the next verse because the stride (256) leaves a gap.
  * Postings are stored as text: ascending codes, the first absolute and the
  * rest as deltas, in base 36, comma-separated.
+ *
+ * Each form also says whether it matches only a whole typed word (whole =
+ * 1): the forms only the letters as drawn give (يموسي, اليل), which are as
+ * often the start of other words (اليل of الي), are never a prefix match.
  */
 import {SURAHS} from '@/data/surahData';
 
 export {QURAN_TIER, type QuranTier} from './quranText';
 
 export const QURAN_SEARCH_DB_NAME = 'quran-search-v1.db';
-/** `meta.format` of the DB this code reads. */
-export const QURAN_SEARCH_FORMAT = 1;
+/**
+ * `meta.format` of the DB this code reads: 2 since forms.whole. The service
+ * imports a copy of another format again.
+ */
+export const QURAN_SEARCH_FORMAT = 2;
 export const QURAN_VERSE_COUNT = 6236;
 /** Slots per verse in a posting code (positions 1..255). */
 export const QURAN_SLOT_STRIDE = 256;

@@ -150,10 +150,15 @@ function writeDb(content: QuranSearchIndexContent, out: string): void {
     db.exec(QURAN_SEARCH_SCHEMA);
     db.transaction(() => {
       const form = db.prepare(
-        'INSERT INTO forms (form, postings) VALUES (?, ?)',
+        'INSERT INTO forms (form, postings, whole) VALUES (?, ?, ?)',
       );
-      for (const [key, codes] of content.forms)
-        form.run(key, encodePostings(codes));
+      for (const [key, codes] of content.forms) {
+        form.run(
+          key,
+          encodePostings(codes),
+          content.wholeWordForms.has(key) ? 1 : 0,
+        );
+      }
       const root = db.prepare(
         'INSERT INTO roots (id, root, words, ayahs) VALUES (?, ?, ?, ?)',
       );
