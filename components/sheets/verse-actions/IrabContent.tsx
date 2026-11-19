@@ -18,8 +18,8 @@ import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTranslation} from 'react-i18next';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
-import {useTheme} from '@/hooks/useTheme';
-import {Theme} from '@/utils/themeUtils';
+import {useHover} from '@/hooks/useHover';
+import {overBackground, readableAccent, Theme} from '@/utils/themeUtils';
 import {
   splitRefs,
   type IrabBookPassages,
@@ -146,7 +146,6 @@ export const MorphTable: React.FC<
 export const IrabEntryList: React.FC<
   IrabRefContext & {word: Pick<WordIrab, 'entries' | 'agreed'>}
 > = ({word, ...context}) => {
-  const {theme} = useTheme();
   const {styles, t} = context;
   return (
     <>
@@ -158,7 +157,7 @@ export const IrabEntryList: React.FC<
           <Feather
             name="check-circle"
             size={moderateScale(12)}
-            color={theme.colors.primary}
+            color={styles.agreedIcon.color}
           />
           <Text style={styles.agreedText}>
             {t('irab.agreed', {ns: 'sheets'})}
@@ -210,8 +209,9 @@ const EntryRow: React.FC<{entry: IrabEntry; context: IrabRefContext}> = ({
 
 // @ai-start
 /**
- * The classical i'rab books' passages on each verse. A part's caption is the
- * label shown over its books ("Hafs 1:7"), null for none.
+ * The classical i'rab books' passages on each verse, or on each run of
+ * verses a passage discusses together (mergeBookPassages). A part's caption
+ * is the label shown over its books ("Hafs 1:7", "2:3-5"), null for none.
  */
 export const IrabBooksTab: React.FC<{
   parts: readonly {
@@ -244,8 +244,8 @@ export const IrabBooksTab: React.FC<{
             <View key={book.bookId} style={styles.bookCard}>
               <Text style={styles.bookTitle}>{book.nameAr}</Text>
               <Text style={styles.bookAuthor}>{book.authorAr}</Text>
-              {book.passages.map((passage, i) => {
-                const key = `${part.verseKey}:${book.bookId}:${i}`;
+              {book.passages.map(passage => {
+                const key = `${part.verseKey}:${passage.id}`;
                 const open = expanded.has(key);
                 const long = passage.text.length > 700;
                 return (
@@ -265,8 +265,8 @@ export const IrabBooksTab: React.FC<{
                         : passage.text}
                     </Text>
                     {long && (
-                      <Pressable
-                        hitSlop={8}
+                      <ReadMoreButton
+                        open={open}
                         onPress={() =>
                           setExpanded(prev => {
                             const next = new Set(prev);
@@ -274,13 +274,10 @@ export const IrabBooksTab: React.FC<{
                             else next.add(key);
                             return next;
                           })
-                        }>
-                        <Text style={styles.readMore}>
-                          {t(open ? 'irab.readLess' : 'irab.readMore', {
-                            ns: 'sheets', // @ai
-                          })}
-                        </Text>
-                      </Pressable>
+                        }
+                        styles={styles}
+                        t={t}
+                      />
                     )}
                   </View>
                 );
@@ -296,6 +293,35 @@ export const IrabBooksTab: React.FC<{
   );
 };
 
+/**
+ * Read more / Show less under a long passage: a button that says whether
+ * the passage is open, with a 44pt target (28pt plus its hit slop).
+ */
+const ReadMoreButton: React.FC<{
+  open: boolean;
+  onPress: () => void;
+  styles: IrabStyles;
+  t: IrabT;
+}> = ({open, onPress, styles, t}) => {
+  const {hovered, hoverProps} = useHover();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{expanded: open}}
+      hitSlop={{top: 8, bottom: 8}}
+      onPress={onPress}
+      {...hoverProps}
+      style={({pressed}) => [
+        styles.readMore,
+        (pressed || hovered) && styles.readMoreActive,
+      ]}>
+      <Text style={styles.readMoreText}>
+        {t(open ? 'irab.readLess' : 'irab.readMore', {ns: 'sheets'})}
+      </Text>
+    </Pressable>
+  );
+};
+
 // @ai-start
 /** The i'rab styles, shared by the I'rab screen and Word Study. */
 export const createIrabStyles = (theme: Theme) => {
@@ -305,6 +331,16 @@ export const createIrabStyles = (theme: Theme) => {
   const secondary = Color(theme.colors.textSecondary).alpha(0.8).toString();
   // @ai-end
   const phraseRule = Color(theme.colors.primary).alpha(0.45).toString();
+  // Text in the accent (labels, «word» references, the agreed mark) at
+  // 4.5:1 or more on each surface it is drawn on: the sheet, the 4% fill
+  // of the morphology block, the 6% fill of a pressed or hovered word, and
+  // an alternative entry's 7% accent tint.
+  const accentText = readableAccent(theme, [
+    theme.colors.background,
+    overBackground(theme, theme.colors.text, 0.04),
+    overBackground(theme, theme.colors.text, 0.06),
+    overBackground(theme, theme.colors.primary, 0.07),
+  ]);
   return StyleSheet.create({
     partCaption: {
       fontSize: moderateScale(11),
@@ -362,20 +398,23 @@ export const createIrabStyles = (theme: Theme) => {
     },
     entryLabel: {
       fontFamily: ARABIC_FONT_BOLD,
-      color: theme.colors.primary,
+      color: accentText,
     },
     entryLabelAlt: {
-      color: theme.colors.primary,
+      color: accentText,
     },
     ref: {
       fontFamily: ARABIC_FONT_BOLD,
-      color: theme.colors.primary,
+      color: accentText,
     },
     agreedRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: moderateScale(5),
       marginTop: verticalScale(6),
+    },
+    agreedIcon: {
+      color: accentText,
     },
     agreedText: {
       fontFamily: 'Manrope-Medium',
@@ -412,7 +451,7 @@ export const createIrabStyles = (theme: Theme) => {
       fontFamily: ARABIC_FONT_BOLD,
       fontSize: moderateScale(14),
       lineHeight: moderateScale(26),
-      color: theme.colors.primary,
+      color: accentText,
       textAlign: RIGHT,
       writingDirection: 'rtl',
     },
@@ -484,10 +523,21 @@ export const createIrabStyles = (theme: Theme) => {
       writingDirection: 'rtl',
     },
     readMore: {
-      fontFamily: 'Manrope-SemiBold',
-      fontSize: moderateScale(12),
-      color: theme.colors.primary,
+      alignSelf: 'flex-start',
+      justifyContent: 'center',
+      minHeight: 28,
+      paddingHorizontal: moderateScale(8),
       marginTop: verticalScale(4),
+      borderRadius: moderateScale(8),
+    },
+    readMoreActive: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    // Chrome: the text colour, never the accent.
+    readMoreText: {
+      fontFamily: 'Manrope-SemiBold',
+      fontSize: moderateScale(13),
+      color: theme.colors.text,
     },
   });
 };

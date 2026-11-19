@@ -20,6 +20,7 @@ interface MockReadingTextProps {
   rewayah: string;
   fontSize: number;
   silahChars?: readonly number[];
+  accessible?: boolean;
 }
 const mockReadingTexts: MockReadingTextProps[] = [];
 const mockState: {
@@ -214,13 +215,56 @@ it('marks the group holding the current rewayah, Hafs first whatever it is', () 
 
 it('57:24:10: Warsh and Qalun do not read the word', () => {
   mockState.result = ready('57:24', 10);
-  const root = render('57:24', 10, 'warsh');
+  let root = render('57:24', 10, 'warsh');
   const shown = texts(root);
   expect(shown).toContain('Not read');
   expect(shown).toContain("Warsh, Qalun (Nafi')");
-  expect(labels(root)).toContain("Not read by Warsh, Qalun (Nafi')");
+  // The row holds the current rewayah: its label says so, as its badge does.
+  expect(shown).toContain('Current');
+  expect(labels(root)).toContain(
+    "Not read by Warsh, Qalun (Nafi'), including the current rewayah",
+  );
   // only the Hafs group's text is drawn
   expect(mockReadingTexts).toHaveLength(1);
+
+  act(() => renderer?.unmount());
+  root = render('57:24', 10, 'hafs');
+  expect(labels(root)).toContain("Not read by Warsh, Qalun (Nafi')");
+});
+
+it('57:24:10 in Arabic: the not-read row names the current rewayah', async () => {
+  await i18n.changeLanguage('ar');
+  mockState.result = ready('57:24', 10);
+  const root = render('57:24', 10, 'qalun');
+  expect(labels(root)).toContain(
+    'لا يقرؤها ورش، قالون (نافع)، ومنها الرواية الحالية',
+  );
+});
+
+it('draws each reading inside its labelled row, as no element of its own', () => {
+  mockState.result = ready('1:4', 1);
+  render('1:4', 1, 'hafs');
+  expect(mockReadingTexts).toHaveLength(3);
+  expect(mockReadingTexts.every(p => p.accessible === false)).toBe(true);
+
+  // A word with no row: the current rewayah's own spelling.
+  act(() => renderer?.unmount());
+  mockReadingTexts.length = 0;
+  mockState.result = {
+    status: 'ready',
+    readings: {
+      verseKey: '2:2',
+      positions: [3],
+      hafsText: null,
+      groups: [{kind: 'asHafs', text: '', members: []}],
+      alike: true,
+      basmalaUnnumberedIn: [],
+    },
+    dkPositions: [3],
+  };
+  mockState.currentWords = [{text: 'W-THREE', wordPositionInVerse: 3}];
+  render('2:2', 3, 'warsh');
+  expect(mockReadingTexts.map(p => p.accessible)).toEqual([false]);
 });
 
 it('notes a span, verse ends, the basmala, and joined or apart words', () => {

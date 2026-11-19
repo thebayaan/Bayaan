@@ -15,7 +15,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {useResponsive} from '@/hooks/useResponsive';
 import {moderateScale} from '@/utils/scale';
 import {isRTL} from '@/utils/rtl';
-import {Theme} from '@/utils/themeUtils';
+import {overBackground, readableAccent, Theme} from '@/utils/themeUtils';
 
 export const ARABIC_FONT = 'ScheherazadeNew-Regular';
 export const ARABIC_FONT_BOLD = 'ScheherazadeNew-SemiBold';
@@ -36,6 +36,10 @@ function createStyles(theme: Theme, isTablet: boolean) {
   const callout = isTablet ? 15 : 14;
   const footnote = 13;
   const secondary = Color(theme.colors.textSecondary).alpha(0.85).toString();
+  // The marked letters, in the accent at 4.5:1 or more on the section fill.
+  const mark = readableAccent(theme, [
+    overBackground(theme, theme.colors.text, 0.04),
+  ]);
   return StyleSheet.create({
     section: {
       marginTop: moderateScale(12),
@@ -77,6 +81,16 @@ function createStyles(theme: Theme, isTablet: boolean) {
       textAlign: RIGHT,
       writingDirection: 'rtl',
     },
+    moreButton: {
+      alignSelf: 'flex-start',
+      justifyContent: 'center',
+      minHeight: 28,
+      paddingHorizontal: moderateScale(8),
+      borderRadius: moderateScale(8),
+    },
+    moreButtonActive: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
     more: {
       fontFamily: 'Manrope-SemiBold',
       fontSize: moderateScale(footnote),
@@ -106,7 +120,7 @@ function createStyles(theme: Theme, isTablet: boolean) {
     },
     mark: {
       fontFamily: ARABIC_FONT_BOLD,
-      color: theme.colors.primary,
+      color: mark,
     },
     note: {
       fontFamily: 'Manrope-Regular',

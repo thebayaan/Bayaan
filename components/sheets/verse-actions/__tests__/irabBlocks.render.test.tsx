@@ -10,28 +10,31 @@
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
-import {Text} from 'react-native';
+import {StyleSheet, Text} from 'react-native';
 import {useTranslation} from 'react-i18next';
 
-// IrabContent.tsx also holds the I'rab screen: keep its heavy imports out.
+// IrabContent.tsx holds only the i'rab building blocks now (the I'rab screen
+// became Word Study); these mocks keep native and data modules out.
 jest.mock(
   '@/components/player/v2/PlayerContent/QuranView/WBWVerseView',
   () => ({WBWVerseView: () => null}),
 );
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 jest.mock('react-native-actions-sheet', () => ({ScrollView: () => null}));
-jest.mock('@/hooks/useTheme', () => ({
-  useTheme: () => ({
-    theme: {
-      isDarkMode: false,
-      colors: {
-        text: '#111111',
-        textSecondary: '#666666',
-        background: '#ffffff',
-        primary: '#0a7d5a',
-      },
+// The theme the blocks are drawn with; a test may swap in an app theme.
+const mockTheme: {current: unknown} = {
+  current: {
+    isDarkMode: false,
+    colors: {
+      text: '#111111',
+      textSecondary: '#666666',
+      background: '#ffffff',
+      primary: '#0a7d5a',
     },
-  }),
+  },
+};
+jest.mock('@/hooks/useTheme', () => ({
+  useTheme: () => ({theme: mockTheme.current}),
 }));
 jest.mock('@/services/mushaf/MushafPreloadService', () => ({
   mushafPreloadService: {initialized: false},
@@ -48,8 +51,11 @@ jest.mock('@/store/tajweedStore', () => ({useTajweedStore: () => null}));
 jest.mock('@/services/wbw/WBWDataService', () => ({wbwDataService: {}}));
 jest.mock('@/services/irab/IrabDataService', () => ({irabDataService: {}}));
 
+import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import type {IrabBookPassages, WordIrab} from '@/services/irab/irabFormat';
+import {primaryColors, type PrimaryColor} from '@/styles/colorSchemes';
+import {createTheme, type Theme} from '@/utils/themeUtils';
 import {
   createIrabStyles,
   IrabBooksTab,
@@ -268,7 +274,7 @@ describe('IrabBooksTab', () => {
     bookId: 1,
     nameAr: 'كتاب',
     authorAr: 'مؤلف',
-    passages: [{text: 'نص', part: '1', page: '20'}],
+    passages: [{id: 1, text: 'نص', part: '1', page: '20'}],
   };
 
   it('shows each part with its caption and books', () => {
@@ -293,6 +299,52 @@ describe('IrabBooksTab', () => {
     act(() => renderer.unmount());
   });
 
+  it('cuts a long passage, with a Read more button that says whether it is open', () => {
+    const long = `${'نص '.repeat(300)}نهاية`;
+    const {renderer} = render(
+      context => (
+        <IrabBooksTab
+          parts={[
+            {
+              verseKey: '2:255',
+              caption: null,
+              books: [
+                {
+                  ...BOOK,
+                  passages: [{id: 2, text: long, part: '1', page: '20'}],
+                },
+              ],
+            },
+          ]}
+          styles={context.styles}
+          t={context.t}
+        />
+      ),
+      () => true,
+    );
+    const button = () =>
+      renderer.root.findByProps({accessibilityRole: 'button'});
+    expect(strings(renderer).join('')).not.toContain('نهاية');
+    expect(button().props.accessibilityState).toEqual({expanded: false});
+    // A 44pt target, and a hover state.
+    const {hitSlop, style} = button().props;
+    const minHeight = StyleSheet.flatten(
+      typeof style === 'function' ? style({pressed: false}) : style,
+    ).minHeight as number;
+    expect(minHeight + hitSlop.top + hitSlop.bottom).toBeGreaterThanOrEqual(44);
+    expect(typeof button().props.onPointerEnter).toBe('function');
+    // Chrome: the text colour, not the accent.
+    const label = renderer.root.find(
+      n => (n.type as unknown) === Text && n.props.children === 'Read more',
+    );
+    expect(StyleSheet.flatten(label.props.style).color).toBe('#111111');
+    act(() => button().props.onPress());
+    expect(strings(renderer).join('')).toContain('نهاية');
+    expect(strings(renderer)).toContain('Show less');
+    expect(button().props.accessibilityState).toEqual({expanded: true});
+    act(() => renderer.unmount());
+  });
+
   it('says when no book discusses the verses', () => {
     const {renderer} = render(
       context => (
@@ -308,5 +360,77 @@ describe('IrabBooksTab', () => {
       'These books have no passage for this verse.',
     );
     act(() => renderer.unmount());
+  });
+});
+
+describe('text in the accent colour', () => {
+  const ACCENTS = Object.keys(primaryColors) as PrimaryColor[];
+  const ratio = (a: unknown, b: string) => Color(String(a)).contrast(Color(b));
+  /** The sheet, the morphology block's 4% fill, a hovered row's 6% fill
+   *  and an alternative entry's 7% accent tint. */
+  const surfacesOf = (theme: Theme) => {
+    const background = Color(theme.colors.background);
+    return [
+      background.hex(),
+      background.mix(Color(theme.colors.text), 0.04).hex(),
+      background.mix(Color(theme.colors.text), 0.06).hex(),
+      background.mix(Color(theme.colors.primary), 0.07).hex(),
+    ];
+  };
+
+  it.each(['light', 'dark'] as const)(
+    'reads at 4.5:1 or more on every surface, with every accent (%s)',
+    scheme => {
+      const failures: string[] = [];
+      for (const accent of ACCENTS) {
+        const theme = createTheme(scheme, accent);
+        const styles = createIrabStyles(theme);
+        const colors = {
+          label: styles.entryLabel.color,
+          altLabel: styles.entryLabelAlt.color,
+          reference: styles.ref.color,
+          morphologyLabel: styles.morphLabel.color,
+        };
+        for (const [name, color] of Object.entries(colors)) {
+          for (const surface of surfacesOf(theme)) {
+            const r = ratio(color, surface);
+            if (r < 4.5) failures.push(`${accent} ${name} on ${surface}: ${r}`);
+          }
+        }
+      }
+      expect(failures).toEqual([]);
+    },
+  );
+
+  it('draws the labels, the references and the agreed mark readable with the default Blue', () => {
+    const theme = createTheme('light', 'Blue');
+    const before = mockTheme.current;
+    mockTheme.current = theme;
+    try {
+      const {renderer} = render(
+        context => <IrabEntryList word={NABUDU} {...context} />,
+        () => true,
+      );
+      const background = theme.colors.background;
+      const label = renderer.root.find(
+        n =>
+          (n.type as unknown) === Text && n.props.children?.[0] === 'وجه آخر',
+      );
+      expect(
+        ratio(StyleSheet.flatten(label.props.style).color, background),
+      ).toBeGreaterThanOrEqual(4.5);
+      const reference = renderer.root.find(
+        n => (n.type as unknown) === Text && n.props.children === '«إِيَّاكَ»',
+      );
+      expect(
+        ratio(StyleSheet.flatten(reference.props.style).color, background),
+      ).toBeGreaterThanOrEqual(4.5);
+      // An icon: 3:1 at least.
+      const mark = renderer.root.find(n => n.props.name === 'check-circle');
+      expect(ratio(mark.props.color, background)).toBeGreaterThanOrEqual(3);
+      act(() => renderer.unmount());
+    } finally {
+      mockTheme.current = before;
+    }
   });
 });

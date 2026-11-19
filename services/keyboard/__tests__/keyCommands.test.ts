@@ -119,6 +119,35 @@ describe('key layers', () => {
     expect(sent().commands).toEqual([['space', 'Upper', true]]);
   });
 
+  it('takes covered keys from the layers under a layer, until one above binds them', () => {
+    const turn = binding('space', 'Next Page', {menu: 'reader'});
+    const next = binding('left', 'Next Page', {menu: 'reader'});
+    const search = binding('cmd-f', 'Search', {menu: 'reader'});
+    addKeyLayer([turn, next, search]);
+    const sheet = addKeyLayer([], {covers: ['space', 'left']});
+    // Left out of the menus, and a press runs nothing.
+    expect(sent().commands).toEqual([['cmd-f', 'Search', true]]);
+    pressKeyForTests('space');
+    pressKeyForTests('left');
+    expect(turn.run).not.toHaveBeenCalled();
+    expect(next.run).not.toHaveBeenCalled();
+
+    // A layer added above the cover binds a covered key again.
+    const word = binding('left', 'Next word', {menu: 'reader'});
+    const screen = addKeyLayer([word]);
+    pressKeyForTests('left');
+    expect(word.run).toHaveBeenCalledTimes(1);
+    screen.remove();
+
+    // The covered keys change in place; removing the layer gives them back.
+    sheet.update([], ['space']);
+    pressKeyForTests('left');
+    expect(next.run).toHaveBeenCalledTimes(1);
+    sheet.remove();
+    pressKeyForTests('space');
+    expect(turn.run).toHaveBeenCalledTimes(1);
+  });
+
   it('lists a disabled key greyed out and does not run it', () => {
     const next = binding('cmd-right', 'Next', {enabled: false});
     addKeyLayer([next]);

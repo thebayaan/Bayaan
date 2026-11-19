@@ -53,7 +53,12 @@ jest.mock('expo-audio', () => ({
   }),
 }));
 
+jest.mock('@/services/audio/AudioCoordinator', () => ({
+  audioCoordinator: {wordWillPlay: jest.fn()},
+}));
+
 import {createAudioPlayer} from 'expo-audio';
+import {audioCoordinator} from '@/services/audio/AudioCoordinator';
 import {useWordAudio, type WordAudio} from '../useWordAudio';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -95,6 +100,7 @@ beforeEach(() => {
   mockPlayers.length = 0;
   mockCreate.error = null;
   jest.mocked(createAudioPlayer).mockClear();
+  jest.mocked(audioCoordinator.wordWillPlay).mockClear();
 });
 
 describe('useWordAudio', () => {
@@ -114,6 +120,20 @@ describe('useWordAudio', () => {
     expect(audio.state).toBe('loading');
     act(() => player.emit({playing: true}));
     expect(audio.state).toBe('playing');
+    view.unmount();
+  });
+
+  it('pauses the recitation and any other audio before the word plays', () => {
+    const view = render(URL_A);
+    toggle();
+    const wordWillPlay = jest.mocked(audioCoordinator.wordWillPlay);
+    expect(wordWillPlay).toHaveBeenCalledTimes(1);
+    expect(wordWillPlay.mock.invocationCallOrder[0]).toBeLessThan(
+      last().play.mock.invocationCallOrder[0],
+    );
+    // Stopping the word asks nothing of the other players.
+    toggle();
+    expect(wordWillPlay).toHaveBeenCalledTimes(1);
     view.unmount();
   });
 

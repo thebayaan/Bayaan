@@ -72,6 +72,7 @@
     "groupA11y": "{{text}}, read by {{narrators}}",
     "groupA11yCurrent": "{{text}}, read by {{narrators}}, including the current rewayah",
     "notReadA11y": "Not read by {{narrators}}",
+    "notReadA11yCurrent": "Not read by {{narrators}}, including the current rewayah",
     "memberA11y": "{{name}}: {{text}}"
   },
   "addToCollection": {

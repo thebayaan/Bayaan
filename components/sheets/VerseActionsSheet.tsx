@@ -111,6 +111,12 @@ import i18n from '@/i18n';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 // @ai-end
+import {useKeyCommands} from '@/hooks/useKeyCommands';
+import {
+  keyCommandsSupported,
+  type KeyBinding,
+  type KeyId,
+} from '@/services/keyboard/keyCommands';
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 
 const surahData = require('@/data/surahData.json');
@@ -161,6 +167,18 @@ type CloseRequest = Parameters<
 >[0];
 const BACK_PRESS = 1 as CloseRequest;
 // @ai-end
+
+// iPad keys that act on the screen under the sheet: the reader's page turns
+// (Space, Shift-Space, the arrows) and the full player's seeks (the arrows).
+// The sheet covers them while it shows; Word Study binds the arrows itself.
+const NO_KEY_BINDINGS: readonly KeyBinding[] = [];
+const COVERED_KEYS: readonly KeyId[] = [
+  'space',
+  'shift-space',
+  'left',
+  'right',
+];
+const COVERED_KEYS_WORD_STUDY: readonly KeyId[] = ['space', 'shift-space'];
 
 // Enable LayoutAnimation on Android
 if (
@@ -253,6 +271,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     lemma: string | null;
   } | null>(null);
   // @ai-end
+  // Word Study opened by a long-press in Word by Word goes back there.
+  const [wordStudyFromWbw, setWordStudyFromWbw] = useState(false);
 
   const setActiveScreen = useCallback((screen: ActiveScreen) => {
     LayoutAnimation.configureNext(
@@ -538,6 +558,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // The row opens Word Study on the selection's first word.
   const handleWordStudy = useCallback(() => {
     setWordTarget(undefined);
+    setWordStudyFromWbw(false);
     setActiveScreen('words');
   }, [setActiveScreen]);
 
@@ -546,6 +567,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const handleOpenWord = useCallback(
     (word: WordRef) => {
       setWordTarget(word);
+      setWordStudyFromWbw(true);
       setActiveScreen('words');
     },
     [setActiveScreen],
@@ -832,13 +854,27 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   // @ai-start
   // Back from a screen (the back row and Android's back button): root
-  // search returns to Word Study; any other screen to the verse menu, or,
+  // search returns to Word Study, and Word Study opened by a long-press in
+  // Word by Word to Word by Word; any other screen to the verse menu, or,
   // in Word Study only mode (no verse, so no menu), closes the sheet.
   const handleBack = useCallback(() => {
-    if (activeScreen === 'root') setActiveScreen('words');
-    else if (wordStudyOnly) hideCurrentSheet();
-    else setActiveScreen(null);
-  }, [activeScreen, wordStudyOnly, setActiveScreen, hideCurrentSheet]);
+    if (activeScreen === 'root') {
+      setActiveScreen('words');
+    } else if (activeScreen === 'words' && wordStudyFromWbw) {
+      setWordStudyFromWbw(false);
+      setActiveScreen('wbw');
+    } else if (wordStudyOnly) {
+      hideCurrentSheet();
+    } else {
+      setActiveScreen(null);
+    }
+  }, [
+    activeScreen,
+    wordStudyFromWbw,
+    wordStudyOnly,
+    setActiveScreen,
+    hideCurrentSheet,
+  ]);
   // Back closes the sheet from the verse menu, and from Word Study in Word
   // Study only mode; anywhere else it steps back a screen.
   const backCloses =
@@ -860,6 +896,18 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     return false;
   }, []);
   // @ai-end
+
+  // A hardware keyboard (iPad): the keys that would turn the reader's page
+  // or seek the player behind the sheet do nothing while it shows. Word
+  // Study, when it is on screen (not while it waits for the selection),
+  // binds the arrows itself; its layer may be added before this one.
+  const wordStudyShown =
+    activeScreen === 'words' &&
+    wordStudy !== null &&
+    (wordStudyOnly || pendingSelection === null);
+  useKeyCommands(NO_KEY_BINDINGS, keyCommandsSupported(), {
+    covers: wordStudyShown ? COVERED_KEYS_WORD_STUDY : COVERED_KEYS,
+  });
 
   const handleOnClose = useCallback(() => {
     // @ai-start

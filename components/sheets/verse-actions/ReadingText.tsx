@@ -52,6 +52,12 @@ export interface ReadingTextProps {
   maxWidth: number;
   /** Defaults to the text itself. */
   accessibilityLabel?: string;
+  /**
+   * False inside a row that carries its own label (and reads the text in
+   * it), so a screen reader stops on the row once, not on the text again.
+   * Defaults to true.
+   */
+  accessible?: boolean;
   /** Text colour; defaults to the theme's text colour. */
   color?: string;
 }
@@ -63,6 +69,7 @@ const ReadingText: React.FC<ReadingTextProps> = ({
   silahChars,
   maxWidth,
   accessibilityLabel,
+  accessible = true,
   color,
 }) => {
   const {theme} = useTheme();
@@ -108,23 +115,23 @@ const ReadingText: React.FC<ReadingTextProps> = ({
   // draw can still use it (utils/skiaDeferredDispose.ts).
   useEffect(() => () => disposeAfterPendingDraws([built?.paragraph]), [built]);
 
-  const label = accessibilityLabel ?? text;
+  const a11y = accessible
+    ? {
+        accessible: true,
+        accessibilityRole: 'text' as const,
+        accessibilityLabel: accessibilityLabel ?? text,
+      }
+    : {accessible: false};
   if (!built) {
     return (
       <View
-        accessible
-        accessibilityRole="text"
-        accessibilityLabel={label}
+        {...a11y}
         style={{minHeight: Math.round(fontSize * PLACEHOLDER_LINE_HEIGHT)}}
       />
     );
   }
   return (
-    <View
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={label}
-      style={{width: built.width, height: built.height}}>
+    <View {...a11y} style={{width: built.width, height: built.height}}>
       <Canvas
         pointerEvents="none"
         style={{width: built.width, height: built.height, direction: 'rtl'}}>

@@ -11,8 +11,9 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {useTranslation} from 'react-i18next';
+import {useHover} from '@/hooks/useHover';
 import type {GharibEntry} from '@/services/wordStudy/wordStudyFormat';
-import {useWordStudyStyles} from './styles';
+import {useWordStudyStyles, type WordStudyStyles} from './styles';
 import {cutText, isolate, pickBilingualText} from './text';
 
 /** Glosses longer than this are cut, with Show more. */
@@ -81,18 +82,11 @@ export const GharibSection: React.FC<GharibSectionProps> = ({
               {`${entry.source.nameAr} — ${entry.source.authorAr}`}
             </Text>
             {long ? (
-              <Pressable
-                accessibilityRole="button"
-                hitSlop={{top: 13, bottom: 13, left: 8, right: 8}}
-                onPress={() => toggle(key)}>
-                <Text style={styles.more}>
-                  {t(
-                    open
-                      ? 'common:actions.showLess'
-                      : 'common:actions.showMore',
-                  )}
-                </Text>
-              </Pressable>
+              <MoreButton
+                open={open}
+                onPress={() => toggle(key)}
+                styles={styles}
+              />
             ) : null}
           </View>
         );
@@ -103,6 +97,35 @@ export const GharibSection: React.FC<GharibSectionProps> = ({
         </Text>
       ))}
     </View>
+  );
+};
+
+/**
+ * Show more / Show less under a long gloss: a button that says whether the
+ * gloss is open, with a 44pt target (28pt plus its hit slop).
+ */
+const MoreButton: React.FC<{
+  open: boolean;
+  onPress: () => void;
+  styles: WordStudyStyles;
+}> = ({open, onPress, styles}) => {
+  const {t} = useTranslation('common');
+  const {hovered, hoverProps} = useHover();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{expanded: open}}
+      hitSlop={{top: 8, bottom: 8}}
+      onPress={onPress}
+      {...hoverProps}
+      style={({pressed}) => [
+        styles.moreButton,
+        (pressed || hovered) && styles.moreButtonActive,
+      ]}>
+      <Text style={styles.more}>
+        {t(open ? 'actions.showLess' : 'actions.showMore')}
+      </Text>
+    </Pressable>
   );
 };
 

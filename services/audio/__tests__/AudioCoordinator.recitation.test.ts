@@ -50,6 +50,12 @@ describe('AudioCoordinator and recitation sessions', () => {
     expect(mockStopSession).toHaveBeenCalledWith('playback_started');
   });
 
+  it("a word's recording stops a follow-along session", () => {
+    mockSession.purpose = 'follow';
+    freshCoordinator().wordWillPlay();
+    expect(mockStopSession).toHaveBeenCalledWith('playback_started');
+  });
+
   it('nothing is stopped when no session runs', () => {
     freshCoordinator().mainWillPlay();
     expect(mockStopSession).not.toHaveBeenCalled();

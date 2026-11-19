@@ -44,12 +44,12 @@ The design docs were written by read-only design agents. **Where this README dis
 - **Sections:** open/closed state resets each time the screen opens.
 - **`WordDetailSheet` is retired (01 T9).**
   - A word long-press in a list or the player opens the verse sheet on Word Study at that word.
-  - A long-press in the Word by Word screen does the same (01 T10).
-  - Arrow-key stepping on iPad is in scope (01 T12).
+  - A long-press in the Word by Word screen does the same (01 T10); Back then returns to Word by Word.
+  - Arrow-key stepping on iPad is in scope (01 T12). The arrows stay bound while Word Study shows, greyed out outside one-word mode, and the sheet covers Space, ⇧Space and the arrows on its other screens: no key turns the page or seeks the recitation behind the sheet.
 - **Readings section:** comes from 02 (`WordReadingsSection`). 01's `WordReadings.tsx` and `mergeSlotReadings` are **dropped**.
 - **Root chip:**
   - It opens a new `root` sub-screen of `VerseActionsSheet` that renders 03's `RootResults`.
-  - A verse tap closes the sheet and pushes `/mushaf` with 03's `quranHitLinkParams`.
+  - A verse tap closes the sheet and opens the verse in the Mushaf on its matched words, with `quranHitOpenParams` (`utils/search/quranHitParams.ts`). The params carry no page: the reader resolves it (`useMushafOpenTarget`).
 - **Gharib and rasm sections:** come from 04 (`GharibSection`, `RasmSection`), fed by `wordStudyDataService` with Hafs keys `s:a:w` in word-by-word (i'rab) numbering.
   - 01's `wordView.gharib.*` / `wordView.rasm.*` keys are dropped.
   - 04 owns those strings under `sheets:wordStudy.*`.
@@ -88,6 +88,7 @@ The design docs were written by read-only design agents. **Where this README dis
   - Show a note only when the mushaf's small signs, one of the named pattern rules or the reviewed list confirms it. Unconfirmed notes are stored but hidden; the reviewed list starts empty.
   - No "qira'atan" note (04 T10b skipped).
 - **Section titles:** *Arabic meaning / معنى الكلمة* and *Rasm / الرسم*, each with a source line.
+- **Accent colour:** the rasm's marked letters and the i'rab's labels and references are drawn in the accent made readable (`readableAccent` in `utils/themeUtils.ts`): 4.5:1 or more on the surfaces they sit on, in light and dark, for every accent. Chrome such as Read more uses the text colour.
 - **Normalisation:** the build-time letter model stays in `scripts/word-study/arabic.ts`; it does not share `utils/search`.
 - **Credits:** add Tanzil Simple v1.1 and Quranpedia's *al-Tibyan* to `THIRD_PARTY_LICENSES.md` and the Credits screen.
   - Quote Tanzil's terms verbatim, including "CHANGING IT IS NOT ALLOWED".
@@ -101,7 +102,7 @@ Each track works on its own branch, `wip/<track>`, cut from this commit. A track
 |---|---|---|
 | **readings** | 02 T1–T8, T10 | `scripts/rewayah/highlights.py` (additions), `scripts/rewayah/build_readings_index.py`, `scripts/rewayah/reading_*.json`, `data/mushaf/digitalkhatt/dk_readings.db`, `services/mushaf/wordReadingsFormat.ts`, `services/mushaf/WordReadingsService.ts`, `hooks/useWordReadings.ts`, `services/rewayah/RewayahIdentity.ts` (additions), `components/sheets/verse-actions/{WordReadingsSection,ReadingText}.tsx`, `wordReadingsLabels.ts`, i18n `sheets:wordReadings.*` |
 | **word-data** | 04 T1–T7, T9 (with the sources above) | `scripts/word-study/**`, `services/wordStudy/**`, `assets/data/gharib-v1.db`, `assets/data/rasm-v1.db`, `components/sheets/verse-actions/word-study/**`, `test-utils/mockExpoSqlite.ts`, i18n `sheets:wordStudy.*`, the Credits screen entries |
-| **search** | 03 T1–T11 | `utils/search/{quranText,quranSearch,quranIndexFormat,verseSnippet}.ts`, `utils/quranWordPositions.ts`, `scripts/search/**`, `assets/data/quran-search-v1.db`, `services/search/**`, `hooks/useQuranSearch.ts`, `components/search/quran/**`, `store/mushafWordFlashStore.ts`, `components/mushaf/skia/useWordFlashHighlights.ts`, `utils/quranLink.ts` (`quranHitLinkParams`), the search changes in `SearchView`, `TabletSearchResults`, `app/(tabs)/(b.search)/index.tsx`, `MushafSearchView`, `app/mushaf.tsx` (`words` param), i18n `home:` / `reader:` search keys, `docs/features/quran-search.md` |
+| **search** | 03 T1–T11 | `utils/search/{quranText,quranSearch,quranIndexFormat,verseSnippet}.ts`, `utils/quranWordPositions.ts`, `scripts/search/**`, `assets/data/quran-search-v1.db`, `services/search/**`, `hooks/useQuranSearch.ts`, `components/search/quran/**`, `store/mushafWordFlashStore.ts`, `components/mushaf/skia/useWordFlashHighlights.ts`, `utils/search/quranHitParams.ts` (`quranHitOpenParams`), the search changes in `SearchView`, `TabletSearchResults`, `app/(tabs)/(b.search)/index.tsx`, `MushafSearchView`, `app/mushaf.tsx` (`words` param), i18n `home:` / `reader:` search keys, `docs/features/quran-search.md` |
 | **word-view-core** | 01 T1, T2, T3, T5 | `services/wbw/wordAlignment.ts` (and its use in `WBWVerseView.tsx`), `services/wbw/wordAudio.ts`, `hooks/useWordAudio.ts`, `verseUnitScreens.ts` (`selectionWordParts`), `components/sheets/verse-actions/wordStudy.ts`, `services/irab/irabFormat.ts` (`MORPH_*`), the `IrabContent.tsx` building blocks |
 | **word-view-ui** (after the four above are merged) | 01 T4, T6–T12, 02 T9 | `WordCard.tsx`, `WordStudyContent.tsx`, `useWordStudyData.ts`, `VerseActionsSheet.tsx` (`words` and `root` screens), `sheets.tsx`, `VerseItem.tsx`, `WBWContent.tsx`, retiring `WordDetailSheet.tsx`, i18n `sheets:verseActions.wordStudy` and `sheets:wordView.*`, `docs/design/screen-inventory.md` |
 
@@ -126,9 +127,9 @@ wordStudyDataService.getRasm('s:a:w'): Promise<WordRasm | null>;       // null h
 GharibSection: React.FC<{entries: GharibEntry[]; position: number; wordTextOf: (position: number) => string | undefined}>;
 RasmSection: React.FC<{rasm: WordRasm | null; uthmani: string | undefined}>;
 
-// search (03): components/search/quran/RootResults.tsx, utils/quranLink.ts
+// search (03): components/search/quran/RootResults.tsx, utils/search/quranHitParams.ts
 RootResults: React.FC<{root: string; initialLemma?: string; onVersePress: (hit: QuranVerseHit) => void}>;
-quranHitLinkParams(verseKey: string, positions: readonly number[], ...): QuranLinkParams & {anchor: string; words: string};
+quranHitOpenParams(verseKey: string, positions: readonly number[]): QuranHitOpenParams; // {surah, ayah, anchor, words}: no page
 
 // word-view-core (01 §6): services/wbw/wordAlignment.ts, components/sheets/verse-actions/wordStudy.ts
 alignDkWithWbw(dk, wbw): DkWbwAlignment; selectionWordParts(selection): WordStudyPart[];

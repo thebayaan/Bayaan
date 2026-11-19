@@ -141,6 +141,7 @@ import {
   type ReadyVerseSelection,
 } from '@/components/share/rewayahVerseSelection';
 import {
+  addKeyLayer,
   pressKeyForTests,
   resetKeyCommandsForTests,
 } from '@/services/keyboard/keyCommands';
@@ -486,6 +487,38 @@ describe('one Hafs verse (1:4)', () => {
     expect(() => control('Next word')).toThrow();
   });
 
+  it('shows a book page that discusses several verses once, captioned with all of them', async () => {
+    const page = (id: number, text: string) => ({
+      bookId: 1,
+      nameAr: 'كتاب',
+      authorAr: 'مؤلف',
+      passages: [{id, text, part: '1', page: `${id}`}],
+    });
+    // 1:6 and 1:7 are on one page of the book; 1:7 has a page of its own.
+    (irabDataService.getBooks as jest.Mock)
+      .mockImplementationOnce(async () => [page(10, 'نص مشترك')])
+      .mockImplementationOnce(async () => [
+        {
+          ...page(10, 'نص مشترك'),
+          passages: [
+            ...page(10, 'نص مشترك').passages,
+            ...page(11, 'نص خاص').passages,
+          ],
+        },
+      ]);
+    await open(hafs('1:6', '1:7'));
+    await press("I'rab books");
+    await settle();
+    const shown = texts();
+    expect(shown.filter(t => t === 'نص مشترك')).toHaveLength(1);
+    expect(shown.filter(t => t === 'نص خاص')).toHaveLength(1);
+    // The shared page under both verses, then 1:7's own.
+    const captions = shown.filter(t => /^1:[67]/.test(t));
+    expect(captions).toEqual(['1:6-7', '1:7']);
+    expect(shown.indexOf('نص مشترك')).toBeLessThan(shown.indexOf('1:7'));
+    expect(shown.indexOf('1:7')).toBeLessThan(shown.indexOf('نص خاص'));
+  });
+
   it('says so when a verse has no word-by-word words', async () => {
     const words = mockWbw.get('1:4') ?? [];
     mockWbw.set('1:4', []);
@@ -627,7 +660,7 @@ describe("Warsh's unnumbered Fatiha basmala (Word Study only)", () => {
         bookId: 1,
         nameAr: 'كتاب',
         authorAr: 'مؤلف',
-        passages: [{text: 'نص', part: '1', page: '2'}],
+        passages: [{id: 1, text: 'نص', part: '1', page: '2'}],
       },
     ]);
     await open(warshBasmala());
@@ -650,13 +683,56 @@ describe('arrow keys on iPad', () => {
     expect(cardWord()).toBe('1:4:1');
   });
 
-  it('binds nothing in whole-verse mode', async () => {
+  /** The reader's page turns, bound under the sheet as on iPad. */
+  function readerUnderneath() {
+    const next = jest.fn();
+    const previous = jest.fn();
+    addKeyLayer([
+      {key: 'left', title: 'Next Page', menu: 'reader', run: next},
+      {key: 'right', title: 'Previous Page', menu: 'reader', run: previous},
+    ]);
+    return {next, previous};
+  }
+
+  it('steps no word in whole-verse mode, and keeps the arrows from the reader under it', async () => {
     resetKeyCommandsForTests(true);
+    const reader = readerUnderneath();
     await open(hafs('1:4'));
     await press('Whole verse');
     act(() => pressKeyForTests('left'));
+    act(() => pressKeyForTests('right'));
     expect(texts()).toContain('One word');
     expect(last('grid').selectedWordPosition).toBeNull();
+    expect(reader.next).not.toHaveBeenCalled();
+    expect(reader.previous).not.toHaveBeenCalled();
+  });
+
+  it('keeps the arrows from the reader in the books tab and while the words load', async () => {
+    resetKeyCommandsForTests(true);
+    const reader = readerUnderneath();
+    let load: (words: unknown) => void = () => undefined;
+    (wbwDataService.getVerseWords as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          load = resolve;
+        }),
+    );
+    await open(hafs('1:4'));
+    expect(root().findAll(n => n.type === ActivityIndicator)).toHaveLength(1);
+    act(() => pressKeyForTests('left'));
+    await act(async () => load(mockWbw.get('1:4')));
+    await settle();
+    await press("I'rab books");
+    await settle();
+    act(() => pressKeyForTests('left'));
+    act(() => pressKeyForTests('right'));
+    expect(reader.next).not.toHaveBeenCalled();
+    expect(reader.previous).not.toHaveBeenCalled();
+    // Back on the words, ← steps again.
+    await press('Words');
+    act(() => pressKeyForTests('left'));
+    expect(cardWord()).toBe('1:4:2');
+    expect(reader.next).not.toHaveBeenCalled();
   });
 
   it('binds nothing where shortcuts are not supported', async () => {

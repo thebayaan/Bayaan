@@ -86,18 +86,23 @@ class IrabDataService {
     return words;
   }
 
-  /** The classical i'rab books' passages that discuss a (Hafs) verse. */
+  /**
+   * The classical i'rab books' passages that discuss a (Hafs) verse, each
+   * with its id: a page discussing several verses has the same id in each.
+   */
   async getBooks(verseKey: string): Promise<IrabBookPassages[]> {
     await this.initialize();
     const rows = await this.db!.getAllAsync<{
       book_id: number;
       name_ar: string;
       author_ar: string;
+      passage_id: number;
       text: string;
       part: string;
       page: string;
     }>(
-      `SELECT b.id AS book_id, b.name_ar, b.author_ar, p.text, p.part, p.page
+      `SELECT b.id AS book_id, b.name_ar, b.author_ar,
+              p.id AS passage_id, p.text, p.part, p.page
          FROM verse_passages v
          JOIN books b ON b.id = v.book_id
          JOIN passages p ON p.id = v.passage_id
@@ -117,7 +122,12 @@ class IrabDataService {
         };
         books.set(row.book_id, book);
       }
-      book.passages.push({text: row.text, part: row.part, page: row.page});
+      book.passages.push({
+        id: row.passage_id,
+        text: row.text,
+        part: row.part,
+        page: row.page,
+      });
     }
     return [...books.values()];
   }
