@@ -189,6 +189,12 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'الضالين', includes: ['1:7']},
   {query: 'ولا الضالين', includes: ['1:7']},
   {query: 'هدى للمتقين', includes: ['2:2']},
+  // A conjunction or preposition typed as a word of its own.
+  {query: 'و الله', includes: ['2:19']},
+  {query: 'و الله على كل شيء قدير', includes: ['2:284', '3:29']},
+  {query: 'ل الناس', includes: ['2:185']},
+  {query: 'ب الله', includes: ['2:8']},
+  {query: 'ح م و الكتاب المبين', exactly: ['43:2', '44:2']},
   // Phrases
   {query: 'بسم الله الرحمن الرحيم', exactly: ['1:1', '27:30']},
   {query: 'الحمد لله', includes: ['1:2', '6:1', '18:1', '34:1', '35:1']},

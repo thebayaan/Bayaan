@@ -455,6 +455,25 @@ describe('parseQuranQuery', () => {
     expect(keys('ال عمران')).toEqual([['ال'], ['عمران']]);
   });
 
+  it('joins a conjunction or preposition typed apart to the next word', () => {
+    expect(keys('و الله')).toEqual([['والله']]);
+    expect(keys('ف الله')).toEqual([['فالله']]);
+    expect(keys('ب الله')).toEqual([['بالله']]);
+    expect(keys('ك الذي')).toEqual([['كالذي']]);
+    expect(keys('و من الله في')).toEqual([['ومن'], ['الله'], ['في']]);
+    // From the right: و ب الله is وبالله.
+    expect(keys('و ب الله')).toEqual([['وبالله']]);
+    // ل before the article drops its alif (للناس), and before الله a lam.
+    expect(keys('ل الناس')).toEqual([['للناس']]);
+    expect(keys('ل الله')).toEqual([['لله']]);
+    expect(keys('ل الأرض')).toEqual([['للارض', 'للرض']]);
+    // With a vocative: و يا قوم is وَيَٰقَوْمِ.
+    expect(keys('و يا قوم')).toEqual([['وياقوم']]);
+    // Not before a letter typed apart, nor at the end.
+    expect(keys('ب س م الله')).toEqual([['ب'], ['س'], ['م'], ['الله']]);
+    expect(keys('الله و')).toEqual([['الله'], ['و']]);
+  });
+
   it('asks for a hamza only when one is typed', () => {
     const parsed = (query: string) => {
       const p = parseQuranQuery(query);

@@ -868,6 +868,28 @@ function joinsNextWord(word: string): boolean {
 }
 
 /**
+ * Joins a conjunction or preposition typed as a word of its own (و الله, ف,
+ * ب, ك) to the next word, as the text writes them as one, from the right,
+ * so و ب الله is وبالله. ل drops the alif of an article after it (ل الناس
+ * → للناس, ل الله → لله). Never to a single letter: ب س م, ك ه ي ع ص.
+ */
+function joinProcliticLetters(words: string[]): void {
+  for (let i = words.length - 2; i >= 0; i--) {
+    const letter = foldArabicLetters(rawLetters(words[i]));
+    const next = rawLetters(words[i + 1]);
+    if (!/^[\u{0648}\u{0641}\u{0628}\u{0644}\u{0643}]$/u.test(letter)) continue;
+    if (next.length < 2) continue;
+    words.splice(
+      i,
+      2,
+      letter === '\u{0644}' && /^[\u{0627}\u{0671}]\u{0644}/u.test(next)
+        ? `\u{0644}${next.slice(1)}`.replace(/^\u{0644}{3}/u, 'لل')
+        : words[i] + words[i + 1],
+    );
+  }
+}
+
+/**
  * Whether a query starts with a surah opening as the mushaf draws it: a
  * word whose letters spell an opening and that carries a maddah (الٓمٓ,
  * حمٓ, نٓۚ). No other word of the Hafs text does both (ألم has no maddah,
@@ -927,6 +949,7 @@ export function parseQuranQuery(
     .split(' ')
     .filter(word => ARABIC_LETTER.test(word));
   if (!words.length) return {kind: 'none'};
+  joinProcliticLetters(words);
 
   // Single letters typed apart (or one letter): a surah opening (ا ل م, ح م,
   // ك ه ي ع ص, ن), text matched as a whole word; else a root when 3-4 of
