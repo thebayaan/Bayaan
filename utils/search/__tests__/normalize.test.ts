@@ -3,6 +3,7 @@ import {
   ARABIC_MARKS, // @ai
   foldArabicLetters, // @ai
   foldHamzaCarriers, // @ai
+  foldLongVowels, // @ai
   latinSkeleton,
   normalizeSearchText,
   toSearchKey,
@@ -115,3 +116,20 @@ describe('latinSkeleton', () => {
     expect(latinSkeleton('112')).toBe('112');
   });
 });
+
+// @ai-start
+describe('foldLongVowels', () => {
+  it.each([
+    ['noor', 'nur'],
+    ['teen', 'tin'],
+    ['hadeed', 'hadid'],
+    ['naas', 'nas'],
+    ['yousuf', 'yusuf'],
+    ['mutaffifeen', 'mutaffifin'],
+    ['yasin', 'yasin'],
+    ['العفاسي', 'العفاسي'],
+  ])('%s -> %s', (token, folded) => {
+    expect(foldLongVowels(token)).toBe(folded);
+  });
+});
+// @ai-end

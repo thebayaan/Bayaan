@@ -344,13 +344,29 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           }
           return {recentPages: updated};
         }),
+      // @ai-start
       startNewChain: (surahId: number, page: number) =>
-        set(state => ({
-          recentPages: [
-            {surahId, page, timestamp: Date.now()},
-            ...state.recentPages,
-          ].slice(0, 10),
-        })),
+        set(state => {
+          // A jump to the page the active chain is already on is not a new
+          // place: it used to add a second chip for the same page (jump to
+          // a verse on the page you are reading, or to the surah that
+          // starts on it).
+          const at = state.recentPages.findIndex(read => read.page === page);
+          if (at === 0) return state;
+          // An older chain on that very page comes back to the front
+          // instead of getting an identical chip beside it.
+          const others =
+            at > 0
+              ? state.recentPages.filter((_, index) => index !== at)
+              : state.recentPages;
+          return {
+            recentPages: [
+              {surahId, page, timestamp: Date.now()},
+              ...others,
+            ].slice(0, 10),
+          };
+        }),
+      // @ai-end
       resumeChain: (index: number) =>
         set(state => {
           if (index <= 0 || index >= state.recentPages.length) return state;

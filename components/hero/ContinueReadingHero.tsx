@@ -5,7 +5,8 @@ import {useFocusEffect} from 'expo-router';
 import {Surah} from '@/data/surahData';
 import {useTranslation} from 'react-i18next';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
-import {getSurahOfTheDay, getSurahForPage} from '@/utils/quranPages';
+import {getSurahOfTheDay, getLastReadSurah} from '@/utils/quranPages'; // @ai
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService'; // @ai
 import {HeroSection} from './HeroSection';
 import {SurahHeroSection} from './SurahsHero';
 // @ai-start
@@ -45,16 +46,29 @@ export function ContinueReadingHero({
   const [lastReadPage, setLastReadPage] = useState<number | null>(() =>
     mushafSessionStore.getLastReadPage(),
   );
+  // The surah the reader's header showed on that page, saved with it.
+  const [lastReadSurahId, setLastReadSurahId] = useState<number | null>(() =>
+    mushafSessionStore.getLastReadSurahId(),
+  );
   useFocusEffect(
     useCallback(() => {
       setLastReadPage(mushafSessionStore.getLastReadPage());
+      setLastReadSurahId(mushafSessionStore.getLastReadSurahId());
     }, []),
   );
 
   const surahOfTheDay = useMemo(() => getSurahOfTheDay(new Date()), []);
 
+  // Names the surah the reader named. The page alone used to pick the first
+  // surah on it: the one before, for every surah that starts mid-page.
   const lastReadSurah = lastReadPage
-    ? getSurahForPage(lastReadPage)
+    ? getLastReadSurah(
+        lastReadPage,
+        lastReadSurahId,
+        digitalKhattDataService.initialized
+          ? digitalKhattDataService.getPageToSurah()
+          : {},
+      )
     : undefined;
 
   const displaySurah = lastReadSurah ?? surahOfTheDay;

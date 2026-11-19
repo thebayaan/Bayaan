@@ -285,6 +285,53 @@ describe('Add Note screen', () => {
     expect(onDone).toHaveBeenCalled();
   });
 
+  // @ai-start
+  it('a second tap on Save while the first is saving adds no second note', async () => {
+    let finish: () => void = () => undefined;
+    service.addNote.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finish = () => resolve(undefined as never);
+        }),
+    );
+    await render(
+      <NoteContent selection={hafsSelection('2:255')} onDone={onDone} />,
+    );
+    const input = renderer!.root.find(n => (n.type as unknown) === TextInput);
+    act(() => input.props.onChangeText('my note'));
+    const save = renderer!.root
+      .findAll(
+        n =>
+          typeof n.props.onPress === 'function' &&
+          n.findAll(c => c.props.children === 'Save Note').length > 0,
+      )
+      .pop()!;
+    let first: Promise<void> = Promise.resolve();
+    await act(async () => {
+      first = save.props.onPress();
+      await save.props.onPress();
+    });
+    await act(async () => {
+      finish();
+      await first;
+    });
+    expect(service.addNote).toHaveBeenCalledTimes(1);
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('a save that fails can be tried again', async () => {
+    service.addNote.mockRejectedValueOnce(new Error('disk'));
+    await render(
+      <NoteContent selection={hafsSelection('2:255')} onDone={onDone} />,
+    );
+    await expect(saveNote('my note')).rejects.toThrow('disk');
+    expect(onDone).not.toHaveBeenCalled();
+    await pressText('Save Note');
+    expect(service.addNote).toHaveBeenCalledTimes(2);
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+  // @ai-end
+
   it('Hafs: the Hafs key, as before', async () => {
     await render(
       <NoteContent selection={hafsSelection('2:255')} onDone={onDone} />,

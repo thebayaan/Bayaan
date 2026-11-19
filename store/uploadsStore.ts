@@ -51,6 +51,27 @@ interface UploadsState {
 }
 
 // @ai-start
+/**
+ * After uploads are deleted: drop them from Loved, playlists and the play
+ * queue. Never throws, because the delete itself has already succeeded.
+ *
+ * Required when called rather than imported at the top, so that importing
+ * this store does not also load the player store and its audio modules:
+ * most importers only want the list of uploads.
+ */
+async function forgetDeleted(ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return;
+  try {
+    const {forgetDeletedUploads} =
+      require('@/services/uploads/forgetDeletedUploads') as typeof import('@/services/uploads/forgetDeletedUploads');
+    await forgetDeletedUploads(ids);
+  } catch (error) {
+    console.warn('[uploads] Could not clean up deleted uploads:', error);
+  }
+}
+// @ai-end
+
+// @ai-start
 export const useUploadsStore = create<UploadsState>((set, get) => ({
   // Initial state
   recitations: [],
@@ -152,6 +173,7 @@ export const useUploadsStore = create<UploadsState>((set, get) => ({
         recitations: state.recitations.filter(r => r.id !== id),
         totalCount: state.totalCount - 1,
       }));
+      await forgetDeleted([id]); // @ai
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to delete recitation';
@@ -161,11 +183,13 @@ export const useUploadsStore = create<UploadsState>((set, get) => ({
   },
 
   deleteAllRecitations: async () => {
+    const deletedIds: string[] = []; // @ai
     try {
       set({error: null});
       const {recitations} = get();
       for (const r of recitations) {
         await uploadsService.deleteRecitation(r.id);
+        deletedIds.push(r.id); // @ai
       }
       set({recitations: [], totalCount: 0});
     } catch (err) {
@@ -173,6 +197,9 @@ export const useUploadsStore = create<UploadsState>((set, get) => ({
         err instanceof Error ? err.message : 'Failed to delete all recitations';
       set({error: errorMessage});
       throw err;
+    } finally {
+      // @ai Also when a later file failed: the ones before it are gone.
+      await forgetDeleted(deletedIds);
     }
   },
 

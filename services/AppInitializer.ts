@@ -6,6 +6,9 @@ import {uploadsService} from '@/services/uploads/UploadsService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
+import {followSelectedTranslation} from '@/services/translation/selectedTranslation'; // @ai
+import {useTranslationStore} from '@/store/translationStore'; // @ai
+import {whenSplashHidden} from '@/utils/splashHidden';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {useTafseerStore} from '@/store/tafseerStore';
 import {wbwDataService} from '@/services/wbw/WBWDataService';
@@ -330,8 +333,15 @@ appInitializer.registerService({
   priority: 9,
   critical: false,
   initialize: async () => {
-    await timestampService.initialize();
-    useTimestampStore.getState().loadFollowAlongRegistry();
+    // @ai-start
+    // The registry of who has follow-along does not need the cache
+    // database: it loads even when the database could not be opened.
+    try {
+      await timestampService.initialize();
+    } finally {
+      useTimestampStore.getState().loadFollowAlongRegistry();
+    }
+    // @ai-end
   },
 });
 
@@ -398,7 +408,29 @@ appInitializer.registerService({
   priority: 10,
   critical: false,
   initialize: async () => {
-    await translationDbService.initialize();
+    // @ai-start
+    try {
+      await translationDbService.initialize();
+      // The downloaded translations and their names, as the Tafseer step
+      // does below. They were loaded only when Settings > Translations was
+      // opened, so after a restart a downloaded translation showed as its
+      // raw id ("ur.jalandhry") with "not available".
+      await useTranslationStore.getState().loadDownloadedMeta();
+    } finally {
+      // Apply the selected translation to the verse data, then on every
+      // change. Started also when the database failed to open: the bundled
+      // translations do not need it. Not before the splash has gone: the
+      // first build reads the Quran and transliteration data and makes 6,236
+      // verses on the JS thread, which held the splash on every launch. The
+      // player's verse list, mounted before the splash goes when a session
+      // is restored, still applies the selection itself.
+      whenSplashHidden()
+        .then(followSelectedTranslation)
+        .catch((error: unknown) => {
+          console.warn('[AppInitializer] Translation follower failed:', error);
+        });
+    }
+    // @ai-end
   },
 });
 

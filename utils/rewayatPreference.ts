@@ -3,6 +3,26 @@ import type {Rewayat} from '@/data/reciterData';
 
 type RewayatChoice = Pick<Rewayat, 'id' | 'surah_list'>;
 
+/** Whether a rewayah has a recording of the surah. No list means all. */
+export function rewayahHasSurah(
+  rewayah: Pick<RewayatChoice, 'surah_list'>,
+  surahId: number,
+): boolean {
+  return !rewayah.surah_list || rewayah.surah_list.includes(surahId);
+}
+
+/**
+ * Whether the reciter has recorded the surah in any rewayah. Check this
+ * before playing a surah the user did not pick from this reciter's own list:
+ * `pickRewayatId` still returns a rewayah when none has the surah.
+ */
+export function reciterHasSurah(
+  rewayat: readonly Pick<RewayatChoice, 'surah_list'>[],
+  surahId: number,
+): boolean {
+  return rewayat.some(r => rewayahHasSurah(r, surahId));
+}
+
 /**
  * Picks which rewayah to open or play for a reciter. The candidates are
  * tried in order (for example the id passed by navigation, then the one the
@@ -18,7 +38,7 @@ export function pickRewayatId(
   const withSurah =
     surahId == null
       ? rewayat
-      : rewayat.filter(r => !r.surah_list || r.surah_list.includes(surahId));
+      : rewayat.filter(r => rewayahHasSurah(r, surahId));
   const pool = withSurah.length > 0 ? withSurah : rewayat;
 
   for (const id of candidates) {

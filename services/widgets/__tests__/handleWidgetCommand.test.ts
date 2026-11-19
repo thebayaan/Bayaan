@@ -424,6 +424,24 @@ describe('playTrack row taps', () => {
     expect(d.calls).toEqual(['playQueueIndex:1@5', 'resumeChain:2']);
   });
 
+  it('promotes the recent entry where it is once the queue has moved on', async () => {
+    // The entry is second when the row is tapped. The first progress tick of
+    // the track that starts can move it to the front during the load, and
+    // its old place then belongs to another card.
+    let recentIndex = 1;
+    const d = deps({
+      upNextIndexOf: () => 1,
+      findRecent: key => ({...key, startPosition: 5, recentIndex}),
+    });
+    const load = d.playQueueIndex;
+    d.playQueueIndex = async (index, startSec) => {
+      await load(index, startSec);
+      recentIndex = 0;
+    };
+    await handleWidgetCommand(row, d);
+    expect(d.calls).toEqual(['playQueueIndex:1@5', 'resumeChain:0']);
+  });
+
   it('starts fresh when nothing matches', async () => {
     const d = deps();
     await handleWidgetCommand(row, d);

@@ -50,6 +50,14 @@ describe('AudioCoordinator and recitation sessions', () => {
     expect(mockStopSession).toHaveBeenCalledWith('playback_started');
   });
 
+  // @ai-start
+  it('adhkar playback stops a follow-along session', () => {
+    mockSession.purpose = 'follow';
+    freshCoordinator().adhkarWillPlay();
+    expect(mockStopSession).toHaveBeenCalledWith('playback_started');
+  });
+  // @ai-end
+
   it("a word's recording stops a follow-along session", () => {
     mockSession.purpose = 'follow';
     freshCoordinator().wordWillPlay();

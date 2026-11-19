@@ -5,7 +5,7 @@
  * quick-select shortcuts, and a "Play Audio" CTA into a single sheet.
  */
 
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'; // @ai
 import {
   View,
   Text,
@@ -146,8 +146,13 @@ export const MushafPlayerOptionsSheet = (
   const storeRewayatId = useMushafPlayerStore(s => s.rewayatId);
   const storeReciterName = useMushafPlayerStore(s => s.reciterName);
   const storeRate = useMushafPlayerStore(s => s.rate);
-  const storeVerseRepeat = useMushafPlayerStore(s => s.verseRepeatCount);
-  const storeRangeRepeat = useMushafPlayerStore(s => s.rangeRepeatCount);
+  // @ai-start
+  // The counts last chosen here, not those of the playback going on: a
+  // verse's one-off Repeat used to leave "Loop" selected for every later
+  // Play.
+  const storeVerseRepeat = useMushafPlayerStore(s => s.savedVerseRepeatCount);
+  const storeRangeRepeat = useMushafPlayerStore(s => s.savedRangeRepeatCount);
+  // @ai-end
   const availableReciters = useMushafPlayerStore(s => s.availableReciters);
 
   // Compute defaults for this page, falling back to store range if available
@@ -344,6 +349,20 @@ export const MushafPlayerOptionsSheet = (
   // Play Audio
   const canPlay = !!selectedRewayatId;
 
+  // @ai-start
+  // Closed without Play: forget the verse the sheet was opened for (Play on a
+  // verse before a reciter was chosen). Left in the store, it became the
+  // start of the next Play on any page. A range still set while nothing
+  // plays belongs to a start that failed and is given up here too.
+  const startedRef = useRef(false);
+  const handleBeforeClose = useCallback(() => {
+    if (startedRef.current) return;
+    const store = useMushafPlayerStore.getState();
+    store.setPendingStart(null);
+    if (store.playbackState === 'idle') store.clearRange();
+  }, []);
+  // @ai-end
+
   const handlePlayAudio = useCallback(() => {
     if (!selectedRewayatId || !selectedReciterName) return;
 
@@ -351,6 +370,7 @@ export const MushafPlayerOptionsSheet = (
     const selection = pickerSelection(numbering, startVerseKey, endVerseKey);
     if (!selection) return;
 
+    startedRef.current = true; // @ai
     const store = useMushafPlayerStore.getState();
     store.stop();
 
@@ -369,6 +389,8 @@ export const MushafPlayerOptionsSheet = (
     // commit it here (and committing a stale local copy was the bug).
     store.setVerseRepeatCount(verseRepeat);
     store.setRangeRepeatCount(rangeRepeat);
+    // ...and they are what the sheet opens on next time. @ai
+    store.saveRepeatCounts(verseRepeat, rangeRepeat); // @ai
 
     store.startPlayback(
       currentPage,
@@ -459,7 +481,8 @@ export const MushafPlayerOptionsSheet = (
       // so vertical scrolling inside the accordion's inner ScrollView isn't
       // intercepted by the sheet's gesture handler. Re-enable when nothing
       // is expanded so the user can still swipe the sheet away.
-      gestureEnabled={expandedSection === null}>
+      gestureEnabled={expandedSection === null}
+      onBeforeClose={handleBeforeClose /* @ai */}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.container}

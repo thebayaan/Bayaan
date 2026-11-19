@@ -280,3 +280,33 @@ it('a link with no words flashes no words', () => {
   expect(request().requestId).toBe(1);
   expect(useMushafWordFlashStore.getState().flash).toBeNull();
 });
+
+// The verse a hit selects here is not sent to the viewer, which ends only
+// the flash of a verse it selects itself: it stayed lit until a verse sheet
+// closed or the reader was left.
+it("a hit's verse goes after 3 s; a verse selected meanwhile stays", () => {
+  jest.useFakeTimers();
+  try {
+    mockAnchorUnits['106:4:5'] = {key: '106:5', hafsKeys: ['106:4']};
+    const keys = () =>
+      useMushafVerseSelectionStore.getState().selectedVerseKeys;
+    route({page: '50'});
+    route(quranHitOpenParams('106:4', [5, 6]));
+    act(() => jest.advanceTimersByTime(2999));
+    expect(keys()).toEqual(['106:5']);
+    act(() => jest.advanceTimersByTime(1));
+    expect(keys()).toEqual([]);
+
+    route(quranHitOpenParams('106:4', [5, 6]));
+    act(() => jest.advanceTimersByTime(1000));
+    act(() => {
+      useMushafVerseSelectionStore.getState().selectVerse('106:3', 602);
+    });
+    act(() => jest.advanceTimersByTime(5000));
+    expect(keys()).toEqual(['106:3']);
+  } finally {
+    act(() => renderer?.unmount());
+    renderer = null;
+    jest.useRealTimers();
+  }
+});

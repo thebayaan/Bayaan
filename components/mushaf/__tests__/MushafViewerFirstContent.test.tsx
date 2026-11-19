@@ -237,7 +237,11 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   },
 }));
 jest.mock('@/services/mushaf/MushafSessionStore', () => ({
-  mushafSessionStore: {setLastReadPage: jest.fn()},
+  mushafSessionStore: {
+    setLastReadPage: jest.fn(),
+    getLastReadPage: () => null,
+    getLastReadSurahId: () => null,
+  },
 }));
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
   followShownRewayah: () => () => undefined,
@@ -267,7 +271,13 @@ jest.mock('@/store/mushafVerseSelectionStore', () => {
 });
 jest.mock('@/store/mushafNavigationStore', () => {
   const {create} = jest.requireActual('zustand');
-  return {useMushafNavigationStore: create(() => ({requestId: 0}))};
+  return {
+    useMushafNavigationStore: create(() => ({
+      requestId: 0,
+      // The viewer reports itself open (isReaderOpen) when it mounts.
+      readerOpened: () => () => undefined,
+    })),
+  };
 });
 jest.mock('@/store/mushafSettingsStore', () => {
   const {create} = jest.requireActual('zustand');

@@ -147,6 +147,10 @@ interface TabletSearchResultsProps {
   /** Opens the surah options menu. */
   onSurahOptions: (result: CatalogSearchResult) => void;
   // @ai-start
+  /** Called when the results start to scroll: dismisses the keyboard. */
+  onScrollBeginDrag?: () => void;
+  // @ai-end
+  // @ai-start
   /** The Quran results (the Ayahs scope and the All scope's Ayahs section). */
   quranRows?: readonly QuranResultRow[];
   onQuranRowAction?: Omit<QuranResultRowViewProps, 'row'>;
@@ -168,6 +172,7 @@ export function TabletSearchResults({
   onResultPress,
   onSurahPlay,
   onSurahOptions,
+  onScrollBeginDrag = Keyboard.dismiss, // @ai
   // @ai-start
   quranRows = NO_QURAN_ROWS,
   onQuranRowAction = NO_QURAN_ACTION,
@@ -323,7 +328,7 @@ export function TabletSearchResults({
       style={[styles.fill, style]}
       contentContainerStyle={[styles.content, {paddingBottom: bottomPadding}]}
       keyboardShouldPersistTaps="handled"
-      onScrollBeginDrag={() => Keyboard.dismiss()}
+      onScrollBeginDrag={() => onScrollBeginDrag()} // @ai
       showsVerticalScrollIndicator={false}>
       <View style={styles.scopes} accessibilityRole="tablist">
         {scopes.map(s => {

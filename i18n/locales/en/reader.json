@@ -77,13 +77,26 @@
     "fromBeginning": "{{surah}} plays from the beginning without verse tracking for this reciter.",
     "untracked": "{{surah}} plays without verse highlighting for this reciter.",
     "timestampsUnavailable": "Timestamps unavailable for this reciter on this surah. Try a different reciter.",
+    "timestampsLoadFailed": "Couldn't load the verse timings. Check your internet connection and try again.",
+    "audioLoadFailed": "Couldn't play the audio for this surah. Check your internet connection and try again.",
     "verseTimingUnavailable": "Verse-by-verse playback isn't available for this reciter on this surah. Try a different reciter.",
     "rangeUnplayable": "This selection has no verses to play for this reciter. Try a different reciter or range."
   },
   "verseUnits": {
     "loading": "Loading the {{rewayah}} verses",
     "loadFailed": "Couldn't load the {{rewayah}} verses.",
-    "retryLabel": "Try loading the {{rewayah}} verses again"
+    "retryLabel": "Try loading the {{rewayah}} verses again",
+    "preparing": "Preparing verses",
+    "tryAgainShortly": "Try again in a moment."
+  },
+  "savedRewayah": {
+    "unavailable": "{{rewayah}} text is not available",
+    "openingInstead": "Opening in {{rewayah}}.",
+    "switchFailed": "Couldn't open in {{rewayah}}",
+    "showingInstead": "Showing {{rewayah}} instead.",
+    "opening": "Opening in {{rewayah}}",
+    "fontChanged": "IndoPak shows Hafs only, so the font is now {{font}}.",
+    "openingIn": "Opening in"
   },
   "recitation": {
     "recite": "Recite",

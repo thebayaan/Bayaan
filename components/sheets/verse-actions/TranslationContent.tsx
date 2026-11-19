@@ -14,6 +14,7 @@ import {
   getTranslationName,
   isBundledTranslation,
 } from '@/utils/translationLookup';
+import {stripTranslationMarkup} from '@/utils/translationMarkup'; // @ai
 import {translationDbService} from '@/services/translation/TranslationDbService';
 import {
   BUNDLED_TRANSLATIONS,
@@ -60,10 +61,6 @@ const TOTAL_VERSES = allVerses.length; // 6236
 const verseKeyToIndex: Record<string, number> = {};
 for (let i = 0; i < allVerses.length; i++) {
   verseKeyToIndex[allVerses[i].verseKey] = i;
-}
-
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
 }
 
 const bundledIds = Object.keys(BUNDLED_TRANSLATIONS) as BundledTranslationId[];
@@ -174,7 +171,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
     (id: string) =>
       joinPartTexts(
         page.hafsKeys.map(hafsKey =>
-          stripHtml(getTranslationText(hafsKey, id)),
+          stripTranslationMarkup(getTranslationText(hafsKey, id)),
         ),
       ),
     [page],
@@ -184,7 +181,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
   const activeTranslationName = getTranslationName(selectedTranslationId);
   const activeTranslationText = isBundledTranslation(selectedTranslationId)
     ? bundledText(selectedTranslationId) // @ai
-    : stripHtml(downloadedTexts[selectedTranslationId] ?? '');
+    : stripTranslationMarkup(downloadedTexts[selectedTranslationId] ?? ''); // @ai
 
   // Track translation viewed when the selected translation changes
   useEffect(() => {
@@ -280,7 +277,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
           const name = getTranslationName(id);
           const text = isBundledTranslation(id)
             ? bundledText(id) // @ai
-            : stripHtml(downloadedTexts[id] ?? '');
+            : stripTranslationMarkup(downloadedTexts[id] ?? ''); // @ai
           return (
             <React.Fragment key={id}>
               <View style={styles.divider} />

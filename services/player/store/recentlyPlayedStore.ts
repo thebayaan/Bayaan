@@ -22,10 +22,36 @@ export interface RecentlyPlayedTrack {
   uploadArtist?: string;
 }
 
+// @ai How long after a new head card a tick for an older card's own surah
+// is taken as that card's last report, not as what is playing now.
+const STALE_TICK_WINDOW_MS = 5000;
+
+/**
+ * The key (`reciterId:surahId`) under which the player's current track
+ * reports its progress to updateProgress(). None for an upload: it reports
+ * through updateUploadProgress(), which never makes a card.
+ */
+function reportingTrackKey(): string | undefined {
+  const {queue} = usePlayerStore.getState();
+  const track = queue.tracks[queue.currentIndex];
+  if (!track?.reciterId || !track.surahId) return undefined;
+  if (track.isUserUpload && track.userRecitationId) return undefined;
+  return `${track.reciterId}:${parseInt(track.surahId, 10)}`;
+}
+
 interface RecentlyPlayedState {
   recentTracks: RecentlyPlayedTrack[];
   progressMap: Record<string, number>;
   durationMap: Record<string, number>;
+  /**
+   * The track (`reciterId:surahId`) that was in the player when the user
+   * cleared the list or removed that track's card. The track goes on
+   * reporting its progress (on each tick, and whenever the app is left, even
+   * while paused), and those reports do not make the card again. A report
+   * from another track, or a new chain, ends this. Saved, because the player
+   * restores the same track on the next launch.
+   */
+  dismissedKey?: string;
 
   /** Overwrites recentTracks[0] in place. Used for auto-advance and progress updates. */
   updateActiveChain: (
@@ -138,6 +164,8 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             ].slice(0, 10),
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
+            // A new play ends a dismissal (see dismissedKey).
+            dismissedKey: undefined,
           };
         }),
 
@@ -173,6 +201,8 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             ].slice(0, 10),
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
+            // A new play ends a dismissal (see dismissedKey).
+            dismissedKey: undefined,
           };
         }),
 
@@ -182,6 +212,8 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
           const maps = {
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
+            // Another track is playing now (see dismissedKey).
+            dismissedKey: undefined,
           };
 
           // Find and update the upload entry
@@ -210,62 +242,101 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
           const maps = {
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
+            // A report from another track ends a dismissal (see dismissedKey).
+            dismissedKey: state.dismissedKey === key ? key : undefined,
           };
 
-          if (state.recentTracks.length === 0) {
-            return maps;
-          }
+          // @ai-start
+          // The ticker reports the player's current track, so its rewayah is
+          // the one that is playing.
+          const playerState = usePlayerStore.getState();
+          const currentTrack =
+            playerState.queue.tracks[playerState.queue.currentIndex];
+          const playingRewayatId =
+            currentTrack?.reciterId === reciterId &&
+            currentTrack?.surahId === String(surahId)
+              ? currentTrack.rewayatId
+              : undefined;
 
-          const head = state.recentTracks[0];
+          const head: RecentlyPlayedTrack | undefined = state.recentTracks[0];
 
-          // Same reciter — update [0] in place (handles surah auto-advance)
-          if (head.reciter.id === reciterId) {
+          // Same reciter — update [0] in place (handles surah auto-advance).
+          // The rewayah follows the track too: a queue can hold the same
+          // reciter in two rewayat. An upload's card is never the same
+          // recitation as a catalogue track, whoever it is tagged with.
+          if (head && !head.isUserUpload && head.reciter.id === reciterId) {
             const surah =
               head.surah.id === surahId
                 ? head.surah
                 : (SURAHS.find(s => s.id === surahId) ?? head.surah);
             return {
               recentTracks: [
-                {...head, surah, progress, duration},
+                {
+                  ...head,
+                  surah,
+                  rewayatId: playingRewayatId ?? head.rewayatId,
+                  progress,
+                  duration,
+                },
                 ...state.recentTracks.slice(1),
               ],
               ...maps,
             };
           }
 
-          // Different reciter at [0].
-          // Check if this reciterId already exists below [0] — if so, it's a
-          // stale transition update (startNewChain already ran, old reciter was
-          // pushed down). Just update that existing entry's progress quietly.
+          // A different card is at [0], and this reciter has one further
+          // down. Right after startNewChain() pushed that card down, the old
+          // track can still report a last tick before the new one loads:
+          // that tick only updates its own card. It is recognised by being
+          // for the surah that the card already shows, just after a new
+          // head was made.
           const belowIndex = state.recentTracks.findIndex(
-            (t, i) => i > 0 && t.reciter.id === reciterId,
+            (t, i) => i > 0 && !t.isUserUpload && t.reciter.id === reciterId,
           );
-          if (belowIndex !== -1) {
+          const below =
+            belowIndex === -1 ? undefined : state.recentTracks[belowIndex];
+          if (
+            below &&
+            head &&
+            below.surah.id === surahId &&
+            Date.now() - head.timestamp < STALE_TICK_WINDOW_MS
+          ) {
             const updated = [...state.recentTracks];
-            updated[belowIndex] = {
-              ...updated[belowIndex],
-              progress,
-              duration,
-            };
+            updated[belowIndex] = {...below, progress, duration};
             return {recentTracks: updated, ...maps};
           }
 
-          // Genuinely new reciter from queue auto-advance — create new entry
-          const newReciter = RECITERS.find(r => r.id === reciterId);
+          // The user cleared the list, or removed this track's card, while
+          // it was in the player. Its reports do not bring the card back.
+          if (state.dismissedKey === key) {
+            return maps;
+          }
+
+          // Otherwise this is what is playing now, reached without a new
+          // chain: a queue that mixes reciters (Loved, a playlist, Downloads)
+          // moved on to this track, or playback began from a screen that
+          // starts no chain. It becomes the head. This used to write the
+          // progress onto the reciter's old card, leaving that card on
+          // another surah with this track's position, and leaving a track
+          // that had finished as the one that the app restored on launch.
+          const newReciter =
+            RECITERS.find(r => r.id === reciterId) ?? below?.reciter;
           const newSurah = SURAHS.find(s => s.id === surahId);
           if (!newReciter || !newSurah) {
             return maps;
           }
 
-          const playerState = usePlayerStore.getState();
-          const currentTrack =
-            playerState.queue.tracks[playerState.queue.currentIndex];
           const rewayatId =
-            currentTrack?.rewayatId ?? newReciter.rewayat[0]?.id ?? '';
+            playingRewayatId ??
+            (below?.surah.id === surahId ? below.rewayatId : undefined) ??
+            newReciter.rewayat[0]?.id ??
+            '';
+          // @ai-end
 
-          // Remove any existing entry for this reciter (one card per reciter)
+          // Remove any existing entry for this reciter (one card per reciter).
+          // An upload's card stays: it is another recitation.
           const withoutDupe = state.recentTracks.filter(
-            t => t.reciter.id !== reciterId,
+            t => t.isUserUpload || t.reciter.id !== reciterId,
           );
           return {
             recentTracks: [
@@ -287,18 +358,35 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
         set(state => {
           if (index < 0 || index >= state.recentTracks.length) return state;
           const updated = [...state.recentTracks];
-          updated.splice(index, 1);
+          const [removed] = updated.splice(index, 1);
+          // The card of the track in the player: that track's next report
+          // would make it again.
+          const playingKey = reportingTrackKey();
+          if (
+            playingKey &&
+            !removed.isUserUpload &&
+            `${removed.reciter?.id}:${removed.surah?.id}` === playingKey
+          ) {
+            return {recentTracks: updated, dismissedKey: playingKey};
+          }
           return {recentTracks: updated};
         }),
 
       clearRecentTracks: () =>
-        set({recentTracks: [], progressMap: {}, durationMap: {}}),
+        set({
+          recentTracks: [],
+          progressMap: {},
+          durationMap: {},
+          // The track in the player would otherwise make its card again.
+          dismissedKey: reportingTrackKey(),
+        }),
 
       reset: () => {
         set({
           recentTracks: [],
           progressMap: {},
           durationMap: {},
+          dismissedKey: undefined,
         });
       },
     }),
@@ -308,6 +396,7 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
       partialize: state =>
         ({
           recentTracks: state.recentTracks,
+          dismissedKey: state.dismissedKey,
         }) as unknown as RecentlyPlayedState,
     },
   ),

@@ -1,4 +1,4 @@
-import React, {useState, useMemo, useCallback} from 'react';
+import React, {useState, useMemo, useCallback, useRef} from 'react'; // @ai
 import {View, TextInput, Pressable, Text} from 'react-native';
 import {ScrollView} from 'react-native-actions-sheet';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
@@ -43,18 +43,34 @@ export const NoteContent: React.FC<NoteContentProps> = ({
   const isRange = selection.anchors.length > 1;
   // @ai-end
   const [noteText, setNoteText] = useState('');
+  // @ai-start
+  // The sheet stays tappable while it hides, and each tap on Save added the
+  // note again. The ref stops a second tap before the button re-renders.
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  // @ai-end
 
   const handleSave = useCallback(async () => {
     if (!noteText.trim()) return;
 
     // @ai-start
     if (selection.anchors.length === 0) return;
-    await addSelectionNote(selection, noteText.trim());
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await addSelectionNote(selection, noteText.trim());
+    } catch (error) {
+      // Nothing was saved: let the reader try again.
+      savingRef.current = false;
+      setSaving(false);
+      throw error;
+    }
     // @ai-end
     onDone();
   }, [selection, noteText, onDone]); // @ai
 
-  const canSave = noteText.trim().length > 0;
+  const canSave = noteText.trim().length > 0 && !saving; // @ai
 
   return (
     <ScrollView

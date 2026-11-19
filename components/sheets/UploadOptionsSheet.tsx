@@ -149,7 +149,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
 
   const isLovedState =
     hasSurah && hasReciter
-      ? isLovedWithRewayat(reciterId!, surahId, '')
+      ? isLovedWithRewayat(reciterId!, surahId, '', recitation?.id) // @ai
       : false;
 
   const tagsStyles = useMemo(

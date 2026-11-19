@@ -2,7 +2,11 @@
 import {useEffect, useRef} from 'react';
 import {useRoute} from 'expo-router';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
-import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {
+  SELECTION_FLASH_MS,
+  flashedSelectionClearer,
+  useMushafVerseSelectionStore,
+} from '@/store/mushafVerseSelectionStore';
 import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore';
 import {selectionForAnchor} from '@/services/mushaf/MushafVerseMapService';
 import {
@@ -38,6 +42,16 @@ export function useReaderLinkPage(
 ): void {
   const route = useRoute();
   const handled = useRef(route.params);
+  // The viewer ends the flash of a verse it is sent. A verse selected here
+  // is not sent to it, so that flash ends here. One timer, cleared on
+  // unmount (not when the effect below re-runs: it does on every render).
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (flashTimer.current !== null) clearTimeout(flashTimer.current);
+    },
+    [],
+  );
   useEffect(() => {
     if (route.params === handled.current) return;
     handled.current = route.params;
@@ -51,6 +65,12 @@ export function useReaderLinkPage(
       useMushafVerseSelectionStore
         .getState()
         .selectUnits(unitSelection.rewayah, unitSelection.units, page);
+      // Ends only this flash: a verse the reader selects meanwhile stays.
+      if (flashTimer.current !== null) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(
+        flashedSelectionClearer(),
+        SELECTION_FLASH_MS,
+      );
     }
     if (verseKey && words?.length) {
       useMushafWordFlashStore.getState().show(verseKey, words);

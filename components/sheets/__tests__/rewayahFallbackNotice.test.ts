@@ -1,6 +1,7 @@
 // @ai-generated
 // The reader is told, once per fallback, when the saved rewayah could not be
 // loaded at startup and Hafs is shown instead.
+import i18n from 'i18next';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {
   installRewayahFallbackNotice,
@@ -46,6 +47,19 @@ it('names the rewayah that failed and says Hafs is shown', () => {
     message: 'Showing Hafs instead.',
   });
   expect(rewayahFallbackNotice('al-duri-abi-amr').title).not.toMatch(/[—–]/);
+});
+
+// The copy used to be English whatever the app language.
+it('is written in the app language', async () => {
+  await i18n.changeLanguage('ar');
+  try {
+    expect(rewayahFallbackNotice('warsh')).toEqual({
+      title: 'تعذّر تحميل رواية ورش',
+      message: 'تُعرض رواية حفص بدلًا منها.',
+    });
+  } finally {
+    await i18n.changeLanguage('en');
+  }
 });
 
 it('shows one error toast when a fallback starts', () => {

@@ -39,6 +39,18 @@ export default function ReciterChoiceScreen() {
       icon: 'user',
       iconType: 'feather',
     },
+    // @ai-start
+    // The reciter sheet can save "Random Reciter" as the remembered choice.
+    // With no row for it here, this screen showed nothing selected while
+    // surahs played with a random reciter, and it could not be picked again.
+    {
+      label: t('reciterChoice.random'),
+      action: 'randomReciter',
+      description: t('reciterChoice.randomDescription'),
+      icon: 'shuffle',
+      iconType: 'feather',
+    },
+    // @ai-end
   ];
 
   return (
