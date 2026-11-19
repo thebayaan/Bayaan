@@ -13,6 +13,12 @@
  * the cleanup of that paragraph calls onParagraphDisposed and then disposes
  * it. A disposed paragraph throws on use, as Skia's does. The hit test is
  * read through the charAt function each page gives useVerseUnitDragSelect.
+ *
+ * The same pages pin what the two share (one hook since #541), on each
+ * page's own layout: the hit test (the canvas origin, the line lookup and
+ * the touch point inside the line's paragraph), the tap (a word marked while
+ * reciting opens it, any other tap is the page's own), the long-press and
+ * iOS drag-select gestures, and the playback and selection colours.
  */
 
 import React, {act} from 'react';
@@ -40,6 +46,12 @@ type MockCharAt = (
   x: number,
   y: number,
 ) => {lineIndex: number; charIndex: number} | null;
+interface MockGesture {
+  kind: string;
+  config: [string, unknown][];
+  handlers: Record<string, (event?: {x: number; y: number}) => void>;
+  gestures?: MockGesture[];
+}
 
 // Shared with the mock factories below (read lazily, after module init).
 const mockPage = {
@@ -54,6 +66,21 @@ const mockPage = {
 /** Where each stand-in SkiaLine draws its paragraph (its xPos). */
 const MOCK_X_POS = -500;
 const mockHitTest = {charAt: null as MockCharAt | null};
+/** Where each touch landed in a paragraph (getGlyphPositionAtCoordinate). */
+const mockParagraphReads: {lineIndex: number; x: number; y: number}[] = [];
+/** The gesture each page last gave its GestureDetector. */
+const mockGestures = {detector: null as MockGesture | null};
+const mockDrag = {calls: [] as [string, ...number[]][]};
+const mockSheets: {name: string; payload: unknown}[] = [];
+const mockRecitation = {
+  marks: [] as unknown[],
+  /** The line and character the first mark is on (markAtChar). */
+  markedAt: null as {lineIndex: number; charIndex: number} | null,
+};
+const mockTheme = {isDarkMode: false};
+const mockHighlightLayers = {
+  last: null as {playbackColor: string; selectionColor: string} | null,
+};
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -95,35 +122,64 @@ jest.mock('@/hooks/useMushafFontMgr', () => {
 });
 jest.mock('react-native-gesture-handler', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const builder = (): Record<string, () => unknown> => {
-    const gesture: Record<string, () => unknown> = {};
+  // A gesture builder that records its configuration and its callbacks.
+  const builder = (kind: string) => () => {
+    const gesture: MockGesture & Record<string, unknown> = {
+      kind,
+      config: [],
+      handlers: {},
+    };
     for (const method of [
       'minDuration',
       'maxDistance',
       'activateAfterLongPress',
       'minDistance',
-      'onStart',
-      'onUpdate',
-      'onEnd',
     ]) {
-      gesture[method] = () => gesture;
+      gesture[method] = (value: unknown) => {
+        gesture.config.push([method, value]);
+        return gesture;
+      };
+    }
+    for (const method of ['onStart', 'onUpdate', 'onEnd']) {
+      gesture[method] = (handler: () => void) => {
+        gesture.handlers[method] = handler;
+        return gesture;
+      };
     }
     return gesture;
   };
   return {
     Gesture: {
-      LongPress: builder,
-      Pan: builder,
-      Tap: builder,
-      Exclusive: () => ({}),
+      LongPress: builder('LongPress'),
+      Pan: builder('Pan'),
+      Tap: builder('Tap'),
+      Exclusive: (...gestures: MockGesture[]) => ({
+        kind: 'Exclusive',
+        config: [],
+        handlers: {},
+        gestures,
+      }),
     },
-    GestureDetector: ({children}: {children?: React.ReactNode}) =>
-      ReactActual.createElement(ReactActual.Fragment, null, children),
+    GestureDetector: ({
+      gesture,
+      children,
+    }: {
+      gesture: MockGesture;
+      children?: React.ReactNode;
+    }) => {
+      mockGestures.detector = gesture;
+      return ReactActual.createElement(ReactActual.Fragment, null, children);
+    },
   };
 });
 jest.mock('react-native-worklets', () => ({runOnJS: (fn: unknown) => fn}));
 jest.mock('react-native-actions-sheet', () => ({
-  SheetManager: {show: () => Promise.resolve()},
+  SheetManager: {
+    show: (name: string, options: {payload: unknown}) => {
+      mockSheets.push({name, payload: options.payload});
+      return Promise.resolve();
+    },
+  },
 }));
 jest.mock('@/services/mushaf/QuranTextService', () => ({
   quranTextService: {
@@ -177,7 +233,10 @@ jest.mock('@/constants/mushafAllahHighlight', () => ({
   getAllahNameHighlightColorHex: () => '#000000',
 }));
 jest.mock('@/hooks/useTheme', () => ({
-  useTheme: () => ({theme: {isDarkMode: false}, isDarkMode: false}),
+  useTheme: () => ({
+    theme: {isDarkMode: mockTheme.isDarkMode},
+    isDarkMode: mockTheme.isDarkMode,
+  }),
 }));
 jest.mock('@/store/mushafSettingsStore', () => {
   const settings = {
@@ -228,7 +287,18 @@ jest.mock('@/store/mushafPlayerStore', () => ({
   usePlaybackBasmalaSurah: () => null,
 }));
 jest.mock('@/store/recitationTrackingStore', () => ({
-  useRecitationTrackingStore: {getState: () => ({marks: []})},
+  useRecitationTrackingStore: {
+    getState: () => ({marks: mockRecitation.marks}),
+  },
+}));
+jest.mock('../recitationTap', () => ({
+  markAtChar: (line: MockLine, charIndex: number, marks: unknown[]) => {
+    const at = mockRecitation.markedAt;
+    const {lines} = mockPage;
+    return at && line === lines[at.lineIndex] && charIndex === at.charIndex
+      ? marks[0]
+      : null;
+  },
 }));
 jest.mock('../SkiaLine', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
@@ -238,12 +308,13 @@ jest.mock('../SkiaLine', () => {
   const makeParagraph = (lineIndex: number) => {
     let disposed = false;
     return {
-      getGlyphPositionAtCoordinate: () => {
+      getGlyphPositionAtCoordinate: (x: number, y: number) => {
         if (disposed) {
           throw new Error(
             `Attempted to access a disposed object (line ${lineIndex})`,
           );
         }
+        mockParagraphReads.push({lineIndex, x, y});
         return 7;
       },
       dispose: () => {
@@ -299,7 +370,16 @@ jest.mock('../pageOverlays', () => ({
 }));
 jest.mock('../verseHighlightLayers', () => ({
   basmalaPlaybackLines: () => null,
-  computeUnitPageHighlightLayers: () => null,
+  computeUnitPageHighlightLayers: (args: {
+    playbackColor: string;
+    selectionColor: string;
+  }) => {
+    mockHighlightLayers.last = {
+      playbackColor: args.playbackColor,
+      selectionColor: args.selectionColor,
+    };
+    return null;
+  },
 }));
 jest.mock('../playbackBand', () => ({usePlaybackBand: () => null}));
 jest.mock('../useRecitationLineHighlights', () => {
@@ -314,9 +394,15 @@ jest.mock('../useRecitationMarkColors', () => ({
 }));
 jest.mock('../verseUnitDragSelect', () => {
   const handlers = {
-    onDragStart: () => undefined,
-    onDragUpdate: () => undefined,
-    onDragEnd: () => undefined,
+    onDragStart: (x: number, y: number) => {
+      mockDrag.calls.push(['start', x, y]);
+    },
+    onDragUpdate: (x: number, y: number) => {
+      mockDrag.calls.push(['update', x, y]);
+    },
+    onDragEnd: () => {
+      mockDrag.calls.push(['end']);
+    },
   };
   return {
     useVerseUnitDragSelect: (_page: number, charAt: MockCharAt) => {
@@ -326,10 +412,11 @@ jest.mock('../verseUnitDragSelect', () => {
   };
 });
 
+import {Platform} from 'react-native';
 import SkiaPage from '../SkiaPage';
 import MushafPageContent from '../MushafPageContent';
 import {buildRenderConstants} from '../continuousRenderConstants';
-import {getMushafLayout} from '../../constants';
+import {calculateLineYPositions, getMushafLayout} from '../../constants';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -350,6 +437,7 @@ const PAGED = {
 const CONTINUOUS = buildRenderConstants(
   getMushafLayout({width: 390, height: 844, isTablet: false}),
 );
+const onTap = jest.fn();
 
 interface PageCase {
   name: string;
@@ -366,6 +454,7 @@ const PAGES: PageCase[] = [
         pageNumber={PAGE}
         textColor="#111111"
         dividerColor="#666666"
+        onTap={onTap}
         {...PAGED}
       />
     ),
@@ -396,6 +485,7 @@ const PAGES: PageCase[] = [
         textIdentity={mockPage.identity}
         dividerFont={null}
         nameFontSize={0}
+        onTap={onTap}
         render={CONTINUOUS}
         pageHeight={15 * CONTINUOUS.baseLineHeight}
       />
@@ -465,5 +555,299 @@ describe.each(PAGES)('$name', ({render, pointOnLine}) => {
     expect(hitAt(pointOnLine(1))).toBeNull();
     expect(hitAt(pointOnLine(0))).toEqual({lineIndex: 0, charIndex: 7});
     expect(hitAt(pointOnLine(2))).toEqual({lineIndex: 2, charIndex: 7});
+  });
+});
+
+// ── What the two pages share, on each page's own layout ─────────────────
+
+function threeLines(): void {
+  mockPage.lines = Array.from({length: LINE_COUNT}, () => ({
+    line_type: 'ayah' as const,
+    surah_number: 2,
+  }));
+  mockPage.texts = ['first line', 'second line', 'third line'];
+  mockPage.layout = Array.from({length: LINE_COUNT}, () => ({}));
+  mockPage.identity = 'hafs@1';
+}
+
+function mount(element: JSX.Element): TestRenderer.ReactTestRenderer {
+  mockHitTest.charAt = null;
+  mockGestures.detector = null;
+  mockHighlightLayers.last = null;
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+  act(() => {
+    renderer = TestRenderer.create(element);
+  });
+  if (!renderer) throw new Error('no renderer');
+  return renderer;
+}
+
+/** Where a page's text canvas sits in the page, and where its lines are. */
+interface TextFrame {
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+  lineTops: number[];
+}
+
+interface LayoutCase {
+  name: string;
+  render: () => JSX.Element;
+  frame: () => TextFrame;
+}
+
+const LAYOUTS: LayoutCase[] = [
+  {
+    // Pages 1 and 2 centre their short block: the lines start lower.
+    name: 'SkiaPage, page 1 (a centred short page)',
+    render: () => (
+      <SkiaPage
+        pageNumber={1}
+        textColor="#111111"
+        dividerColor="#666666"
+        {...PAGED}
+      />
+    ),
+    frame: () => ({
+      originX: PAGED.paddingHorizontal,
+      originY: PAGED.paddingTop,
+      width: PAGED.contentWidth,
+      height: PAGED.contentHeight,
+      lineTops: calculateLineYPositions(
+        mockPage.lines,
+        1,
+        PAGED.contentHeight,
+        PAGED.baseLineHeight,
+      ),
+    }),
+  },
+  {
+    name: 'SkiaPage, a page with a left content margin',
+    render: () => (
+      <SkiaPage
+        pageNumber={PAGE}
+        textColor="#111111"
+        dividerColor="#666666"
+        contentMarginLeft={30}
+        {...PAGED}
+      />
+    ),
+    frame: () => ({
+      originX: 30,
+      originY: PAGED.paddingTop,
+      width: PAGED.contentWidth,
+      height: PAGED.contentHeight,
+      lineTops: mockPage.lines.map((_, i) => i * PAGED.baseLineHeight),
+    }),
+  },
+  {
+    name: 'MushafPageContent',
+    render: PAGES[1].render,
+    frame: () => ({
+      originX: CONTINUOUS.canvasMarginX,
+      originY: 0,
+      width: CONTINUOUS.contentWidth,
+      height: 15 * CONTINUOUS.baseLineHeight,
+      lineTops: mockPage.lines.map((_, i) => i * CONTINUOUS.baseLineHeight),
+    }),
+  },
+];
+
+describe.each(LAYOUTS)('the hit test of $name', ({render, frame}) => {
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+
+  beforeEach(() => {
+    threeLines();
+    mockParagraphReads.length = 0;
+  });
+
+  afterEach(() => {
+    act(() => renderer?.unmount());
+    renderer = undefined;
+  });
+
+  it("maps a touch on each line to that line, at the touch's place in its paragraph", () => {
+    renderer = mount(render());
+    const {originX, originY, lineTops} = frame();
+    for (let lineIndex = 0; lineIndex < LINE_COUNT; lineIndex++) {
+      const hit = hitAt({
+        x: originX + 20,
+        y: originY + lineTops[lineIndex] + 3,
+      });
+      expect(hit).toEqual({lineIndex, charIndex: 7});
+      expect(mockParagraphReads[mockParagraphReads.length - 1]).toEqual({
+        lineIndex,
+        x: 20 - MOCK_X_POS,
+        y: 3,
+      });
+    }
+  });
+
+  it('finds no text outside the text canvas', () => {
+    renderer = mount(render());
+    const {originX, originY, width, height, lineTops} = frame();
+    const y = originY + lineTops[0] + 3;
+    expect(hitAt({x: originX - 1, y})).toBeNull();
+    expect(hitAt({x: originX + width + 1, y})).toBeNull();
+    expect(hitAt({x: originX + 20, y: originY - 1})).toBeNull();
+    expect(hitAt({x: originX + 20, y: originY + height + 1})).toBeNull();
+    expect(mockParagraphReads).toHaveLength(0);
+  });
+
+  it('finds no text on a surah name line', () => {
+    mockPage.lines[1] = {line_type: 'surah_name', surah_number: 3};
+    renderer = mount(render());
+    const {originX, originY, lineTops} = frame();
+    expect(hitAt({x: originX + 20, y: originY + lineTops[1] + 3})).toBeNull();
+    expect(hitAt({x: originX + 20, y: originY + lineTops[2] + 3})).toEqual({
+      lineIndex: 2,
+      charIndex: 7,
+    });
+  });
+});
+
+describe.each(PAGES)('the tap on $name', ({render, pointOnLine}) => {
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+  const MARK = {surah: 2, ayah: 5, word: 1, kind: 'wrong'};
+
+  function tap(point: {x: number; y: number}): void {
+    const tapGesture = mockGestures.detector?.gestures?.[1];
+    if (tapGesture?.kind !== 'Tap') throw new Error('no tap gesture');
+    act(() => tapGesture.handlers.onEnd(point));
+  }
+
+  beforeEach(() => {
+    threeLines();
+    onTap.mockClear();
+    mockSheets.length = 0;
+    mockParagraphReads.length = 0;
+    mockRecitation.marks = [];
+    mockRecitation.markedAt = null;
+  });
+
+  afterEach(() => {
+    act(() => renderer?.unmount());
+    renderer = undefined;
+  });
+
+  it("is the page's own while nothing is marked, with no hit test", () => {
+    renderer = mount(render());
+    tap(pointOnLine(1));
+    expect(onTap).toHaveBeenCalledTimes(1);
+    expect(mockSheets).toHaveLength(0);
+    expect(mockParagraphReads).toHaveLength(0);
+  });
+
+  it('opens the mark under the touch', () => {
+    mockRecitation.marks = [MARK];
+    mockRecitation.markedAt = {lineIndex: 1, charIndex: 7};
+    renderer = mount(render());
+    tap(pointOnLine(1));
+    expect(mockSheets).toEqual([
+      {name: 'recitation-mistake', payload: {mark: MARK}},
+    ]);
+    expect(onTap).not.toHaveBeenCalled();
+  });
+
+  it("is the page's own on a word that is not marked", () => {
+    mockRecitation.marks = [MARK];
+    mockRecitation.markedAt = {lineIndex: 1, charIndex: 7};
+    renderer = mount(render());
+    tap(pointOnLine(0));
+    expect(onTap).toHaveBeenCalledTimes(1);
+    expect(mockSheets).toHaveLength(0);
+  });
+});
+
+describe.each(PAGES)('the gestures of $name', ({render}) => {
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+
+  beforeEach(() => {
+    threeLines();
+    mockDrag.calls = [];
+  });
+
+  afterEach(() => {
+    act(() => renderer?.unmount());
+    renderer = undefined;
+  });
+
+  it('on iOS: a pan after a 400 ms press drag-selects, and a tap', () => {
+    const replaced = jest.replaceProperty(Platform, 'OS', 'ios');
+    try {
+      renderer = mount(render());
+    } finally {
+      replaced.restore();
+    }
+    const detector = mockGestures.detector;
+    expect(detector?.kind).toBe('Exclusive');
+    const [press, tapGesture] = detector?.gestures ?? [];
+    expect(press.kind).toBe('Pan');
+    expect(press.config).toEqual([
+      ['activateAfterLongPress', 400],
+      ['minDistance', 0],
+    ]);
+    expect(tapGesture.kind).toBe('Tap');
+    press.handlers.onStart({x: 1, y: 2});
+    press.handlers.onUpdate({x: 3, y: 4});
+    press.handlers.onEnd();
+    expect(mockDrag.calls).toEqual([
+      ['start', 1, 2],
+      ['update', 3, 4],
+      ['end'],
+    ]);
+  });
+
+  it('on Android: a still 400 ms long-press selects, and a tap', () => {
+    const replaced = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      renderer = mount(render());
+    } finally {
+      replaced.restore();
+    }
+    const [press, tapGesture] = mockGestures.detector?.gestures ?? [];
+    expect(press.kind).toBe('LongPress');
+    expect(press.config).toEqual([
+      ['minDuration', 400],
+      ['maxDistance', 20],
+    ]);
+    expect(press.handlers.onUpdate).toBeUndefined();
+    expect(tapGesture.kind).toBe('Tap');
+    press.handlers.onStart({x: 1, y: 2});
+    press.handlers.onEnd();
+    expect(mockDrag.calls).toEqual([['start', 1, 2], ['end']]);
+  });
+});
+
+describe.each(PAGES)('the highlight colours of $name', ({render}) => {
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+
+  beforeEach(() => {
+    threeLines();
+  });
+
+  afterEach(() => {
+    act(() => renderer?.unmount());
+    renderer = undefined;
+    mockTheme.isDarkMode = false;
+  });
+
+  it('paints playback and selection in the text colour, in light mode', () => {
+    mockTheme.isDarkMode = false;
+    renderer = mount(render());
+    expect(mockHighlightLayers.last).toEqual({
+      playbackColor: 'rgba(17, 17, 17, 0.12)',
+      selectionColor: 'rgba(17, 17, 17, 0.18)',
+    });
+  });
+
+  it('paints them lighter in dark mode', () => {
+    mockTheme.isDarkMode = true;
+    renderer = mount(render());
+    expect(mockHighlightLayers.last).toEqual({
+      playbackColor: 'rgba(17, 17, 17, 0.1)',
+      selectionColor: 'rgba(17, 17, 17, 0.15)',
+    });
   });
 });
