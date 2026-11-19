@@ -13,12 +13,16 @@
  *  - an input that is not locked, or a locked input that is not given;
  *  - a dump whose version is not the locked one;
  *  - a headword, gloss or note that still has markup, a link, Latin
- *    letters, digits, brackets or U+FFFD after cleaning, or an empty gloss;
+ *    letters, digits, brackets or U+FFFD after cleaning;
+ *  - a gloss shown on words with no meaning text, or one that starts or
+ *    ends on ':' or '،' (cut text);
  *  - a span outside its verse's words in data/wbw/wbw-en.db;
  *  - a book whose share of entries placed on words is below its minPlaced.
+ * An entry whose gloss has no meaning text (empty, or punctuation only) is
+ * kept at verse level and never shown.
  * --report lists for review: tier-3, tier-2 and ambiguous placements (shown
  * on words), tier-4 and neighbouring-verse matches (kept at verse level),
- * and entries placed nowhere.
+ * entries with no meaning text, and entries placed nowhere.
  * --check rebuilds into a temporary file and compares it with --out.
  *
  * The inputs are not committed (see SOURCES.md for where they come from),
@@ -34,11 +38,13 @@ import {compareDbs, writeGharibDb, type GharibRow} from './db';
 import {
   cleanGloss,
   cleanHeadword,
+  hasMeaningText,
   placeAll,
   readGharibReviewed,
   readJsonl,
   readQuranpediaBook,
   readQuranpediaMeanings,
+  shownGlossProblem,
   textProblem,
   type GharibInput,
   type Placement,
@@ -124,20 +130,23 @@ export function build(
     if (!used.has(g)) throw new Error(`locked input ${g.file} not given`);
   }
 
-  // Clean and gate the texts.
+  // Clean and gate the texts. An empty gloss is not a problem here: like
+  // one of punctuation only, it has no meaning text and is not placed.
+  const where = (e: GharibInput) =>
+    `${e.sourceId} ${e.surah}:${e.ayah} #${e.ord}`;
   for (const e of entries) {
     e.headword = cleanHeadword(e.headword);
     e.gloss = cleanGloss(e.gloss);
     e.note = cleanGloss(e.note ?? '');
-    const where = `${e.sourceId} ${e.surah}:${e.ayah} #${e.ord}`;
-    if (!e.gloss) problems.push(`${where}: empty gloss`);
     for (const [field, text] of [
       ['headword', e.headword],
       ['gloss', e.gloss],
       ['note', e.note],
     ] as const) {
       const problem = text ? textProblem(text) : null;
-      if (problem) problems.push(`${where}: ${field} has ${problem}: ${text}`);
+      if (problem) {
+        problems.push(`${where(e)}: ${field} has ${problem}: ${text}`);
+      }
     }
   }
 
@@ -146,6 +155,21 @@ export function build(
     fs.readFileSync(path.join(HERE, 'gharib-reviewed.json'), 'utf8'),
   );
   const placed = placeAll(entries, app.verses, reviewed);
+
+  // What a word shows must read as a meaning. A gloss the gate refuses
+  // because of the book's own text goes to gharib-reviewed.json at verse
+  // level (README).
+  for (const p of placed) {
+    if (!p.span) continue;
+    const problem = shownGlossProblem(p.input.gloss);
+    if (problem) {
+      problems.push(
+        `${where(p.input)}: gloss shown on words has ${problem}: ${
+          p.input.gloss
+        }`,
+      );
+    }
+  }
 
   // Spans must be real words of their verse.
   for (const p of placed) {
@@ -256,7 +280,14 @@ function report(
     ],
     ['Tier 4, verse level (loose match, not shown)', p => p.tier === 4],
     ['Neighbouring verse, verse level (not shown)', p => p.moved],
-    ['Placed nowhere, verse level (not shown)', p => p.tier === 0],
+    [
+      'No meaning text, verse level (not shown)',
+      p => p.tier === 0 && !hasMeaningText(p.input.gloss),
+    ],
+    [
+      'Placed nowhere, verse level (not shown)',
+      p => p.tier === 0 && hasMeaningText(p.input.gloss),
+    ],
     ['Hand-placed (gharib-reviewed.json)', p => p.tier === 5],
   ];
   return sections

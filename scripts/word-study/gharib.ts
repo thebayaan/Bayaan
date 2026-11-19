@@ -16,14 +16,19 @@
  *  3. tier-2 keys after one proclitic and/or one enclitic, on either side
  *     (a ta marbuta is never taken off as the pronoun ه);
  *  4. looseKey, at least 3 letters, one match in the verse only.
+ * Tiers 2 and 3 take runs of at most n words: with every alif dropped, a
+ * word such as لا reads as the article, and وَلَا سَآئِبَةٍ would spell
+ * والسائبة.
  * Then tiers 1-3 in a verse up to 3 before or after (moved), then none.
  * Only tiers 1-3 (and hand placements) go on words. Tier 4 and moved entries
  * keep their match as an unshown candidate and stay at verse level, like
- * entries that match nothing (README: not shown in v1).
+ * entries that match nothing and entries with no meaning text (README: not
+ * shown in v1).
  */
 import {
   ENCLITICS,
   hamzaKey,
+  isArabicLetter,
   looseKey,
   matchKey,
   plainKey,
@@ -251,14 +256,18 @@ export function readJsonl(text: string): GharibInput[] {
 }
 
 /**
- * A gloss as the app shows it: the editor's bracketed insertions ([…],
- * README) and footnote markers («7», a trailing «.27،») removed, spaces
- * collapsed, no space before punctuation, one after it. The book's own
+ * A gloss as the app shows it. The edition's apparatus is removed: the
+ * source siglum [زه], bare verse numbers such as [7] and footnote markers
+ * («7», a trailing «.27،»). Any other bracket holds words the editor
+ * restored, which the gloss may need for its sense («[ألّا] تجوروا»): they
+ * are kept as printed and only the square brackets go (README). Spaces are
+ * collapsed, with none before punctuation and one after it. The book's own
  * words are not changed.
  */
 export function cleanGloss(text: string): string {
   return text
-    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\[\s*(?:زه|\d+)\s*\]/g, ' ')
+    .replace(/\[([^[\]]*)\]/g, '$1')
     .replace(/«\s*\d+\s*»/g, ' ')
     .replace(/([.،])\s*\d+\s*،?\s*$/, '$1')
     .replace(/\s+/g, ' ')
@@ -285,6 +294,25 @@ export function textProblem(text: string): string | null {
   if (/[0-9٠-٩۰-۹]/.test(text)) return 'digits';
   if (text.includes('�')) return 'U+FFFD';
   if (/[[\]]/.test(text)) return 'a bracket';
+  return null;
+}
+
+/** Has the gloss any meaning text, an Arabic letter? '' and '.' have none. */
+export function hasMeaningText(gloss: string): boolean {
+  return [...gloss].some(isArabicLetter);
+}
+
+/**
+ * Why a cleaned gloss cannot be shown on words, or null: it has no meaning
+ * text, or it starts or ends on ':' or '،'. That is cut text: words the
+ * cleaning removed, or a lead-in that the next entry completes.
+ */
+export function shownGlossProblem(gloss: string): string | null {
+  if (!hasMeaningText(gloss)) return 'no meaning text';
+  const first = gloss[0];
+  if (first === ':' || first === '،') return `a leading "${first}"`;
+  const last = gloss[gloss.length - 1];
+  if (last === ':' || last === '،') return `a trailing "${last}"`;
   return null;
 }
 
@@ -412,6 +440,8 @@ function spells(target: string, keys: readonly [string, string][]): boolean {
  * Candidate spans (1-based positions) of a headword in a verse at one tier:
  * the best-scored ones. Fewer clitics taken off (tier 3) score better, then
  * a word count closer to the headword's (لا تَسْقِي ٱلْحَرْثَ keeps its لا).
+ * Runs have up to n+2 words at tiers 1 and 4, up to n at tiers 2 and 3 (see
+ * the file comment).
  */
 function candidates(
   headword: string,
@@ -425,9 +455,10 @@ function candidates(
   const head3 = cliticVariants(tier3Key(headword, 'imlaei'));
   const head4 = looseKey(headword);
   if (!head1 || (tier === 4 && head4.length < 3)) return [];
+  const maxLen = tier === 2 || tier === 3 ? n : n + 2;
   const found: {span: [number, number]; score: number}[] = [];
   for (let i = 0; i < words.length; i++) {
-    for (let len = 1; len <= n + 2 && i + len <= words.length; len++) {
+    for (let len = 1; len <= maxLen && i + len <= words.length; len++) {
       const run = keys.slice(i, i + len);
       let strips = Infinity;
       if (tier === 1) {
@@ -488,7 +519,9 @@ function wordKeys(words: readonly AppWord[]): WordKeys[] {
  * Places every entry on the app's words (see the file comment). Entries
  * are processed per verse in book order; when the winning tier gives
  * several spans, the first one starting after the previous placed entry of
- * the same source in that verse wins, else the first.
+ * the same source in that verse wins, else the first. An entry whose gloss
+ * has no meaning text (hasMeaningText) is not placed: there is nothing to
+ * show on its words. A hand placement still wins.
  */
 export function placeAll(
   entries: readonly GharibInput[],
@@ -536,7 +569,7 @@ export function placeAll(
         placement.verseKey = m[1];
         placement.span = [Number(m[2]), Number(m[3])];
       }
-    } else {
+    } else if (hasMeaningText(input.gloss)) {
       placeInVerse(placement, words, keysOf(verseKey), lastStart.get(prevKey));
       if (!placement.span && !placement.candidate) {
         placeNearby(placement, verses, keysOf);

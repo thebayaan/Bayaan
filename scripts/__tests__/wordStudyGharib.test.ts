@@ -3,6 +3,7 @@ import {
   cleanGloss,
   cleanHeadword,
   GHARIB_SPLITTERS,
+  hasMeaningText,
   MEANINGS_SCHEMA,
   placeAll,
   readGharibReviewed,
@@ -10,6 +11,7 @@ import {
   readQuranpediaBook,
   readQuranpediaMeanings,
   reviewedKey,
+  shownGlossProblem,
   textProblem,
   type GharibInput,
   type GharibReviewed,
@@ -88,6 +90,20 @@ const VERSES: Record<string, string[]> = {
     'ٱلسَّمَـٰوَٰتِ',
     'وَٱلْأَرْضَ ۖ',
   ],
+  '5:103': [
+    'مَا',
+    'جَعَلَ',
+    'ٱللَّهُ',
+    'مِنۢ',
+    'بَحِيرَةٍۢ',
+    'وَلَا',
+    'سَآئِبَةٍۢ',
+    'وَلَا',
+    'وَصِيلَةٍۢ',
+    'وَلَا',
+    'حَامٍۢ ۙ',
+    'وَلَـٰكِنَّ',
+  ],
 };
 
 const verses = new Map<string, AppWord[]>(
@@ -140,6 +156,21 @@ describe('placement tiers', () => {
     expect(place('10:53', 'يستنبئونك')).toMatchObject({tier: 3, span: [1, 1]});
   });
 
+  it.each([
+    ['والسائبة', 7],
+    ['والوصيلة', 9],
+    ['والحامي', 11],
+  ])('«%s» goes on its noun, not on «وَلَا» before it', (headword, word) => {
+    // With every alif dropped, وَلَا reads as the article: the two words
+    // وَلَا سَآئِبَةٍ spell والسائبة at tier 2. Tiers 2 and 3 take no run of
+    // more words than the headword has, so the noun alone is placed, with
+    // the headword's article taken off (tier 3).
+    expect(place('5:103', headword)).toMatchObject({
+      tier: 3,
+      span: [word, word],
+    });
+  });
+
   it('a loose match is tier 4 and stays at verse level', () => {
     // طَغَى in the book, طَغَا in the mushaf.
     expect(place('69:11', 'لَمَّا طَغَى الْماءُ')).toMatchObject({
@@ -166,6 +197,18 @@ describe('placement tiers', () => {
       candidate: '',
     });
   });
+
+  it.each(['.', ''])(
+    'an entry whose gloss has no meaning text (%p) stays at verse level',
+    gloss => {
+      const e = {...entry('2:2', 'هُدىً'), gloss};
+      expect(placeAll([e], verses, NONE)[0]).toMatchObject({
+        tier: 0,
+        span: null,
+        candidate: '',
+      });
+    },
+  );
 
   it('a duplicated word goes after the previous placed entry', () => {
     const placed = placeAll(
@@ -332,15 +375,28 @@ it('readJsonl reads one entry per line', () => {
 });
 
 describe('cleaning', () => {
-  it('strips the editor’s brackets and footnote markers', () => {
+  it('keeps the words the edition restored in brackets, without the brackets', () => {
     expect(cleanGloss('الراحم  [والرّحمة]  تظهر في القلب [زه] .')).toBe(
-      'الراحم تظهر في القلب.',
+      'الراحم والرّحمة تظهر في القلب.',
     );
+    // Without its restored first word this gloss would say the opposite.
+    expect(cleanGloss('[لا]  تظلموا.')).toBe('لا تظلموا.');
+    expect(cleanGloss('[كذا] : شرح، [ثم قال] :')).toBe('كذا: شرح، ثم قال:');
+  });
+
+  it('drops the apparatus: the source siglum, verse numbers, footnote markers', () => {
+    expect(cleanGloss('شرح [زه] وقيل غيره')).toBe('شرح وقيل غيره');
+    expect(cleanGloss('ومنه قوله كذا [7] : شرح')).toBe('ومنه قوله كذا: شرح');
     expect(cleanGloss('قاله سيبويه «7» . وقيل «8»غيره')).toBe(
       'قاله سيبويه. وقيل غيره',
     );
     expect(cleanGloss('الكفؤ: المثل.1')).toBe('الكفؤ: المثل.');
     expect(cleanGloss('مِنْ فِضَّةٍ  .27،')).toBe('مِنْ فِضَّةٍ.');
+  });
+
+  it('leaves an unbalanced bracket for the gate', () => {
+    expect(textProblem(cleanGloss('شرح [كذا'))).toBe('a bracket');
+    expect(textProblem(cleanGloss('شرح] كذا'))).toBe('a bracket');
   });
 
   it('fixes spacing around punctuation', () => {
@@ -358,6 +414,19 @@ describe('cleaning', () => {
     expect(textProblem('شرح 7')).toBe('digits');
     expect(textProblem('شرح �')).toBe('U+FFFD');
     expect(textProblem('شرح [زه]')).toBe('a bracket');
+  });
+
+  it('flags a gloss that cannot be shown on words', () => {
+    expect(shownGlossProblem('شرح: كذا، وكذا.')).toBeNull();
+    expect(hasMeaningText('شرح')).toBe(true);
+    expect(hasMeaningText('.')).toBe(false);
+    expect(shownGlossProblem('')).toBe('no meaning text');
+    expect(shownGlossProblem('. ،')).toBe('no meaning text');
+    // Cut text: a word the cleaning lost, or a lead-in to the next entry.
+    expect(shownGlossProblem(': شرح')).toBe('a leading ":"');
+    expect(shownGlossProblem('، شرح')).toBe('a leading "،"');
+    expect(shownGlossProblem('شرح، ثم قال:')).toBe('a trailing ":"');
+    expect(shownGlossProblem('شرح،')).toBe('a trailing "،"');
   });
 });
 
@@ -378,5 +447,5 @@ it('readGharibReviewed checks keys and values', () => {
     readGharibReviewed(
       JSON.stringify(require('../word-study/gharib-reviewed.json')),
     ).entries,
-  ).toEqual({});
+  ).toEqual({'327 77:25 كفاتا': {verseLevel: true}});
 });

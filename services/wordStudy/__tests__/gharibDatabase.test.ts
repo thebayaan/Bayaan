@@ -95,8 +95,8 @@ describe('completeness', () => {
   it('pins the counts per tier', () => {
     const count = (tier: number) => rows.filter(r => r.tier === tier).length;
     expect(rows).toHaveLength(2746);
-    expect(rows.filter(r => r.word_from !== null)).toHaveLength(2696);
-    expect([0, 1, 2, 3, 4, 5].map(count)).toEqual([39, 2486, 42, 169, 10, 0]);
+    expect(rows.filter(r => r.word_from !== null)).toHaveLength(2694);
+    expect([0, 1, 2, 3, 4, 5].map(count)).toEqual([40, 2484, 40, 171, 10, 1]);
   });
 
   it('puts every span on words of the app', () => {
@@ -130,12 +130,14 @@ describe('completeness', () => {
       if (r.tier === 0 && r.candidate === '') return 'none';
       if (r.tier === 4 && own) return 'loose';
       if ([1, 2, 3].includes(r.tier) && r.candidate && !own) return 'moved';
+      if (r.tier === 5 && r.candidate === '') return 'reviewed';
       return 'bad';
     };
     const kinds = rows.map(kind);
     expect(kinds.filter(k => k === 'bad')).toEqual([]);
     expect(kinds.filter(k => k === 'loose')).toHaveLength(10);
     expect(kinds.filter(k => k === 'moved')).toHaveLength(1);
+    expect(kinds.filter(k => k === 'reviewed')).toHaveLength(1);
     expect(placed('69:11', 'لَمَّا طَغَى الْماءُ')).toMatchObject({
       tier: 4,
       word_from: null,
@@ -155,11 +157,62 @@ describe('texts', () => {
     }
   });
 
-  it('lost the editor’s insertions', () => {
-    // «… أو أتلو [أو قرأت] .» in the dump.
-    const basmala = placed('1:1', 'بِسْمِ اللَّهِ');
-    expect(basmala?.gloss).not.toMatch(/قرأت/);
-    expect(basmala?.gloss).toMatch(/أو أتلو\.$/);
+  it('keep the words the edition restored in brackets, without the brackets', () => {
+    // «… أو أتلو [أو قرأت]  .» in the dump.
+    expect(placed('1:1', 'بِسْمِ اللَّهِ')?.gloss).toMatch(
+      /أو أتلو أو قرأت\.$/,
+    );
+    // «الراحم  [والرّحمة]  تظهر في القلب، …»
+    expect(placed('1:1', 'الرَّحِيمِ')?.gloss).toMatch(
+      /^الراحم والرّحمة تظهر في القلب، /,
+    );
+    // «[ألّا]  تجوروا وتميلوا. …»: without its first word the gloss says
+    // the opposite.
+    expect(placed('4:3', 'أَلَّا تَعُولُوا')?.gloss).toMatch(
+      /^ألّا تجوروا وتميلوا\. /,
+    );
+    // «… وقيل: واسع [الرحمة، ولذلك رخّص في] الشريعة.»
+    expect(placed('2:115', 'واسِعٌ')?.gloss).toMatch(
+      /وقيل: واسع الرحمة، ولذلك رخّص في الشريعة\.$/,
+    );
+  });
+
+  it('lost the apparatus: the source siglum [زه] and verse numbers', () => {
+    // «… ممن يعول قوما [زه] والأول قول الجمهور …» in the dump.
+    expect(placed('4:3', 'أَلَّا تَعُولُوا')?.gloss).toContain(
+      'ممن يعول قوما والأول قول الجمهور',
+    );
+    // «… ومنه تُراوِدُ فَتاها عَنْ نَفْسِهِ [30] : أي عبدها.»
+    expect(placed('12:36', 'فَتَيانِ')?.gloss).toMatch(
+      /ومنه تُراوِدُ فَتاها عَنْ نَفْسِهِ: أي عبدها\.$/,
+    );
+    for (const t of texts) expect(t).not.toMatch(/(^|[\s.،:])زه($|[\s.،:])/);
+  });
+});
+
+describe('glosses on words', () => {
+  it('read as a meaning: an Arabic letter, no cut start or end', () => {
+    for (const r of rows) {
+      if (r.word_from === null) continue;
+      expect(r.gloss).toMatch(/[ء-ي]/);
+      expect(r.gloss).not.toMatch(/^[:،]|[:،]$/);
+    }
+  });
+
+  it('leave out the two that do not, kept at verse level', () => {
+    // The book's entry is a lone «.».
+    expect(placed('86:15', 'يَكِيدُونَ كَيْداً')).toMatchObject({
+      gloss: '.',
+      tier: 0,
+      word_from: null,
+    });
+    // As printed: «… واحدها كفت [ثم قال]  :», a lead-in to the next entry.
+    // gharib-reviewed.json keeps it at verse level.
+    expect(placed('77:25', 'كِفاتاً')).toMatchObject({
+      gloss: 'أوعية، واحدها كفت ثم قال:',
+      tier: 5,
+      word_from: null,
+    });
   });
 });
 
@@ -185,6 +238,11 @@ describe('reviewed placements', () => {
       1,
       8,
     ],
+    // The nouns, not «وَلَا» before them (tier 3, the article taken off).
+    // With every alif dropped, «وَلَا سَآئِبَةٍ» spells والسائبة at tier 2.
+    ['5:103', 'والسائبة', 7, 7],
+    ['5:103', 'والوصيلة', 9, 9],
+    ['5:103', 'والحامي', 11, 11],
   ])('%s «%s» on words %i-%i', (verseKey, headword, from, to) => {
     expect(placed(verseKey, headword)).toMatchObject({
       word_from: from,

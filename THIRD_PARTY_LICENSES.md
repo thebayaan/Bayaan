@@ -125,10 +125,11 @@ records how each was obtained.
   listed in the dumps' `manifest.json`): book 327, *al-Tibyan fi Tafsir
   Gharib al-Qur'an* (التبيان في تفسير غريب القرآن) by Ibn al-Ha'im (d. 815 AH),
   edited by Dahi Abd al-Baqi Muhammad (Dar al-Gharb al-Islami, 1st edition,
-  1423 AH). The work is a classical text. Changes were made: the editor's
-  bracketed insertions (`[…]`) and footnote markers were removed, and each
-  entry was placed on the words of the verse it explains. The book's own
-  wording is not changed.
+  1423 AH). The work is a classical text. Changes were made: the edition's
+  apparatus (the source siglum `[زه]`, bare verse numbers such as `[7]`, and
+  footnote markers) was removed; the words the editor restored in square
+  brackets are kept, without the brackets; and each entry was placed on the
+  words of the verse it explains. The book's own wording is not changed.
 - Quranpedia's licence (https://quranpedia.net/dumps/LICENSE.md, version
   2026-11-13), English part, verbatim:
 
