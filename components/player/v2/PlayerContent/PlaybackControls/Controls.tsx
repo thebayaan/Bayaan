@@ -26,7 +26,6 @@ export const Controls = () => {
   const a11y = usePlayerA11y(); // @ai
   const {play, pause, skipToNext, skipToPrevious, seekTo} = usePlayerActions();
   const playbackState = usePlayerStore(s => s.playback.state);
-  const playbackPosition = usePlayerStore(s => s.playback.position);
   const currentIndex = usePlayerStore(s => s.queue.currentIndex);
   const tracksLength = usePlayerStore(s => s.queue.tracks.length);
   const trackLoading = usePlayerStore(s => s.loading.trackLoading);
@@ -72,15 +71,21 @@ export const Controls = () => {
     await skipToNext();
   }, [trackLoading, currentIndex, tracksLength, skipToNext]);
 
+  // @ai-start
+  // The position is read at the press, so the controls do not render on
+  // every position tick.
   const handleSeekBackward = useCallback(async () => {
     if (trackLoading) return;
-    await seekTo(Math.max(0, playbackPosition - SEEK_INTERVAL));
-  }, [trackLoading, playbackPosition, seekTo]);
+    const {position} = usePlayerStore.getState().playback;
+    await seekTo(Math.max(0, position - SEEK_INTERVAL));
+  }, [trackLoading, seekTo]);
 
   const handleSeekForward = useCallback(async () => {
     if (trackLoading) return;
-    await seekTo(playbackPosition + SEEK_INTERVAL);
-  }, [trackLoading, playbackPosition, seekTo]);
+    const {position} = usePlayerStore.getState().playback;
+    await seekTo(position + SEEK_INTERVAL);
+  }, [trackLoading, seekTo]);
+  // @ai-end
 
   const isLastTrack = currentIndex === tracksLength - 1;
 

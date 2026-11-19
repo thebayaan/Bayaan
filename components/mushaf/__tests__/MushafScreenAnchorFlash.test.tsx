@@ -14,6 +14,7 @@ import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 
 const mockParams: Record<string, string> = {};
+const mockRoute = {params: mockParams}; // @ai
 const mockShown: {pending: boolean; built: (() => void) | null} = {
   pending: false,
   built: null,
@@ -38,6 +39,7 @@ jest.mock('@/components/mushaf/RecitationMicButton', () => ({
 jest.mock('expo-router', () => ({
   Stack: {Toolbar: () => null},
   useLocalSearchParams: () => mockParams,
+  useRoute: () => mockRoute, // @ai a stable route: no link comes
 }));
 
 jest.mock('expo-screen-orientation', () => ({

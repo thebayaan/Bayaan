@@ -389,6 +389,27 @@ it('a pause during a stall on Android: playing stays true while it buffers', asy
   expect(listenedTotal()).toBe(20_000);
 });
 
+it('an error while it plays on Android closes the segment: a later Next skips with the time played', async () => {
+  await playQueue(900);
+  await wait(10);
+  // Android: an error takes ExoPlayer from READY to IDLE. expo-audio reports
+  // playing false, isLoaded false and isBuffering false.
+  await native({playing: false, isLoaded: false, isBuffering: false});
+  await wait(120);
+  await storeAction(() => usePlayerStore.getState().skipToNext());
+  await native({isLoaded: true, playing: true, currentTime: 0, duration: 90});
+
+  expect(events()).toEqual([
+    'playback_started',
+    'playback_skipped',
+    'playback_started',
+  ]);
+  expect(eventProps('playback_skipped')).toEqual([
+    expect.objectContaining({surah_id: 1, listened_ms: 10_000}),
+  ]);
+  expect(listenedTotal()).toBe(10_000);
+});
+
 it('Next on the last track with repeat off sends nothing, and the completion has the whole listen', async () => {
   await storeAction(() =>
     usePlayerStore.getState().updateQueue([track('a', '1')], 0),
