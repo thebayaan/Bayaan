@@ -94,9 +94,7 @@ import {WBWContent} from './verse-actions/WBWContent';
 // @ai-start
 import {WordStudyContent} from './verse-actions/WordStudyContent';
 // @ai-start
-import {RootResults} from '@/components/search/quran/RootResults';
-import {quranHitOpenParams} from '@/utils/search/quranHitParams';
-import {matchedPositions, type QuranVerseHit} from '@/utils/search/quranSearch';
+import {RootSearchContent} from './verse-actions/RootSearchContent';
 // @ai-end
 import type {WordRef} from './verse-actions/wordStudy';
 import {
@@ -812,22 +810,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     [setActiveScreen],
   );
 
-  // An ayah of the root opens in the Mushaf on its matched words, as the
-  // Search tab does. The open player is drawn above every route
-  // (app/_layout.tsx renders PlayerHost after the Stack), so it collapses
-  // first, as Repeat and the translation settings do; otherwise the Mushaf
-  // would open out of sight behind it. Already collapsed, this does nothing.
-  const handleRootVersePress = useCallback(
-    async (hit: QuranVerseHit) => {
-      await SheetManager.hide(props.sheetId);
-      usePlayerStore.getState().setSheetMode('hidden');
-      router.push({
-        pathname: '/mushaf',
-        params: quranHitOpenParams(hit.verseKey, matchedPositions(hit)),
-      });
-    },
-    [props.sheetId],
-  );
   // @ai-end
 
   // @ai-start
@@ -1032,10 +1014,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   />
                 )}
                 {activeScreen === 'root' && rootTarget && (
-                  <RootResults
+                  <RootSearchContent
+                    sheetId={props.sheetId}
                     root={rootTarget.root}
                     initialLemma={rootTarget.lemma ?? undefined}
-                    onVersePress={handleRootVersePress}
                   />
                 )}
                 {/* @ai-end */}

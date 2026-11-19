@@ -115,7 +115,20 @@ jest.mock('@/hooks/useTheme', () => ({
 jest.mock('@/utils/haptics', () => ({lightHaptics: jest.fn()}));
 jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('expo-clipboard', () => ({setStringAsync: jest.fn()}));
-jest.mock('expo-router', () => ({router: {push: jest.fn()}}));
+// The root stack's routes when root search opens an ayah: the tabs, and the
+// reader when one is open.
+const mockRootStack: {routes: {name: string}[]} = {routes: []};
+jest.mock('expo-router', () => {
+  const router = {push: jest.fn(), dismissTo: jest.fn()};
+  return {
+    router,
+    useRouter: () => router,
+    useNavigationContainerRef: () => ({
+      isReady: () => true,
+      getRootState: () => ({routes: mockRootStack.routes}),
+    }),
+  };
+});
 jest.mock('@/utils/translationLookup', () => ({
   getTranslationTextRaw: (verseKey: string) => `T(${verseKey})`,
 }));
@@ -372,6 +385,7 @@ beforeEach(() => {
   mockUnits.models = new Map([['warsh', warsh]]);
   mockUnits.status = new Map([['warsh', 'ready']]);
   mockPlayer.rewayatId = 'r1';
+  mockRootStack.routes = [{name: '(tabs)'}];
   (digitalKhattDataService.ensureRewayahLoaded as jest.Mock).mockImplementation(
     async () => {
       throw new Error('not in tests');
@@ -643,8 +657,8 @@ describe('Hafs (unchanged)', () => {
     expect(SheetManager.hide).not.toHaveBeenCalled();
   });
 
-  it('an ayah of the root opens the Mushaf on its words', async () => {
-    await openSheet(payload);
+  /** Opens root search from Word Study and taps its ayah 1:3. */
+  async function openRootAyah() {
     await press('Word Study');
     const onRootPress = last('words').onRootPress as (
       root: string,
@@ -663,11 +677,45 @@ describe('Hafs (unchanged)', () => {
         score: 1,
       }),
     );
-    // No page: the reader opens the page of the first matched word.
-    expect(router.push).toHaveBeenLastCalledWith({
-      pathname: '/mushaf',
-      params: {surah: '1', ayah: '3', anchor: '1:3:1', words: '1'},
-    });
+  }
+
+  // No page: the reader opens the page of the first matched word.
+  const ROOT_AYAH_HREF = {
+    pathname: '/mushaf',
+    params: {surah: '1', ayah: '3', anchor: '1:3:1', words: '1'},
+  };
+
+  it('from the reader, an ayah of the root turns the open reader to its words', async () => {
+    // The sheet is over the reader: the hit goes to that reader (one reader
+    // stays: components/mushaf/__tests__/quranHitStack.test.ts), never a
+    // second one pushed on top of it.
+    mockRootStack.routes = [{name: '(tabs)'}, {name: 'mushaf'}];
+    await openSheet(payload);
+    await openRootAyah();
+    expect(SheetManager.hide).toHaveBeenCalledWith('verse-actions');
+    expect(router.dismissTo).toHaveBeenCalledTimes(1);
+    expect(router.dismissTo).toHaveBeenLastCalledWith(ROOT_AYAH_HREF);
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('with no reader open, an ayah of the root opens the Mushaf on its words', async () => {
+    await openSheet({...payload, source: 'player'});
+    await openRootAyah();
+    expect(router.push).toHaveBeenLastCalledWith(ROOT_AYAH_HREF);
+    expect(router.dismissTo).not.toHaveBeenCalled();
+  });
+
+  it('from the player over the open reader, an ayah of the root goes to that reader', async () => {
+    mockRootStack.routes = [{name: '(tabs)'}, {name: 'mushaf'}];
+    await openSheet({...payload, source: 'player'});
+    await openRootAyah();
+    expect(mockMainPlayer.setSheetMode).toHaveBeenCalledWith('hidden');
+    expect(router.dismissTo).toHaveBeenLastCalledWith(ROOT_AYAH_HREF);
+    expect(router.push).not.toHaveBeenCalled();
+    const dismissTo = router.dismissTo as jest.Mock;
+    expect(
+      mockMainPlayer.setSheetMode.mock.invocationCallOrder[0],
+    ).toBeLessThan(dismissTo.mock.invocationCallOrder[0]);
   });
 
   it('from the player, an ayah of the root collapses the player before the Mushaf opens', async () => {
