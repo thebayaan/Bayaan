@@ -11,10 +11,12 @@ import {
  * The bundled i'rab database. The file name carries its version: a new build
  * of the data ships as a new file, so installed apps never keep a stale
  * import (bundled databases are imported once). The name is IRAB_DB_NAME
- * (constants/bundledDatabases.ts); rename the require() below with it.
+ * (constants/bundledDatabases.ts), which matches the build's DB_VERSION
+ * (scripts/irab/build-irab-db.ts); rename the require() below with it, and
+ * list the name it replaces in OLD_DB_NAMES.
  */
 const DB_NAME = IRAB_DB_NAME; // @ai
-const OLD_DB_NAMES: readonly string[] = [];
+const OLD_DB_NAMES: readonly string[] = ['irab-v1.db'];
 
 class IrabDataService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -46,7 +48,7 @@ class IrabDataService {
       await db.closeAsync();
       await SQLite.deleteDatabaseAsync(DB_NAME);
       await SQLite.importDatabaseFromAssetAsync(DB_NAME, {
-        assetId: require('../../assets/data/irab-v1.db'),
+        assetId: require('../../assets/data/irab-v2.db'),
       });
       db = await SQLite.openDatabaseAsync(DB_NAME);
       for (const old of OLD_DB_NAMES) {

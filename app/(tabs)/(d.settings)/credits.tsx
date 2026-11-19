@@ -45,6 +45,11 @@ function getCredits(
           link: 'https://api-docs.quran.foundation',
         },
         {
+          title: t('credits.items.kfgqpcTitle'),
+          description: t('credits.items.kfgqpc'),
+          link: 'https://qurancomplex.gov.sa',
+        },
+        {
           title: 'The Quranic Treebank',
           description: t('credits.items.quranicTreebank'),
           link: 'https://github.com/NoorBayan/Quranic',
@@ -56,7 +61,9 @@ function getCredits(
         },
         {
           title: 'MASAQ',
-          description: t('credits.items.masaq'),
+          // No digit post-processing: the licence name stays "CC BY 4.0"
+          // in Arabic, not "CC BY ٤.٠".
+          description: t('credits.items.masaq', {postProcess: []}),
           link: 'https://data.mendeley.com/datasets/9yvrzxktmr/5',
         },
         {
@@ -141,7 +148,7 @@ function getCredits(
         {
           title: t('credits.items.uthmaniTitle'),
           description: t('credits.items.uthmani'),
-          link: 'https://arabicfonts.net',
+          link: 'https://qurancomplex.gov.sa',
         },
         {
           title: t('credits.items.quranComTitle'),

@@ -16,4 +16,4 @@
  * .test.ts fails when the name it opens or the asset it imports is not this
  * one.
  */
-export const IRAB_DB_NAME = 'irab-v1.db';
+export const IRAB_DB_NAME = 'irab-v2.db';

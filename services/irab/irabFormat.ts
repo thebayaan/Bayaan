@@ -1,5 +1,5 @@
 /**
- * Reading the bundled i'rab database (assets/data/irab-v1.db, built by
+ * Reading the bundled i'rab database (assets/data/irab-v2.db, built by
  * scripts/irab/build-irab-db.ts).
  *
  * A word's entries are stored as `[kind, labelId, textId, spanFrom?, spanTo?]`

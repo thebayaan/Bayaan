@@ -1,7 +1,7 @@
 // @ai-generated
 /**
  * The bundled databases a phone keeps by name: assets/data/quran-search-v1.db
- * (services/search/QuranSearchDataService.ts), irab-v1.db
+ * (services/search/QuranSearchDataService.ts), irab-v2.db
  * (services/irab/IrabDataService.ts), gharib-v1.db and rasm-v1.db
  * (services/wordStudy/bundledWordStudy.ts).
  *
