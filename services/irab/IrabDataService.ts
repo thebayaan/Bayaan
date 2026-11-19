@@ -13,7 +13,8 @@ import {
  * import (bundled databases are imported once). The name is IRAB_DB_NAME
  * (constants/bundledDatabases.ts), which matches the build's DB_VERSION
  * (scripts/irab/build-irab-db.ts); rename the require() below with it, and
- * list the name it replaces in OLD_DB_NAMES.
+ * list the name it replaces in OLD_DB_NAMES: those copies are deleted on the
+ * first open of every session, before anything is imported.
  */
 const DB_NAME = IRAB_DB_NAME; // @ai
 const OLD_DB_NAMES: readonly string[] = ['irab-v1.db'];
@@ -37,6 +38,13 @@ class IrabDataService {
   }
 
   private async open(): Promise<void> {
+    // The copies older releases imported go first: a nearly full phone then
+    // has room for the import, and a copy an earlier session failed to
+    // delete (or was killed before deleting) goes on the next launch. Best
+    // effort: once a copy is gone, deleting it throws, and that is fine.
+    for (const old of OLD_DB_NAMES) {
+      await SQLite.deleteDatabaseAsync(old).catch(() => undefined);
+    }
     let db = await SQLite.openDatabaseAsync(DB_NAME);
     // Imported and complete (the morph column is part of this build).
     const ready = await db
@@ -51,9 +59,6 @@ class IrabDataService {
         assetId: require('../../assets/data/irab-v2.db'),
       });
       db = await SQLite.openDatabaseAsync(DB_NAME);
-      for (const old of OLD_DB_NAMES) {
-        await SQLite.deleteDatabaseAsync(old).catch(() => undefined);
-      }
     }
     const rows = await db.getAllAsync<{id: number; text: string}>(
       'SELECT id, text FROM texts ORDER BY id',
