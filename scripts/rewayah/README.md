@@ -299,9 +299,12 @@ reviewed cases, the misprint entries, determinism) fail the build; `--check`
 also runs G1-G6 on the committed rows and compares them, and the review list,
 with a fresh build. The build writes `reading_review.md`, the list a qualified
 reader signs off before release: the misprints, the open questions, the joins
-where a general rule of one rewayah excused a difference, and every word with
-three or more readings. A decision becomes a group in
-`reading_groups_cases.json`; never edit a group to make a build pass.
+where a general rule of one rewayah excused a difference, every word with
+three or more readings, and the words where one rewayah's tinted text is
+stored, untinted, by another (the same text on both sides of the Hafs line;
+G2 fails on a new one until `reading_groups_cases.json` lists it). A decision
+becomes a group in `reading_groups_cases.json`; never edit a group to make a
+build pass.
 
 ## Render review
 

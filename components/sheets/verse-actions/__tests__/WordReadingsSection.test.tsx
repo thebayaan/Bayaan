@@ -178,9 +178,12 @@ it('1:4:1: Hafs, then the other six, with their readers, in English', () => {
     [r?.readings.groups[1].members[5].ownText, 'al-susi'],
   ]);
   expect(shown).toContain('Al-Susi');
+  // Shu'bah's imala dot is listed (it is tinted in the highlight maps), so
+  // the footer must not say imala never is
   expect(shown).toContain(
-    'Covers 8 rewayat from 4 of the 10 readers. Differences in pronunciation rules, such as madd length, tashil and imala, are not listed.',
+    'Covers 8 rewayat from 4 of the 10 readers. Most differences in pronunciation rules, such as madd length and tashil, are not listed.',
   );
+  expect(shown.join('\n')).not.toMatch(/imala/i);
 });
 
 it('1:4:1 in Arabic', async () => {
@@ -194,6 +197,7 @@ it('1:4:1 in Arabic', async () => {
     'البزي، قنبل (ابن كثير) · ورش، قالون (نافع) · الدوري، السوسي (أبو عمرو)',
   );
   expect(shown).toContain('تختلف عن حفص');
+  expect(shown.join('\n')).not.toMatch(/الإمالة/);
 });
 
 it('marks the group holding the current rewayah, Hafs first whatever it is', () => {

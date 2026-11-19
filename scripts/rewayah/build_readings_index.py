@@ -56,7 +56,10 @@ Gates (the build fails on any of them):
      surah, ayah, word); slot grammar; diff JSONs are format 2 with only the
      whole-word category of their rewayah and silah, on non-blank slots
   G2 partition: every member in exactly one group; 'h' = Hafs + the
-     untinted non-blank rewayat, 'd' = the tinted ones, 'o' = the P2 blanks
+     untinted non-blank rewayat, 'd' = the tinted ones, 'o' = the P2 blanks;
+     a 'd' member that stores the same text as an 'h' member (the same text
+     on both sides of the Hafs line) only on a span listed in
+     reading_groups_cases.json, for a qualified reader to decide
   G3 texts: every text of a row is the stored span text of a member (never
      synthesised): 'h' Hafs, 'd' its first member, 'o' '', x the member's own
   G4 silah: s equals the diff's silah entries (offset across a span), on
@@ -609,7 +612,29 @@ def _expected_silah(inp: Inputs, rid: str, span_slots: list[Slot]) -> list[int]:
     return out
 
 
-def _check_span_row(inp: Inputs, sr: SpanReadings, data: dict) -> list[str]:
+def reviewed_spans(inp: Inputs) -> set[str]:
+    """First slots of the spans reading_groups_cases.json lists (groups and toConfirm)."""
+    return {loc for section in ("groups", "toConfirm") for e in inp.cases.get(section, []) for loc in e.get("spans", {})}
+
+
+def same_text_across(groups: list[tuple[str, list[str]]], members: dict[str, Member]) -> list[tuple[str, list[str]]]:
+    """The same stored text on both sides of the Hafs line: each 'd' member
+    with the 'h' members (Hafs included) that store exactly its text. The
+    tint of one is the reviewed highlight decision; the other's absence of a
+    tint is one too, so neither side is wrong by itself."""
+    h = [r for kind, rids in groups if kind == "h" for r in rids]
+    out: list[tuple[str, list[str]]] = []
+    for kind, rids in groups:
+        if kind != "d":
+            continue
+        for rid in rids:
+            same = [r for r in h if members[r].text == members[rid].text]
+            if same:
+                out.append((rid, same))
+    return out
+
+
+def _check_span_row(inp: Inputs, sr: SpanReadings, data: dict, reviewed: set[str]) -> list[str]:
     """G2-G4 of one row (any source) against the inputs."""
     errors: list[str] = []
     loc = sr.first.location
@@ -628,6 +653,12 @@ def _check_span_row(inp: Inputs, sr: SpanReadings, data: dict) -> list[str]:
         want = "o" if not mem.text else "d" if mem.tinted else "h"
         if kind[x] != want:
             errors.append(f"G2 {loc} {rid}: in group '{kind[x]}', expected '{want}'")
+    if loc not in reviewed:
+        for rid, same in same_text_across([(k, [MEMBERS[x] for x in ms]) for k, _, ms in groups], sr.members):
+            errors.append(
+                f"G2 {loc}: the same stored text on both sides of the Hafs line ({NAMES[rid]} differs, "
+                f"{_names(same)} as Hafs); list the span in {CASES_FILE.name} for review"
+            )
     # G3 texts: never synthesised
     if len(set(t)) != len(t):
         errors.append(f"G3 {loc}: duplicate texts")
@@ -717,6 +748,7 @@ def check_rows(inp: Inputs, spans: list[SpanReadings], rows: list[tuple]) -> lis
             errors.append(f"G1 {s.location}: malformed row JSON ({e})")
             continue
         by_word[word_id] = data
+    reviewed = reviewed_spans(inp)
     groups_at: dict[str, list[list[str]]] = {}
     for sr in spans:
         loc = sr.first.location
@@ -738,7 +770,7 @@ def check_rows(inp: Inputs, spans: list[SpanReadings], rows: list[tuple]) -> lis
             groups_at[loc] = [list(MEMBERS)]
             continue
         try:
-            errors.extend(_check_span_row(inp, sr, data))
+            errors.extend(_check_span_row(inp, sr, data, reviewed))
             groups_at[loc] = [[MEMBERS[x] for x in ms] for _, _, ms in data["g"]]
         except (KeyError, IndexError, TypeError, ValueError) as e:
             errors.append(f"G2 {loc}: malformed row ({type(e).__name__}: {e})")
@@ -876,6 +908,7 @@ def review_markdown(b: Build) -> str:
     indexed = [sr for sr in b.spans if sr.first.word_id in row_words]
     multi = [sr for sr in indexed if len(sr.groups) >= 2]
     three = [sr for sr in indexed if len(sr.groups) >= 3]
+    across = [(sr, pairs) for sr in indexed if (pairs := same_text_across([(g.kind, g.members) for g in sr.groups], sr.members))]
     bases = Counter(j[2] for sr in b.spans for j in sr.joins)
     oneway = [(sr, j) for sr in b.spans for j in sr.joins if j[2] == "oneway"]
     lines = [
@@ -908,6 +941,7 @@ def review_markdown(b: Build) -> str:
         f"| Rows (a two-slot span has two) | {len(b.rows):,} |",
         f"| Spans with 2 or more readings | {len(multi):,} |",
         f"| Spans with 3 or more readings (section 4) | {len(three):,} |",
+        f"| Spans with the same stored text on both sides of the Hafs line (section 5) | {len(across):,} |",
     ]
     for basis in HL.ALIKE_BASES:
         lines.append(f"| Joins of a differing rewayah to a group: {basis} | {bases.get(basis, 0):,} |")
@@ -965,6 +999,28 @@ def review_markdown(b: Build) -> str:
         lines.append(f"- **{loc}**")
         for g in sr.groups:
             lines.append(f"  - {_group_line(sr, g)}")
+    lines += [
+        "",
+        "## 5. Same stored text on both sides of the Hafs line",
+        "",
+        "The Hafs line follows each rewayah's own `<id>-diff.json`, so a text tinted in one",
+        "rewayah can be stored, untinted, by another: the same official text is then shown as a",
+        "reading that differs from Hafs for the first and listed under Hafs's text for the",
+        "second (mostly Shu'bah's imala dot, which the highlight maps count in Shu'bah and not",
+        "in the far rewayat). Each span is pinned in `reading_groups_cases.json` (`toConfirm`,",
+        "section 2) and the build fails on any other (gate G2) until a qualified reader picks",
+        "one rule: the untinted rewayat with that text join the differing reading, or the split",
+        "stays and their own text is shown under Hafs's group.",
+        "",
+        "| Hafs word | Hafs's text | Differs from Hafs | Same text, listed with Hafs |",
+        "|---|---|---|---|",
+    ]
+    for sr, pairs in across:
+        loc = sr.first.location if not sr.two_slots else f"{sr.first.location}-{sr.last.word}"
+        for rid, same in pairs:
+            lines.append(
+                f"| {loc} | `{sr.members['hafs'].text}` | {NAMES[rid]} `{sr.members[rid].text}` | {_names(same)} |"
+            )
     return "\n".join(lines) + "\n"
 
 
