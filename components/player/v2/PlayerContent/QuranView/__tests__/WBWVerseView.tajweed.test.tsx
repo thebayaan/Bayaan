@@ -131,7 +131,7 @@ it('aligns both QPC words of «إِلْ يَاسِينَ» onto its one slot', (
   const slot = mockDkWords[2].text;
   expect(slot.split(' ')).toHaveLength(2);
 
-  let tree: TestRenderer.ReactTestRenderer | null = null;
+  let tree!: TestRenderer.ReactTestRenderer;
   act(() => {
     tree = TestRenderer.create(
       <WBWVerseView
@@ -151,7 +151,7 @@ it('aligns both QPC words of «إِلْ يَاسِينَ» onto its one slot', (
     );
   });
   // The grid lays the words out (and aligns their tajweed) once measured.
-  const measured = tree!.root.find(
+  const measured = tree.root.find(
     node => typeof node.props.onLayout === 'function',
   );
   act(() => {
@@ -172,5 +172,5 @@ it('aligns both QPC words of «إِلْ يَاسِينَ» onto its one slot', (
   ]);
   // The end marker is drawn without tajweed; no slot falls back to tafkhim.
   expect(detectWordTafkhim).not.toHaveBeenCalled();
-  act(() => tree!.unmount());
+  act(() => tree.unmount());
 });
