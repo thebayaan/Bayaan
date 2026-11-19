@@ -33,11 +33,15 @@ export interface ResumeRecentParams {
  * front, and the place it had when it was pressed belongs to another card:
  * that card was the one promoted. The place it had is only used when the
  * entry cannot be found by reciter, surah and rewayah.
+ *
+ * An entry saved without a rewayah plays the queued one, and the tick that
+ * moves it to the front gives it that rewayah, so either one is its own.
  */
 function promoteResumed(
   reciterId: string,
   surahId: number,
   rewayatId: string | undefined,
+  queuedRewayatId: string,
   pressedIndex: number,
 ): void {
   const {recentTracks, resumeChain} = useRecentlyPlayedStore.getState();
@@ -46,7 +50,8 @@ function promoteResumed(
       !t.isUserUpload &&
       t.reciter?.id === reciterId &&
       t.surah?.id === surahId &&
-      (t.rewayatId || '') === (rewayatId || ''),
+      ((t.rewayatId || '') === (rewayatId || '') ||
+        t.rewayatId === queuedRewayatId),
   );
   resumeChain(index !== -1 ? index : pressedIndex);
 }
@@ -105,7 +110,7 @@ export async function resumeRecent({
       return;
     }
     await updateQueue(track, 0, startPosition);
-    promoteResumed(reciterId, surahId, rewayatId, recentIndex); // @ai
+    promoteResumed(reciterId, surahId, rewayatId, rewayatToUseId, recentIndex); // @ai
     return;
   }
 
@@ -130,5 +135,5 @@ export async function resumeRecent({
   }));
 
   await updateQueue(allTracks, 0, startPosition);
-  promoteResumed(reciterId, surahId, rewayatId, recentIndex); // @ai
+  promoteResumed(reciterId, surahId, rewayatId, rewayatToUseId, recentIndex); // @ai
 }

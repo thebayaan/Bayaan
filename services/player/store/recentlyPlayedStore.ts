@@ -26,10 +26,32 @@ export interface RecentlyPlayedTrack {
 // is taken as that card's last report, not as what is playing now.
 const STALE_TICK_WINDOW_MS = 5000;
 
+/**
+ * The key (`reciterId:surahId`) under which the player's current track
+ * reports its progress to updateProgress(). None for an upload: it reports
+ * through updateUploadProgress(), which never makes a card.
+ */
+function reportingTrackKey(): string | undefined {
+  const {queue} = usePlayerStore.getState();
+  const track = queue.tracks[queue.currentIndex];
+  if (!track?.reciterId || !track.surahId) return undefined;
+  if (track.isUserUpload && track.userRecitationId) return undefined;
+  return `${track.reciterId}:${parseInt(track.surahId, 10)}`;
+}
+
 interface RecentlyPlayedState {
   recentTracks: RecentlyPlayedTrack[];
   progressMap: Record<string, number>;
   durationMap: Record<string, number>;
+  /**
+   * The track (`reciterId:surahId`) that was in the player when the user
+   * cleared the list or removed that track's card. The track goes on
+   * reporting its progress (on each tick, and whenever the app is left, even
+   * while paused), and those reports do not make the card again. A report
+   * from another track, or a new chain, ends this. Saved, because the player
+   * restores the same track on the next launch.
+   */
+  dismissedKey?: string;
 
   /** Overwrites recentTracks[0] in place. Used for auto-advance and progress updates. */
   updateActiveChain: (
@@ -142,6 +164,8 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             ].slice(0, 10),
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
+            // A new play ends a dismissal (see dismissedKey).
+            dismissedKey: undefined,
           };
         }),
 
@@ -177,6 +201,8 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             ].slice(0, 10),
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
+            // A new play ends a dismissal (see dismissedKey).
+            dismissedKey: undefined,
           };
         }),
 
@@ -186,6 +212,8 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
           const maps = {
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
+            // Another track is playing now (see dismissedKey).
+            dismissedKey: undefined,
           };
 
           // Find and update the upload entry
@@ -214,6 +242,8 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
           const maps = {
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
+            // A report from another track ends a dismissal (see dismissedKey).
+            dismissedKey: state.dismissedKey === key ? key : undefined,
           };
 
           // @ai-start
@@ -276,6 +306,12 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             return {recentTracks: updated, ...maps};
           }
 
+          // The user cleared the list, or removed this track's card, while
+          // it was in the player. Its reports do not bring the card back.
+          if (state.dismissedKey === key) {
+            return maps;
+          }
+
           // Otherwise this is what is playing now, reached without a new
           // chain: a queue that mixes reciters (Loved, a playlist, Downloads)
           // moved on to this track, or playback began from a screen that
@@ -297,9 +333,10 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             '';
           // @ai-end
 
-          // Remove any existing entry for this reciter (one card per reciter)
+          // Remove any existing entry for this reciter (one card per reciter).
+          // An upload's card stays: it is another recitation.
           const withoutDupe = state.recentTracks.filter(
-            t => t.reciter.id !== reciterId,
+            t => t.isUserUpload || t.reciter.id !== reciterId,
           );
           return {
             recentTracks: [
@@ -321,18 +358,35 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
         set(state => {
           if (index < 0 || index >= state.recentTracks.length) return state;
           const updated = [...state.recentTracks];
-          updated.splice(index, 1);
+          const [removed] = updated.splice(index, 1);
+          // The card of the track in the player: that track's next report
+          // would make it again.
+          const playingKey = reportingTrackKey();
+          if (
+            playingKey &&
+            !removed.isUserUpload &&
+            `${removed.reciter?.id}:${removed.surah?.id}` === playingKey
+          ) {
+            return {recentTracks: updated, dismissedKey: playingKey};
+          }
           return {recentTracks: updated};
         }),
 
       clearRecentTracks: () =>
-        set({recentTracks: [], progressMap: {}, durationMap: {}}),
+        set({
+          recentTracks: [],
+          progressMap: {},
+          durationMap: {},
+          // The track in the player would otherwise make its card again.
+          dismissedKey: reportingTrackKey(),
+        }),
 
       reset: () => {
         set({
           recentTracks: [],
           progressMap: {},
           durationMap: {},
+          dismissedKey: undefined,
         });
       },
     }),
@@ -342,6 +396,7 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
       partialize: state =>
         ({
           recentTracks: state.recentTracks,
+          dismissedKey: state.dismissedKey,
         }) as unknown as RecentlyPlayedState,
     },
   ),

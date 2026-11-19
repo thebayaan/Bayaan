@@ -131,6 +131,28 @@ describe('playWithReciter', () => {
       params: {view: 'all', surahId: 2},
     });
   });
+
+  it('does nothing with the placeholder default reciter before the catalogue loads', async () => {
+    // useReciterStore's default reciter until the catalogue arrives.
+    const notLoaded = {
+      id: '',
+      name: '',
+      date: null,
+      image_url: null,
+      rewayat: [],
+    } as unknown as Reciter;
+    const hook = renderHook();
+    let played: boolean | undefined;
+    await act(async () => {
+      played = await hook.playWithReciter(notLoaded, '36');
+    });
+
+    expect(played).toBe(false);
+    expect(mockToast).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockStartNewChain).not.toHaveBeenCalled();
+    expect(mockUpdateQueue).not.toHaveBeenCalled();
+  });
 });
 
 describe('playWithRandomReciter', () => {

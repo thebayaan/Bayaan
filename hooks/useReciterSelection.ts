@@ -28,6 +28,11 @@ export function useReciterSelection() {
         const surah = await getSurahById(parseInt(surahId, 10));
         if (!surah) return;
 
+        // Until the catalogue has loaded, the default reciter is a
+        // placeholder with no id and no rewayat: there is nothing to play,
+        // and no reciter to name in the message below.
+        if (!reciter.id) return false;
+
         // @ai-start
         // Many reciters have recorded only part of the Quran. Playing a
         // surah the default reciter does not have put a card for it in

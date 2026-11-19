@@ -66,6 +66,25 @@ const cards = () =>
     progress: t.progress,
   }));
 
+/**
+ * The store as the next launch has it: a new instance that hydrates from
+ * what this one saved, with the catalogue loaded again.
+ */
+async function relaunch(): Promise<typeof useRecentlyPlayedStore> {
+  let store!: typeof useRecentlyPlayedStore;
+  jest.isolateModules(() => {
+    const catalogue: typeof RECITERS = require('@/data/reciterData').RECITERS;
+    catalogue.splice(0, catalogue.length, A, B);
+    store = require('../recentlyPlayedStore').useRecentlyPlayedStore;
+  });
+  if (!store.persist.hasHydrated()) {
+    await new Promise<void>(resolve => {
+      store.persist.onFinishHydration(() => resolve());
+    });
+  }
+  return store;
+}
+
 describe('recentlyPlayedStore.updateProgress()', () => {
   let now = 1_000_000;
 
@@ -163,5 +182,155 @@ describe('recentlyPlayedStore.updateProgress()', () => {
     expect(upload.userRecitationId).toBe('upload-1');
     expect(upload.surah.id).toBe(2);
     expect(upload.progress).toBe(0.5);
+  });
+
+  describe("an upload's card when the reciter it is tagged with plays", () => {
+    const uploadMeta = {
+      userRecitationId: 'upload-1',
+      uploadTitle: 'My recording',
+      uploadArtist: 'Me',
+    };
+    const uploadCard = () =>
+      useRecentlyPlayedStore
+        .getState()
+        .recentTracks.find(t => t.userRecitationId === 'upload-1');
+
+    it('stays when a queue moves on to a catalogue surah of that reciter', () => {
+      const store = useRecentlyPlayedStore.getState();
+      store.startUploadChain(A, surah(2), 0.5, 300, '', uploadMeta);
+      now += 1_000;
+      // Loved starts a chain for its first row (B) ...
+      store.startNewChain(B, surah(67), 0, 600, 'B-hafs');
+      now += 60_000;
+
+      // ... and moves on to A's own recording of Ya-Sin.
+      nowPlaying('A', 36, 'A-hafs');
+      useRecentlyPlayedStore.getState().updateProgress('A', 36, 0.2, 1000);
+
+      expect(cards()).toEqual([
+        {reciter: 'A', surah: 36, rewayah: 'A-hafs', progress: 0.2},
+        {reciter: 'B', surah: 67, rewayah: 'B-hafs', progress: 0},
+        {reciter: 'A', surah: 2, rewayah: '', progress: 0.5},
+      ]);
+      expect(uploadCard()?.duration).toBe(300);
+    });
+
+    it('stays below the new head when it was at the front', () => {
+      useRecentlyPlayedStore
+        .getState()
+        .startUploadChain(A, surah(2), 0.5, 300, '', uploadMeta);
+      now += 60_000;
+
+      // A playlist (no chain) plays A's own recording of Ya-Sin.
+      nowPlaying('A', 36, 'A-hafs');
+      useRecentlyPlayedStore.getState().updateProgress('A', 36, 0.2, 1000);
+
+      expect(cards()).toEqual([
+        {reciter: 'A', surah: 36, rewayah: 'A-hafs', progress: 0.2},
+        {reciter: 'A', surah: 2, rewayah: '', progress: 0.5},
+      ]);
+      expect(uploadCard()?.duration).toBe(300);
+    });
+  });
+
+  describe('a card dismissed while its track is in the player', () => {
+    const keys = () => cards().map(c => `${c.reciter}:${c.surah}`);
+
+    /** A / Ya-Sin is in the player, and its card is the head. */
+    function yaSinInThePlayer(): void {
+      useRecentlyPlayedStore
+        .getState()
+        .startNewChain(A, surah(36), 0, 600, 'A-hafs');
+      nowPlaying('A', 36, 'A-hafs');
+      now += 10_000;
+      useRecentlyPlayedStore.getState().updateProgress('A', 36, 0.1, 600);
+    }
+
+    /**
+     * Its next report: a tick while it plays, or the save made whenever the
+     * app is left, even while it is paused.
+     */
+    function yaSinReports(store = useRecentlyPlayedStore): void {
+      now += 10_000;
+      store.getState().updateProgress('A', 36, 0.12, 600);
+    }
+
+    it('stays cleared after "Clear"', () => {
+      yaSinInThePlayer();
+
+      useRecentlyPlayedStore.getState().clearRecentTracks();
+      yaSinReports();
+
+      expect(keys()).toEqual([]);
+    });
+
+    it('stays removed when it was the only card', () => {
+      yaSinInThePlayer();
+
+      useRecentlyPlayedStore.getState().removeTrack(0);
+      yaSinReports();
+
+      expect(keys()).toEqual([]);
+    });
+
+    it('stays removed when other cards remain', () => {
+      useRecentlyPlayedStore
+        .getState()
+        .startNewChain(B, surah(67), 0.4, 600, 'B-hafs');
+      yaSinInThePlayer();
+
+      useRecentlyPlayedStore.getState().removeTrack(0);
+      yaSinReports();
+
+      expect(keys()).toEqual(['B:67']);
+    });
+
+    it('stays cleared after a relaunch, which restores the same track', async () => {
+      yaSinInThePlayer();
+      useRecentlyPlayedStore.getState().clearRecentTracks();
+
+      const relaunched = await relaunch();
+      yaSinReports(relaunched);
+
+      expect(relaunched.getState().recentTracks).toEqual([]);
+    });
+
+    it('does not hold back a track whose card was not the one removed', () => {
+      useRecentlyPlayedStore
+        .getState()
+        .startNewChain(B, surah(67), 0.4, 600, 'B-hafs');
+      // A playlist (no chain) has just started Ya-Sin; it has not reported.
+      nowPlaying('A', 36, 'A-hafs');
+
+      useRecentlyPlayedStore.getState().removeTrack(0);
+      yaSinReports();
+
+      expect(keys()).toEqual(['A:36']);
+    });
+
+    it('gets a card again once another track has played', () => {
+      yaSinInThePlayer();
+      useRecentlyPlayedStore.getState().clearRecentTracks();
+
+      // A playlist moves on to B, then comes back to Ya-Sin.
+      nowPlaying('B', 2, 'B-hafs');
+      useRecentlyPlayedStore.getState().updateProgress('B', 2, 0.01, 7000);
+      nowPlaying('A', 36, 'A-hafs');
+      yaSinReports();
+
+      expect(keys()).toEqual(['A:36', 'B:2']);
+    });
+
+    it('gets a card again once an upload has played', () => {
+      yaSinInThePlayer();
+      useRecentlyPlayedStore.getState().clearRecentTracks();
+
+      useRecentlyPlayedStore
+        .getState()
+        .updateUploadProgress('upload-1', 0.5, 300);
+      yaSinReports();
+
+      expect(keys()).toEqual(['A:36']);
+    });
   });
 });

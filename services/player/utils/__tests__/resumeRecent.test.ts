@@ -100,6 +100,25 @@ describe('resumeRecent', () => {
   });
   // @ai-end
 
+  // A card saved without a rewayah plays the reciter's first one, and the
+  // tick that moves the card to the front gives it that rewayah. The place
+  // it had when pressed then belongs to its neighbour.
+  it('finds a card saved without a rewayah after a tick gave it the queued one', async () => {
+    mockRecentTracks = [entry('r9', 5), entry('r1', 2, '')];
+    await resumeRecent({
+      reciterId: 'r1',
+      surahId: 2,
+      rewayatId: '',
+      startPosition: 90,
+      recentIndex: 1,
+      updateQueue: async () => {
+        mockRecentTracks = [entry('r1', 2, 'rw-default'), entry('r9', 5)];
+      },
+    });
+    expect(mockResumeChain).toHaveBeenCalledTimes(1);
+    expect(mockResumeChain).toHaveBeenCalledWith(0);
+  });
+
   it('does nothing for an unknown reciter', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const updateQueue = jest.fn();
