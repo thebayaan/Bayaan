@@ -330,15 +330,40 @@ export async function executeCarRequest(
 // "Ayah 12 of 110" while a car is connected and the reciter has timestamps.
 let currentAyahLabel: string | null = null;
 
+/** What the loved store is asked about one recitation. */
+type LovedArgs = [
+  reciterId: string,
+  surahId: string,
+  rewayatId: string,
+  userRecitationId?: string,
+];
+
+/**
+ * The car's heart asks about a track the way the player's heart does: an
+ * upload by its own id (it is saved without a rewayah), anything else by
+ * reciter, surah and rewayah. Asked by reciter, surah and rewayah, a loved
+ * upload showed as not loved and the love button loved the catalogue
+ * recording of that surah instead. Null when the track cannot be loved.
+ */
+function lovedArgs(track: Track | undefined): LovedArgs | null {
+  if (!track?.surahId) return null;
+  if (track.userRecitationId) {
+    return track.reciterId
+      ? [track.reciterId, track.surahId, '', track.userRecitationId]
+      : null;
+  }
+  return track.rewayatId
+    ? [track.reciterId, track.surahId, track.rewayatId]
+    : null;
+}
+
 function pushNowPlaying(): void {
   const player = usePlayerStore.getState();
   const track = player.queue.tracks[player.queue.currentIndex];
-  const isLoved =
-    track?.surahId && track.rewayatId
-      ? useLovedStore
-          .getState()
-          .isLovedWithRewayat(track.reciterId, track.surahId, track.rewayatId)
-      : false;
+  const loved = lovedArgs(track);
+  const isLoved = loved
+    ? useLovedStore.getState().isLovedWithRewayat(...loved)
+    : false;
   BayaanCar.setNowPlaying(
     toNowPlaying(
       player.queue,
@@ -396,11 +421,8 @@ async function handleTransport(transport: CarTransport): Promise<void> {
       if (transport.index >= player.queue.tracks.length) return;
       return player.updateQueue(player.queue.tracks, transport.index);
     case 'toggleLove': {
-      const track = player.queue.tracks[player.queue.currentIndex];
-      if (!track?.surahId || !track.rewayatId) return;
-      useLovedStore
-        .getState()
-        .toggleLoved(track.reciterId, track.surahId, track.rewayatId);
+      const loved = lovedArgs(player.queue.tracks[player.queue.currentIndex]);
+      if (loved) useLovedStore.getState().toggleLoved(...loved);
       return;
     }
   }

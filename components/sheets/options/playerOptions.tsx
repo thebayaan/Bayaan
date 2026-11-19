@@ -4,6 +4,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {useTranslation} from 'react-i18next';
 import type {Surah} from '@/data/surahData';
 import {useLoved} from '@/hooks/useLoved';
+import {ensureTrackFields} from '@/types/audio';
 import {
   useDownloadActions,
   useDownloadProgress,
@@ -62,7 +63,7 @@ export function usePlayerOptions(
     [reciterId, surahId, rewayatId],
   );
 
-  const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
+  const {isTrackLoved, toggleTrackLoved} = useLoved();
   const downloadProgress = useDownloadProgress(downloadId);
   const isTrackDownloadedBase = useIsDownloaded(reciterId, surahId);
   const isTrackDownloadedRewayat = useIsDownloadedWithRewayat(
@@ -79,16 +80,26 @@ export function usePlayerOptions(
 
   // Loving only makes sense with a reciter and a surah.
   const canLove = !!reciterId && !!surahId;
-  const isLovedState = canLove
-    ? rewayatId
-      ? isLovedWithRewayat(reciterId, surahId, rewayatId)
-      : isLoved(reciterId, surahId)
-    : false;
+  // Read and toggled the way the player's heart is: an upload by its own id,
+  // anything else by reciter, surah and rewayah. Asked by reciter, surah and
+  // rewayah alone, a loved upload read as not loved here, and the toggle
+  // loved the catalogue recording of that surah instead.
+  const lovedTrack = useMemo(
+    () =>
+      ensureTrackFields({
+        reciterId,
+        surahId,
+        rewayatId,
+        isUserUpload,
+        userRecitationId,
+      }),
+    [reciterId, surahId, rewayatId, isUserUpload, userRecitationId],
+  );
+  const isLovedState = canLove && isTrackLoved(lovedTrack);
 
   const handleToggleLove = useCallback(() => {
-    if (!reciterId) return;
-    toggleLoved(reciterId, surahId, rewayatId || '');
-  }, [reciterId, surahId, toggleLoved, rewayatId]);
+    toggleTrackLoved(lovedTrack);
+  }, [lovedTrack, toggleTrackLoved]);
 
   const handleDownload = useCallback(async () => {
     if (!reciterId || !surah) return;
@@ -134,10 +145,16 @@ export function usePlayerOptions(
 
   const handleAddToPlaylist = useCallback(() => {
     if (!reciterId || !surah) return;
+    // An upload is added and loved as itself, the way the Uploads menus open
+    // this sheet: by its own id and without a rewayah. Opened with only its
+    // reciter, surah and rewayah, the sheet's Loved row read a loved upload
+    // as not loved and loved the catalogue recording instead.
     SheetManager.show('select-playlist', {
-      payload: {surah, reciterId, rewayatId},
+      payload: userRecitationId
+        ? {surah, reciterId, rewayatId: undefined, userRecitationId}
+        : {surah, reciterId, rewayatId},
     });
-  }, [reciterId, surah, rewayatId]);
+  }, [reciterId, surah, rewayatId, userRecitationId]);
 
   const handleGoToReciter = useCallback(() => {
     close();

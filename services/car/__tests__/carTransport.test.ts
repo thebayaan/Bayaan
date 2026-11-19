@@ -67,10 +67,18 @@ jest.mock('@/services/player/store/recentlyPlayedStore', () => ({
   useRecentlyPlayedStore: {getState: () => ({recentTracks: []})},
 }));
 const mockToggleLoved = jest.fn();
+const mockIsLovedWithRewayat = jest.fn(
+  (
+    _reciterId: string,
+    _surahId: string,
+    _rewayatId: string,
+    _userRecitationId?: string,
+  ): boolean => false,
+);
 jest.mock('@/services/player/store/lovedStore', () => ({
   useLovedStore: {
     getState: () => ({
-      isLovedWithRewayat: () => false,
+      isLovedWithRewayat: mockIsLovedWithRewayat,
       toggleLoved: mockToggleLoved,
     }),
     subscribe: () => jest.fn(),
@@ -91,6 +99,26 @@ function makeTrack(id: string, withRewayat: boolean = true): Track {
     surahId: '18',
     ...(withRewayat ? {rewayatId: 'hafs'} : {}),
   };
+}
+
+/**
+ * An upload as createUserUploadTrack builds it once it is tagged with
+ * reciter r1 and surah 18. Its rewayah tag gives it that rewayah's id when
+ * the catalogue knows the rewayah.
+ */
+function makeUpload(rewayatId?: string): Track {
+  return {
+    ...makeTrack('upload-u1', false),
+    ...(rewayatId ? {rewayatId} : {}),
+    isUserUpload: true,
+    userRecitationId: 'u1',
+  };
+}
+
+/** isLoved in the last Now Playing pushed to the car. */
+function lastPushedIsLoved(): boolean | undefined {
+  const calls = jest.mocked(BayaanCar.setNowPlaying).mock.calls;
+  return calls[calls.length - 1]?.[0]?.isLoved;
 }
 
 const mockQueue: {tracks: Track[]; currentIndex: number} = {
@@ -149,6 +177,7 @@ describe('car transports', () => {
     jest.clearAllMocks();
     mockIsAdhkarHeld.mockReturnValue(false);
     mockHasAdhkarTrackControls.mockReturnValue(false);
+    mockIsLovedWithRewayat.mockImplementation(() => false);
   });
 
   async function withBridge(run: () => Promise<void>): Promise<void> {
@@ -326,11 +355,61 @@ describe('car transports', () => {
     });
   });
 
-  it('toggleLove does nothing for a track without a rewayah (an upload)', async () => {
+  it('toggleLove does nothing for a track with no rewayah and no upload id', async () => {
     mockQueue.tracks = [makeTrack('a', false)];
     await withBridge(async () => {
       await send({kind: 'toggleLove'});
       expect(mockToggleLoved).not.toHaveBeenCalled();
+    });
+  });
+
+  // An upload is loved as itself, the way the Uploads screen and the
+  // player's heart save it: by its own id, without a rewayah. By reciter,
+  // surah and rewayah the car loved the catalogue recording instead.
+  it.each([
+    ['tagged with a rewayah the catalogue knows', 'hafs'],
+    ['whose rewayah tag the catalogue does not know', undefined],
+  ])(
+    'toggleLove toggles an upload %s by its own id',
+    async (_case, rewayatId) => {
+      mockQueue.tracks = [makeUpload(rewayatId)];
+      await withBridge(async () => {
+        await send({kind: 'toggleLove'});
+        expect(mockToggleLoved).toHaveBeenCalledTimes(1);
+        expect(mockToggleLoved).toHaveBeenCalledWith('r1', '18', '', 'u1');
+      });
+    },
+  );
+
+  it('toggleLove does nothing for an upload with no reciter', async () => {
+    mockQueue.tracks = [{...makeUpload(), reciterId: ''}];
+    await withBridge(async () => {
+      await send({kind: 'toggleLove'});
+      expect(mockToggleLoved).not.toHaveBeenCalled();
+    });
+  });
+
+  it('Now Playing shows a loved upload as loved', async () => {
+    // Only the upload is loved, and the store finds it by its id.
+    mockIsLovedWithRewayat.mockImplementation(
+      (_reciterId, _surahId, _rewayatId, userRecitationId) =>
+        userRecitationId === 'u1',
+    );
+    mockQueue.tracks = [makeUpload('hafs')];
+    await withBridge(async () => {
+      expect(lastPushedIsLoved()).toBe(true);
+    });
+  });
+
+  it('Now Playing does not show an upload as loved for its catalogue recording', async () => {
+    // Only the catalogue recording of the same reciter, surah and rewayah.
+    mockIsLovedWithRewayat.mockImplementation(
+      (_reciterId, _surahId, rewayatId, userRecitationId) =>
+        !userRecitationId && rewayatId === 'hafs',
+    );
+    mockQueue.tracks = [makeUpload('hafs')];
+    await withBridge(async () => {
+      expect(lastPushedIsLoved()).toBe(false);
     });
   });
 
