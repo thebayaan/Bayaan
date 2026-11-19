@@ -1,14 +1,16 @@
 /**
- * The bundled i'rab database (assets/data/irab-v1.db): complete, well formed,
+ * The bundled i'rab database (assets/data/irab-v2.db): complete, well formed,
  * and holding the lines that were checked by hand. Rebuild it with
  * scripts/irab/build-irab-db.ts; a change to any line below must be a
  * reviewed correction.
  */
+import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
+import {DB_VERSION} from '../../../scripts/irab/build-irab-db';
 import {decodeEntries, decodeMorph} from '../irabFormat';
 
-const DB = path.join(__dirname, '../../../assets/data/irab-v1.db');
+const DB = path.join(__dirname, `../../../assets/data/irab-v${DB_VERSION}.db`);
 const WBW = path.join(__dirname, '../../../data/wbw/wbw-en.db');
 
 const db = new Database(DB, {readonly: true});
@@ -66,9 +68,86 @@ describe('completeness', () => {
         }[]
       ).map(r => [r.key, r.value]),
     );
-    expect(meta.version).toBe('1');
+    expect(meta.version).toBe(String(DB_VERSION));
     expect(meta.treebank).toMatch(/NoorBayan\/Quranic@[0-9a-f]{40}$/);
     expect(meta.masaq).toMatch(/sha256:[0-9a-f]{64}$/);
+    expect(meta.masaq).toContain(
+      'https://creativecommons.org/licenses/by/4.0/',
+    );
+  });
+
+  it('keeps the notices its licences ask derived files to keep', () => {
+    const notice = (key: string) =>
+      (
+        db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as
+          | {value: string}
+          | undefined
+      )?.value;
+    const file = (name: string) =>
+      fs.readFileSync(path.join(__dirname, '../../../licenses', name), 'utf8');
+    expect(notice('qac_notice')).toBe(file('quranic-arabic-corpus-notice.txt'));
+    expect(notice('treebank_notice')).toBe(file('NoorBayan-Quranic-MIT.txt'));
+  });
+});
+
+describe('book passages', () => {
+  const passages = db
+    .prepare('SELECT id, book_id, part, page, text FROM passages')
+    .all() as {
+    id: number;
+    book_id: number;
+    part: string;
+    page: string;
+    text: string;
+  }[];
+  const forVerse = (verseKey: string, bookId: number) =>
+    db
+      .prepare(
+        `SELECT p.part || '/' || p.page AS page, p.text FROM verse_passages v
+           JOIN passages p ON p.id = v.passage_id
+          WHERE v.verse_key = ? AND v.book_id = ? ORDER BY v.ord`,
+      )
+      .all(verseKey, bookId) as {page: string; text: string}[];
+
+  it('hold no control character but the line break', () => {
+    // eslint-disable-next-line no-control-regex
+    const bad = /[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/;
+    expect(passages.filter(p => bad.test(p.text)).map(p => p.id)).toEqual([]);
+  });
+
+  it("show al-Nahhas without his modern editor's footnotes or note markers", () => {
+    const nahhas = passages.filter(p => p.book_id === 318);
+    expect(nahhas.length).toBeGreaterThan(1300);
+    // The editor's notes cite works written centuries after al-Nahhas
+    // (d. 338 AH); his own text never does.
+    const notes =
+      /«[٠-٩0-9]+»|البحر المحيط|خزانة الأدب|تاج العروس|تيسير الداني|ترجمته في/;
+    expect(nahhas.filter(p => notes.test(p.text)).map(p => p.id)).toEqual([]);
+
+    const opening = forVerse('1:1', 318);
+    expect(opening[0].page).toBe('1/13');
+    expect(opening[0].text).toContain(
+      'حدّثنا أبو الحسن أحمد بن سعيد الدّمشقي عن عبد الخالق عن أبي عبيد قال:',
+    );
+    expect(opening[0].text.endsWith('وكسرت الباء ليفرّق بين ما')).toBe(true);
+    // A line of al-Nahhas that starts with a verse number stays.
+    expect(passages.some(p => p.text.includes('\n(١٣) فأمسكت على فيه،'))).toBe(
+      true,
+    );
+  });
+
+  it("start surah 114 with al-Nahhas, not the publisher's introduction", () => {
+    expect(passages.filter(p => p.text.includes('كلام الناشر'))).toEqual([]);
+    for (const vk of ['114:1', '114:6']) {
+      expect(forVerse(vk, 318).map(p => p.page)).toEqual(['5/199', '5/200']);
+    }
+  });
+
+  it('put a surah heading on its own line', () => {
+    // al-Ukbari's title of al-Fatiha, then the basmala on the next line.
+    const [title, basmala] = forVerse('1:2', 309)[0].text.split('\n');
+    expect(title).toBe('سُورَةُ الْفَاتِحَةِ');
+    expect(basmala.startsWith('بِسم الله ')).toBe(true);
   });
 });
 

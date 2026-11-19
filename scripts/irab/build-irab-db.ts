@@ -1,10 +1,12 @@
 /**
- * Builds assets/data/irab-v1.db: word-level i'rab for the whole Quran plus
- * two classical i'rab books per verse.
+ * Builds assets/data/irab-v2.db: word-level i'rab for the whole Quran plus
+ * two classical i'rab books per verse. The file name carries DB_VERSION:
+ * installed apps import a bundled database once per name, so a rebuild
+ * that changes the data ships under a new version (see IrabDataService).
  *
  *   npx tsx scripts/irab/build-irab-db.ts \
  *     --treebank <Quranic.csv> --masaq <MASAQ.tsv> --books <dir> \
- *     [--out assets/data/irab-v1.db]
+ *     [--out assets/data/irab-v2.db]
  *
  * --treebank  corpus/Quranic.csv extracted from corpus/Quranic.rar of
  *             github.com/NoorBayan/Quranic at TREEBANK_COMMIT (UTF-16 TSV).
@@ -56,7 +58,7 @@ import {
 } from './masaq';
 
 export const TREEBANK_COMMIT = 'e791af79b8e4f853610da455b87442cedec49118';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /** The notices stored in meta, as published (see THIRD_PARTY_LICENSES.md). */
 export const NOTICE_FILES = {
@@ -575,7 +577,7 @@ function main(): void {
   const booksDir = arg('books');
   const masaqFile = arg('masaq');
   const out = path.resolve(
-    arg('out', path.join(root, 'assets/data/irab-v1.db')),
+    arg('out', path.join(root, `assets/data/irab-v${DB_VERSION}.db`)),
   );
   const notices = Object.fromEntries(
     Object.entries(NOTICE_FILES).map(([key, file]) => [
