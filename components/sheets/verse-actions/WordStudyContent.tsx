@@ -51,13 +51,13 @@ import {useTranslation} from 'react-i18next';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {WBWVerseView} from '@/components/player/v2/PlayerContent/QuranView/WBWVerseView';
+import {formatVerseRange} from '@/components/share/rewayahVerseText';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {useHover} from '@/hooks/useHover';
 import {useKeyCommands} from '@/hooks/useKeyCommands';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {useResponsive} from '@/hooks/useResponsive';
 import {useTheme} from '@/hooks/useTheme';
-import {formatVerseRange} from '@/components/share/rewayahVerseText';
 import {localizeDigits} from '@/i18n/format';
 import {mergeBookPassages} from '@/services/irab/irabFormat';
 import {
