@@ -13,7 +13,7 @@
  *    exactly those of before.
  */
 import React, {act} from 'react';
-import {Text} from 'react-native';
+import {FlatList, Text} from 'react-native';
 import TestRenderer from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
@@ -735,6 +735,22 @@ describe('Quran text search: the Ayahs section', () => {
       'Al-Baqarah 2:7',
       'Al-Baqarah 2:255',
     ]);
+  });
+
+  it('a new query starts its results at the top', async () => {
+    // The ayahs are ranked: the best matches are at the top of the list.
+    const scrollToOffset = jest.spyOn(FlatList.prototype, 'scrollToOffset');
+    try {
+      mockQuranStates.set('الله', textDone([hit('2:255', 1), hit('1:1', 2)]));
+      const {renderer} = await renderSearch();
+      await searchQuran(renderer, 'الله');
+      scrollToOffset.mockClear();
+      mockQuranStates.set('الرحمن', textDone([hit('55:1', 1)]));
+      await searchQuran(renderer, 'الرحمن');
+      expect(scrollToOffset).toHaveBeenCalledWith({offset: 0, animated: false});
+    } finally {
+      scrollToOffset.mockRestore();
+    }
   });
 
   it('an Arabic query with no ayah gets the hint the Search tab gives', async () => {

@@ -325,6 +325,12 @@ export function SearchView({
     () => [...searchResults, ...quranRows],
     [searchResults, quranRows],
   );
+  // A new query starts its results at the top, where the best matches are,
+  // not at the offset the last query was scrolled to.
+  const resultsListRef = useRef<FlatList<SearchListItem>>(null);
+  useEffect(() => {
+    resultsListRef.current?.scrollToOffset({offset: 0, animated: false});
+  }, [debouncedQuery]);
 
   // The stored recent searches, read once. Not after the catalogue: its
   // reciters can wait seconds on the network, and the Ayahs rows can be
@@ -785,6 +791,7 @@ export function SearchView({
           (searchResults.length > 0 || quranRows.length > 0) ? (
           <SurahOptionsProvider build={buildSurahOptions}>
             <TabletSearchResults
+              query={debouncedQuery}
               results={searchResults}
               onResultPress={handleResultPress}
               onSurahPlay={handleSurahLongPress}
@@ -797,6 +804,7 @@ export function SearchView({
           </SurahOptionsProvider>
         ) : (
           <FlatList<SearchListItem>
+            ref={resultsListRef}
             style={listStyle}
             data={listData}
             renderItem={renderListItem}

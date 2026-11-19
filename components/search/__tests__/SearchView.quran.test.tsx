@@ -8,7 +8,7 @@
  * both searches empty.
  */
 import React from 'react';
-import {Text} from 'react-native';
+import {FlatList, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {QuranSearchState} from '@/hooks/useQuranSearch';
@@ -147,9 +147,17 @@ jest.mock('@/components/LoadingIndicator', () => ({
   LoadingIndicator: () => null,
 }));
 const mockTabletRows: unknown[][] = [];
+const mockTabletQueries: unknown[] = [];
 jest.mock('@/components/search/TabletSearchResults', () => ({
-  TabletSearchResults: ({quranRows}: {quranRows: unknown[]}) => {
+  TabletSearchResults: ({
+    quranRows,
+    query,
+  }: {
+    quranRows: unknown[];
+    query?: string;
+  }) => {
     mockTabletRows.push(quranRows);
+    mockTabletQueries.push(query);
     return null;
   },
 }));
@@ -332,6 +340,7 @@ beforeEach(async () => {
   mockRewayah = 'hafs';
   mockTablet = false;
   mockTabletRows.length = 0;
+  mockTabletQueries.length = 0;
   mockReciters.held = null;
   trackSearchPerformed.mockClear();
   await AsyncStorage.clear();
@@ -651,11 +660,32 @@ describe('SearchView: Quran results', () => {
     });
   });
 
+  it('a new query starts its results at the top', async () => {
+    // The ayahs are ranked: the best matches are at the top of the list.
+    const scrollToOffset = jest.spyOn(FlatList.prototype, 'scrollToOffset');
+    try {
+      mockQuranStates.set('الله', textDone([hit('1:1', 2), hit('2:255', 1)]));
+      await open('الله');
+      scrollToOffset.mockClear();
+      mockQuranStates.set('الرحمن', textDone([hit('1:1', 3)]));
+      await retype('الرحمن');
+      expect(scrollToOffset).toHaveBeenCalledWith({offset: 0, animated: false});
+      // The same query again leaves the list where it is.
+      scrollToOffset.mockClear();
+      await retype('الرحمن');
+      expect(scrollToOffset).not.toHaveBeenCalled();
+    } finally {
+      scrollToOffset.mockRestore();
+    }
+  });
+
   it('iPad: Quran rows alone open the tablet results; a root keeps the list', async () => {
     mockTablet = true;
     mockQuranStates.set('الحمد لله', textDone([hit('1:2', 1, 2)]));
     await open('الحمد لله');
     expect(mockTabletRows[mockTabletRows.length - 1]).toHaveLength(2);
+    // The query, so a new one starts the tablet results at the top.
+    expect(mockTabletQueries[mockTabletQueries.length - 1]).toBe('الحمد لله');
     expect(rows()).toEqual([]);
 
     mockQuranStates.set('root:رحم', rootDone([hit('1:1', 3)]));

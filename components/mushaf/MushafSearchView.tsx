@@ -789,6 +789,12 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     quranRows,
     commandsShown,
   ]);
+  // A new query starts its results at the top, where the best matches are,
+  // not at the offset the last query was scrolled to.
+  const resultsListRef = useRef<FlatList<SearchListItem>>(null);
+  useEffect(() => {
+    resultsListRef.current?.scrollToOffset({offset: 0, animated: false});
+  }, [searchQuery]);
 
   // @ai-start
   // Opens a verse of the rewayah on screen on its page (the page of the
@@ -1423,6 +1429,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         ) : (
           // With query: show results
           <FlatList<SearchListItem>
+            ref={resultsListRef}
             data={listData}
             renderItem={renderSearchResult}
             keyExtractor={(item, index) =>
