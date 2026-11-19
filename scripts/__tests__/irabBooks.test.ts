@@ -8,6 +8,7 @@
 import {
   bookPassage,
   cleanBookHtml,
+  isFrontMatter,
   stripEditorNotes,
 } from '../irab/build-irab-db';
 
@@ -123,6 +124,28 @@ describe('cleanBookHtml', () => {
 
   it('fails on any other control character', () => {
     expect(() => cleanBookHtml('نص\u0007نص')).toThrow(/control character/);
+  });
+});
+
+describe('isFrontMatter', () => {
+  const nahhas = {id: 318, frontMatter: {part: '1', before: 13, surah: 114}};
+
+  it("drops the publisher's introduction that the dump files under surah 114", () => {
+    expect(isFrontMatter(nahhas, {part: '1', page: '3'}, 114)).toBe(true);
+    expect(isFrontMatter(nahhas, {part: '1', page: 12}, 114)).toBe(true);
+  });
+
+  it("keeps the author's pages", () => {
+    expect(isFrontMatter(nahhas, {part: '1', page: '13'}, 1)).toBe(false);
+    expect(isFrontMatter(nahhas, {part: '5', page: '199'}, 114)).toBe(false);
+    expect(isFrontMatter(nahhas, {part: '2', page: '3'}, 6)).toBe(false);
+    expect(isFrontMatter({id: 309}, {part: '1', page: '1'}, 114)).toBe(false);
+  });
+
+  it('fails when an introduction page turns up under another surah', () => {
+    expect(() => isFrontMatter(nahhas, {part: '1', page: '5'}, 2)).toThrow(
+      /318.*1\/5.*surah 2/,
+    );
   });
 });
 

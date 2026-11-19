@@ -20,7 +20,9 @@
  *  - every word has at least one i'rab entry;
  *  - no book passage contains markup, links, script or a control character
  *    other than a line break after cleaning;
- *  - no book passage keeps a modern editor's footnotes or note markers.
+ *  - no book passage keeps a modern editor's footnotes or note markers;
+ *  - a book's front matter (left out) sits where the dump is known to file
+ *    it.
  *
  * The app never shows treebank or book Quran spellings as Quran text: word
  * references are `{{s:a:w}}` placeholders the app fills from its own words.
@@ -62,12 +64,22 @@ export const KIND_CODE: Record<IrabEntry['kind'], string> = {
   alt: 'a',
 };
 
+/** Pages printed before the author's text, and where the dump files them. */
+interface FrontMatter {
+  part: string;
+  /** The page the author's text starts on. */
+  before: number;
+  /** The surah whose verses the dump puts these pages under. */
+  surah: number;
+}
+
 const BOOKS: {
   id: number;
   nameAr: string;
   authorAr: string;
   /** The dump prints a modern editor's footnotes on each page. */
   editorNotes?: boolean;
+  frontMatter?: FrontMatter;
 }[] = [
   {
     id: 309,
@@ -80,8 +92,33 @@ const BOOKS: {
     authorAr: 'أبو جعفر النحاس (ت ٣٣٨هـ)',
     // Dar al-Kutub al-Ilmiyya, 1st edition, 1421 AH.
     editorNotes: true,
+    // The publisher's introduction ([كلام الناشر]: a life of al-Nahhas, a
+    // history of i'rab works, a glossary), filed under every verse of
+    // surah 114 ahead of al-Nahhas's own commentary on it.
+    frontMatter: {part: '1', before: 13, surah: 114},
   },
 ];
+
+/**
+ * Whether a page is the book's front matter rather than the author's text.
+ * Throws when such a page is filed under a surah other than the expected
+ * one: a new dump that moved it needs a fresh look.
+ */
+export function isFrontMatter(
+  book: {id: number; frontMatter?: FrontMatter},
+  page: {part: string | number; page: string | number},
+  surah: number,
+): boolean {
+  const fm = book.frontMatter;
+  if (!fm || String(page.part) !== fm.part || Number(page.page) >= fm.before)
+    return false;
+  if (surah !== fm.surah) {
+    throw new Error(
+      `book ${book.id}: front matter page ${page.part}/${page.page} is filed under surah ${surah}, not ${fm.surah}`,
+    );
+  }
+  return true;
+}
 
 function arg(name: string, fallback?: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -857,6 +894,7 @@ function main(): void {
       const ids = new Map<string, number>();
       let verses = 0;
       const removed: EditorNotes = {footnoteBlocks: 0, markers: 0};
+      const frontMatter = new Set<string>();
       for (const a of json.ayahs as {
         surah: number;
         ayah: number;
@@ -865,6 +903,10 @@ function main(): void {
         const vk = `${a.surah}:${a.ayah}`;
         let ord = 0;
         for (const c of a.content) {
+          if (isFrontMatter(book, c, a.surah)) {
+            frontMatter.add(`${c.part}/${c.page}`);
+            continue;
+          }
           const page = bookPassage(c.text, book.editorNotes);
           const text = page.text;
           if (!text) continue;
@@ -896,10 +938,21 @@ function main(): void {
           String(removed.markers),
         );
       }
+      if (book.frontMatter) {
+        if (!frontMatter.size)
+          throw new Error(`book ${book.id}: no front matter found`);
+        meta.run(
+          `book_${book.id}_front_matter_removed`,
+          [...frontMatter].join(', '),
+        );
+      }
       console.log(
         `book ${book.id}: ${verses} verses, ${ids.size} passages` +
           (book.editorNotes
             ? `, the editor's notes removed from ${removed.footnoteBlocks} (${removed.markers} markers)`
+            : '') +
+          (frontMatter.size
+            ? `, front matter left out: ${frontMatter.size} pages`
             : ''),
       );
     }
