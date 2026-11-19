@@ -10,7 +10,6 @@ import {
   type SkTypefaceFontProvider,
 } from '@shopify/react-native-skia';
 import {GestureDetector} from 'react-native-gesture-handler';
-import Color from 'color';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
@@ -44,6 +43,7 @@ import {
 import {usePlaybackBand} from './playbackBand';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {usePageTextGestures, type PageTextLayout} from './usePageTextGestures';
+import {usePageHighlightColors} from './usePageHighlightColors';
 // @ai-end
 import {canvasBottomOverflow} from '../constants'; // @ai
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
@@ -295,24 +295,13 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     );
     const {gesture, handleParagraphReady, handleParagraphDisposed} =
       usePageTextGestures(pageNumber, pageLines, textLayout, onTap);
-    // @ai-end
 
     // ── Background highlights ──────────────────────────────
-    const playbackBgColor = useMemo(
-      () =>
-        Color(textColor)
-          .alpha(isDarkMode ? 0.1 : 0.12)
-          .toString(),
-      [textColor, isDarkMode],
+    const {playbackBgColor, selectionBgColor} = usePageHighlightColors(
+      textColor,
+      isDarkMode,
     );
-
-    const selectionBgColor = useMemo(
-      () =>
-        Color(textColor)
-          .alpha(isDarkMode ? 0.15 : 0.18)
-          .toString(),
-      [textColor, isDarkMode],
-    );
+    // @ai-end
 
     const lineBackgroundHighlightsMap = useMemo<
       Map<number, Array<{start: number; end: number; color: string}>>

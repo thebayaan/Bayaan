@@ -68,6 +68,7 @@ import {useRecitationHiddenText} from './useRecitationHiddenText';
 import {useRecitationMarkColors} from './useRecitationMarkColors';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {usePageTextGestures, type PageTextLayout} from './usePageTextGestures';
+import {usePageHighlightColors} from './usePageHighlightColors';
 // @ai-end
 import {
   SCREEN_WIDTH as DEFAULT_SCREEN_WIDTH,
@@ -570,24 +571,13 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     },
     [registerParagraph, paragraphCount],
   );
-  // @ai-end
 
   // Compute per-line background highlight arrays for all highlight types
-  const playbackBgColor = useMemo(
-    () =>
-      Color(textColor)
-        .alpha(isDarkMode ? 0.1 : 0.12)
-        .toString(),
-    [textColor, isDarkMode],
+  const {playbackBgColor, selectionBgColor} = usePageHighlightColors(
+    textColor,
+    isDarkMode,
   );
-
-  const selectionBgColor = useMemo(
-    () =>
-      Color(textColor)
-        .alpha(isDarkMode ? 0.15 : 0.18)
-        .toString(),
-    [textColor, isDarkMode],
-  );
+  // @ai-end
 
   const EMPTY_BG_MAP = useMemo(
     () => new Map<number, Array<{start: number; end: number; color: string}>>(),
