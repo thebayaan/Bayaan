@@ -1,7 +1,9 @@
 // @ai-generated
 /**
  * Plays the recording of one word (wordAudioUrl) with its own expo-audio
- * player, as the word sheet did, without touching the main player.
+ * player, as the word sheet did. A recitation that plays (the main or the
+ * mushaf player, or adhkar) is paused first (audioCoordinator.wordWillPlay)
+ * and stays paused.
  *
  *  - toggle() plays the word from the start: it releases the previous player
  *    and creates a new one, so there is one player at a time. While the word
@@ -20,6 +22,7 @@ import {
   type AudioPlayer,
   type AudioStatus,
 } from 'expo-audio';
+import {audioCoordinator} from '@/services/audio/AudioCoordinator';
 
 export type WordAudioState = 'idle' | 'loading' | 'playing' | 'error';
 
@@ -116,6 +119,8 @@ export function useWordAudio(url: string | null): WordAudio {
         onStatus,
       );
       setStatus({url, state: 'loading'});
+      // A running recitation pauses: the two would play over each other.
+      audioCoordinator.wordWillPlay();
       player.play();
     } catch (error) {
       console.warn('[useWordAudio] Playback failed:', error);
