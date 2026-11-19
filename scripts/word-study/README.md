@@ -70,12 +70,19 @@ column for review; v1 shows none of them. Among several spans of the winning
 tier, the first one after the previous placed entry of the same book in that
 verse wins.
 
+Cleaning removes the edition's apparatus: the source siglum `[زه]`, bare
+verse numbers such as `[7]`, and footnote markers. Any other bracket holds
+words the editor restored, which a gloss may need for its sense (4:3 «[ألّا]
+تجوروا»): they are kept as printed, without the square brackets.
+
 Gates: every input locked by SHA-256 and version; no markup, link, Latin
-letter, digit, bracket or U+FFFD in a headword, gloss or note after cleaning
-(the editor's `[…]` insertions and footnote markers are removed); every span
-on real words; each book's share of entries on words at least its `minPlaced`.
-An entry whose gloss has no meaning text (empty, or punctuation only) is kept
-at verse level.
+letter, digit, bracket or U+FFFD in a headword, gloss or note after cleaning;
+every gloss shown on words has meaning text and neither starts nor ends on
+`:` or `،` (cut text); every span on real words; each book's share of
+entries on words at least its `minPlaced`. An entry whose gloss has no
+meaning text (empty, or punctuation only) is kept at verse level. A gloss
+that fails the gate as the book prints it is kept at verse level by hand
+(77:25 ends on «ثم قال:», the lead-in to the next entry).
 
 `--report` lists tier-3, tier-2 and ambiguous placements (shown), and tier-4,
 moved, no-meaning and unplaced entries (not shown). To place an entry by

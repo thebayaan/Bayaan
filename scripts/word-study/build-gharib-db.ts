@@ -14,6 +14,8 @@
  *  - a dump whose version is not the locked one;
  *  - a headword, gloss or note that still has markup, a link, Latin
  *    letters, digits, brackets or U+FFFD after cleaning;
+ *  - a gloss shown on words with no meaning text, or one that starts or
+ *    ends on ':' or '،' (cut text);
  *  - a span outside its verse's words in data/wbw/wbw-en.db;
  *  - a book whose share of entries placed on words is below its minPlaced.
  * An entry whose gloss has no meaning text (empty, or punctuation only) is
@@ -42,6 +44,7 @@ import {
   readJsonl,
   readQuranpediaBook,
   readQuranpediaMeanings,
+  shownGlossProblem,
   textProblem,
   type GharibInput,
   type Placement,
@@ -129,18 +132,21 @@ export function build(
 
   // Clean and gate the texts. An empty gloss is not a problem here: like
   // one of punctuation only, it has no meaning text and is not placed.
+  const where = (e: GharibInput) =>
+    `${e.sourceId} ${e.surah}:${e.ayah} #${e.ord}`;
   for (const e of entries) {
     e.headword = cleanHeadword(e.headword);
     e.gloss = cleanGloss(e.gloss);
     e.note = cleanGloss(e.note ?? '');
-    const where = `${e.sourceId} ${e.surah}:${e.ayah} #${e.ord}`;
     for (const [field, text] of [
       ['headword', e.headword],
       ['gloss', e.gloss],
       ['note', e.note],
     ] as const) {
       const problem = text ? textProblem(text) : null;
-      if (problem) problems.push(`${where}: ${field} has ${problem}: ${text}`);
+      if (problem) {
+        problems.push(`${where(e)}: ${field} has ${problem}: ${text}`);
+      }
     }
   }
 
@@ -149,6 +155,21 @@ export function build(
     fs.readFileSync(path.join(HERE, 'gharib-reviewed.json'), 'utf8'),
   );
   const placed = placeAll(entries, app.verses, reviewed);
+
+  // What a word shows must read as a meaning. A gloss the gate refuses
+  // because of the book's own text goes to gharib-reviewed.json at verse
+  // level (README).
+  for (const p of placed) {
+    if (!p.span) continue;
+    const problem = shownGlossProblem(p.input.gloss);
+    if (problem) {
+      problems.push(
+        `${where(p.input)}: gloss shown on words has ${problem}: ${
+          p.input.gloss
+        }`,
+      );
+    }
+  }
 
   // Spans must be real words of their verse.
   for (const p of placed) {

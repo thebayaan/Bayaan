@@ -79,7 +79,7 @@ The design docs were written by read-only design agents. **Where this README dis
 ### Gharib and rasm (04)
 - **Gharib:**
   - One book, Ibn al-Ha'im's *al-Tibyan*.
-  - Strip the editor's bracketed insertions (`[…]`).
+  - Keep the words the editor restored in brackets (`[…]`), without the brackets, so each gloss reads as the edition prints it; remove only the apparatus: the source siglum `[زه]` and bare verse numbers such as `[7]`. (Revised: stripping every bracket left about 70 glosses garbled or saying the opposite, such as 4:3 «[ألّا] تجوروا».)
   - Placement tiers 1–3 show on words. Tier 4 (loose) and neighbouring-verse placements stay at verse level and are **not shown in v1** (04 T10a skipped).
 - **Rasm:**
   - The input is Tanzil Simple v1.1 without pause marks.

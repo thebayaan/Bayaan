@@ -256,14 +256,18 @@ export function readJsonl(text: string): GharibInput[] {
 }
 
 /**
- * A gloss as the app shows it: the editor's bracketed insertions ([…],
- * README) and footnote markers («7», a trailing «.27،») removed, spaces
- * collapsed, no space before punctuation, one after it. The book's own
+ * A gloss as the app shows it. The edition's apparatus is removed: the
+ * source siglum [زه], bare verse numbers such as [7] and footnote markers
+ * («7», a trailing «.27،»). Any other bracket holds words the editor
+ * restored, which the gloss may need for its sense («[ألّا] تجوروا»): they
+ * are kept as printed and only the square brackets go (README). Spaces are
+ * collapsed, with none before punctuation and one after it. The book's own
  * words are not changed.
  */
 export function cleanGloss(text: string): string {
   return text
-    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\[\s*(?:زه|\d+)\s*\]/g, ' ')
+    .replace(/\[([^[\]]*)\]/g, '$1')
     .replace(/«\s*\d+\s*»/g, ' ')
     .replace(/([.،])\s*\d+\s*،?\s*$/, '$1')
     .replace(/\s+/g, ' ')
@@ -296,6 +300,20 @@ export function textProblem(text: string): string | null {
 /** Has the gloss any meaning text, an Arabic letter? '' and '.' have none. */
 export function hasMeaningText(gloss: string): boolean {
   return [...gloss].some(isArabicLetter);
+}
+
+/**
+ * Why a cleaned gloss cannot be shown on words, or null: it has no meaning
+ * text, or it starts or ends on ':' or '،'. That is cut text: words the
+ * cleaning removed, or a lead-in that the next entry completes.
+ */
+export function shownGlossProblem(gloss: string): string | null {
+  if (!hasMeaningText(gloss)) return 'no meaning text';
+  const first = gloss[0];
+  if (first === ':' || first === '،') return `a leading "${first}"`;
+  const last = gloss[gloss.length - 1];
+  if (last === ':' || last === '،') return `a trailing "${last}"`;
+  return null;
 }
 
 // ---------------------------------------------------------------------------
