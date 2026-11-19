@@ -130,6 +130,18 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'يا قوم', includes: ['2:54']},
   {query: 'قوم', includes: ['2:54']},
   {query: 'يا بني آدم', includes: ['7:26']},
+  // The vocative and one-lam words typed as drawn (يَٰٓأَيُّهَا, ٱلَّيْل),
+  // except where the letters spell another word: يقوم is يَقُومُ, not
+  // يَٰقَوْمِ (2:54), and الى is إِلَى, not ٱلَّٰٓـِٔى (33:4, 58:2).
+  {query: 'يأيها الذين آمنوا', first: '2:104', count: 89},
+  {query: 'يايها الناس', includes: ['2:21']},
+  {query: 'يموسى', includes: ['2:55', '7:115']},
+  {query: 'يآدم', includes: ['2:33', '2:35']},
+  {query: 'يبني إسرائيل', includes: ['2:40', '2:47']},
+  {query: 'اليل', includes: ['2:164', '3:27']},
+  {query: 'واليل إذا يغشى', first: '92:1', exactly: ['92:1', '91:4']},
+  {query: 'يقوم', excludes: ['2:54', '5:20']},
+  {query: 'الى', excludes: ['33:4', '58:2']},
   // An open taa (فِطْرَتَ, مَرْضَاتِ) typed as ة, also where the corpus
   // spells the lemma with ت (TAA_MARBUTA_LEMMAS).
   {query: 'فطرة الله', exactly: ['30:30']},

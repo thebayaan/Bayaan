@@ -481,6 +481,15 @@ export function buildQuranSearchIndex(
       }
     }
   });
+  // The letters exactly as drawn of a vocative or a one-lam word are, as
+  // often as not, another word: يَٰقَوْمِ is drawn يقوم (يَقُومُ), ٱلَّٰتِى
+  // التي and ٱلَّٰٓـِٔى الي (إِلَى). Typed, those mean the other word, so a
+  // form keeps them only when no other spelling gives it (يأيها, يموسى,
+  // اليل).
+  for (const slots of formSlots.values()) {
+    if (![...slots.values()].some(f => !f.asDrawn)) continue;
+    for (const [slot, f] of slots) if (f.asDrawn) slots.delete(slot);
+  }
   const forms = new Map<string, number[]>();
   let postings = 0;
   for (const form of [...formSlots.keys()].sort()) {

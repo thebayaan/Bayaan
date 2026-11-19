@@ -31,7 +31,10 @@ import {
 import {IRAB_DB_NAME} from '@/constants/bundledDatabases';
 import {
   decodePostings,
+  QURAN_FLAG_RANGE,
   QURAN_SEARCH_DB_NAME,
+  QURAN_SLOT_STRIDE,
+  verseKeyAt,
 } from '@/utils/search/quranIndexFormat';
 import {QURAN_ONE_WORD_AYAHS} from '@/utils/search/quranSearch';
 import {isFoldedForm, isVerseMarker} from '@/utils/search/quranText';
@@ -262,6 +265,25 @@ describe(QURAN_SEARCH_DB_NAME, () => {
     expect(
       db.prepare('SELECT id, root, words, ayahs FROM roots ORDER BY id').all(),
     ).toEqual(rebuilt.roots);
+  });
+
+  it('keeps the letters exactly as drawn only where no other word has them', () => {
+    const at = (form: string) =>
+      (rebuilt.forms.get(form) ?? []).map(code => {
+        const slot = Math.floor(code / QURAN_FLAG_RANGE);
+        const verse = verseKeyAt(Math.floor(slot / QURAN_SLOT_STRIDE));
+        return `${verse}:${slot % QURAN_SLOT_STRIDE}`;
+      });
+    // يَٰٓأَيُّهَا, يَٰمُوسَىٰ and ٱلَّيْلِ as drawn
+    expect(at('يايها')).toContain('2:21:1');
+    expect(at('يموسي')).toContain('2:55:3');
+    expect(at('اليل')).toContain('2:164:7');
+    // يَٰقَوْمِ is drawn يقوم, ٱلَّٰٓـِٔى الي and ٱلَّٰتِى التي: the
+    // spellings of يَقُومُ, إِلَى and ٱلَّتِى, which keep them alone.
+    expect(at('يقوم').length).toBeGreaterThan(0);
+    expect(at('يقوم')).not.toContain('2:54:5');
+    expect(at('الي')).not.toContain('33:4:12');
+    expect(at('التي')).not.toContain('4:23:21');
   });
 
   it('holds every root once, counted in words', () => {

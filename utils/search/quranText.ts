@@ -111,14 +111,19 @@ export function isVerseMarker(slotText: string): boolean {
   return slotText.startsWith('\u{06DD}');
 }
 
-/** Maddah removed, NFC, decorations removed, final ىٰ → ى, one-lam words. */
-function prepare(text: string): string {
+/** Maddah removed, NFC, decorations removed, final ىٰ → ى. */
+function prepareDrawn(text: string): string {
   return text
     .replace(MADDAH, '')
     .normalize('NFC')
     .replace(VERSE_END, ' ')
     .replace(DECORATIONS, '')
-    .replace(FINAL_MAQSURA_DAGGER, '\u{0649}$1')
+    .replace(FINAL_MAQSURA_DAGGER, '\u{0649}$1');
+}
+
+/** prepareDrawn, and the one-lam words written with two. */
+function prepare(text: string): string {
+  return prepareDrawn(text)
     .replace(LAYL, '\u{0671}\u{0644}\u{0644}$1\u{064A}$2\u{0644}')
     .replace(LAM_DAGGER, '\u{0671}\u{0644}\u{0644}$1')
     .replace(DUAL_RELATIVE, '\u{0671}\u{0644}\u{0644}$1\u{0630}\u{064E}');
@@ -563,6 +568,13 @@ export interface QuranWordForm {
   rasmOnly: boolean;
   /** The part of the word this form spells holds a hamza. */
   hasHamza: boolean;
+  /**
+   * Only the letters exactly as drawn give this form: those of a vocative
+   * (يَٰٓأَيُّهَا → يايها) or of a word drawn with one lam (ٱلَّيْل → اليل),
+   * which every other spelling writes with the alif or lam everyday writing
+   * adds. The index keeps such a form only where no other word has it.
+   */
+  asDrawn?: true;
 }
 
 /** What the i'rab data says about a word (all optional facts). */
@@ -608,14 +620,34 @@ export function quranWordForms(
     put({form: rasm, tier, rasmOnly: true, hasHamza});
     for (const form of mixed) put({form, tier, rasmOnly: true, hasHamza});
   };
+  // The letters exactly as drawn (يَٰمُوسَىٰ → يموسي, وَٱلَّيْلِ → واليل): a
+  // new form only where the spellings added the vocative's alif or a lam.
+  const addDrawn = (word: string, tier: QuranTier) =>
+    put({
+      form: fold(word),
+      tier,
+      rasmOnly: true,
+      hasHamza: HAMZA.test(word),
+      asDrawn: true,
+    });
   const prepared = prepare(uthmani);
+  const drawn = prepareDrawn(uthmani);
   add(prepared, QURAN_TIER.full);
+  addDrawn(drawn, QURAN_TIER.full);
   if (morph) {
     const lemma = morph.lemma ?? '';
     const definite = morph.definiteByArticle || lemma.startsWith('\u{0671}');
     const isAllah = lemma !== '' && fold(lemma) === 'الله';
     const chain = procliticChain(prepared, morph.proclitics, definite, isAllah);
     for (const word of chain) add(word, QURAN_TIER.withoutProclitics);
+    for (const word of procliticChain(
+      drawn,
+      morph.proclitics,
+      definite,
+      isAllah,
+    )) {
+      addDrawn(word, QURAN_TIER.withoutProclitics);
+    }
     const innermost = chain[chain.length - 1] ?? prepared;
     const bare = morph.definiteByArticle ? stripArticleOf(innermost) : null;
     if (bare !== null) add(bare, QURAN_TIER.withoutArticle);

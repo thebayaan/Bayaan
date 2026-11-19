@@ -165,7 +165,10 @@ describe('quranWordForms (proclitics and the article)', () => {
   ): QuranWordMorph => ({proclitics, definiteByArticle, lemma});
   const forms = (location: string, m: QuranWordMorph) =>
     quranWordForms(dk(location), m).map(
-      f => `${f.form} ${f.tier}${f.rasmOnly ? ' rasm' : ''}`,
+      f =>
+        `${f.form} ${f.tier}${f.rasmOnly ? ' rasm' : ''}${
+          f.asDrawn ? ' drawn' : ''
+        }`,
     );
 
   it('strips each proclitic in turn, then the article', () => {
@@ -207,12 +210,40 @@ describe('quranWordForms (proclitics and the article)', () => {
   });
 
   it('keeps the vocative alif after a proclitic', () => {
-    // وَيَٰقَوْمِ
+    // وَيَٰقَوْمِ, and يقوم as drawn without the و (which the index drops:
+    // it is يَقُومُ's spelling)
     expect(forms('11:29:1', morph(['wa', 'ya'], false, 'قَوْم'))).toEqual([
       'وياقوم 3',
       'ويقوم 3 rasm',
       'ياقوم 2',
       'قوم 2',
+      'يقوم 2 rasm drawn',
+    ]);
+  });
+
+  it('also gives the letters exactly as drawn of a vocative or a one-lam word', () => {
+    // The index keeps these only where no other word has them.
+    expect(forms('2:21:1', morph(['ya'], false, 'أَيّ'))).toEqual([
+      'ياايها 3',
+      'يايها 3 rasm drawn',
+      'ايها 2',
+    ]);
+    expect(forms('2:55:3', morph(['ya'], false, 'مُوسَىٰ'))).toEqual([
+      'ياموسي 3',
+      'يموسي 3 rasm drawn',
+      'موسي 2',
+    ]);
+    expect(forms('2:164:7', morph([], true, 'لَيْل'))).toEqual([
+      'الليل 3',
+      'اليل 3 rasm drawn',
+      'ليل 1',
+    ]);
+    // A word without these conventions has no other letters as drawn.
+    expect(forms('1:1:3', morph([], true, 'رَحْمَٰن'))).toEqual([
+      'الرحمان 3',
+      'الرحمن 3 rasm',
+      'رحمان 1',
+      'رحمن 1 rasm',
     ]);
   });
 
@@ -237,10 +268,12 @@ describe('quranWordForms (proclitics and the article)', () => {
   });
 
   it('gives al-layl its two lams in every form', () => {
-    // وَٱلَّيْلِ
+    // وَٱلَّيْلِ, and its one lam as drawn
     expect(forms('74:33:1', morph(['wa'], true, 'لَيْل'))).toEqual([
       'والليل 3',
+      'واليل 3 rasm drawn',
       'الليل 2',
+      'اليل 2 rasm drawn',
       'ليل 1',
     ]);
   });
