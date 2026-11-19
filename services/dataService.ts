@@ -1,4 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  AppState,
+  type AppStateStatus,
+  type NativeEventSubscription,
+} from 'react-native';
 import {Surah, SURAHS} from '../data/surahData';
 import {
   Reciter,
@@ -57,9 +62,21 @@ const DATA_VERSION = '4'; // Increment: bust cache for R2 CDN URL migration
 // First launch: the splash is waiting, so give up quickly and show the bundled
 // list.
 const FIRST_LOAD_TIMEOUT_MS = 8000;
-// Background refresh: nothing waits for it, but only one runs at a time, so
-// one that never ended would block every later refresh.
-const REFRESH_TIMEOUT_MS = 30000;
+// Background refresh: no screen waits for it, so a slow connection gets time
+// to bring in the whole catalogue (about 500 KB). That is how a first launch
+// that ran out of its 8 s still ends up with a cached catalogue. Only one
+// runs at a time, though, so one that never ended would block every later
+// refresh.
+const REFRESH_TIMEOUT_MS = 2 * 60 * 1000;
+// Coming back to the foreground downloads the catalogue again (asking the
+// killswitch first) once the last load or refresh started this long ago, or
+// sooner when that download failed. Without it an open app, which iOS can
+// keep for days, downloads only at launch and when the network comes back: a
+// killswitch change would not reach it, and a download that failed while the
+// network stayed up (an API outage) would leave it on the bundled list until
+// relaunch.
+const FOREGROUND_REFRESH_MS = 5 * 60 * 1000;
+const FOREGROUND_RETRY_MS = 60 * 1000;
 // @ai-end
 
 // ── Storage helpers ───────────────────────────────────────────────────────────
@@ -180,6 +197,10 @@ export function searchSurahs(query: string): Surah[] {
 let catalogLoad: Promise<Reciter[]> | null = null;
 // Resolves false when the download failed.
 let catalogRefresh: Promise<boolean> | null = null;
+// When the last load or refresh started, and the listener that refreshes on
+// coming back to the foreground (see refreshOnForeground).
+let lastRefreshAt = 0;
+let foregroundListener: NativeEventSubscription | null = null;
 
 /**
  * Returns the reciter catalogue.
@@ -228,6 +249,13 @@ async function loadReciters(): Promise<Reciter[]> /* @ai */ {
   // The retry runs when the network comes back and has to download again.
   // getAllReciters would only hand back what is already in memory.
   setRetryFn(refreshReciters);
+  lastRefreshAt = Date.now();
+  if (canFetchFromApi) {
+    foregroundListener ??= AppState.addEventListener(
+      'change',
+      refreshOnForeground,
+    );
+  }
   // @ai-end
 
   // Killswitch check — if backend is disabled via CDN config, use bundled fallback
@@ -321,6 +349,7 @@ function refreshRecitersInBackground(
 }
 
 async function runRefresh(recheckKillswitch: boolean): Promise<boolean> {
+  lastRefreshAt = Date.now();
   const {setDisrupted, clearDisruption} = useApiHealthStore.getState();
   if (recheckKillswitch && !(await isBackendEnabled())) {
     console.log(
@@ -349,13 +378,17 @@ async function runRefresh(recheckKillswitch: boolean): Promise<boolean> {
 /**
  * Downloads the catalogue again on request. Lookups never do this: it runs
  * at launch (as part of the first load) and when something asks, such as the
- * retry that fires when the network comes back.
+ * retry that fires when the network comes back, or the app coming back to
+ * the foreground (refreshOnForeground).
  */
 export async function refreshReciters(): Promise<void> {
   // Nothing in memory yet: the first load does the download, and is shared.
+  // If that load failed (its request may have gone out on the connection that
+  // has just been replaced), go on below: wait for the download it left
+  // running, or download again.
   if (RECITERS.length === 0) {
     await getAllReciters();
-    return;
+    if (!useApiHealthStore.getState().isDisrupted) return;
   }
   if (!API_BASE || !API_KEY) return;
   // A refresh already in flight may have gone out on the connection that has
@@ -365,6 +398,18 @@ export async function refreshReciters(): Promise<void> {
   const running = catalogRefresh;
   if (running && (await running)) return;
   await refreshRecitersInBackground({recheckKillswitch: true});
+}
+
+// Refreshes on coming back to the foreground when the last load or refresh
+// started FOREGROUND_REFRESH_MS ago or more (FOREGROUND_RETRY_MS while the API
+// is marked unreachable).
+function refreshOnForeground(state: AppStateStatus): void {
+  if (state !== 'active') return;
+  const wait = useApiHealthStore.getState().isDisrupted
+    ? FOREGROUND_RETRY_MS
+    : FOREGROUND_REFRESH_MS;
+  if (Date.now() - lastRefreshAt < wait) return;
+  refreshReciters().catch(() => undefined);
 }
 // @ai-end
 

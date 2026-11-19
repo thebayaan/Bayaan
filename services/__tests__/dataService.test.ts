@@ -3,6 +3,7 @@
 // Screens ask for a reciter once per list row and the player once per track.
 // Each of those calls used to read the cached catalogue from storage, download
 // it again and write it back, so these tests count that work.
+import {AppState, type AppStateStatus} from 'react-native';
 import type {Reciter} from '@/data/reciterData';
 import {RECITER_MERGES} from '@/utils/reciterMerges';
 
@@ -106,6 +107,18 @@ const refusesConnection: ApiHandler = async () => {
   throw new TypeError('Network request failed');
 };
 
+/** A slow connection: the whole catalogue arrives `ms` after the request. */
+const answersAfter =
+  (ms: number, catalogue: Reciter[]): ApiHandler =>
+  signal =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => resolve(serves(catalogue)(signal)), ms);
+      signal?.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(new Error('Aborted'));
+      });
+    });
+
 let apiHandler: jest.MockedFunction<ApiHandler>;
 let backendEnabled: boolean;
 
@@ -134,6 +147,14 @@ function workDone() {
 
 // ── A fake app launch ────────────────────────────────────────────────────────
 
+// The AppState listeners of the app launched last.
+let appStateListeners: ((state: AppStateStatus) => void)[] = [];
+
+/** The app comes back to the foreground. */
+function foreground(): void {
+  appStateListeners.forEach(listener => listener('active'));
+}
+
 type App = {
   service: typeof import('../dataService');
   RECITERS: Reciter[];
@@ -147,6 +168,7 @@ function launch(opts: {killswitch?: boolean} = {}): App {
   process.env.EXPO_PUBLIC_KILLSWITCH_URL = opts.killswitch
     ? KILLSWITCH_URL
     : '';
+  appStateListeners = [];
   let app!: App;
   jest.isolateModules(() => {
     app = {
@@ -190,6 +212,14 @@ beforeEach(() => {
   (globalThis as {fetch: unknown}).fetch = fetchMock;
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_type, listener) => {
+      appStateListeners.push(listener as (state: AppStateStatus) => void);
+      return {remove: jest.fn()} as unknown as ReturnType<
+        typeof AppState.addEventListener
+      >;
+    });
 });
 
 afterEach(() => {
@@ -400,11 +430,12 @@ describe('refreshing the catalogue', () => {
     // instead of starting a second download next to it.
     apiHandler.mockImplementation(serves(UPDATED));
     const retry = health.getState().retryFn?.();
-    await jest.advanceTimersByTimeAsync(29_000);
+    await jest.advanceTimersByTimeAsync(119_000);
     expect(downloads()).toBe(1);
     expect(health.getState().isDisrupted).toBe(false);
 
-    // The hanging download gives up, and the retry downloads again.
+    // The hanging download gives up after two minutes, and the retry
+    // downloads again.
     await jest.advanceTimersByTimeAsync(1_000);
     await retry;
     expect(downloads()).toBe(2);
@@ -447,6 +478,64 @@ describe('refreshing the catalogue', () => {
     expect(names(RECITERS)).toEqual(['One', 'Two']);
     expect(mockGetItem).toHaveBeenCalledTimes(1);
     expect(downloads()).toBe(1);
+  });
+
+  it('downloads again when the retry joined a first load that then failed', async () => {
+    const {service, RECITERS, health} = launch();
+    // First launch on a connection that is about to be replaced: the request
+    // hangs, then fails outright (not by the time limit) once the old
+    // connection goes away.
+    let dropConnection!: () => void;
+    apiHandler
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            dropConnection = () =>
+              reject(new TypeError('Network request failed'));
+          }),
+      )
+      .mockImplementation(serves(FIRST));
+    const loading = service.getAllReciters();
+    await settle();
+
+    // The new connection comes up while that request is still out, so the
+    // network monitor's retry has only the first load to wait for.
+    const retry = health.getState().retryFn?.();
+    await settle();
+    dropConnection();
+
+    expect(names(await loading)).toEqual(['Bundled Reciter']);
+    await retry;
+    expect(downloads()).toBe(2);
+    expect(names(RECITERS)).toEqual(['One', 'Two']);
+    expect(mockStorage.has(CACHE_KEY)).toBe(true);
+    expect(health.getState().isDisrupted).toBe(false);
+  });
+
+  it('does not download twice when the retry joined a first load that ran out of time', async () => {
+    jest.useFakeTimers();
+    const {service, RECITERS, health} = launch();
+    let answer!: () => void;
+    apiHandler.mockImplementationOnce(neverAnswers).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          answer = () => resolve(serves(FIRST)(undefined));
+        }),
+    );
+    const loading = service.getAllReciters();
+    const retry = health.getState().retryFn?.();
+
+    // The load gives up and carries on in the background; the retry waits
+    // for that download instead of starting another.
+    await jest.advanceTimersByTimeAsync(8_000);
+    expect(names(await loading)).toEqual(['Bundled Reciter']);
+    answer();
+    await jest.advanceTimersByTimeAsync(0);
+    await retry;
+
+    expect(downloads()).toBe(2);
+    expect(names(RECITERS)).toEqual(['One', 'Two']);
+    expect(health.getState().isDisrupted).toBe(false);
   });
 });
 
@@ -574,5 +663,98 @@ describe('first launch on a bad connection', () => {
     expect(health.getState().usingStaleCache).toBe(true);
     // The slow download is picked up again in the background here too.
     expect(downloads()).toBe(2);
+  });
+
+  it('lets the background download run long enough for a slow connection to finish it', async () => {
+    jest.useFakeTimers();
+    const {service, RECITERS, health} = launch();
+    // A throttled link that needs 45 s for the whole catalogue.
+    apiHandler.mockImplementation(answersAfter(45_000, FIRST));
+
+    const loading = service.getAllReciters();
+    await jest.advanceTimersByTimeAsync(8_000);
+    expect(names(await loading)).toEqual(['Bundled Reciter']);
+    expect(downloads()).toBe(2);
+
+    await jest.advanceTimersByTimeAsync(45_000);
+    await jest.advanceTimersByTimeAsync(0);
+    expect(names(RECITERS)).toEqual(['One', 'Two']);
+    expect(mockStorage.has(CACHE_KEY)).toBe(true);
+    expect(health.getState().isDisrupted).toBe(false);
+    // Cached, so the next launch shows it at once.
+    expect(downloads()).toBe(2);
+  });
+});
+
+describe('coming back to the foreground', () => {
+  let clock: number;
+
+  beforeEach(() => {
+    clock = 1_000_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => clock);
+  });
+
+  it('downloads again after a launch the API refused, without a network change', async () => {
+    const {service, RECITERS, health} = launch();
+    // The API is down at first launch, but the network stays up, so the
+    // network monitor never sees offline -> online and runs no retry.
+    apiHandler.mockImplementation(refusesConnection);
+    expect(names(await service.getAllReciters())).toEqual(['Bundled Reciter']);
+    await settle();
+    expect(health.getState().isDisrupted).toBe(true);
+    apiHandler.mockImplementation(serves(FIRST));
+
+    // Lookups still do no work.
+    const before = workDone();
+    await service.getReciterById('bundled');
+    await settle();
+    expect(workDone()).toEqual(before);
+
+    // Too soon after the last attempt.
+    clock += 30_000;
+    foreground();
+    await settle();
+    expect(downloads()).toBe(1);
+
+    clock += 30_000;
+    foreground();
+    await settle();
+    expect(downloads()).toBe(2);
+    expect(names(RECITERS)).toEqual(['One', 'Two']);
+    expect(mockStorage.has(CACHE_KEY)).toBe(true);
+    expect(health.getState().isDisrupted).toBe(false);
+  });
+
+  it('asks the killswitch again, so switching the backend off or on reaches an open app', async () => {
+    await leaveInCache(FIRST);
+    const {service, RECITERS} = launch({killswitch: true});
+    await service.getAllReciters();
+    await settle();
+    expect(killswitchChecks()).toBe(1);
+    expect(downloads()).toBe(1);
+
+    // The maintainer switches the backend off while the app is open.
+    backendEnabled = false;
+    clock += 4 * 60_000;
+    foreground();
+    await settle();
+    expect(killswitchChecks()).toBe(1);
+    expect(names(RECITERS)).toEqual(['One', 'Two']);
+
+    clock += 60_000;
+    foreground();
+    await settle();
+    expect(killswitchChecks()).toBe(2);
+    expect(downloads()).toBe(1);
+    expect(names(RECITERS)).toEqual(['Bundled Reciter']);
+
+    // And back on.
+    backendEnabled = true;
+    clock += 5 * 60_000;
+    foreground();
+    await settle();
+    expect(killswitchChecks()).toBe(3);
+    expect(downloads()).toBe(2);
+    expect(names(RECITERS)).toEqual(['One', 'Two']);
   });
 });
