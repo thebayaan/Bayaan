@@ -65,6 +65,15 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'الرحمـن', includes: ['1:1']},
   {query: 'ﺍﻟﺮﺣﻤﻦ', includes: ['1:1']},
   {query: '\u{200F}الرحمن\u{200F}', includes: ['1:1']},
+  // Persian and Urdu keyboards (ی ک, ہ ھ ۃ)
+  {query: 'یا أیها الذین آمنوا', first: '2:104', count: 89},
+  {query: 'یا قوم', includes: ['2:54']},
+  {query: 'بسم اللہ الرحمن الرحیم', exactly: ['1:1', '27:30']},
+  {query: 'ذلک الکتاب', exactly: ['2:2']},
+  {query: 'ھدی للمتقین', includes: ['2:2']},
+  {query: 'إبراہیم', first: '2:124'},
+  {query: 'الجنۃ', includes: ['2:35']},
+  {query: 'رحمہ', includes: ['7:56']},
   // Hamza
   {query: 'السماء', includes: ['2:19', '2:22']},
   {query: 'شيء', includes: ['2:20']},

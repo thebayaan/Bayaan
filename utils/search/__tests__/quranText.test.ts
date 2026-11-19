@@ -393,6 +393,26 @@ describe('parseQuranQuery', () => {
     expect(keys('﴿١﴾ الرحمن')).toEqual([['الرحمن']]);
   });
 
+  it('reads Persian, Urdu and Kurdish keyboard letters as Arabic ones', () => {
+    // یا with a Persian yeh joins the next word like يا.
+    expect(keys('یا أیها الذین آمنوا')).toEqual([
+      ['ياايها'],
+      ['الذين'],
+      ['امنوا'],
+    ]);
+    expect(keys('یا قوم')).toEqual([['ياقوم']]);
+    // Urdu heh goal (ہ), heh doachashmee (ھ), teh marbuta goal (ۃ), Kurdish
+    // ae (ە), heh with yeh above (ۀ)
+    expect(keys('اللہ')).toEqual([['الله']]);
+    expect(keys('ھدی')).toEqual([['هدي']]);
+    expect(keys('إبراہیم')).toEqual([['ابراهيم']]);
+    for (const mercy of ['رحمۃ', 'رحمہ', 'رحمە', 'رحمۀ']) {
+      expect(keys(mercy)).toEqual([['رحمه']]);
+    }
+    // A word of these letters only is still an Arabic word.
+    expect(keys('ہ')).toEqual([['ه']]);
+  });
+
   it('drops words without an Arabic letter from an Arabic query', () => {
     expect(keys('الله x')).toEqual([['الله']]);
   });

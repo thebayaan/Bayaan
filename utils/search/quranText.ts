@@ -89,8 +89,10 @@ const SAAL_IMPERATIVE =
   /^([\u{0641}\u{0648}]\p{M}*)(\u{0633}\u{0652}\u{0640})/u;
 const HAMZA = /[\u{0621}-\u{0626}]|[\u{0654}-\u{0655}]/u;
 const MARK = /\p{M}/u;
+// With the Persian, Urdu and Kurdish letters foldArabicLetters reads as
+// Arabic ones (ک ی ہ ھ ە ۀ ۂ ۃ ے ې).
 const ARABIC_LETTER =
-  /[\u{0621}-\u{063A}\u{0641}-\u{064A}\u{0671}\u{06A9}\u{06CC}]/u;
+  /[\u{0621}-\u{063A}\u{0641}-\u{064A}\u{0671}\u{06A9}\u{06BE}\u{06C0}-\u{06C3}\u{06CC}\u{06D0}\u{06D2}\u{06D5}]/u;
 const BIDI_AND_ZERO_WIDTH =
   /[\u{200B}-\u{200F}\u{202A}-\u{202E}\u{2066}-\u{2069}\u{FEFF}]/gu;
 const ROOT_PREFIX = /^\s*(root|جذر)\s*[:：]\s*/iu;
@@ -756,8 +758,11 @@ function joinsNextWord(word: string): boolean {
   const letters = rawLetters(word);
   if (letters === 'إل') return true;
   // A vocative typed with its conjunction (ويا قوم) is one Uthmani word too
-  // (وَيَٰقَوْمِ). @ai
-  const bare = letters.replace(/^\u{0648}(?=\u{064A}\u{0627}$)/u, ''); // @ai
+  // (وَيَٰقَوْمِ), and so is one typed with a Persian yeh (یا). @ai
+  const bare = foldArabicLetters(letters).replace(
+    /^\u{0648}(?=\u{064A}\u{0627}$)/u,
+    '',
+  ); // @ai
   return (bare === 'يا' || bare === 'ها') && !HAMZA.test(word);
 }
 
