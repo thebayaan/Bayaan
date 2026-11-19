@@ -513,7 +513,7 @@ export function buildQuranSearchIndex(input: QuranSearchIndexInput): QuranSearch
 - It selects a value-comparable id only when the flashed Hafs verse is on the page (`getOrderedVerseKeysForPage`), then adds `withRecitedWordRun(..., 'band')` for each position.
 - Slots keep Hafs positions in every rewayah, so the flash works on all 8 DK texts. A blank slot paints nothing.
 - `app/mushaf.tsx` reads the `words` param in its flash effect (:165-212) and calls `show`. The verse selection is unchanged.
-- QCF pages and the list/reading views show the verse selection only.
+- The list/reading views show the verse selection only. QCF pages flash the words too (changed after #518 gave them the Digital Khatt overlays: `QCFPage` chains the flash and maps its bands onto its words).
 
 ### 6.6 Strings
 Namespace `reader` unless marked; plurals follow the CLDR categories.
@@ -674,7 +674,7 @@ docs/features/quran-search.md covers the rules, the asset format, the rebuild co
 
 ### T12. Device verification and UI review
 
-On a mid-range Android device and an iPad, profile against the budgets in section 2.3: first search including the import, p95 query, first rows painted, memory. Walk the fixture queries on both surfaces, in Hafs and Warsh, and in Mushaf 1440 (QCF: verse selection only). Check RTL in the Arabic UI, VoiceOver labels, Dynamic Type growth, and hover on iPad. Attach the screenshots the UI review checklist requires (iPad Pro portrait and landscape, iPad mini, an unchanged iPhone shot for a Latin query, a dark theme shot).
+On a mid-range Android device and an iPad, profile against the budgets in section 2.3: first search including the import, p95 query, first rows painted, memory. Walk the fixture queries on both surfaces, in Hafs and Warsh, and in Mushaf 1440 (QCF: the words flash too, in the paged mushaf, the vertical scroll and iPad spreads; changed after #518). Check RTL in the Arabic UI, VoiceOver labels, Dynamic Type growth, and hover on iPad. Attach the screenshots the UI review checklist requires (iPad Pro portrait and landscape, iPad mini, an unchanged iPhone shot for a Latin query, a dark theme shot).
 
 - **Files:** `docs/features/quran-search.md`
 - **Depends on:** T9, T10, T11
@@ -691,7 +691,7 @@ On a mid-range Android device and an iPad, profile against the budgets in sectio
 - SearchView and MushafSearchView keep their FlatLists to keep the diff and the existing tests small. CONTRIBUTING prefers FlashList, so reviewers may ask for a migration.
 - Setting the native iOS 26 search bar text programmatically (searchBarRef.setText for the root suggestion) may not fire onChangeText. index.tsx must also set its own state, and this needs checking on device.
 - Results show the Hafs text even when another rewayah is on screen. Spellings unique to another rewayah are not found in v1, which may surprise Warsh readers given how much the user cares about readings.
-- The word flash is painted on Digital Khatt pages only. Mushaf 1440 (QCF) and the list and reading views get the 3-second verse selection, not the word.
+- The word flash is painted on the mushaf pages only: Digital Khatt, and Mushaf 1440 (QCF) since #518. The list and reading views get the 3-second verse selection, not the word.
 - First use imports a 1.4 MB file into the documents folder (storage duplicated with the bundle). A kill during the import is handled by meta.complete, but this path is only covered by a fake-opener test.
 - Licensing: the index derives from Digital Khatt (OFL) and Quranic Arabic Corpus morphology (GPL, already shipped in irab-v1.db). It needs its own THIRD_PARTY_LICENSES.md entry.
 
