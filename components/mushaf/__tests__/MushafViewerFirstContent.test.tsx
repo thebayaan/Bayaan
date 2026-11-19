@@ -526,7 +526,8 @@ describe('the header after a navigation request', () => {
         typeof node.type === 'string' &&
         node.props.accessibilityLabel === 'Search surahs',
     );
-    return title.findAll(node => node.type === 'Text')[0].props.children;
+    const [name] = title.findAll(node => (node.type as unknown) === 'Text');
+    return name.props.children;
   }
 
   beforeEach(() => {
