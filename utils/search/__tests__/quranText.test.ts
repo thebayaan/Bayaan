@@ -61,11 +61,11 @@ describe('quranWordSpellings', () => {
     ['2:185:6', 'ٱلْقُرْءَانُ', ['القران']],
     ['2:5:1', 'أُو۟لَٰٓئِكَ', ['اولايك', 'اوليك']],
     ['2:31:12', 'هَٰٓؤُلَآءِ', ['هاولا', 'هولا']],
-    ['17:34:17', 'مَسْـُٔولࣰا', ['مسولا']],
+    ['17:34:17', 'مَسْـُٔولࣰا', ['مسولا', 'مسوولا']],
     ['12:2:4', 'عَرَبِيࣰّا (open tanween stays inside the word)', ['عربيا']],
     ['37:130:3', 'إِلْ يَاسِينَ (one slot with a space)', ['الياسين']],
     ['2:164:7', 'ٱلَّيْلِ (drawn with one lam)', ['الليل']],
-    ['2:189:1', '۞يَسْـَٔلُونَكَ (rub el hizb removed)', ['يسلونك']],
+    ['2:189:1', '۞يَسْـَٔلُونَكَ (rub el hizb removed)', ['يسالونك', 'يسلونك']],
   ])('%s %s', (location, _word, expected) => {
     expect(spellingSet(location)).toEqual(expected);
   });
@@ -78,7 +78,7 @@ describe('quranWordSpellings', () => {
     ['2:258:18', 'يُحْيِۦ (small yeh after yeh)', ['يحي', 'يحيي']],
     ['9:19:17', 'يَسْتَوُۥنَ (small waw after waw)', ['يستون', 'يستوون']],
     ['2:251:5', 'دَاوُۥدُ', ['داود', 'داوود']],
-    ['81:8:2', 'ٱلْمَوْءُۥدَةُ', ['الموده', 'المووده']],
+    ['81:8:2', 'ٱلْمَوْءُۥدَةُ', ['الموده', 'المووده', 'الموووده']],
     ['2:22:13', 'بِهِۦ (the pronoun only lengthens)', ['به']],
     ['21:88:7', 'نُـۨجِي (small high noon)', ['نجي', 'ننجي']],
     ['4:23:21', 'ٱلَّٰتِي (drawn with one lam)', ['اللاتي', 'اللتي']],
@@ -88,12 +88,47 @@ describe('quranWordSpellings', () => {
     ['11:68:7', 'ثَمُودَا۟', ['ثمود', 'ثمودا']],
     ['2:259:19', 'مِا۟ئَةَ (silent alif inside)', ['مايه', 'ميه']],
     ['10:4:8', 'يَبْدَؤُا۟ (final hamza on waw)', ['يبد', 'يبدا', 'يبدوا']],
-    ['6:76:5', 'رَءَا', ['را', 'ري']],
-    ['3:184:8', 'جَآءُو', ['جاو', 'جاوا']],
-    ['10:94:8', 'فَسْـَٔلِ', ['فاسل', 'فسل']],
+    ['6:76:5', 'رَءَا', ['را', 'راي', 'ري']],
+    ['3:184:8', 'جَآءُو', ['جاو', 'جاوا', 'جاوو', 'جاووا']],
+    ['10:94:8', 'فَسْـَٔلِ', ['فاسال', 'فاسل', 'فسال', 'فسل']],
     ['3:144:10', 'أَفَإِي۟ن (silent yeh)', ['افان', 'افاين']],
   ])('%s %s', (location, _word, expected) => {
     expect(spellingSet(location)).toEqual(expected);
+  });
+
+  // A hamza drawn on the line or on a tatweel is typed on its everyday seat
+  // (يسألونك, typed يسالونك with a bare alif): one more spelling.
+  it.each([
+    ['17:85:1', 'وَيَسْـَٔلُونَكَ', 'ويسالونك'],
+    ['96:9:1', 'أَرَءَيْتَ', 'ارايت'],
+    ['9:86:10', 'ٱسْتَـْٔذَنَكَ', 'استاذنك'],
+    ['10:49:19', 'يَسْتَـْٔخِرُونَ', 'يستاخرون'],
+    ['11:29:3', 'أَسْـَٔلُكُمْ', 'اسالكم'],
+    ['2:143:44', 'لَرَءُوفࣱ (damma: ؤ)', 'لرووف'],
+    ['6:110:2', 'أَفْـِٔدَتَهُمْ (kasra: ئ)', 'افيدتهم'],
+    ['2:14:16', 'مُسْتَهْزِءُونَ (the kasra before it wins)', 'مستهزيون'],
+    ['2:40:2', 'إِسْرَٰٓءِيلَ (kasra after a long alif)', 'اسراييل'],
+    ['2:271:16', 'سَيِّـَٔاتِكُمْ (ئ, then the alif stays)', 'سيياتكم'],
+    ['4:112:3', 'خَطِيٓـَٔةً (after a long yeh)', 'خطييه'],
+    ['3:49:16', 'كَهَيْـَٔةِ', 'كهييه'],
+    ['12:87:8', 'تَا۟يْـَٔسُوا۟ (ييأس keeps its alif)', 'تياسوا'],
+    ['2:48:8', 'شَيْـࣰٔا (a tanween alif after ي)', 'شييا'],
+    ['17:31:12', 'خِطْـࣰٔا (after a joining letter)', 'خطيا'],
+    ['2:6:6', 'ءَأَنذَرْتَهُمْ (first in the word: on an alif)', 'اانذرتهم'],
+  ])('%s %s is also typed %s', (location, _word, typed) => {
+    expect(quranWordSpellings(dk(location)).alternates).toContain(typed);
+  });
+
+  it.each([
+    ['2:185:6', 'ٱلْقُرْءَانُ (with the alif after it: آ)'],
+    ['2:34:5', 'لِـَٔادَمَ (لِ before آدم)'],
+    ['2:20:6', 'أَضَآءَ (final, after a long alif)'],
+    ['2:23:14', 'شُهَدَآءَكُم (a fatha after a long alif)'],
+    ['5:31:10', 'سَوْءَةَ (a fatha after a waw with a sukun)'],
+    ['2:260:30', 'جُزْءࣰا (after a letter that never joins)'],
+    ['4:92:12', 'خَطَـࣰٔا (after a fatha the tanween alif goes)'],
+  ])('%s %s keeps the hamza on the line', location => {
+    expect(quranWordSpellings(dk(location)).alternates).toEqual([]);
   });
 
   it('keeps the plural alif as the main spelling', () => {
@@ -193,8 +228,12 @@ describe('quranWordForms (proclitics and the article)', () => {
   });
 
   it('keeps the word’s own alif after a question hamza on the line', () => {
-    // ءَأَلِدُ: the question hamza (ء) folds away; the verb keeps أ
-    expect(forms('11:72:3', morph(['hamza'], false, null))).toEqual(['الد 3']);
+    // ءَأَلِدُ: the question hamza (ء) folds away, or is typed on an alif
+    // (أألد); the verb keeps its أ
+    expect(forms('11:72:3', morph(['hamza'], false, null))).toEqual([
+      'الد 3',
+      'االد 3',
+    ]);
   });
 
   it('gives al-layl its two lams in every form', () => {

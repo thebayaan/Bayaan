@@ -81,6 +81,17 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'يؤمنون', includes: ['2:3']},
   {query: 'يومنون', includes: ['2:3']},
   {query: 'الأرض', includes: ['2:11']},
+  // A hamza drawn on the line or on a tatweel, typed on its seat or as a
+  // bare alif (يَسْـَٔلُونَكَ, رَءَا, أَرَءَيْتَ, فَسْـَٔلُوٓا۟).
+  {query: 'يسالونك عن الروح', exactly: ['17:85']},
+  {query: 'ويسألونك عن الروح', exactly: ['17:85']},
+  {query: 'فلما راى', includes: ['6:77', '6:78', '11:70', '12:28']},
+  {query: 'ارايت الذي ينهى', exactly: ['96:9']},
+  {query: 'افرايتم ما تمنون', exactly: ['56:58']},
+  {query: 'فاسالوا اهل الذكر', exactly: ['16:43', '21:7']},
+  {query: 'قل لا اسالكم عليه اجرا', includes: ['6:90', '42:23']},
+  {query: 'يستأذنك', includes: ['9:44', '9:45']},
+  {query: 'يسأ', includes: ['2:189', '2:215']},
   // Vocative يا, ها
   {query: 'يا أيها', includes: ['2:21']},
   // A vocative typed with its conjunction is one Uthmani word (وَيَٰقَوْمِ).

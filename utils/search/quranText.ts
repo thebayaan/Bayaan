@@ -10,6 +10,9 @@
  * all built by rule from its own letters:
  * - imlaei: the dagger alif and the waw-alif written as alif, the small yeh
  *   as yeh;
+ * - alternates: everyday spellings of conventions that depend on the word
+ *   (يدعو, رأى), and a hamza drawn on the line or on a tatweel written on
+ *   its everyday seat (يَسْـَٔلُونَكَ → يسألونك);
  * - rasm: the letters as drawn, without the small letters;
  * - mixed: for words with two or three dagger alifs, the other combinations.
  * Each spelling is then folded like the catalogue keys (normalize.ts): marks
@@ -21,7 +24,7 @@
 import {ARABIC_MARKS, foldArabicLetters, foldHamzaCarriers} from './normalize';
 
 /** Bump when a spelling rule changes: the search index must be rebuilt. */
-export const QURAN_TEXT_NORMALIZER_VERSION = 2;
+export const QURAN_TEXT_NORMALIZER_VERSION = 3;
 
 /** Queries are cut to this many words, and this many letters (not marks). */
 export const QURAN_QUERY_MAX_TOKENS = 24;
@@ -150,6 +153,168 @@ function imlaeiAlternates(base: string): string[] {
   return out;
 }
 
+// ── Hamza seats ────────────────────────────────────────────────────────────
+
+type Vowel = 'a' | 'u' | 'i' | null;
+
+const FATHA_SIGN = /[\u{064B}\u{064E}\u{08F0}]/u;
+const DAMMA_SIGN = /[\u{064C}\u{064F}\u{08F1}]/u;
+const KASRA_SIGN = /[\u{064D}\u{0650}\u{08F2}]/u;
+const TANWEEN_FATH = /[\u{064B}\u{08F0}]/u;
+const SUKUN = '\u{0652}';
+const HAMZA_SIGN = /[\u{0654}\u{0655}]/gu;
+// Letters that never join the next one (a final hamza after one stays on
+// the line: جزءا, ردءا; after a joining letter it sits on a tooth: خطئا).
+const NON_JOINING =
+  /[\u{0621}-\u{0625}\u{0627}\u{0629}\u{062F}-\u{0632}\u{0648}\u{0649}\u{0671}]/u;
+const SEAT_OF: Readonly<Record<'a' | 'u' | 'i', string>> = {
+  a: '\u{0623}',
+  u: '\u{0624}',
+  i: '\u{0626}',
+};
+
+interface Unit {
+  letter: string;
+  marks: string;
+}
+
+function unitsOf(word: string): Unit[] {
+  const units: Unit[] = [];
+  for (const char of word) {
+    const last = units[units.length - 1];
+    if (last && MARK.test(char)) last.marks += char;
+    else units.push({letter: char, marks: ''});
+  }
+  return units;
+}
+
+function vowelOf(marks: string): Vowel {
+  if (KASRA_SIGN.test(marks)) return 'i';
+  if (DAMMA_SIGN.test(marks)) return 'u';
+  if (FATHA_SIGN.test(marks)) return 'a';
+  return null;
+}
+
+/** A hamza the text draws without a seat: on the line, or on a tatweel. */
+function isUnseatedHamza(unit: Unit): boolean {
+  return (
+    unit.letter === '\u{0621}' ||
+    (unit.letter === '\u{0640}' && /[\u{0654}\u{0655}]/u.test(unit.marks))
+  );
+}
+
+/**
+ * The everyday seats of the unseated hamza at units[i], by the usual rules
+ * ([] when everyday writing keeps it on the line, or writes it with the
+ * alif after it as آ):
+ * - first in the word: on an alif (ءَأَنتُمْ → أأنتم), آ before a long alif;
+ * - last in the word: on the line after a long vowel or a sukun (سماء, سوء,
+ *   شيء, جزء); with the alif of a tanween fath, on a tooth after ي or a
+ *   joining letter (شيئا, خطئا), on the line otherwise (جزءا, سوءا);
+ * - inside the word: on the seat of the strongest vowel of the hamza and the
+ *   letter before it, kasra (ئ) over damma (ؤ) over fatha (أ): يسألونك,
+ *   رؤوف, الأفئدة; a fatha before a long alif gives آ (القرآن). After a
+ *   long alif or waw, a fatha stays on the line (شركاءهم, سوءة), a damma
+ *   takes ؤ (جاؤوا) and a kasra ئ (إسرائيل). After ي it sits on a tooth
+ *   (خطيئة, كهيئة), and after a ي with a sukun also on an alif (ييأس).
+ *   بِ or لِ before a hamza and a long alif is a proclitic (بآيات, لآدم).
+ */
+function everydaySeats(units: readonly Unit[], i: number): string[] {
+  const unit = units[i];
+  const own = vowelOf(unit.marks);
+  const prev = units[i - 1];
+  const next = units[i + 1];
+  const alifAfter =
+    unit.marks.includes('\u{0670}') || next?.letter === '\u{0627}';
+  if (!prev) {
+    if (own === 'a' && alifAfter) return [];
+    return [own === 'i' ? '\u{0625}' : '\u{0623}'];
+  }
+  const before = vowelOf(prev.marks);
+  const longAlif =
+    prev.letter === '\u{0627}' || prev.marks.includes('\u{0670}');
+  const yeh =
+    (prev.letter === '\u{064A}' || prev.letter === '\u{0649}') &&
+    before === null;
+  const waw = prev.letter === '\u{0648}' && before === null;
+  const tanweenAlif =
+    TANWEEN_FATH.test(unit.marks) &&
+    next?.letter === '\u{0627}' &&
+    i + 2 === units.length;
+  if (tanweenAlif) {
+    if (yeh) return [SEAT_OF.i];
+    if (before === 'i' || before === 'u') return [SEAT_OF[before]];
+    if (before === null && !longAlif && !waw) {
+      return NON_JOINING.test(prev.letter) ? [] : [SEAT_OF.i];
+    }
+    // After a fatha the alif goes (خطأ), which folds like the hamza
+    // dropped; after a long alif or waw it stays on the line.
+    return [];
+  }
+  if (!next) {
+    if (before === null || longAlif || yeh || waw) return [];
+    return [SEAT_OF[before]];
+  }
+  if (
+    i === 1 &&
+    (prev.letter === '\u{0628}' || prev.letter === '\u{0644}') &&
+    before === 'i' &&
+    own === 'a' &&
+    alifAfter
+  ) {
+    return [];
+  }
+  if (longAlif || waw) {
+    return own === 'i' || own === 'u' ? [SEAT_OF[own]] : [];
+  }
+  if (yeh) {
+    return own === 'a' && prev.marks.includes(SUKUN)
+      ? [SEAT_OF.i, SEAT_OF.a]
+      : [SEAT_OF.i];
+  }
+  const vowels = [before, own];
+  const strongest = vowels.includes('i')
+    ? 'i'
+    : vowels.includes('u')
+      ? 'u'
+      : vowels.includes('a')
+        ? 'a'
+        : null;
+  if (strongest === null || (strongest === 'a' && alifAfter)) return [];
+  return [SEAT_OF[strongest]];
+}
+
+/**
+ * `word` with each hamza drawn on the line or on a tatweel written on its
+ * everyday seat (يَسْـَٔلُونَكَ → يَسْأَلُونَكَ, رَءَى → رَأَى): the spellings
+ * that differ from `word`, at most 4.
+ */
+function seatedHamzas(word: string): string[] {
+  const units = unitsOf(word);
+  let spellings: Unit[][] = [units];
+  units.forEach((unit, i) => {
+    if (!isUnseatedHamza(unit)) return;
+    const seats = everydaySeats(units, i);
+    if (!seats.length) return;
+    const marks = unit.marks.replace(HAMZA_SIGN, '');
+    spellings = spellings
+      .flatMap(spelling =>
+        seats.map(seat => {
+          const copy = [...spelling];
+          copy[i] = {letter: seat, marks};
+          return copy;
+        }),
+      )
+      .slice(0, 4);
+  });
+  const out: string[] = [];
+  for (const spelling of spellings) {
+    const text = spelling.map(u => u.letter + u.marks).join('');
+    if (text !== word && !out.includes(text)) out.push(text);
+  }
+  return out;
+}
+
 function spellOutSmallLetter(
   _match: string,
   pronoun: string | undefined,
@@ -187,10 +352,12 @@ function spellingsOf(prepared: string): Spellings {
   // fold() drops the dagger alif and the small letters with the other marks.
   const rasm = fold(word);
   const alternates: string[] = [];
-  for (const alternate of imlaeiAlternates(imlaeiBase)) {
-    const form = fold(alternate.replace(DAGGER_ALIF, '\u{0627}'));
-    if (form && form !== imlaei && !alternates.includes(form)) {
-      alternates.push(form);
+  for (const base of [imlaeiBase, ...imlaeiAlternates(imlaeiBase)]) {
+    for (const alternate of [base, ...seatedHamzas(base)]) {
+      const form = fold(alternate.replace(DAGGER_ALIF, '\u{0627}'));
+      if (form && form !== imlaei && !alternates.includes(form)) {
+        alternates.push(form);
+      }
     }
   }
   const mixed: string[] = [];
