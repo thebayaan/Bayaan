@@ -19,8 +19,7 @@ import {useTranslation} from 'react-i18next';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {useHover} from '@/hooks/useHover';
-import {useTheme} from '@/hooks/useTheme';
-import {Theme} from '@/utils/themeUtils';
+import {overBackground, readableAccent, Theme} from '@/utils/themeUtils';
 import {
   splitRefs,
   type IrabBookPassages,
@@ -147,7 +146,6 @@ export const MorphTable: React.FC<
 export const IrabEntryList: React.FC<
   IrabRefContext & {word: Pick<WordIrab, 'entries' | 'agreed'>}
 > = ({word, ...context}) => {
-  const {theme} = useTheme();
   const {styles, t} = context;
   return (
     <>
@@ -159,7 +157,7 @@ export const IrabEntryList: React.FC<
           <Feather
             name="check-circle"
             size={moderateScale(12)}
-            color={theme.colors.primary}
+            color={styles.agreedIcon.color}
           />
           <Text style={styles.agreedText}>
             {t('irab.agreed', {ns: 'sheets'})}
@@ -332,6 +330,16 @@ export const createIrabStyles = (theme: Theme) => {
   const secondary = Color(theme.colors.textSecondary).alpha(0.8).toString();
   // @ai-end
   const phraseRule = Color(theme.colors.primary).alpha(0.45).toString();
+  // Text in the accent (labels, «word» references, the agreed mark) at
+  // 4.5:1 or more on each surface it is drawn on: the sheet, the 4% fill
+  // of the morphology block, the 6% fill of a pressed or hovered word, and
+  // an alternative entry's 7% accent tint.
+  const accentText = readableAccent(theme, [
+    theme.colors.background,
+    overBackground(theme, theme.colors.text, 0.04),
+    overBackground(theme, theme.colors.text, 0.06),
+    overBackground(theme, theme.colors.primary, 0.07),
+  ]);
   return StyleSheet.create({
     partCaption: {
       fontSize: moderateScale(11),
@@ -389,20 +397,23 @@ export const createIrabStyles = (theme: Theme) => {
     },
     entryLabel: {
       fontFamily: ARABIC_FONT_BOLD,
-      color: theme.colors.primary,
+      color: accentText,
     },
     entryLabelAlt: {
-      color: theme.colors.primary,
+      color: accentText,
     },
     ref: {
       fontFamily: ARABIC_FONT_BOLD,
-      color: theme.colors.primary,
+      color: accentText,
     },
     agreedRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: moderateScale(5),
       marginTop: verticalScale(6),
+    },
+    agreedIcon: {
+      color: accentText,
     },
     agreedText: {
       fontFamily: 'Manrope-Medium',
@@ -439,7 +450,7 @@ export const createIrabStyles = (theme: Theme) => {
       fontFamily: ARABIC_FONT_BOLD,
       fontSize: moderateScale(14),
       lineHeight: moderateScale(26),
-      color: theme.colors.primary,
+      color: accentText,
       textAlign: RIGHT,
       writingDirection: 'rtl',
     },

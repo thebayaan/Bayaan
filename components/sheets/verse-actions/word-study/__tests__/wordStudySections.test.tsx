@@ -6,20 +6,25 @@ import TestRenderer from 'react-test-renderer';
 jest.mock('expo-localization', () => ({
   getLocales: () => [{languageCode: 'en'}],
 }));
-jest.mock('@/hooks/useTheme', () => ({
-  useTheme: () => ({
-    theme: {
-      isDarkMode: false,
-      colors: {
-        text: '#111111',
-        textSecondary: '#666666',
-        primary: '#0a7d5a',
-        background: '#ffffff',
-      },
+// The theme the sections are drawn with; a test may swap in an app theme.
+const mockTheme: {current: unknown} = {
+  current: {
+    isDarkMode: false,
+    colors: {
+      text: '#111111',
+      textSecondary: '#666666',
+      primary: '#0a7d5a',
+      background: '#ffffff',
     },
-  }),
+  },
+};
+jest.mock('@/hooks/useTheme', () => ({
+  useTheme: () => ({theme: mockTheme.current}),
 }));
 
+import Color from 'color';
+import {primaryColors, type PrimaryColor} from '@/styles/colorSchemes';
+import {createTheme} from '@/utils/themeUtils';
 import {GharibSection} from '../GharibSection';
 import {RasmSection} from '../RasmSection';
 import {
@@ -195,6 +200,43 @@ describe('RasmSection', () => {
     );
     expect(marked.map(node => allText(node.props.children))).toEqual(['ا']);
   });
+
+  it.each(['light', 'dark'] as const)(
+    'draws the marked letters at 4.5:1 or more on the section, with every accent (%s)',
+    scheme => {
+      const before = mockTheme.current;
+      const failures: string[] = [];
+      try {
+        for (const accent of Object.keys(primaryColors) as PrimaryColor[]) {
+          const theme = createTheme(scheme, accent);
+          mockTheme.current = theme;
+          const tree = render(
+            <RasmSection rasm={unit([hadhf])} uthmani="مَـٰلِكِ" />,
+          );
+          // The section's fill: the text colour at 4% over the sheet.
+          const fill = Color(theme.colors.background).mix(
+            Color(theme.colors.text),
+            0.04,
+          );
+          const mark = tree.root.find(
+            node =>
+              String(node.type) === 'Text' &&
+              StyleSheet.flatten(node.props.style)?.fontFamily ===
+                'ScheherazadeNew-SemiBold' &&
+              allText(node.props.children) === 'ا',
+          );
+          const color = String(StyleSheet.flatten(mark.props.style).color);
+          const ratio = Color(color).contrast(fill);
+          if (ratio < 4.5) failures.push(`${accent}: ${ratio}`);
+          act(() => tree.unmount());
+          renderer = null;
+        }
+      } finally {
+        mockTheme.current = before;
+      }
+      expect(failures).toEqual([]);
+    },
+  );
 
   it('leaves the Mushaf row out without the app’s text', () => {
     const text = allText(

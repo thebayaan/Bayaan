@@ -88,6 +88,7 @@ The design docs were written by read-only design agents. **Where this README dis
   - Show a note only when the mushaf's small signs, one of the named pattern rules or the reviewed list confirms it. Unconfirmed notes are stored but hidden; the reviewed list starts empty.
   - No "qira'atan" note (04 T10b skipped).
 - **Section titles:** *Arabic meaning / معنى الكلمة* and *Rasm / الرسم*, each with a source line.
+- **Accent colour:** the rasm's marked letters and the i'rab's labels and references are drawn in the accent made readable (`readableAccent` in `utils/themeUtils.ts`): 4.5:1 or more on the surfaces they sit on, in light and dark, for every accent. Chrome such as Read more uses the text colour.
 - **Normalisation:** the build-time letter model stays in `scripts/word-study/arabic.ts`; it does not share `utils/search`.
 - **Credits:** add Tanzil Simple v1.1 and Quranpedia's *al-Tibyan* to `THIRD_PARTY_LICENSES.md` and the Credits screen.
   - Quote Tanzil's terms verbatim, including "CHANGING IT IS NOT ALLOWED".
