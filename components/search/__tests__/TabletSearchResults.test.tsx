@@ -481,28 +481,31 @@ describe('TabletSearchResults: Ayahs', () => {
   it('starts at the top for another scope (See all) and for a new query', () => {
     // The ayahs are ranked: the best matches are at the top.
     const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    const view = (query: string, quranRows: readonly QuranResultRow[]) => (
+      <TabletSearchResults
+        query={query}
+        results={results}
+        onResultPress={jest.fn()}
+        onSurahPlay={jest.fn()}
+        onSurahOptions={jest.fn()}
+        quranRows={quranRows}
+        bottomPadding={0}
+      />
+    );
     try {
-      const renderer = renderWithAyahs(results);
+      let renderer!: TestRenderer.ReactTestRenderer;
+      act(() => {
+        renderer = TestRenderer.create(view('الله', QURAN_ROWS));
+      });
       scrollTo.mockClear();
       pressTab(renderer, 'common:terms.ayahs');
       expect(scrollTo).toHaveBeenCalledWith({y: 0, animated: false});
       scrollTo.mockClear();
-      const props = renderer.root.findByType(TabletSearchResults).props;
-      act(() => {
-        renderer.update(<TabletSearchResults {...props} query="الرحمن" />);
-      });
+      act(() => renderer.update(view('الرحمن', QURAN_ROWS)));
       expect(scrollTo).toHaveBeenCalledWith({y: 0, animated: false});
       // New rows of the same query ("Show more") keep the place.
       scrollTo.mockClear();
-      act(() => {
-        renderer.update(
-          <TabletSearchResults
-            {...props}
-            query="الرحمن"
-            quranRows={[...QURAN_ROWS, verseRow(7)]}
-          />,
-        );
-      });
+      act(() => renderer.update(view('الرحمن', [...QURAN_ROWS, verseRow(7)])));
       expect(scrollTo).not.toHaveBeenCalled();
     } finally {
       scrollTo.mockRestore();
