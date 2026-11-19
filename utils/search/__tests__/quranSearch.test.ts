@@ -290,6 +290,65 @@ describe('searchQuranText', () => {
     expect(water.hits.map(h => h.verseIndex)).toEqual([13]);
   });
 
+  it('counts the other case seats like the token as typed', async () => {
+    const {source} = sourceOf({
+      // بِأَهْوَآئِهِم (genitive), أَهْوَآءَهُمْ (accusative)
+      اهوايهم: [{verseIndex: 2, position: 3, hasHamza: true}],
+      اهواهم: [{verseIndex: 4, position: 5, hasHamza: true}],
+      // a key without a seat letter, of another word
+      اهوهم: [{verseIndex: 6, position: 1, hasHamza: true}],
+    });
+    const desires: QuranQueryToken = {
+      keys: ['اهوايهم', 'اهوهم'],
+      caseKeys: ['اهواهم', 'اهواوهم'],
+      needsHamza: true,
+    };
+    const found = await searchQuranText([desires], source);
+    expect(found.hits.map(h => h.verseIndex)).toEqual([2, 4]);
+    // As typed no word, in another case one: the key without a seat stays
+    // out.
+    const accusative = await searchQuranText(
+      [{...desires, keys: ['اهواوهم', 'اهوهم']}],
+      source,
+    );
+    expect(accusative.hits.map(h => h.verseIndex)).toEqual([4]);
+  });
+
+  it('looks the keys without a seat up for a phrase the tokens make nowhere', async () => {
+    const {source} = sourceOf({
+      فلما: [
+        {verseIndex: 6, position: 1},
+        {verseIndex: 8, position: 4},
+      ],
+      // رئى as typed (ريي) is a word of verse 8 and 9; رَءَا (را) of 6 and 7
+      ريي: [
+        {verseIndex: 8, position: 5, hasHamza: true},
+        {verseIndex: 9, position: 2, hasHamza: true},
+      ],
+      را: [
+        {verseIndex: 6, position: 2, hasHamza: true},
+        {verseIndex: 7, position: 1, hasHamza: true},
+      ],
+      الشمس: [{verseIndex: 6, position: 3}],
+    });
+    const saw = token(['ريي', 'را'], true);
+    // Alone, the word as typed only.
+    const word = await searchQuranText([saw], source);
+    expect(word.hits.map(h => h.verseIndex)).toEqual([8, 9]);
+    // A phrase as typed: only that.
+    const typed = await searchQuranText([token('فلما'), saw], source);
+    expect(typed.hits.map(h => h.verseIndex)).toEqual([8]);
+    // No phrase as typed: the key without the seat makes one.
+    const found = await searchQuranText(
+      [token('فلما'), saw, token('الشمس')],
+      source,
+    );
+    expect(found.kind).toBe('phrase');
+    expect(found.hits.map(h => [h.verseIndex, h.matches])).toEqual([
+      [6, [{position: 1, length: 3}]],
+    ]);
+  });
+
   it('searches ayahs pasted with their numbers by the first of them', async () => {
     const {source} = sourceOf({
       // الحمد لله in verses 1 and 4; الرحمن الرحيم at the start of verse 2

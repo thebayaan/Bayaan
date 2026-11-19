@@ -755,8 +755,17 @@ export function quranWordForms(
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export interface QuranQueryToken {
-  /** Folded keys to look up: the token, then its hamza-seat variants. */
+  /**
+   * Folded keys to look up: the token, then its keys with a hamza seat left
+   * out, which count only where the token as typed makes no match.
+   */
   keys: readonly string[];
+  /**
+   * The token with its hamza on the other seats, where the case ending puts
+   * it: between a long alif and a pronoun suffix (أهوائهم → أهواءهم,
+   * أهواؤهم). The same word, so they count like the token as typed.
+   */
+  caseKeys?: readonly string[];
   /** Typed with a hamza: only words with a hamza match. */
   needsHamza: boolean;
   /**
@@ -824,17 +833,51 @@ export function foldQuranQueryWord(word: string): string {
   );
 }
 
+/** The seats a case ending gives a hamza after a long alif: ء, ؤ, ئ. */
+const CASE_SEATS: readonly string[] = ['\u{0621}', '\u{0624}', '\u{0626}'];
+const PRONOUN_SUFFIX = /^(?:ه|ها|هم|هما|هن|ك|كم|كما|كن|نا)$/u;
+
 /**
- * The keys of a token (one typed word, or two joined: يا + أيها): the token
- * itself, and each hamza seat also without its seat letter: ؤ and ئ
- * anywhere, أ and إ after a word's first letter (مسؤولا → مسوولا, مسولا;
- * يسألونك → يسالونك, يسلونك; أأنتم → اانتم, انتم), as a reader may put
- * the hamza on another seat than the index's spellings. At most 2 seats, so
- * at most 4 keys, the token as typed first. A key without a seat letter is
- * often another word (امرأة → امره, as أمره), so the engine looks the
- * others up only when the first is no word of the text.
+ * A hamza typed on a waw or a yeh where the case ending, not the word,
+ * gives its seat: after a long alif and before a pronoun suffix it is
+ * written on the line in the accusative, on a waw in the nominative and on
+ * a yeh in the genitive (أبناءَكم, أبناؤُكم, أبنائِكم), and readers often
+ * type one for another. Its index in `chars` (marks are items of their
+ * own), or -1. A hamza typed on the line stays as typed: on a waw it would
+ * be another form of a verb (جاءكم, جاءوكم).
  */
-function tokenKeys(words: readonly string[]): string[] {
+function caseSeatAt(chars: readonly string[]): number {
+  const letters: number[] = [];
+  chars.forEach((c, i) => {
+    if (!MARK.test(c) && c !== '\u{0640}') letters.push(i);
+  });
+  for (let j = 2; j + 1 < letters.length; j++) {
+    const at = letters[j];
+    if (chars[at] !== '\u{0624}' && chars[at] !== '\u{0626}') continue;
+    if (chars[letters[j - 1]] !== '\u{0627}') continue;
+    const suffix = letters.slice(j + 1).map(i => chars[i]);
+    if (PRONOUN_SUFFIX.test(suffix.join(''))) return at;
+  }
+  return -1;
+}
+
+/**
+ * The keys of a token (one typed word, or two joined: يا + أيها).
+ * - keys: the token itself, and each hamza seat also without its seat
+ *   letter: ؤ and ئ anywhere, أ and إ after a word's first letter (مسؤولا →
+ *   مسوولا, مسولا; يسألونك → يسالونك, يسلونك; أأنتم → اانتم, انتم), as a
+ *   reader may put the hamza on another seat than the index's spellings. At
+ *   most 2 seats, so at most 4 keys, the token as typed first. A key without
+ *   a seat letter is often another word (امرأة → امره, as أمره), so the
+ *   engine looks those up only where the token as typed makes no match.
+ * - caseKeys: a hamza whose seat the case ending gives (caseSeatAt) on the
+ *   other seats (أهوائهم → أهواءهم, أهواؤهم): the same word in another
+ *   case, which counts like the token as typed.
+ */
+function tokenKeys(words: readonly string[]): {
+  keys: string[];
+  caseKeys: string[];
+} {
   const chars: string[] = [];
   const seats: number[] = [];
   for (const word of words) {
@@ -855,7 +898,19 @@ function tokenKeys(words: readonly string[]): string[] {
     const key = queryKey(copy.join(''));
     if (key && !keys.includes(key)) keys.push(key);
   }
-  return keys;
+  const caseKeys: string[] = [];
+  const at = caseSeatAt(chars);
+  for (const seat of at < 0 ? [] : CASE_SEATS) {
+    if (seat === chars[at]) continue;
+    const copy = [...chars];
+    copy[at] = seat;
+    const key = queryKey(copy.join(''));
+    if (key && key !== keys[0] && !caseKeys.includes(key)) caseKeys.push(key);
+  }
+  return {
+    keys: keys.filter((key, i) => i === 0 || !caseKeys.includes(key)),
+    caseKeys,
+  };
 }
 
 /** The letters of a token, marks removed, hamza kept (for roots). */
@@ -1055,7 +1110,7 @@ export function parseQuranQuery(
   let letters = 0;
   for (const [i, {parts, ayahStart}] of merged.entries()) {
     if (tokens.length === QURAN_QUERY_MAX_TOKENS) break;
-    const keys = tokenKeys(parts);
+    const {keys, caseKeys} = tokenKeys(parts);
     if (!keys.length) continue;
     letters += keys[0].length;
     if (letters > QURAN_QUERY_MAX_LENGTH) break;
@@ -1064,6 +1119,7 @@ export function parseQuranQuery(
       keys,
       needsHamza: HAMZA.test(prepare(word)),
     };
+    if (caseKeys.length) token.caseKeys = caseKeys;
     if (i < openings) token.opening = true;
     if (ayahStart && tokens.length) token.ayahStart = true;
     tokens.push(token);

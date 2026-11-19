@@ -8,8 +8,9 @@
  *    as a prefix when it has 3 or more letters (feedback while typing, and
  *    pronoun suffixes: كتاب finds كتابه), unless it is a surah opening
  *    (typed as letters, ا ل م, or pasted, الٓمٓ), which matches whole
- *    words only. A token's keys with a hamza seat left out (امرأة →
- *    امره) count only when the token as typed is no word of the text.
+ *    words only. A token's keys with a hamza seat left out (امرأة → امره)
+ *    count only when the token is no word of the text as typed or in
+ *    another case (caseKeys: أهوائهم, أهواءهم).
  * 2. Score each word slot per token: exact 100 or prefix 60, plus 10 per
  *    tier (3 full spelling, 2 without proclitics, 1 without the article),
  *    minus 5 for a rasm-only spelling. A token typed with a hamza skips
@@ -17,7 +18,9 @@
  * 3. A phrase is the tokens on consecutive slots of one verse; its score is
  *    its weakest token's. It may also run on from an ayah of one word
  *    (QURAN_ONE_WORD_AYAHS: الم, حم, الرحمن, والعصر) into the start of
- *    the next ayah, which is the hit: الم ذلك الكتاب finds 2:2.
+ *    the next ayah, which is the hit: الم ذلك الكتاب finds 2:2. When the
+ *    tokens make no phrase, every key with a seat left out counts too, as
+ *    the words around it say which word it is (فلما رئى الشمس, رَءَا).
  * 4. Without any phrase, ayahs pasted together with their numbers (... ۝٢
  *    ... ۝٣) are searched by the first of them, as no other ayah boundary
  *    is known. Otherwise a query of 2 or more words falls back to the ayahs
@@ -428,54 +431,16 @@ function result(
   return {kind, hits, ayahCount: hits.length, occurrenceCount};
 }
 
-/** Searches the Quran text for the tokens of a parsed query. */
-export async function searchQuranText(
-  queryTokens: readonly QuranQueryToken[],
-  source: QuranPostingSource,
-): Promise<QuranTextResult> {
-  const tokens = queryTokens.slice(0, QURAN_MAX_TOKENS);
-  if (!tokens.length) return result('phrase', []);
-  const allKeys = [...new Set(tokens.flatMap(token => token.keys))];
-  const last = tokens[tokens.length - 1];
-  // An opening (typed as letters, or pasted) is a whole word: no prefixes.
-  const prefixKeys = last.opening
-    ? []
-    : last.keys.filter(key => key.length >= QURAN_PREFIX_MIN_LETTERS);
-  const [exact, ...prefixes] = await Promise.all([
-    source.exact(allKeys),
-    ...prefixKeys.map(key => source.prefix(key, QURAN_PREFIX_FORM_LIMIT)),
-  ]);
-  const prefixOf = new Map(prefixKeys.map((key, i) => [key, prefixes[i]]));
-
-  const postings: TokenPostings[] = tokens.map((token, k) => {
-    const hamza = hamzaRule(token);
-    const listsOf = (keys: readonly string[]) => {
-      const lists: TokenPostings['lists'] = [];
-      for (const key of keys) {
-        const codes = exact.get(key);
-        if (codes?.length) lists.push({codes, exact: true});
-        if (k !== tokens.length - 1) continue;
-        for (const prefixCodes of prefixOf.get(key)?.values() ?? []) {
-          if (prefixCodes.length)
-            lists.push({codes: prefixCodes, exact: false});
-        }
-      }
-      return lists;
-    };
-    // The keys without a seat letter (امرأة → امره) are other words as
-    // often as the same word (أمره), so they count only when the token as
-    // typed is no word of the text (أإله, which the text writes أَءِلَٰهٌ).
-    const typed = exact.get(token.keys[0]) ?? [];
-    const isWord = typed.some(code => allows(hamza, code));
-    return {
-      lists: listsOf(isWord ? token.keys.slice(0, 1) : token.keys),
-      hamza,
-    };
-  });
-
-  // Walk the rarest token's slots and look the others up only where the
-  // phrase puts them; a token with many lists (a short prefix) is merged
-  // into one map first.
+/**
+ * The phrase hits of the tokens' postings, and each token's slots for the
+ * all-words fallback. Walks the rarest token's slots and looks the others
+ * up only where the phrase puts them; a token with many lists (a short
+ * prefix) is merged into one map first.
+ */
+function phraseOf(postings: readonly TokenPostings[]): {
+  hits: QuranVerseHit[];
+  slotMaps(): ReadonlyMap<number, number>[];
+} {
   const sizes = postings.map(token =>
     token.lists.reduce((n, list) => n + list.codes.length, 0),
   );
@@ -493,20 +458,89 @@ export async function searchQuranText(
     if (!map) return scoreAt(postings[k], slot);
     return map.get(slot) ?? 0;
   };
-  const phrase = mergeHits(
-    joinFromAnchor(tokens.length, anchor, maps[anchor] ?? new Map(), scoreOf),
-    tokens.length > 1 ? joinRunOn(tokens.length, scoreOf) : [],
+  const hits = mergeHits(
+    joinFromAnchor(postings.length, anchor, maps[anchor] ?? new Map(), scoreOf),
+    postings.length > 1 ? joinRunOn(postings.length, scoreOf) : [],
   );
-  if (phrase.length || tokens.length < 2) {
-    return result('phrase', phrase.sort(byScoreThenMushaf));
+  return {
+    hits,
+    slotMaps: () => postings.map((token, k) => maps[k] ?? slotsOf(token)),
+  };
+}
+
+/** Every key of a token. */
+function keysOf(token: QuranQueryToken): string[] {
+  return [...token.keys, ...(token.caseKeys ?? [])];
+}
+
+/** Searches the Quran text for the tokens of a parsed query. */
+export async function searchQuranText(
+  queryTokens: readonly QuranQueryToken[],
+  source: QuranPostingSource,
+): Promise<QuranTextResult> {
+  const tokens = queryTokens.slice(0, QURAN_MAX_TOKENS);
+  if (!tokens.length) return result('phrase', []);
+  const allKeys = [...new Set(tokens.flatMap(keysOf))];
+  const last = tokens[tokens.length - 1];
+  // An opening (typed as letters, or pasted) is a whole word: no prefixes.
+  const prefixKeys = last.opening
+    ? []
+    : keysOf(last).filter(key => key.length >= QURAN_PREFIX_MIN_LETTERS);
+  const [exact, ...prefixes] = await Promise.all([
+    source.exact(allKeys),
+    ...prefixKeys.map(key => source.prefix(key, QURAN_PREFIX_FORM_LIMIT)),
+  ]);
+  const prefixOf = new Map(prefixKeys.map((key, i) => [key, prefixes[i]]));
+  const listsOf = (k: number, keys: readonly string[]) => {
+    const lists: TokenPostings['lists'] = [];
+    for (const key of keys) {
+      const codes = exact.get(key);
+      if (codes?.length) lists.push({codes, exact: true});
+      if (k !== tokens.length - 1) continue;
+      for (const prefixCodes of prefixOf.get(key)?.values() ?? []) {
+        if (prefixCodes.length) lists.push({codes: prefixCodes, exact: false});
+      }
+    }
+    return lists;
+  };
+
+  // The keys without a seat letter (امرأة → امره) are other words as often
+  // as the same word (أمره). At first they count only for a token that is
+  // no word of the text as typed or in another case (أإله, which the text
+  // writes أَءِلَٰهٌ); `every` has them for every token.
+  const gated: TokenPostings[] = [];
+  const every: TokenPostings[] = [];
+  let leftOut = false;
+  tokens.forEach((token, k) => {
+    const hamza = hamzaRule(token);
+    const all = {lists: listsOf(k, keysOf(token)), hamza};
+    every.push(all);
+    const asTyped = [token.keys[0], ...(token.caseKeys ?? [])];
+    const isWord = asTyped.some(key =>
+      (exact.get(key) ?? []).some(code => allows(hamza, code)),
+    );
+    if (isWord && token.keys.length > 1) {
+      gated.push({lists: listsOf(k, asTyped), hamza});
+      leftOut = true;
+    } else {
+      gated.push(all);
+    }
+  });
+  let phrase = phraseOf(gated);
+  // A phrase that only the keys without a seat letter make (فلما رئى
+  // الشمس, the text's رَءَا): the words around them say which word it is.
+  if (!phrase.hits.length && tokens.length > 1 && leftOut) {
+    const withEvery = phraseOf(every);
+    if (withEvery.hits.length) phrase = withEvery;
+  }
+  if (phrase.hits.length || tokens.length < 2) {
+    return result('phrase', phrase.hits.sort(byScoreThenMushaf));
   }
   // Ayahs pasted with their numbers make one phrase only across an ayah of
   // one word (run-on, above); otherwise search the first of them.
   const nextAyah = tokens.findIndex((token, k) => k > 0 && token.ayahStart);
   if (nextAyah > 0) return searchQuranText(tokens.slice(0, nextAyah), source);
-  const allWords = joinAllWords(
-    postings.map((token, k) => maps[k] ?? slotsOf(token)),
-  );
+  const allWords = joinAllWords(phrase.slotMaps());
   allWords.sort(
     (a, b) =>
       a.span - b.span || b.score - a.score || a.verseIndex - b.verseIndex,

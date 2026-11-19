@@ -504,6 +504,42 @@ describe('parseQuranQuery', () => {
     expect(keys('أنتم')).toEqual([['انتم']]);
   });
 
+  it('tries a hamza the case ending seats on its other seats', () => {
+    const parsed = (query: string) => {
+      const p = parseQuranQuery(query);
+      if (p.kind !== 'text') throw new Error('expected text');
+      return p.tokens.map(({keys: k, caseKeys}) => ({keys: k, caseKeys}));
+    };
+    // Between a long alif and a pronoun suffix: the line (accusative), waw
+    // (nominative) or yeh (genitive), so the same word in another case.
+    expect(parsed('أهوائهم')).toEqual([
+      {keys: ['اهوايهم'], caseKeys: ['اهواهم', 'اهواوهم']},
+    ]);
+    expect(parsed('أبناؤكم')).toEqual([
+      {keys: ['ابناوكم'], caseKeys: ['ابناكم', 'ابنايكم']},
+    ]);
+    expect(parsed('جاؤهم')).toEqual([
+      {keys: ['جاوهم'], caseKeys: ['جاهم', 'جايهم']},
+    ]);
+    // In a phrase too, each word on its own.
+    expect(parsed('ولئن اتبعت أهوائهم')[2]).toEqual({
+      keys: ['اهوايهم'],
+      caseKeys: ['اهواهم', 'اهواوهم'],
+    });
+    // A hamza typed on the line stays as typed (جاءكم is not جاءوكم), and
+    // so does one not between an alif and a suffix.
+    for (const [query, typed] of [
+      ['جاءكم', ['جاكم']],
+      ['امرأة', ['امراه', 'امره']],
+      ['رئاء', ['ريا', 'را']],
+      ['سائل', ['سايل', 'سال']],
+      ['ملائكة', ['ملايكه', 'ملاكه']],
+      ['آبائي', ['ابايي', 'اباي']],
+    ] as const) {
+      expect(parsed(query)).toEqual([{keys: typed, caseKeys: undefined}]);
+    }
+  });
+
   it('counts letters, not marks, for the length cap', () => {
     // 30 pasted words of 10 letters each are cut whole, after 20 words.
     const word = 'كَتَبْنَٰهَا'.repeat(1);

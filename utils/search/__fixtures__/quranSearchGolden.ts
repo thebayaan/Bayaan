@@ -121,6 +121,34 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
     excludes: ['6:76', '6:77'],
   },
   {query: 'أإله مع الله', includes: ['27:60', '27:61', '27:64']},
+  // A hamza between a long alif and a pronoun suffix takes its seat from the
+  // case ending (أَهْوَآءَهُمْ, بِأَهْوَآئِهِم): typed on another seat it is
+  // the same word, alone or in a phrase.
+  {query: 'أهوائهم', includes: ['6:119', '2:120', '5:48', '13:37', '47:14']},
+  {query: 'آبائنا', includes: ['23:24', '2:170', '5:104', '43:22']},
+  {query: 'أبنائكم', includes: ['4:23', '2:49', '7:141', '14:6', '33:4']},
+  {query: 'ولئن اتبعت أهوائهم', exactly: ['2:120', '2:145', '13:37']},
+  {query: 'ولا تتبع أهوائهم', exactly: ['5:48', '5:49', '42:15']},
+  {query: 'ما وجدنا عليه آبائنا', exactly: ['5:104', '31:21']},
+  {query: 'بل نتبع ما ألفينا عليه آبائنا', exactly: ['2:170']},
+  {query: 'يذبحون أبنائكم ويستحيون نسائكم', exactly: ['2:49', '14:6']},
+  {query: 'ادعوا شركائكم', exactly: ['7:195', '28:64']},
+  {
+    query: 'فلما جاؤهم',
+    exactly: [
+      '2:89',
+      '10:76',
+      '28:36',
+      '28:48',
+      '35:42',
+      '40:25',
+      '43:47',
+      '61:6',
+    ],
+  },
+  // A phrase its words make nowhere as typed is searched again with the keys
+  // without a seat letter: رئى for the text's رَءَا.
+  {query: 'فلما رئى الشمس', exactly: ['6:78']},
   // Vocative يا, ها
   {query: 'يا أيها', includes: ['2:21']},
   // A vocative typed with its conjunction is one Uthmani word (وَيَٰقَوْمِ).
