@@ -28,6 +28,7 @@ import {
   type QuranSearchIndexInput,
 } from './quranSearchIndex';
 import {IRAB_DB_NAME} from '@/constants/bundledDatabases';
+import {NOTICE_FILES} from '../irab/build-irab-db';
 import {
   encodePostings,
   QURAN_SEARCH_DB_NAME,
@@ -112,6 +113,13 @@ export function readQuranSearchInput(
       imlaei,
       sources: {
         imlaeiSha256: imlaeiFile ? fileSha256(imlaeiFile) : undefined,
+      },
+      notices: {
+        qac: fs.readFileSync(path.join(ROOT, NOTICE_FILES.qac_notice), 'utf8'),
+        treebank: fs.readFileSync(
+          path.join(ROOT, NOTICE_FILES.treebank_notice),
+          'utf8',
+        ),
       },
     };
   } finally {

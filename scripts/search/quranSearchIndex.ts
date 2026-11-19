@@ -80,9 +80,11 @@ export const VERSE_CHECK_WORDS = 12;
  * The meta rows that name where the index's roots, lemmas and proclitic
  * segmentation come from: the Quranic Arabic Corpus morphology that the
  * Quranic Treebank carries, read from the i'rab database. Its terms ask
- * that its copyright notice be reproduced in works derived from it, so
- * morphology_notice holds that notice, as published at
- * https://corpus.quran.com/download. See THIRD_PARTY_LICENSES.md.
+ * that its copyright notice be reproduced in works derived from it, so the
+ * build also stores the notices themselves, verbatim from licenses/ (the
+ * files the i'rab build stores, NOTICE_FILES in scripts/irab/build-irab-db
+ * .ts): morphology_notice (the corpus) and treebank_notice (the treebank's
+ * MIT licence). See THIRD_PARTY_LICENSES.md.
  */
 export const QURAN_MORPHOLOGY_META: Readonly<Record<string, string>> = {
   morphology_source:
@@ -93,32 +95,7 @@ export const QURAN_MORPHOLOGY_META: Readonly<Record<string, string>> = {
   morphology_license:
     'Quranic Arabic Corpus: GNU General Public License, with the terms of ' +
     'use in morphology_notice. Quranic Treebank: MIT License, Copyright (c) ' +
-    '2025 NoorBayan.',
-  morphology_notice: [
-    'Quranic Arabic Corpus (Version 0.4)',
-    'Copyright (C) 2011 Kais Dukes',
-    'License: GNU General Public License',
-    '',
-    'The Quranic Arabic Corpus includes syntactic and morphological',
-    'annotation of the Quran, and builds on the verified Arabic text',
-    'distributed by the Tanzil project.',
-    '',
-    'TERMS OF USE:',
-    '',
-    '- Permission is granted to copy and distribute verbatim copies',
-    '  of this file, but CHANGING IT IS NOT ALLOWED.',
-    '',
-    '- This annotation can be used in any website or application,',
-    '  provided its source (the Quranic Arabic Corpus) is clearly',
-    '  indicated, and a link is made to http://corpus.quran.com to enable',
-    '  users to keep track of changes.',
-    '',
-    '- This copyright notice shall be included in all verbatim copies',
-    '  of the text, and shall be reproduced appropriately in all works',
-    '  derived from or containing substantial portion of this file.',
-    '',
-    'Please check updates at: http://corpus.quran.com/download',
-  ].join('\n'),
+    '2025 NoorBayan, in treebank_notice.',
 };
 
 /**
@@ -212,6 +189,12 @@ export interface QuranSearchIndexInput {
    * rows (dkWordsSha256, irabMorphologySha256), not from their files.
    */
   sources: {imlaeiSha256?: string};
+  /**
+   * The licence notices of the morphology, verbatim from licenses/ (the
+   * files the i'rab build stores too): written to meta as morphology_notice
+   * (the corpus) and treebank_notice (the treebank's MIT licence).
+   */
+  notices: {qac: string; treebank: string};
 }
 
 export interface QuranIndexLemma extends QuranLemma {
@@ -695,6 +678,8 @@ export function buildQuranSearchIndex(
     lemmas: String(lemmas.length),
     content_sha256: contentSha256(content),
     ...QURAN_MORPHOLOGY_META,
+    morphology_notice: input.notices.qac,
+    treebank_notice: input.notices.treebank,
   };
   if (input.sources.imlaeiSha256) {
     meta.imlaei_sha256 = input.sources.imlaeiSha256;

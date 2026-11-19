@@ -306,10 +306,14 @@ repository; it adds no outside source:
   i'rab.
 
 The database's `meta` table names these sources (`morphology_source`,
-`morphology_license`) and holds the Quranic Arabic Corpus copyright notice
-and terms of use (`morphology_notice`), as published at
-https://corpus.quran.com/download (read on 2026-11-18): the terms ask that
-the notice be reproduced in works derived from the corpus.
+`morphology_license`) and holds, byte for byte, the Quranic Arabic Corpus
+copyright notice and terms of use (`morphology_notice`, from
+`licenses/quranic-arabic-corpus-notice.txt`, as published at
+https://corpus.quran.com/download, read on 2026-11-18) and the Quranic
+Treebank's MIT licence (`treebank_notice`, from
+`licenses/NoorBayan-Quranic-MIT.txt`): the build reads the same files the
+i'rab database stores. The corpus's terms ask that its notice be reproduced
+in works derived from it.
 
 - **Open question.** The terms also say "CHANGING IT IS NOT ALLOWED" of the
   corpus file. The index stores the corpus's roots and lemmas per word, as

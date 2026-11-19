@@ -11,6 +11,7 @@
  *
  *   npx tsx scripts/search/build-quran-search-db.ts
  */
+import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import {
@@ -106,6 +107,7 @@ describe(QURAN_SEARCH_DB_NAME, () => {
       'morphology_source',
       'morphology_license',
       'morphology_notice',
+      'treebank_notice',
     ]) {
       expect(meta[key]).toBeTruthy();
     }
@@ -120,9 +122,17 @@ describe(QURAN_SEARCH_DB_NAME, () => {
     expect(meta.morphology_source).toContain('Quranic Treebank');
     expect(meta.morphology_license).toContain('GNU General Public License');
     expect(meta.morphology_license).toContain('MIT License');
-    // The corpus asks for its notice in works derived from it.
+    // The corpus asks for its notice in works derived from it, and the
+    // treebank's MIT licence for its own: both verbatim, from the same files
+    // the i'rab database stores.
     expect(meta.morphology_notice).toContain('TERMS OF USE:');
     expect(meta.morphology_notice).toContain('http://corpus.quran.com');
+    const licence = (file: string) =>
+      fs.readFileSync(path.join(__dirname, '../../../licenses', file), 'utf8');
+    expect(meta.morphology_notice).toBe(
+      licence('quranic-arabic-corpus-notice.txt'),
+    );
+    expect(meta.treebank_notice).toBe(licence('NoorBayan-Quranic-MIT.txt'));
   });
 
   it('records the sha256 of what it was built from', () => {
