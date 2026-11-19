@@ -174,17 +174,20 @@ const SavedDhikrReaderScreen: React.FC = () => {
     [adhkarList, t],
   );
 
+  // Play All follows the page the pager shows.
+  const moveSessionTo = useCallback(
+    (page: {index: number; dhikrId: string}) => {
+      if (!isThisAllSession || page.index === sessionIndex) return;
+      dispatch({type: 'swipedTo', listId: 'saved', dhikrId: page.dhikrId});
+    },
+    [isThisAllSession, sessionIndex, dispatch],
+  );
+
   // Follow the session when it advances through this list in Play All.
   // Row a Play All auto-scroll is heading to; null when no such scroll is in
   // flight. Viewable changes until it lands are not user swipes.
   const playAllScrollTarget = useRef<number | null>(null);
-  // Follow only a change of the session's dhikr, never a paused or restored
-  // session that merely points elsewhere when the reader opens.
-  const followedDhikrId = useRef(sessionDhikrId);
-  useEffect(() => {
-    if (!isDataLoaded) return;
-    if (sessionDhikrId === followedDhikrId.current) return;
-    followedDhikrId.current = sessionDhikrId;
+  const scrollToSession = useCallback(() => {
     if (!isThisAllSession || sessionIndex === null) return;
     if (sessionIndex === currentIndex) return;
     playAllScrollTarget.current = sessionIndex;
@@ -193,12 +196,51 @@ const SavedDhikrReaderScreen: React.FC = () => {
       animated: true,
     });
     setCurrentIndex(sessionIndex);
+  }, [isThisAllSession, sessionIndex, currentIndex]);
+
+  // The page at least half visible, as viewability last reported it.
+  const shownPage = useRef<{index: number; dhikrId: string} | null>(null);
+  // The page the swipe in progress started on, and whether Play All moved
+  // on (a clip ended) before it settled.
+  const swipeStartIndex = useRef<number | null>(null);
+  const sessionMovedMidSwipe = useRef(false);
+  // A swipe moves the session once it has come to rest, not while the next
+  // page is merely half visible under the finger (see swipeSettle).
+  const swipe = useSwipeSettle(() => {
+    const page = shownPage.current;
+    const sessionMoved = sessionMovedMidSwipe.current;
+    sessionMovedMidSwipe.current = false;
+    // Back on the page it started on, the swipe chose no other dhikr: the
+    // pager follows Play All instead of replaying the clip that just ended.
+    if (sessionMoved && page?.index === swipeStartIndex.current) {
+      scrollToSession();
+      return;
+    }
+    if (page) moveSessionTo(page);
+  });
+
+  // Follow only a change of the session's dhikr, never a paused or restored
+  // session that merely points elsewhere when the reader opens.
+  const followedDhikrId = useRef(sessionDhikrId);
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    if (sessionDhikrId === followedDhikrId.current) return;
+    followedDhikrId.current = sessionDhikrId;
+    if (!isThisAllSession || sessionIndex === null) return;
+    // Never scroll the pager under the user's swipe: once it settles, the
+    // page it rests on decides (see the swipe above).
+    if (swipe.isSwiping()) {
+      sessionMovedMidSwipe.current = true;
+      return;
+    }
+    scrollToSession();
   }, [
     isThisAllSession,
     sessionDhikrId,
     sessionIndex,
-    currentIndex,
     isDataLoaded,
+    swipe,
+    scrollToSession,
   ]);
 
   // A surface asked to show the playing dhikr.
@@ -266,23 +308,6 @@ const SavedDhikrReaderScreen: React.FC = () => {
     [toggleSaved],
   );
 
-  // Play All follows the page the pager shows.
-  const moveSessionTo = useCallback(
-    (page: {index: number; dhikrId: string}) => {
-      if (!isThisAllSession || page.index === sessionIndex) return;
-      dispatch({type: 'swipedTo', listId: 'saved', dhikrId: page.dhikrId});
-    },
-    [isThisAllSession, sessionIndex, dispatch],
-  );
-
-  // The page at least half visible, as viewability last reported it.
-  const shownPage = useRef<{index: number; dhikrId: string} | null>(null);
-  // A swipe moves the session once it has come to rest, not while the next
-  // page is merely half visible under the finger (see swipeSettle).
-  const swipe = useSwipeSettle(() => {
-    if (shownPage.current) moveSessionTo(shownPage.current);
-  });
-
   // The first viewability report is the page the reader opened on, not a
   // user swipe.
   const sawFirstViewable = useRef(false);
@@ -319,6 +344,9 @@ const SavedDhikrReaderScreen: React.FC = () => {
   // A drag is the user taking over, even mid auto-scroll.
   const handleScrollBeginDrag = useCallback(() => {
     playAllScrollTarget.current = null;
+    if (!swipe.isSwiping()) {
+      swipeStartIndex.current = shownPage.current?.index ?? null;
+    }
     swipe.onScrollBeginDrag();
   }, [swipe]);
 
@@ -344,10 +372,11 @@ const SavedDhikrReaderScreen: React.FC = () => {
   }, []);
 
   // Keep the current page in place if the width changes later (rotation,
-  // Split View): the pager remounts on the current dhikr. Scrolling the old
-  // list to the new offset landed on another dhikr in Arabic (see
-  // pagerWidthAnchor). The new list's first report is where it opened, and
-  // any auto-scroll in flight has already landed there.
+  // Split View). Left to right the list scrolls to it and every page keeps
+  // its state; in Arabic, where that scroll landed on another dhikr, the
+  // pager remounts on the current dhikr (see pagerWidthAnchor). The new
+  // list's first report is where it opened, and any auto-scroll in flight
+  // has already landed there.
   const {pagerKey, startIndex} = usePagerWidthAnchor(
     pageWidth,
     currentIndex,
@@ -355,6 +384,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
       sawFirstViewable.current = false;
       playAllScrollTarget.current = null;
     },
+    flatListRef,
   );
 
   // The finger lifted: the swipe settles here, or after the snap.
