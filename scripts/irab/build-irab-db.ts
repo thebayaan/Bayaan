@@ -3,7 +3,8 @@
  * two classical i'rab books per verse.
  *
  *   npx tsx scripts/irab/build-irab-db.ts \
- *     --treebank <Quranic.csv> --books <dir> [--out assets/data/irab-v1.db]
+ *     --treebank <Quranic.csv> --masaq <MASAQ.tsv> --books <dir> \
+ *     [--out assets/data/irab-v1.db]
  *
  * --treebank  corpus/Quranic.csv extracted from corpus/Quranic.rar of
  *             github.com/NoorBayan/Quranic at TREEBANK_COMMIT (UTF-16 TSV).
@@ -17,7 +18,9 @@
  *  - every word of data/wbw/wbw-en.db (77,429 words, 6,236 verses) has
  *    treebank tokens whose letters match the word exactly, and vice versa;
  *  - every word has at least one i'rab entry;
- *  - no book passage contains markup, links or script after cleaning.
+ *  - no book passage contains markup, links, script or a control character
+ *    other than a line break after cleaning;
+ *  - no book passage keeps a modern editor's footnotes or note markers.
  *
  * The app never shows treebank or book Quran spellings as Quran text: word
  * references are `{{s:a:w}}` placeholders the app fills from its own words.
@@ -59,13 +62,25 @@ export const KIND_CODE: Record<IrabEntry['kind'], string> = {
   alt: 'a',
 };
 
-const BOOKS = [
+const BOOKS: {
+  id: number;
+  nameAr: string;
+  authorAr: string;
+  /** The dump prints a modern editor's footnotes on each page. */
+  editorNotes?: boolean;
+}[] = [
   {
     id: 309,
     nameAr: 'التبيان في إعراب القرآن',
     authorAr: 'أبو البقاء العكبري (ت ٦١٦هـ)',
   },
-  {id: 318, nameAr: 'إعراب القرآن', authorAr: 'أبو جعفر النحاس (ت ٣٣٨هـ)'},
+  {
+    id: 318,
+    nameAr: 'إعراب القرآن',
+    authorAr: 'أبو جعفر النحاس (ت ٣٣٨هـ)',
+    // Dar al-Kutub al-Ilmiyya, 1st edition, 1421 AH.
+    editorNotes: true,
+  },
 ];
 
 function arg(name: string, fallback?: string): string {
@@ -387,10 +402,16 @@ function readJson(dir: string, base: string): any {
   return JSON.parse(zlib.gunzipSync(fs.readFileSync(gz)).toString('utf8'));
 }
 
-/** Book HTML → plain paragraphs (the app renders text, never HTML). */
+/**
+ * Book HTML → plain paragraphs (the app renders text, never HTML). The dumps
+ * end lines with CR, and Android does not break a line at a CR, so every
+ * line end becomes a line feed.
+ */
 export function cleanBookHtml(html: string): string {
   const text = html
+    .replace(/\r\n?/g, '\n')
     .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*p\b[^>]*>/gi, '\n')
     .replace(/<\/\s*(p|div|tr|table|h\d)\s*>/gi, '\n')
     .replace(/<\/\s*td\s*>/gi, ' ')
     .replace(/<[^>]*>/g, '')
@@ -410,7 +431,93 @@ export function cleanBookHtml(html: string): string {
       `book passage still has markup or a link: ${text.slice(0, 120)}`,
     );
   }
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/.test(text)) {
+    throw new Error(
+      `book passage has a control character: ${JSON.stringify(text.slice(0, 120))}`,
+    );
+  }
   return text;
+}
+
+/** What stripEditorNotes took out of a page. */
+export interface EditorNotes {
+  /** Footnote blocks removed (a page has one at most). */
+  footnoteBlocks: number;
+  /** Note markers («١», «٢» ...) removed from the text. */
+  markers: number;
+}
+
+/**
+ * A printed edition's footnotes: one block that ends the page. Its own </div>
+ * can sit inside a poem table one of the notes opened, so the block runs to
+ * the end of the page; only closing tags may follow that </div>.
+ */
+const FOOTNOTE_BLOCK = /<div\b[^>]*\bclass\s*=\s*["']?foot-notes\b[^>]*>/i;
+/** A note's reference in the text: «١», with the spaces before it. */
+const NOTE_MARKER = /(?:[ \t\u00A0]|&nbsp;)*«[٠-٩0-9]+»/g;
+
+/**
+ * Removes a modern editor's footnotes and their «n» markers from one page
+ * of a book's HTML, so that only the author's text is shown under the
+ * author's name. Works on the HTML: the text alone cannot tell a footnote
+ * ("(١) انظر ...") from the author's line that starts with a verse number
+ * ("(١٣) فأمسكت ..."). Throws on a page this does not fit.
+ */
+export function stripEditorNotes(html: string): {html: string} & EditorNotes {
+  let page = html;
+  let footnoteBlocks = 0;
+  const start = page.search(FOOTNOTE_BLOCK);
+  if (start >= 0) {
+    const block = page.slice(start);
+    const close = /<\/\s*div\s*>/i.exec(block);
+    const after = close ? block.slice(close.index + close[0].length) : '';
+    if (!/^(?:\s|<\/\s*[a-z]+\s*>)*$/i.test(after)) {
+      throw new Error(
+        `page text after its footnotes: ${after.replace(/<[^>]*>/g, '').slice(0, 120)}`,
+      );
+    }
+    const notes = block.replace(/<[^>]*>/g, '').trim();
+    if (!/^\([٠-٩0-9]+\)/.test(notes)) {
+      throw new Error(
+        `a footnote block that does not start with a note: ${notes.slice(0, 120)}`,
+      );
+    }
+    page = page.slice(0, start);
+    footnoteBlocks = 1;
+  }
+  const markers = page.match(NOTE_MARKER)?.length ?? 0;
+  return {html: page.replace(NOTE_MARKER, ''), footnoteBlocks, markers};
+}
+
+/**
+ * One page of a book as the app shows it. `editorNotes`: the book's dump
+ * prints a modern editor's notes, which are removed. In every book, any
+ * footnote block or note marker left fails the build.
+ */
+export function bookPassage(
+  html: string,
+  editorNotes = false,
+): {text: string} & EditorNotes {
+  const page = editorNotes
+    ? stripEditorNotes(html)
+    : {html, footnoteBlocks: 0, markers: 0};
+  if (/foot-?notes/i.test(page.html)) {
+    throw new Error(
+      `book passage still has the editor's footnotes: ${page.html.slice(0, 120)}`,
+    );
+  }
+  const text = cleanBookHtml(page.html);
+  if (/«[٠-٩0-9]+»/.test(text)) {
+    throw new Error(
+      `book passage still has a note marker: ${text.slice(0, 120)}`,
+    );
+  }
+  return {
+    text,
+    footnoteBlocks: page.footnoteBlocks,
+    markers: page.markers,
+  };
 }
 
 function main(): void {
@@ -749,6 +856,7 @@ function main(): void {
       meta.run(`book_${book.id}_version`, String(json.license?.version ?? ''));
       const ids = new Map<string, number>();
       let verses = 0;
+      const removed: EditorNotes = {footnoteBlocks: 0, markers: 0};
       for (const a of json.ayahs as {
         surah: number;
         ayah: number;
@@ -757,12 +865,15 @@ function main(): void {
         const vk = `${a.surah}:${a.ayah}`;
         let ord = 0;
         for (const c of a.content) {
-          const text = cleanBookHtml(c.text);
+          const page = bookPassage(c.text, book.editorNotes);
+          const text = page.text;
           if (!text) continue;
           let id = ids.get(text);
           if (id === undefined) {
             id = ++passageId;
             ids.set(text, id);
+            removed.footnoteBlocks += page.footnoteBlocks;
+            removed.markers += page.markers;
             insPassage.run(
               id,
               book.id,
@@ -775,7 +886,22 @@ function main(): void {
         }
         if (ord) verses++;
       }
-      console.log(`book ${book.id}: ${verses} verses, ${ids.size} passages`);
+      if (book.editorNotes) {
+        meta.run(
+          `book_${book.id}_footnotes_removed`,
+          String(removed.footnoteBlocks),
+        );
+        meta.run(
+          `book_${book.id}_note_markers_removed`,
+          String(removed.markers),
+        );
+      }
+      console.log(
+        `book ${book.id}: ${verses} verses, ${ids.size} passages` +
+          (book.editorNotes
+            ? `, the editor's notes removed from ${removed.footnoteBlocks} (${removed.markers} markers)`
+            : ''),
+      );
     }
   })();
   db.exec('VACUUM');
