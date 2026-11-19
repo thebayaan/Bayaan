@@ -148,6 +148,33 @@ describe('key layers', () => {
     expect(turn.run).toHaveBeenCalledTimes(1);
   });
 
+  it('takes a covered key from the screen under the cover, never from the app-wide table', () => {
+    const play = binding('space', 'Play/Pause');
+    addKeyLayer([play], {base: true});
+    const seek = binding('left', 'Back 15 Seconds');
+    const player = addKeyLayer([seek]);
+    const sheet = addKeyLayer([], {covers: ['space', 'left']});
+    // Only the app-wide table binds Space (the full player is open): it
+    // still plays and pauses, and stays in the menu.
+    expect(sent().commands).toEqual([['space', 'Play/Pause', true]]);
+    pressKeyForTests('space');
+    pressKeyForTests('left');
+    expect(play.run).toHaveBeenCalledTimes(1);
+    expect(seek.run).not.toHaveBeenCalled();
+
+    // A screen under the cover binds Space (the reader turns the page):
+    // the cover takes it, and the app-wide binding stays under the screen's.
+    sheet.remove();
+    player.remove();
+    const turn = binding('space', 'Next Page', {menu: 'reader'});
+    addKeyLayer([turn]);
+    addKeyLayer([], {covers: ['space']});
+    expect(sent().commands).toEqual([]);
+    pressKeyForTests('space');
+    expect(turn.run).not.toHaveBeenCalled();
+    expect(play.run).toHaveBeenCalledTimes(1);
+  });
+
   it('lists a disabled key greyed out and does not run it', () => {
     const next = binding('cmd-right', 'Next', {enabled: false});
     addKeyLayer([next]);

@@ -46,7 +46,7 @@ export const ROW_FROM_RIGHT = isRTL ? 'row' : 'row-reverse';
 const LRM = String.fromCharCode(0x200e);
 
 // @ai-start
-export type IrabStyles = ReturnType<typeof createIrabStyles>;
+export type IrabStyles = ReturnType<typeof buildIrabStyles>;
 /**
  * The caller's `sheets` translations. The blocks name the namespace on each
  * key ({ns: 'sheets'}) as well: their `t` comes from the caller, so the key
@@ -324,7 +324,7 @@ const ReadMoreButton: React.FC<{
 
 // @ai-start
 /** The i'rab styles, shared by the I'rab screen and Word Study. */
-export const createIrabStyles = (theme: Theme) => {
+const buildIrabStyles = (theme: Theme) => {
   const subtle = Color(theme.colors.text).alpha(0.04).toString();
   const hairline = Color(theme.colors.text).alpha(0.08).toString();
   // Secondary text: 0.8 alpha at least (ipad-standards.md §12).
@@ -333,13 +333,16 @@ export const createIrabStyles = (theme: Theme) => {
   const phraseRule = Color(theme.colors.primary).alpha(0.45).toString();
   // Text in the accent (labels, «word» references, the agreed mark) at
   // 4.5:1 or more on each surface it is drawn on: the sheet, the 4% fill
-  // of the morphology block, the 6% fill of a pressed or hovered word, and
-  // an alternative entry's 7% accent tint.
+  // of the morphology block, the 6% fill of a pressed or hovered word, an
+  // alternative entry's 7% accent tint, and that tint over the 6% fill (an
+  // alternative entry inside a pressed or hovered whole-verse word card).
+  const hovered = overBackground(theme, theme.colors.text, 0.06);
   const accentText = readableAccent(theme, [
     theme.colors.background,
     overBackground(theme, theme.colors.text, 0.04),
-    overBackground(theme, theme.colors.text, 0.06),
+    hovered,
     overBackground(theme, theme.colors.primary, 0.07),
+    Color(hovered).mix(Color(theme.colors.primary), 0.07).hex(),
   ]);
   return StyleSheet.create({
     partCaption: {
@@ -540,4 +543,20 @@ export const createIrabStyles = (theme: Theme) => {
       color: theme.colors.text,
     },
   });
+};
+
+const irabStylesByTheme = new WeakMap<Theme, IrabStyles>();
+
+/**
+ * The i'rab styles of a theme, built once per theme object (themeStore keeps
+ * one until the theme changes). The whole-verse list draws a card per word,
+ * up to 128 at 2:282, and each would otherwise work out the accent again.
+ */
+export const createIrabStyles = (theme: Theme): IrabStyles => {
+  let styles = irabStylesByTheme.get(theme);
+  if (!styles) {
+    styles = buildIrabStyles(theme);
+    irabStylesByTheme.set(theme, styles);
+  }
+  return styles;
 };

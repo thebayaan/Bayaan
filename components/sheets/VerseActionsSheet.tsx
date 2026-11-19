@@ -169,6 +169,8 @@ const BACK_PRESS = 1 as CloseRequest;
 // iPad keys that act on the screen under the sheet: the reader's page turns
 // (Space, Shift-Space, the arrows) and the full player's seeks (the arrows).
 // The sheet covers them while it shows; Word Study binds the arrows itself.
+// A cover never takes an app-wide key, so over the full player, where Space
+// is the app-wide play / pause, Space still plays and pauses.
 const NO_KEY_BINDINGS: readonly KeyBinding[] = [];
 const COVERED_KEYS: readonly KeyId[] = [
   'space',

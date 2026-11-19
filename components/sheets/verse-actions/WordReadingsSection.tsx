@@ -8,9 +8,10 @@
  *
  * Hafs's group comes first; each differing reading follows with a tinted bar
  * and its readers, then the rewayat that do not read the word. A reader whose
- * own text differs from its group's (or carries silah) gets its own line. The
- * current rewayah's own spelling, when nothing above shows it, follows in a
- * row of its own (Current), as for a word with no row.
+ * own text differs from its group's (or carries silah) gets its own line, and
+ * so does the current rewayah when its mushaf spells the word otherwise and
+ * nothing shows that spelling. A word with no row draws no group: there the
+ * current rewayah's spelling is a row of its own (Current).
  * Notes say what the readings alone do not (a word written over two Hafs
  * words, joined or apart, verse ends, al-Fatiha's basmala); a footer gives
  * the scope and the source. Quran text is only ever drawn by ReadingText
@@ -217,6 +218,11 @@ export function WordReadingsSection({
               group={group}
               first={index === 0}
               currentRewayah={currentRewayah}
+              mushafText={
+                group.members.some(m => m.rewayah === current)
+                  ? ownCurrent
+                  : null
+              }
               readingSize={readingSize}
               memberSize={memberSize}
               textWidth={textWidth}
@@ -225,7 +231,7 @@ export function WordReadingsSection({
           ))}
         </View>
       )}
-      {ownCurrent !== null && current !== null && (
+      {noRow && ownCurrent !== null && current !== null && (
         <View style={styles.card}>
           <View
             style={styles.groupRow}
@@ -278,6 +284,9 @@ interface GroupRowProps {
   group: ReadingGroup;
   first: boolean;
   currentRewayah: RewayahId;
+  /** The current rewayah's own spelling when this group holds it and
+   *  nothing shows it yet (currentOwnText): a line of its own. */
+  mushafText: string | null;
   readingSize: number;
   memberSize: number;
   textWidth: number;
@@ -288,6 +297,7 @@ const GroupRow: React.FC<GroupRowProps> = ({
   group,
   first,
   currentRewayah,
+  mushafText,
   readingSize,
   memberSize,
   textWidth,
@@ -311,7 +321,15 @@ const GroupRow: React.FC<GroupRowProps> = ({
   // identical line under it.
   const sole =
     group.members.length === 1 && owner.ownText === group.text ? owner : null;
-  const ownLines = group.members.filter(m => m.ownText !== null && m !== sole);
+  // In member order, with the current rewayah's own spelling (mushafText)
+  // on its line, as any reader's own text is: the group keeps the one
+  // Current badge.
+  const ownLines = group.members.flatMap(m => {
+    if (m.ownText !== null) return m === sole ? [] : [m];
+    return mushafText !== null && m.rewayah === currentRewayah
+      ? [{...m, ownText: mushafText, silahChars: []}]
+      : [];
+  });
 
   let label: string;
   if (group.kind === 'notRead') {

@@ -373,7 +373,11 @@ it('a word with no row reads alike; the current rewayah shows its own spelling',
   expect(mockReadingTexts.map(p => [p.text, p.rewayah])).toEqual([
     ['W-THREE', 'warsh'],
   ]);
-  expect(texts(root)).toContain('Current');
+  // No group row is drawn, so this row is the one marked Current.
+  expect(texts(root).filter(s => s === 'Current')).toHaveLength(1);
+  expect(labels(root)).toEqual([
+    "W-THREE, read by Warsh (Nafi'), including the current rewayah",
+  ]);
 
   act(() => renderer?.unmount());
   mockReadingTexts.length = 0;
@@ -391,13 +395,19 @@ it('a word with a row shows the current rewayah`s own spelling when its group sh
     {text: `W-FOUR ${VERSE_SIX}`, wordPositionInVerse: 4},
   ];
   let root = render('1:7', 4, 'warsh');
-  expect(mockReadingTexts.map(p => [p.text, p.rewayah]).pop()).toEqual([
-    'W-FOUR',
-    'warsh',
+  // Warsh's own line in Hafs's group, after al-Bazzi's and Qunbul's, as a
+  // member's own text is shown: the group stays the one marked Current.
+  expect(mockReadingTexts.map(p => [p.text, p.rewayah])).toEqual([
+    [expect.any(String), 'hafs'],
+    [expect.any(String), 'al-bazzi'],
+    [expect.any(String), 'qunbul'],
+    ['W-FOUR', 'warsh'],
   ]);
-  expect(labels(root)).toContain(
-    "W-FOUR, read by Warsh (Nafi'), including the current rewayah",
-  );
+  expect(labels(root)).toContain('Warsh: W-FOUR');
+  expect(labels(root).filter(l => l.endsWith('current rewayah'))).toEqual([
+    expect.stringMatching(/^.+, read by Hafs, .*Warsh, Qalun \(Nafi'\)/),
+  ]);
+  expect(texts(root).filter(s => s === 'Current')).toHaveLength(1);
   act(() => renderer?.unmount());
 
   // its own line already shows it (al-Bazzi's silah): not drawn twice
@@ -453,6 +463,18 @@ it('a word with a row shows the current rewayah`s own spelling when its group sh
   mockReadingTexts.length = 0;
   render('1:7', 4, 'hafs');
   expect(mockReadingTexts.map(p => p.text)).not.toContain('W-FOUR');
+});
+
+it('a word with a row in Arabic: one Current badge, the spelling on Warsh`s own line', async () => {
+  await i18n.changeLanguage('ar');
+  mockState.result = ready('1:7', 4);
+  mockState.currentWords = [{text: 'W-FOUR', wordPositionInVerse: 4}];
+  const root = render('1:7', 4, 'warsh');
+  expect(texts(root).filter(s => s === 'الحالية')).toHaveLength(1);
+  expect(labels(root)).toContain('ورش: W-FOUR');
+  expect(
+    labels(root).filter(l => l.endsWith('ومنها الرواية الحالية')),
+  ).toHaveLength(1);
 });
 
 it('says when the current rewayah is not one of the 8', () => {

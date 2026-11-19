@@ -366,15 +366,18 @@ describe('IrabBooksTab', () => {
 describe('text in the accent colour', () => {
   const ACCENTS = Object.keys(primaryColors) as PrimaryColor[];
   const ratio = (a: unknown, b: string) => Color(String(a)).contrast(Color(b));
-  /** The sheet, the morphology block's 4% fill, a hovered row's 6% fill
-   *  and an alternative entry's 7% accent tint. */
+  /** The sheet, the morphology block's 4% fill, a hovered row's 6% fill,
+   *  an alternative entry's 7% accent tint, and that tint over the 6% fill
+   *  (the entry inside a pressed or hovered whole-verse word card). */
   const surfacesOf = (theme: Theme) => {
     const background = Color(theme.colors.background);
+    const hovered = background.mix(Color(theme.colors.text), 0.06);
     return [
       background.hex(),
       background.mix(Color(theme.colors.text), 0.04).hex(),
-      background.mix(Color(theme.colors.text), 0.06).hex(),
+      hovered.hex(),
       background.mix(Color(theme.colors.primary), 0.07).hex(),
+      hovered.mix(Color(theme.colors.primary), 0.07).hex(),
     ];
   };
 
