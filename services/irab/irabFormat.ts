@@ -148,10 +148,17 @@ export function parseWordKey(
   return m ? {verseKey: `${m[1]}:${m[2]}`, position: Number(m[3])} : null;
 }
 
-/** Strips the waqf and verse-end marks from a word for quoting it inline. */
+/**
+ * A word's mushaf text for quoting it inline: without its pause (waqf) marks
+ * U+06D6 to U+06DB, the rub el hizb U+06DE and the sajdah sign U+06E9,
+ * which belong to the place in the verse. Every other mark stays. U+06DC
+ * (small high seen) is part of the word: the seen over the sad of 2:245:14
+ * and 7:69:22 and the saktah sign of 18:1:11, 36:52:6, 69:28:4, 75:27:2 and
+ * 83:14:2 (services/irab/__tests__/quotableWord.database.test.ts).
+ */
 export function quotableWord(text: string): string {
   return text
-    .replace(/[ۖ-ۜ۞۩]/g, '')
+    .replace(/[\u06d6-\u06db\u06de\u06e9]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

@@ -81,4 +81,27 @@ describe('quotableWord', () => {
     expect(quotableWord('رَّبِّهِمْ ۖ')).toBe('رَّبِّهِمْ');
     expect(quotableWord('ٱلدِّينِ ۚ')).toBe('ٱلدِّينِ');
   });
+
+  // DigitalKhatt slots, written code point by code point. U+06DC (small
+  // high seen) belongs to the word: it is no pause mark.
+  it('keeps the small high seen over the sad (2:245:14, 7:69:22)', () => {
+    const yabsut =
+      '\u0648\u064E\u064A\u064E\u0628\u0652\u0635\u06DC\u064F\u0637\u064F';
+    expect(quotableWord(yabsut)).toBe(yabsut);
+    // 7:69:22 ends with a pause mark (U+06D6): it goes, the seen stays.
+    const bastah = '\u0628\u064E\u0635\u06DC\u0652\u0637\u064E\u0629\u08F0';
+    expect(quotableWord(`${bastah}\u06D6`)).toBe(bastah);
+  });
+
+  it('keeps the saktah sign (18:1:11, 36:52:6, 75:27:2)', () => {
+    const iwaja = '\u0639\u0650\u0648\u064E\u062C\u064E\u0627\u06DC';
+    expect(quotableWord(iwaja)).toBe(iwaja);
+    // 36:52:6: the saktah stays, the pause mark after it (U+06D7) goes.
+    const marqadina =
+      '\u0645\u0651\u064E\u0631\u0652\u0642\u064E\u062F\u0650\u0646\u064E\u0627\u06DC';
+    expect(quotableWord(`${marqadina}\u06D7`)).toBe(marqadina);
+    // 75:27:2: a combining grapheme joiner (U+034F) before the sign.
+    const man = '\u0645\u064E\u0646\u0652\u034F\u06DC';
+    expect(quotableWord(man)).toBe(man);
+  });
 });

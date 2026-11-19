@@ -348,6 +348,33 @@ it('shows the root, the lemma and the rasm of 1:4:1, and steps into 1:5', async 
   );
 });
 
+/** The value beside a rasm row's label ('Mushaf', 'Standard'). */
+function rasmRow(label: string): string {
+  const labelText = root().find(
+    n => (n.type as unknown) === Text && n.props.children === label,
+  );
+  const row = labelText.parent;
+  if (!row) throw new Error(`no row for ${label}`);
+  const value = row.findAll(
+    n => (n.type as unknown) === Text && n !== labelText,
+  )[0];
+  return [value.props.children]
+    .flat(Infinity)
+    .filter((c): c is string => typeof c === 'string')
+    .join('');
+}
+
+it('keeps the small high seen of 2:245:14 in its rasm Mushaf row and in the quote of its Arabic meaning', async () => {
+  await open(['2:245'], {verseKey: '2:245', position: 14});
+  // The small high seen over its sad, which its rasm note rests on.
+  const word = mushaf('2:245', 14);
+  expect(word).toContain('\u06dc');
+  // The slot has no pause mark: its rasm Mushaf row is its text exactly.
+  expect(rasmRow('Mushaf')).toBe(word);
+  // The al-Tibyan entry placed on its words 13-14 quotes both.
+  expect(texts()).toContain(`«${mushaf('2:245', 13)} ${word}» `);
+});
+
 // @ai-start
 /** The Hafs words leave memory (another rewayah's load evicted them) or come back. */
 function setHafsInMemory(inMemory: boolean) {
