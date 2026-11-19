@@ -17,6 +17,14 @@ export type QuranHitOpenParams = {
   words: string;
 };
 
+/**
+ * The first of a hit's matched slots (1 when it has none): the slot its
+ * anchor names, so also the one that names its verse in another rewayah.
+ */
+export function firstHitSlot(positions: readonly number[]): number {
+  return positions.length > 0 ? Math.min(...positions) : 1;
+}
+
 /** The /mushaf params that open `verseKey` ('S:A') on its matched slots. */
 export function quranHitOpenParams(
   verseKey: string,
@@ -24,11 +32,10 @@ export function quranHitOpenParams(
 ): QuranHitOpenParams {
   const [surah, ayah] = verseKey.split(':');
   const sorted = [...new Set(positions)].sort((a, b) => a - b);
-  const first = sorted[0] ?? 1;
   return {
     surah,
     ayah,
-    anchor: `${verseKey}:${first}`,
+    anchor: `${verseKey}:${firstHitSlot(sorted)}`,
     words: sorted.join(','),
   };
 }

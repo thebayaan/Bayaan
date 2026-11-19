@@ -4,9 +4,14 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
+import {hitLabel} from '@/components/mushaf/mushafSearchVerses';
+import {SURAHS} from '@/data/surahData';
 import {useHover} from '@/hooks/useHover';
+import {useRewayahVerseUnits} from '@/hooks/useRewayahVerseUnits';
 import {useTheme} from '@/hooks/useTheme';
-import {localizeDigits} from '@/i18n/format';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {firstHitSlot} from '@/utils/search/quranHitParams';
 import {moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 import {useQuranVerseLabel} from './quranVerseLabel';
@@ -14,22 +19,45 @@ import {useQuranVerseLabel} from './quranVerseLabel';
 export interface RecentVerseRowProps {
   /** Hafs verse key, 'S:A'. */
   verseKey: string;
+  /** Its matched Digital Khatt slots, which it opens on. */
+  positions: readonly number[];
   onPress: () => void;
 }
 
 /**
  * An ayah opened from the Quran search, in the Search tab's recent searches:
  * a book icon and "Al-Baqarah 2:255", laid out like the surah rows beside it.
+ *
+ * With another rewayah in the mushaf, the row names the verse the reader
+ * will select: the verse of that rewayah holding the first matched slot
+ * ("Quraysh 106:5 · Warsh"). While that rewayah's verses load, and for the
+ * unnumbered Fatiha basmala, it names the Hafs verse and says so
+ * ("Quraysh 106:4 · Hafs"). The mushaf search and root search name their
+ * ayahs the same way (hitLabel).
  */
 export const RecentVerseRow: React.FC<RecentVerseRowProps> = ({
   verseKey,
+  positions,
   onPress,
 }) => {
   const {theme} = useTheme();
   const {t} = useTranslation('reader');
   const {hovered, hoverProps} = useHover();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const label = localizeDigits(useQuranVerseLabel()(verseKey));
+  const hafsLabel = useQuranVerseLabel();
+  const rewayah = useMushafSettingsStore(s => s.rewayah);
+  const {units} = useRewayahVerseUnits(rewayah === 'hafs' ? null : rewayah);
+  const surah = SURAHS[Number(verseKey.split(':')[0]) - 1];
+  const label = localizeDigits(
+    rewayah === 'hafs' || !surah
+      ? hafsLabel(verseKey)
+      : hitLabel(
+          verseKey,
+          firstHitSlot(positions),
+          {rewayah, units},
+          getSurahDisplayName(surah),
+        ),
+  );
 
   return (
     <Pressable
