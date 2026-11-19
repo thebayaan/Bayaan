@@ -32,6 +32,11 @@ export const V1_REFERENCE = {
 
 const ASSET_DIR = 'recitation/v1/';
 
+/** Tilawa 1.0's two files, as the UI states them (the second model comes on top). */
+export const V1_DOWNLOAD_MB = Math.round(
+  (V1_MODEL.bytes + V1_REFERENCE.bytes) / 1e6,
+);
+
 export interface V1AssetPaths {
   modelPath: string;
   referencePath: string;

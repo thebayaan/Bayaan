@@ -63,7 +63,7 @@ function sdk(): V1Sdk {
           },
         },
         supported: [],
-      } as never),
+      }) as never,
     loadReference: async () => reference as never,
     create: async () =>
       ({
@@ -75,7 +75,7 @@ function sdk(): V1Sdk {
         dispose: async () => {
           disposedTilawa += 1;
         },
-      } as never),
+      }) as never,
   };
 }
 
@@ -102,7 +102,7 @@ const position = (
         ]
       : [],
     state,
-  } as EngineEvent);
+  }) as EngineEvent;
 
 const checker = (
   timeMs: number,
@@ -120,7 +120,7 @@ const checker = (
     errorClass,
     location: word,
     confidence: 0.8,
-  } as EngineEvent);
+  }) as EngineEvent;
 
 /** Lets the engine's queue run. */
 const flush = () => new Promise(r => setTimeout(r, 0));

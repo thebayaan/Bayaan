@@ -8,6 +8,7 @@ import {
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
 import type {CancelMayCancel} from '@/services/recitation/secondLook/config';
+import type {EngineChoice} from '@/services/recitation/engineHost';
 
 // Re-exported for backward compat with existing imports across the app.
 // RewayahIdentity is the canonical source; do not redefine the union here.
@@ -125,6 +126,11 @@ interface MushafSettingsState {
    * then: secondLook/config.ts says.
    */
   recitationCancelMayCancel: CancelMayCancel | null;
+  /**
+   * The follower, chosen on the hidden spike screen: 'v0' (Tilawa 0.4) or 'v1'
+   * (the Tilawa 1.0 preview, each of its marks checked before it shows).
+   */
+  recitationEngine: EngineChoice;
 
   // Word-by-word settings
   showWBW: boolean;
@@ -189,6 +195,7 @@ interface MushafSettingsState {
   toggleRecitationCheckMistakes: () => void;
   toggleRecitationMistakeHaptics: () => void;
   setRecitationCancelMayCancel: (choice: CancelMayCancel) => void;
+  setRecitationEngine: (choice: EngineChoice) => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
@@ -237,6 +244,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       recitationCheckMistakes: true,
       recitationMistakeHaptics: true,
       recitationCancelMayCancel: null,
+      recitationEngine: 'v0',
       showWBW: false,
       wbwShowTranslation: defaultShowEnglishReadingAids, // @ai
       wbwShowTransliteration: false,
@@ -283,6 +291,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         })),
       setRecitationCancelMayCancel: (choice: CancelMayCancel) =>
         set({recitationCancelMayCancel: choice}),
+      setRecitationEngine: (choice: EngineChoice) =>
+        set({recitationEngine: choice}),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
         set(state => ({wbwShowTranslation: !state.wbwShowTranslation})),

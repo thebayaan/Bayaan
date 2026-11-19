@@ -92,10 +92,10 @@ function reportEnded(run: IdentifyRun, reason: RecitationStopReason): void {
     outcome: run.match
       ? 'found'
       : reason === 'not_found'
-      ? 'not_found'
-      : STOP_ERRORS[reason]
-      ? 'error'
-      : 'cancelled',
+        ? 'not_found'
+        : STOP_ERRORS[reason]
+          ? 'error'
+          : 'cancelled',
     time_to_match_ms:
       run.matchedAt !== null && run.listenedAt !== null
         ? run.matchedAt - run.listenedAt

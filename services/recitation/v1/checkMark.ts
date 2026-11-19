@@ -98,8 +98,8 @@ const before = (a: Place, b: Place) =>
   a.surah !== b.surah
     ? a.surah < b.surah
     : a.ayah !== b.ayah
-    ? a.ayah < b.ayah
-    : a.word < b.word;
+      ? a.ayah < b.ayah
+      : a.word < b.word;
 
 /** Letters of `count` words from `from` on (ahead) or ending at it (back), across ayat. */
 function wordsAround(
@@ -109,7 +109,8 @@ function wordsAround(
   direction: 'ahead' | 'back',
 ): string[] {
   const out: string[] = [];
-  let {surah, ayah, word} = from;
+  const {surah} = from;
+  let {ayah, word} = from;
   let letters = ctx.letters(surah, ayah);
   while (out.length < count && letters) {
     if (word >= 0 && word < letters.length) {
@@ -344,8 +345,8 @@ export async function checkV1Mark(
       mark.errorClass === 'added_word'
         ? await checkAddedMark(mark, ctx, detail)
         : mark.errorClass === 'skipped_passage'
-        ? await checkSkippedMark(mark, ctx, detail)
-        : await checkWordMark(mark, ctx, detail);
+          ? await checkSkippedMark(mark, ctx, detail)
+          : await checkWordMark(mark, ctx, detail);
     return {...answer, detail, ms: Date.now() - startedAt};
   } catch (error) {
     return {

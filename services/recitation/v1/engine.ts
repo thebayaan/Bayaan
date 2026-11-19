@@ -364,10 +364,11 @@ export async function createTilawaV1Engine(
         startSession();
       }, undefined);
     },
-    setHint() {},
-    setMode() {},
-    setExpected() {},
-    setStructural() {},
+    // 0.4's search hint, modes, passages and structural rules: Tilawa 1.0 has none.
+    setHint: () => undefined,
+    setMode: () => undefined,
+    setExpected: () => undefined,
+    setStructural: () => undefined,
     correct: async () => [],
     readMelFrames: from => ({
       first: from,

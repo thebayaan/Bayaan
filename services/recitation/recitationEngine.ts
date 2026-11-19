@@ -292,9 +292,7 @@ export async function createRecitationEngine(
   ): AddedBefore | null {
     const gap = v.gap;
     if (!gap) return null;
-    const seenKey = `${v.wordIndex}:${gap.from}:${gap.to}:${atThreeDecimals(
-      gap.fitL,
-    )}:${atThreeDecimals(gap.fitR)}`;
+    const seenKey = `${v.wordIndex}:${gap.from}:${gap.to}:${atThreeDecimals(gap.fitL)}:${atThreeDecimals(gap.fitR)}`;
     let passes = gapsSeen.get(seenKey);
     if (passes === undefined) {
       if (!locking && !vocab) return null;

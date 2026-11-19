@@ -229,6 +229,14 @@ export function prepareSecondLook(): void {
     });
 }
 
+/**
+ * The loaded model, waiting for a load under way, or null when none is or will be.
+ * The Tilawa 1.0 path (v1/session) checks its marks with it.
+ */
+export async function secondLookModelNow(): Promise<SecondLookModel | null> {
+  return model ?? (await loading) ?? null;
+}
+
 /** Lets the model go; the next take loads it again. */
 export async function unloadSecondLook(): Promise<void> {
   loadRun += 1;
