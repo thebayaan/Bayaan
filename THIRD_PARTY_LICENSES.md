@@ -299,8 +299,11 @@ repository; it adds no outside source:
   terms of use — as carried by **the Quranic Treebank**
   (https://github.com/NoorBayan/Quranic, MIT License, Copyright (c) 2025
   NoorBayan) and read from the i'rab database (see Quran i'rab above): the
-  proclitic segmentation, roots and lemmas. The roots and lemmas are stored
-  as they are in the i'rab database.
+  proclitic segmentation, with which the word search matches a word without
+  its proclitics, and the roots and lemmas of the root search. The roots and
+  lemmas are stored as they are in the i'rab database. The app's Credits
+  screen credits the corpus for the word and root search as well as the
+  i'rab.
 
 The database's `meta` table names these sources (`morphology_source`,
 `morphology_license`) and holds the Quranic Arabic Corpus copyright notice
