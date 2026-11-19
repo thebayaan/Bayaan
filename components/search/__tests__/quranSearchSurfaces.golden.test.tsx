@@ -52,7 +52,10 @@ jest.mock('@/services/search/QuranSearchDataService', () => {
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
-jest.mock('expo-router', () => ({useRouter: () => ({push: jest.fn()})}));
+jest.mock('expo-router', () => ({
+  useRouter: () => ({push: jest.fn()}),
+  useNavigationContainerRef: () => ({isReady: () => false}),
+}));
 jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
 
 // Every query matches one catalogue row and one surah.

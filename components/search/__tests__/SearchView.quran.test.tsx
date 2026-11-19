@@ -24,7 +24,15 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 );
 
 const mockPush = jest.fn();
-jest.mock('expo-router', () => ({useRouter: () => ({push: mockPush})}));
+// The Search tab is in the tabs, the root stack's first route: no reader
+// is open while it shows, so a hit pushes one.
+jest.mock('expo-router', () => ({
+  useRouter: () => ({push: mockPush}),
+  useNavigationContainerRef: () => ({
+    isReady: () => true,
+    getRootState: () => ({routes: [{name: '(tabs)'}]}),
+  }),
+}));
 jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
 
 // The catalogue: surah and reciter matches by query.

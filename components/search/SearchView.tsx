@@ -49,6 +49,7 @@ import {SurahOptionsProvider} from '@/components/sheets/options/surahOptions';
 import type {SurahOptionsBuilder} from '@/components/sheets/options/SurahOptionsContext';
 // @ai-end
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+import {useOpenQuranHit} from '@/hooks/useOpenQuranHit';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
@@ -74,7 +75,6 @@ import {
 import {RecentVerseRow} from '@/components/search/quran/RecentVerseRow';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {swapKeyboardLayout} from '@/utils/search/keyboardLayout';
-import {quranHitOpenParams} from '@/utils/search/quranHitParams';
 import {matchedPositions} from '@/utils/search/quranSearch';
 import {rootQuery} from '@/utils/search/quranText';
 // @ai-end
@@ -446,6 +446,7 @@ export function SearchView({
 
   // An ayah from the Quran search opens in the Mushaf on the page of its
   // first matched word, with the matched words flashed, and is remembered.
+  const openQuranHit = useOpenQuranHit();
   const openVerse = useCallback(
     (verseKey: string, positions: readonly number[]) => {
       Keyboard.dismiss();
@@ -468,12 +469,9 @@ export function SearchView({
       ).catch(error => {
         console.error('Error saving recent searches:', error);
       });
-      router.push({
-        pathname: '/mushaf',
-        params: quranHitOpenParams(verseKey, positions),
-      });
+      openQuranHit(verseKey, positions);
     },
-    [router, recentSearches],
+    [openQuranHit, recentSearches],
   );
 
   const quranRowAction = useMemo<Omit<QuranResultRowViewProps, 'row'>>(
