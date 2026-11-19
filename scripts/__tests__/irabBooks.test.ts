@@ -9,6 +9,7 @@ import {
   bookPassage,
   cleanBookHtml,
   isFrontMatter,
+  pageVerse,
   stripEditorNotes,
 } from '../irab/build-irab-db';
 
@@ -153,6 +154,31 @@ describe('isFrontMatter', () => {
   it('fails when an introduction page turns up under another surah', () => {
     expect(() => isFrontMatter(nahhas, {part: '1', page: '5'}, 2)).toThrow(
       /318.*1\/5.*surah 2/,
+    );
+  });
+});
+
+describe('pageVerse', () => {
+  const ukbari = {
+    id: 309,
+    opening: {part: '1', before: 5, from: '114:5', to: '1:1'},
+  };
+
+  it("files the author's opening pages with the verse they open", () => {
+    expect(pageVerse(ukbari, {part: '1', page: '1'}, '114:5')).toBe('1:1');
+    expect(pageVerse(ukbari, {part: '1', page: 4}, '114:5')).toBe('1:1');
+    expect(pageVerse(ukbari, {part: '1', page: '3'}, '1:1')).toBe('1:1');
+  });
+
+  it('leaves every other page where the dump files it', () => {
+    expect(pageVerse(ukbari, {part: '1', page: '5'}, '1:2')).toBe('1:2');
+    expect(pageVerse(ukbari, {part: '2', page: '1312'}, '114:5')).toBe('114:5');
+    expect(pageVerse({id: 318}, {part: '1', page: '1'}, '114:5')).toBe('114:5');
+  });
+
+  it('fails when an opening page turns up under another verse', () => {
+    expect(() => pageVerse(ukbari, {part: '1', page: '2'}, '2:1')).toThrow(
+      /309.*1\/2.*2:1/,
     );
   });
 });

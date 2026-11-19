@@ -164,7 +164,10 @@ corpus's licences ask derived files to carry (`treebank_notice`,
   introduction (part 1, pages 3–12), which the dump files under the verses of
   surah 114. The database's `meta` table records what was left out
   (`book_318_footnotes_removed`, `book_318_note_markers_removed`,
-  `book_318_front_matter_removed`).
+  `book_318_front_matter_removed`). al-Ukbari's opening pages (his preface
+  and his i'rab of the isti'adha and the basmala, part 1, pages 1–4), which
+  the dump files under 114:5, are filed with 1:1 instead, unchanged
+  (`book_309_opening_refiled`).
 - **Open questions.** No answer is recorded yet; ask before release.
   - The corpus's terms say "CHANGING IT IS NOT ALLOWED", while the licence
     they name, the GPL, allows changes (and section 7 of its version 3 lets a
@@ -180,6 +183,9 @@ corpus's licences ask derived files to carry (`treebank_notice`,
     ([سورة … : آية …]), verse references ([القمر: ١٩]), metre labels
     ([الرجز]) and poem numbers (١-). Whether they count as the editor's
     contemporary work is not settled.
+  - al-Ukbari's last page (part 2, page 1312) opens with the editor's
+    collation lines «وَجَاء فِي آخر (أ)» and «وَفِي آخر (ب)», which quote how
+    two manuscripts end. They are shown as printed, under his name.
 
 ## Arabic word meanings (gharib) and rasm
 

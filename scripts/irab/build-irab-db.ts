@@ -78,6 +78,20 @@ export const KIND_CODE: Record<IrabEntry['kind'], string> = {
   alt: 'a',
 };
 
+/**
+ * The author's opening pages, which the dump files under another verse, and
+ * the verse they belong to.
+ */
+export interface Opening {
+  part: string;
+  /** The first page after the opening. */
+  before: number;
+  /** The verse the dump files these pages under. */
+  from: string;
+  /** The verse they open: al-Fatiha's first, the basmala. */
+  to: string;
+}
+
 /** Pages printed before the author's text, and where the dump files them. */
 interface FrontMatter {
   part: string;
@@ -94,11 +108,16 @@ const BOOKS: {
   /** The dump prints a modern editor's footnotes on each page. */
   editorNotes?: boolean;
   frontMatter?: FrontMatter;
+  opening?: Opening;
 }[] = [
   {
     id: 309,
     nameAr: 'التبيان في إعراب القرآن',
     authorAr: 'أبو البقاء العكبري (ت ٦١٦هـ)',
+    // al-Ukbari's preface and his i'rab of the isti'adha and the basmala
+    // (pages 1/1-1/4) open the book, but the dump files them under 114:5,
+    // after his last surah. They go with 1:1, the basmala.
+    opening: {part: '1', before: 5, from: '114:5', to: '1:1'},
   },
   {
     id: 318,
@@ -132,6 +151,29 @@ export function isFrontMatter(
     );
   }
   return true;
+}
+
+/**
+ * The verse a page is filed under: the book's opening pages go with the verse
+ * they open, every other page stays where the dump files it. Throws when an
+ * opening page is filed under a verse other than the expected one: a new dump
+ * that moved it needs a fresh look.
+ */
+export function pageVerse(
+  book: {id: number; opening?: Opening},
+  page: {part: string | number; page: string | number},
+  verseKey: string,
+): string {
+  const op = book.opening;
+  if (!op || String(page.part) !== op.part || Number(page.page) >= op.before)
+    return verseKey;
+  if (verseKey === op.to) return verseKey;
+  if (verseKey !== op.from) {
+    throw new Error(
+      `book ${book.id}: opening page ${page.part}/${page.page} is filed under ${verseKey}, not ${op.from}`,
+    );
+  }
+  return op.to;
 }
 
 function arg(name: string, fallback?: string): string {
@@ -917,7 +959,9 @@ function main(): void {
       insBook.run(book.id, book.nameAr, book.authorAr);
       meta.run(`book_${book.id}_version`, String(json.license?.version ?? ''));
       const ids = new Map<string, number>();
-      let verses = 0;
+      const filled = new Set<string>();
+      const ords = new Map<string, number>();
+      const refiled = new Set<string>();
       const removed: EditorNotes = {footnoteBlocks: 0, markers: 0};
       const frontMatter = new Set<string>();
       for (const a of json.ayahs as {
@@ -925,13 +969,14 @@ function main(): void {
         ayah: number;
         content: {text: string; part: string; page: string}[];
       }[]) {
-        const vk = `${a.surah}:${a.ayah}`;
-        let ord = 0;
+        const filedAt = `${a.surah}:${a.ayah}`;
         for (const c of a.content) {
           if (isFrontMatter(book, c, a.surah)) {
             frontMatter.add(`${c.part}/${c.page}`);
             continue;
           }
+          const vk = pageVerse(book, c, filedAt);
+          if (vk !== filedAt) refiled.add(`${c.part}/${c.page}`);
           const page = bookPassage(c.text, book.editorNotes);
           const text = page.text;
           if (!text) continue;
@@ -949,9 +994,20 @@ function main(): void {
               text,
             );
           }
-          insVerse.run(book.id, vk, ord++, id);
+          const ord = ords.get(vk) ?? 0;
+          ords.set(vk, ord + 1);
+          insVerse.run(book.id, vk, ord, id);
+          filled.add(vk);
         }
-        if (ord) verses++;
+      }
+      const verses = filled.size;
+      if (book.opening) {
+        if (!refiled.size)
+          throw new Error(`book ${book.id}: no opening page found`);
+        meta.run(
+          `book_${book.id}_opening_refiled`,
+          `${[...refiled].join(', ')}: ${book.opening.from} → ${book.opening.to}`,
+        );
       }
       if (book.editorNotes) {
         meta.run(
@@ -978,6 +1034,9 @@ function main(): void {
             : '') +
           (frontMatter.size
             ? `, front matter left out: ${frontMatter.size} pages`
+            : '') +
+          (refiled.size
+            ? `, opening pages moved to ${book.opening?.to}: ${refiled.size}`
             : ''),
       );
     }

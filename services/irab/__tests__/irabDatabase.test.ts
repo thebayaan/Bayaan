@@ -151,6 +151,24 @@ describe('book passages', () => {
     }
   });
 
+  it("open al-Fatiha with al-Ukbari's preface and basmala, not surah 114", () => {
+    // The dump files his opening pages under 114:5, after his last surah.
+    expect(forVerse('1:1', 309).map(p => p.page)).toEqual([
+      '1/1',
+      '1/2',
+      '1/3',
+      '1/4',
+    ]);
+    // Page 1/3 heads his i'rab of the basmala (marks set aside).
+    expect(
+      forVerse('1:1', 309)[2].text.replace(/[\u064B-\u065F\u0670]/g, ''),
+    ).toContain('إعراب التسمية');
+    expect(forVerse('114:5', 309).map(p => p.page)).toEqual([
+      '2/1311',
+      '2/1312',
+    ]);
+  });
+
   it('put a surah heading on its own line', () => {
     // al-Ukbari's title of al-Fatiha, then the basmala on the next line.
     const [title, basmala] = forVerse('1:2', 309)[0].text.split('\n');
