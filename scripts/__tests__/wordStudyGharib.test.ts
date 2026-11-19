@@ -88,6 +88,20 @@ const VERSES: Record<string, string[]> = {
     'ٱلسَّمَـٰوَٰتِ',
     'وَٱلْأَرْضَ ۖ',
   ],
+  '5:103': [
+    'مَا',
+    'جَعَلَ',
+    'ٱللَّهُ',
+    'مِنۢ',
+    'بَحِيرَةٍۢ',
+    'وَلَا',
+    'سَآئِبَةٍۢ',
+    'وَلَا',
+    'وَصِيلَةٍۢ',
+    'وَلَا',
+    'حَامٍۢ ۙ',
+    'وَلَـٰكِنَّ',
+  ],
 };
 
 const verses = new Map<string, AppWord[]>(
@@ -138,6 +152,21 @@ describe('placement tiers', () => {
 
   it('a seatless hamza and a conjunction still place at tier 3', () => {
     expect(place('10:53', 'يستنبئونك')).toMatchObject({tier: 3, span: [1, 1]});
+  });
+
+  it.each([
+    ['والسائبة', 7],
+    ['والوصيلة', 9],
+    ['والحامي', 11],
+  ])('«%s» goes on its noun, not on «وَلَا» before it', (headword, word) => {
+    // With every alif dropped, وَلَا reads as the article: the two words
+    // وَلَا سَآئِبَةٍ spell والسائبة at tier 2. Tiers 2 and 3 take no run of
+    // more words than the headword has, so the noun alone is placed, with
+    // the headword's article taken off (tier 3).
+    expect(place('5:103', headword)).toMatchObject({
+      tier: 3,
+      span: [word, word],
+    });
   });
 
   it('a loose match is tier 4 and stays at verse level', () => {

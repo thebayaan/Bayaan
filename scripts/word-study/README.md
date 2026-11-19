@@ -50,7 +50,8 @@ and `rasmDatabase.test.ts`: row counts, sources, texts, and lines checked by han
 ## Gharib
 
 Each entry's headword is compared with every run of 1 to n+2 consecutive
-words of its verse, spaces ignored. The first tier that matches wins:
+words of its verse (n: the headword's word count), spaces ignored. The first
+tier that matches wins:
 
 | Tier | Comparison | Shown on words |
 |---|---|---|
@@ -60,6 +61,9 @@ words of its verse, spaces ignored. The first tier that matches wins:
 | 4 | `looseKey`, 3+ letters, one place in the verse | no (verse level) |
 | moved | tiers 1–3 in a verse up to 3 before or after | no (verse level) |
 | 5 | `gharib-reviewed.json` | yes, or verse level |
+
+Tiers 2 and 3 take runs of at most n words: with every alif dropped, لا
+reads as the article, so وَلَا سَآئِبَةٍ would spell والسائبة (5:103).
 
 Tier 4 and neighbouring-verse matches keep their match in the `candidate`
 column for review; v1 shows none of them. Among several spans of the winning

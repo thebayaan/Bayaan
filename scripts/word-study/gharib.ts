@@ -16,6 +16,9 @@
  *  3. tier-2 keys after one proclitic and/or one enclitic, on either side
  *     (a ta marbuta is never taken off as the pronoun ه);
  *  4. looseKey, at least 3 letters, one match in the verse only.
+ * Tiers 2 and 3 take runs of at most n words: with every alif dropped, a
+ * word such as لا reads as the article, and وَلَا سَآئِبَةٍ would spell
+ * والسائبة.
  * Then tiers 1-3 in a verse up to 3 before or after (moved), then none.
  * Only tiers 1-3 (and hand placements) go on words. Tier 4 and moved entries
  * keep their match as an unshown candidate and stay at verse level, like
@@ -412,6 +415,8 @@ function spells(target: string, keys: readonly [string, string][]): boolean {
  * Candidate spans (1-based positions) of a headword in a verse at one tier:
  * the best-scored ones. Fewer clitics taken off (tier 3) score better, then
  * a word count closer to the headword's (لا تَسْقِي ٱلْحَرْثَ keeps its لا).
+ * Runs have up to n+2 words at tiers 1 and 4, up to n at tiers 2 and 3 (see
+ * the file comment).
  */
 function candidates(
   headword: string,
@@ -425,9 +430,10 @@ function candidates(
   const head3 = cliticVariants(tier3Key(headword, 'imlaei'));
   const head4 = looseKey(headword);
   if (!head1 || (tier === 4 && head4.length < 3)) return [];
+  const maxLen = tier === 2 || tier === 3 ? n : n + 2;
   const found: {span: [number, number]; score: number}[] = [];
   for (let i = 0; i < words.length; i++) {
-    for (let len = 1; len <= n + 2 && i + len <= words.length; len++) {
+    for (let len = 1; len <= maxLen && i + len <= words.length; len++) {
       const run = keys.slice(i, i + len);
       let strips = Infinity;
       if (tier === 1) {

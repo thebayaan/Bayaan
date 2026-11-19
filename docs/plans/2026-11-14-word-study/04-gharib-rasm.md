@@ -154,6 +154,7 @@ For each verse, entries are processed in book order. A headword is compared with
 | moved | Tiers 1–3 in a verse up to 3 before or after, in the same surah. Quranpedia maps passages to verses coarsely; the i'rab Books tab already says a passage "can also cover the verses around it" | 0.8% |
 | verse level | None of the above: stored with `word_from = word_to = NULL`. Examples: reading variants quoted as headwords (أمرنا/آمرنا), explanations placed in the headword field, entries keyed to the wrong surah | 3.3% |
 
+- **Run length at tiers 2 and 3.** These tiers take runs of at most n words. With every ا removed, a word such as لا reads as the article: `وَلَا سَآئِبَةٍ` spelled والسائبة at tier 2 and put the entry on «وَلَا» (5:103). The noun alone then matches at tier 3.
 - **Ambiguity.** In 1.3% of entries the winning tier gives more than one candidate. Take the first span that starts after the previous placed entry of the same source in that verse; otherwise take the first span. Every ambiguous placement goes into the report.
 - **Verse-level share per book:** al-Khudayri 0.9%, Ibn al-Ha'im 1.7%, Makhluf 3.6%, Ibn al-Jawzi 6.5%.
 - **Hand placements.** `scripts/word-study/gharib-reviewed.json` (`{"__format":1,"entries":{"<sourceId> <s:a> <matchKey(headword)>":{"span":"2:2:3-5"}|{"verseLevel":true}}}`) sets tier 5. The key does not depend on the dump's `ord`.
