@@ -111,6 +111,12 @@ import i18n from '@/i18n';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 // @ai-end
+import {useKeyCommands} from '@/hooks/useKeyCommands';
+import {
+  keyCommandsSupported,
+  type KeyBinding,
+  type KeyId,
+} from '@/services/keyboard/keyCommands';
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 
 const surahData = require('@/data/surahData.json');
@@ -161,6 +167,18 @@ type CloseRequest = Parameters<
 >[0];
 const BACK_PRESS = 1 as CloseRequest;
 // @ai-end
+
+// iPad keys that act on the screen under the sheet: the reader's page turns
+// (Space, Shift-Space, the arrows) and the full player's seeks (the arrows).
+// The sheet covers them while it shows; Word Study binds the arrows itself.
+const NO_KEY_BINDINGS: readonly KeyBinding[] = [];
+const COVERED_KEYS: readonly KeyId[] = [
+  'space',
+  'shift-space',
+  'left',
+  'right',
+];
+const COVERED_KEYS_WORD_STUDY: readonly KeyId[] = ['space', 'shift-space'];
 
 // Enable LayoutAnimation on Android
 if (
@@ -860,6 +878,18 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     return false;
   }, []);
   // @ai-end
+
+  // A hardware keyboard (iPad): the keys that would turn the reader's page
+  // or seek the player behind the sheet do nothing while it shows. Word
+  // Study, when it is on screen (not while it waits for the selection),
+  // binds the arrows itself; its layer may be added before this one.
+  const wordStudyShown =
+    activeScreen === 'words' &&
+    wordStudy !== null &&
+    (wordStudyOnly || pendingSelection === null);
+  useKeyCommands(NO_KEY_BINDINGS, keyCommandsSupported(), {
+    covers: wordStudyShown ? COVERED_KEYS_WORD_STUDY : COVERED_KEYS,
+  });
 
   const handleOnClose = useCallback(() => {
     // @ai-start

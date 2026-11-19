@@ -315,6 +315,9 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
   }, []);
 
   // --- Arrow keys on iPad: ← is the next word, as in the reader ---
+  // Bound while the screen shows, and off (not run) when it is not stepping
+  // (whole-verse mode, the books tab, loading): the screen still holds the
+  // keys then, so they never reach the reader or the player behind the sheet.
   const stepping =
     tab === 'words' && !showAll && ready !== null && sequence.length > 0;
   const keyBindings = useMemo<KeyBinding[]>(
@@ -323,20 +326,20 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
         key: 'left',
         title: t('wordView.nextWord'),
         menu: 'reader',
-        enabled: canNext,
+        enabled: stepping && canNext,
         run: () => step(1),
       },
       {
         key: 'right',
         title: t('wordView.previousWord'),
         menu: 'reader',
-        enabled: canPrevious,
+        enabled: stepping && canPrevious,
         run: () => step(-1),
       },
     ],
-    [t, canNext, canPrevious, step],
+    [t, stepping, canNext, canPrevious, step],
   );
-  useKeyCommands(keyBindings, keyCommandsSupported() && stepping);
+  useKeyCommands(keyBindings, keyCommandsSupported());
 
   // --- The grid's Quran text settings (as the Word by Word screen) ---
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);

@@ -48,10 +48,30 @@ jest.mock('../verse-actions/ThemeContent', () => ({
 jest.mock('../verse-actions/WBWContent', () => ({
   WBWContent: (props: Record<string, unknown>) => mockRecord('wbw', props),
 }));
+// As the real screen, Word Study binds ← and → itself (iPad).
+const mockWordStudyKeys = {left: jest.fn(), right: jest.fn()};
+const mockWordStudyBindings = [
+  {
+    key: 'left',
+    title: 'Next word',
+    menu: 'reader',
+    run: () => mockWordStudyKeys.left(),
+  },
+  {
+    key: 'right',
+    title: 'Previous word',
+    menu: 'reader',
+    run: () => mockWordStudyKeys.right(),
+  },
+];
 // @ai-start
 jest.mock('../verse-actions/WordStudyContent', () => ({
-  WordStudyContent: (props: Record<string, unknown>) =>
-    mockRecord('words', props),
+  WordStudyContent: (props: Record<string, unknown>) => {
+    jest
+      .requireActual('@/hooks/useKeyCommands')
+      .useKeyCommands(mockWordStudyBindings);
+    return mockRecord('words', props);
+  },
 }));
 jest.mock('@/components/search/quran/RootResults', () => ({
   RootResults: (props: Record<string, unknown>) => mockRecord('root', props),
@@ -233,6 +253,12 @@ import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 // @ai-end
 import {setStoredRows as setRows} from '../verse-actions/__fixtures__/storedRows';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {
+  addKeyLayer,
+  pressKeyForTests,
+  resetKeyCommandsForTests,
+  type KeyId,
+} from '@/services/keyboard/keyCommands';
 import {
   buildRewayahVerseUnits,
   type RewayahVerseUnits,
@@ -1306,3 +1332,96 @@ describe("Word Study only: a word of Warsh's unnumbered Fatiha basmala", () => {
   });
 });
 // @ai-end
+
+describe('iPad keys while the sheet is over the reader', () => {
+  const payload = {
+    verseKey: '2:255',
+    surahNumber: 2,
+    ayahNumber: 255,
+    source: 'mushaf' as const,
+  };
+  const KEYS: KeyId[] = ['space', 'shift-space', 'left', 'right'];
+  // The reader's page turns, bound under the sheet as on iPad.
+  let reader: Map<KeyId, jest.Mock>;
+
+  beforeEach(() => {
+    resetKeyCommandsForTests(true);
+    reader = new Map(KEYS.map(key => [key, jest.fn()]));
+    addKeyLayer(
+      KEYS.map(key => ({
+        key,
+        title: 'Page',
+        menu: 'reader' as const,
+        run: reader.get(key) as jest.Mock,
+      })),
+    );
+  });
+
+  afterEach(() => {
+    resetKeyCommandsForTests(false);
+  });
+
+  const pressAll = () =>
+    act(() => {
+      for (const key of KEYS) pressKeyForTests(key);
+    });
+  /** How many times each of the reader's keys ran. */
+  const pageTurns = () => KEYS.map(key => reader.get(key)?.mock.calls.length);
+
+  it('turns no page from the menu or a screen, and gives the keys back when it closes', async () => {
+    await openSheet(payload);
+    pressAll();
+    await press('Translation');
+    pressAll();
+    expect(pageTurns()).toEqual([0, 0, 0, 0]);
+    act(() => renderer?.unmount());
+    renderer = null;
+    pressAll();
+    expect(pageTurns()).toEqual([1, 1, 1, 1]);
+  });
+
+  it('leaves the arrows to Word Study, also when the sheet opens on it', async () => {
+    // Word Study mounts with the sheet: its keys still win.
+    await openSheet({
+      ...payload,
+      initialScreen: 'words',
+      word: {verseKey: '2:255', position: 3},
+    });
+    pressAll();
+    expect(mockWordStudyKeys.left).toHaveBeenCalledTimes(1);
+    expect(mockWordStudyKeys.right).toHaveBeenCalledTimes(1);
+    // Root search, opened from Word Study, has no arrows of its own.
+    const onRootPress = last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+    await act(async () =>
+      onRootPress('ء ل ه', null, {verseKey: '2:255', position: 1}),
+    );
+    pressAll();
+    expect(mockWordStudyKeys.left).toHaveBeenCalledTimes(1);
+    expect(pageTurns()).toEqual([0, 0, 0, 0]);
+  });
+
+  it('turns no page while Word Study waits for the Warsh verses', async () => {
+    mockUnits.models = new Map();
+    mockUnits.status = new Map([['warsh', 'loading']]);
+    mockWords.state = new Map([
+      ['hafs', 'ready'],
+      ['warsh', 'loading'],
+    ]);
+    (
+      digitalKhattDataService.ensureRewayahLoaded as jest.Mock
+    ).mockImplementation(() => new Promise(() => undefined));
+    await openSheet(
+      warshUnitPayload(['1:7'], {
+        initialScreen: 'words',
+        word: {verseKey: '1:7', position: 6},
+      }),
+    );
+    expect(last('words')).toBeUndefined();
+    pressAll();
+    expect(pageTurns()).toEqual([0, 0, 0, 0]);
+  });
+});

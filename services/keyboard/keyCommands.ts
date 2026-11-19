@@ -61,13 +61,26 @@ export interface KeyBinding {
 }
 
 export interface KeyLayer {
-  update(bindings: readonly KeyBinding[]): void;
+  /** Swaps the bindings, and the covered keys when given. */
+  update(bindings: readonly KeyBinding[], covers?: readonly KeyId[]): void;
   remove(): void;
+}
+
+export interface KeyLayerOptions {
+  /** Under every other layer (the app-wide table). */
+  base?: boolean;
+  /**
+   * Keys taken from the layers under this one without binding them: they do
+   * nothing and leave the menus while it is on (a sheet over the reader
+   * covers its page turns). A layer added later can bind them again.
+   */
+  covers?: readonly KeyId[];
 }
 
 interface LayerEntry {
   base: boolean;
   bindings: readonly KeyBinding[];
+  covers: readonly KeyId[];
 }
 
 /** iPad only; phones and Android never send anything to the native side. */
@@ -93,13 +106,17 @@ function menuTitle(menu: KeyMenuId): string {
   }
 }
 
-/** The binding on top for each key: the last layer that binds it. */
+/**
+ * The binding on top for each key: the last layer that binds it, unless a
+ * layer above that one covers the key.
+ */
 function effectiveBindings(
   stack: readonly LayerEntry[],
 ): Map<KeyId, KeyBinding> {
   const ordered = [...stack.filter(l => l.base), ...stack.filter(l => !l.base)];
   const map = new Map<KeyId, KeyBinding>();
   for (const layer of ordered) {
+    for (const key of layer.covers) map.delete(key);
     for (const binding of layer.bindings) map.set(binding.key, binding);
   }
   return map;
@@ -143,17 +160,22 @@ function handleKey(id: string): void {
  */
 export function addKeyLayer(
   bindings: readonly KeyBinding[],
-  options: {base?: boolean} = {},
+  options: KeyLayerOptions = {},
 ): KeyLayer {
-  const entry: LayerEntry = {base: options.base === true, bindings};
+  const entry: LayerEntry = {
+    base: options.base === true,
+    bindings,
+    covers: options.covers ?? [],
+  };
   if (!supported) return {update: () => undefined, remove: () => undefined};
   layers = [...layers, entry];
   if (!unsubscribe)
     unsubscribe = BayaanKeyboard.addKeyCommandListener(handleKey);
   sync();
   return {
-    update(next) {
+    update(next, covers) {
       entry.bindings = next;
+      if (covers) entry.covers = covers;
       if (layers.includes(entry)) sync();
     },
     remove() {

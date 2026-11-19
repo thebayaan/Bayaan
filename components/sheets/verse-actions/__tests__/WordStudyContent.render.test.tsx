@@ -141,6 +141,7 @@ import {
   type ReadyVerseSelection,
 } from '@/components/share/rewayahVerseSelection';
 import {
+  addKeyLayer,
   pressKeyForTests,
   resetKeyCommandsForTests,
 } from '@/services/keyboard/keyCommands';
@@ -650,13 +651,56 @@ describe('arrow keys on iPad', () => {
     expect(cardWord()).toBe('1:4:1');
   });
 
-  it('binds nothing in whole-verse mode', async () => {
+  /** The reader's page turns, bound under the sheet as on iPad. */
+  function readerUnderneath() {
+    const next = jest.fn();
+    const previous = jest.fn();
+    addKeyLayer([
+      {key: 'left', title: 'Next Page', menu: 'reader', run: next},
+      {key: 'right', title: 'Previous Page', menu: 'reader', run: previous},
+    ]);
+    return {next, previous};
+  }
+
+  it('steps no word in whole-verse mode, and keeps the arrows from the reader under it', async () => {
     resetKeyCommandsForTests(true);
+    const reader = readerUnderneath();
     await open(hafs('1:4'));
     await press('Whole verse');
     act(() => pressKeyForTests('left'));
+    act(() => pressKeyForTests('right'));
     expect(texts()).toContain('One word');
     expect(last('grid').selectedWordPosition).toBeNull();
+    expect(reader.next).not.toHaveBeenCalled();
+    expect(reader.previous).not.toHaveBeenCalled();
+  });
+
+  it('keeps the arrows from the reader in the books tab and while the words load', async () => {
+    resetKeyCommandsForTests(true);
+    const reader = readerUnderneath();
+    let load: (words: unknown) => void = () => undefined;
+    (wbwDataService.getVerseWords as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          load = resolve;
+        }),
+    );
+    await open(hafs('1:4'));
+    expect(root().findAll(n => n.type === ActivityIndicator)).toHaveLength(1);
+    act(() => pressKeyForTests('left'));
+    await act(async () => load(mockWbw.get('1:4')));
+    await settle();
+    await press("I'rab books");
+    await settle();
+    act(() => pressKeyForTests('left'));
+    act(() => pressKeyForTests('right'));
+    expect(reader.next).not.toHaveBeenCalled();
+    expect(reader.previous).not.toHaveBeenCalled();
+    // Back on the words, ← steps again.
+    await press('Words');
+    act(() => pressKeyForTests('left'));
+    expect(cardWord()).toBe('1:4:2');
+    expect(reader.next).not.toHaveBeenCalled();
   });
 
   it('binds nothing where shortcuts are not supported', async () => {
