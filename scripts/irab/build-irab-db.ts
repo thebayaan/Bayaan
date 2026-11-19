@@ -26,6 +26,10 @@
  *
  * The app never shows treebank or book Quran spellings as Quran text: word
  * references are `{{s:a:w}}` placeholders the app fills from its own words.
+ *
+ * The treebank's licence and the Quranic Arabic Corpus notice (its
+ * morphology) are copied from licenses/ into the meta table, as both ask
+ * derived files to keep them.
  */
 import fs from 'fs';
 import path from 'path';
@@ -53,6 +57,14 @@ import {
 
 export const TREEBANK_COMMIT = 'e791af79b8e4f853610da455b87442cedec49118';
 export const DB_VERSION = 1;
+
+/** The notices stored in meta, as published (see THIRD_PARTY_LICENSES.md). */
+export const NOTICE_FILES = {
+  // LICENSE of github.com/NoorBayan/Quranic at TREEBANK_COMMIT.
+  treebank_notice: 'licenses/NoorBayan-Quranic-MIT.txt',
+  // The header of the corpus's morphology file, from corpus.quran.com/download.
+  qac_notice: 'licenses/quranic-arabic-corpus-notice.txt',
+} as const;
 
 /** Entry kinds as stored (see services/irab/irabFormat.ts). */
 export const KIND_CODE: Record<IrabEntry['kind'], string> = {
@@ -565,6 +577,12 @@ function main(): void {
   const out = path.resolve(
     arg('out', path.join(root, 'assets/data/irab-v1.db')),
   );
+  const notices = Object.fromEntries(
+    Object.entries(NOTICE_FILES).map(([key, file]) => [
+      key,
+      fs.readFileSync(path.join(root, file), 'utf8'),
+    ]),
+  );
   const wbwFile = path.join(root, 'data/wbw/wbw-en.db');
 
   const wbw = new Database(wbwFile, {readonly: true});
@@ -815,12 +833,17 @@ function main(): void {
   );
   meta.run(
     'treebank_license',
-    'MIT; morphology from the Quranic Arabic Corpus (GNU GPL), https://corpus.quran.com',
+    "MIT (treebank_notice) for NoorBayan's syntax; its morphology is the " +
+      "Quranic Arabic Corpus's, GNU General Public License with the " +
+      "corpus's terms of use (qac_notice), https://corpus.quran.com",
   );
+  for (const [key, notice] of Object.entries(notices)) meta.run(key, notice);
   meta.run('books_source', 'https://quranpedia.net/dumps');
   meta.run(
     'masaq',
-    `https://data.mendeley.com/datasets/9yvrzxktmr/5 (CC BY 4.0) sha256:${MASAQ_SHA256}`,
+    'https://data.mendeley.com/datasets/9yvrzxktmr/5 ' +
+      '(CC BY 4.0, https://creativecommons.org/licenses/by/4.0/) ' +
+      `sha256:${MASAQ_SHA256}`,
   );
   meta.run('relation_fixes', fixed.join(', '));
   meta.run('segmentation_fixes', segFixed.join(', '));
