@@ -42,7 +42,8 @@ const EDGE_MARGIN = 24;
 const ANCHOR_CLEARANCE = 24;
 /** Phone sheets reserve this space for the drag handle and home indicator. */
 const CARD_TOP_PADDING = 12;
-const CARD_BOTTOM_PADDING = 16;
+/** Space under a card's content. Exported for content that scrolls into it. @ai */
+export const CARD_BOTTOM_PADDING = 16;
 /** Menus end on their content's own bottom padding, like a popover. */
 const MENU_BOTTOM_PADDING = 0;
 const DEFAULT_RADIUS = 20;
