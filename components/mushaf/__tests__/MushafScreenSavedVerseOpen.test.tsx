@@ -33,6 +33,12 @@ const mockVersePages: Record<string, Record<string, number>> = {
   hafs: {'2:255': 42},
   warsh: {'2:255': 43},
 };
+// The page of a Hafs slot (a Quran search hit), in a layout where 2:255 runs
+// from page 42 (slots 1-39) onto page 43. It has no slot past 50.
+function mockWordPage(key: string, position: number): number | undefined {
+  if (key !== '2:255' || position > 50) return undefined;
+  return position < 40 ? 42 : 43;
+}
 
 function mockNotify(): void {
   for (const listener of [...mockDk.listeners]) listener();
@@ -91,6 +97,8 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     getSurahStartPages: () => ({1: 1, 2: 2}),
     getRewayahLoadState: () => 'loading',
     getPageForVerse: (key: string) => mockVersePages[mockDk.rewayah]?.[key],
+    getPageForWord: (key: string, position: number) =>
+      mockDk.initialized ? mockWordPage(key, position) : undefined,
     switchRewayah: jest.fn(
       (next: string) =>
         new Promise<void>(resolve => {
@@ -161,7 +169,9 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore';
 import {savedVerseRouteParams} from '@/services/verse-annotations/unitAnnotations';
+import {quranHitOpenParams} from '@/utils/search/quranHitParams';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -373,5 +383,45 @@ describe('/quran link handed straight to the reader', () => {
     open({surah: '2'});
     await dataReady();
     expect(shownPage()).toBe(2);
+  });
+});
+
+// A Quran search hit (the Search tab, Word Study's root search) sends its verse
+// and matched slots with no page: the reader opens the page of the first
+// matched slot once the data is ready, and flashes the slots with the verse.
+describe('a Quran search hit', () => {
+  const flashed = () => useMushafWordFlashStore.getState().flash;
+
+  beforeEach(() => {
+    useMushafWordFlashStore.getState().clear();
+  });
+
+  it('opens the page of its first matched word, and flashes the words', async () => {
+    open(quranHitOpenParams('2:255', [41, 40]));
+    expect(shownPage()).toBeNull(); // the loading view, at once
+    expect(flashed()).toBeNull();
+
+    await dataReady();
+    expect(shownPage()).toBe(43); // not the verse's first page (42)
+    expect(selectedKeys()).toEqual(['2:255']);
+    expect(flashed()).toMatchObject({verseKey: '2:255', positions: [40, 41]});
+  });
+
+  it("falls back to the verse's page when the word's page is not known", async () => {
+    open(quranHitOpenParams('2:255', [60]));
+    await dataReady();
+    expect(shownPage()).toBe(42);
+    expect(flashed()).toMatchObject({verseKey: '2:255', positions: [60]});
+  });
+
+  it('leaving the reader ends the flash', async () => {
+    mockDk.initialized = true;
+    open(quranHitOpenParams('2:255', [3]));
+    await act(async () => undefined);
+    expect(shownPage()).toBe(42);
+    expect(flashed()).not.toBeNull();
+    act(() => renderer?.unmount());
+    renderer = null;
+    expect(flashed()).toBeNull();
   });
 });

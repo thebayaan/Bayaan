@@ -39,7 +39,36 @@ jest.mock('@/components/sheets/options/surahOptions', () => ({
   SurahOptionsProvider: ({children}: {children: React.ReactNode}) => children,
 }));
 jest.mock('react-native-actions-sheet', () => ({SheetManager: {}}));
-jest.mock('expo-router', () => ({useRouter: () => ({push: jest.fn()})}));
+jest.mock('expo-router', () => ({
+  useRouter: () => ({push: jest.fn()}),
+  useNavigationContainerRef: () => ({isReady: () => false}),
+}));
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
+// The Ayahs search stays idle: these cases are about the catalogue.
+jest.mock('expo-sqlite', () => ({}));
+jest.mock('@/hooks/useQuranSearch', () => {
+  const {isQuranQuery, mayBeRootQuery} = jest.requireActual(
+    '@/services/search/QuranSearchDataService',
+  );
+  return {
+    useQuranSearch: () => ({status: 'idle'}),
+    isQuranQuery,
+    mayBeRootQuery,
+    prefetchQuranSearch: jest.fn(),
+  };
+});
+jest.mock('@/components/search/quran/QuranResultRowView', () => ({
+  QuranResultRowView: () => null,
+}));
+jest.mock('@/components/search/quran/RecentVerseRow', () => ({
+  RecentVerseRow: () => null,
+}));
+jest.mock('@/store/mushafSettingsStore', () => ({
+  useMushafSettingsStore: (select: (s: {rewayah: string}) => unknown) =>
+    select({rewayah: 'hafs'}),
+}));
 jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
 jest.mock('@/hooks/useSettings', () => ({
   useSettings: () => ({askEveryTime: true, defaultReciterSelection: null}),

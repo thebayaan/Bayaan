@@ -46,6 +46,8 @@ import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewa
 import type {VerseBookmark} from '@/types/verse-annotations';
 import {
   anchorTarget,
+  hitLabel,
+  hitTarget,
   historyEntryLabel,
   verseHistoryLabel,
   verseQueryTarget,
@@ -53,6 +55,28 @@ import {
   type ShownVerses,
   type VerseTarget,
 } from './mushafSearchVerses';
+// @ai-end
+// @ai-start
+import {
+  isQuranQuery,
+  mayBeRootQuery,
+  prefetchQuranSearch,
+  useQuranSearch,
+  type QuranSearchState,
+} from '@/hooks/useQuranSearch';
+import {
+  QURAN_PAGE_SIZE,
+  quranResultRows,
+  showsOwnRows,
+  type QuranResultRow,
+} from '@/components/search/quran/quranResultRows';
+import {
+  QuranResultRowView,
+  type QuranResultRowViewProps,
+} from '@/components/search/quran/QuranResultRowView';
+import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore';
+import {matchedPositions, type QuranVerseHit} from '@/utils/search/quranSearch';
+import {rootQuery} from '@/utils/search/quranText';
 // @ai-end
 
 // ============================================================================
@@ -130,6 +154,11 @@ interface SearchHistoryItem {
   anchor?: string;
   rewayah?: RewayahId;
   // @ai-end
+  /**
+   * An ayah opened from the Quran search: its Hafs verse and the Digital
+   * Khatt slots it matched, which flash again when the entry is reopened.
+   */
+  flash?: {verseKey: string; positions: number[]};
 }
 
 // ============================================================================
@@ -138,6 +167,28 @@ interface SearchHistoryItem {
 
 const SEARCH_HISTORY_KEY = 'mushaf-search-history';
 const MAX_HISTORY = 10;
+// @ai-start
+/** The Quran text search waits for typing to pause; commands do not. */
+const QURAN_SEARCH_DEBOUNCE_MS = 250;
+
+/** The command results, then the Quran results ("Ayahs") section. */
+type SearchListItem = SearchResultItem | QuranResultRow;
+
+function isQuranRow(item: SearchListItem): item is QuranResultRow {
+  return item.type.startsWith('quran-');
+}
+
+const QURAN_LOADING_ROW: QuranResultRow = {
+  type: 'quran-loading',
+  key: 'quran-loading',
+};
+
+/** The search state of a query typed since the last debounced search. */
+const NOT_SEARCHED_YET: QuranSearchState = {
+  status: 'searching',
+  previous: null,
+};
+// @ai-end
 
 // ============================================================================
 // Smart Search Parser
@@ -640,9 +691,8 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // ──────────────────────────────────────────────────────────
   const addToHistory = useCallback(
     async (item: SearchHistoryItem) => {
-      // @ai-start
-      // Different verses of one surah are different entries: "2:255" used
-      // to replace "2:1" in the history.
+      // The same surah, page, juz or verse: a verse is its Hafs number, or
+      // its anchor and rewayah, so two verses of one surah are two entries.
       const deduped = searchHistory.filter(
         h =>
           !(
@@ -655,7 +705,6 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
             h.rewayah === item.rewayah
           ),
       );
-      // @ai-end
       const updated = [item, ...deduped].slice(0, MAX_HISTORY);
       setSearchHistory(updated);
       await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
@@ -676,14 +725,85 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     [searchQuery, surahStartPages, pageToSurah, shown],
   );
 
+  // The Quran text search (the Hafs text), after typing pauses. Commands
+  // above stay instant; a page, juz or verse number is not a Quran query.
+  // Its index opens when search mode starts, before the first query. What a
+  // Quran query is comes from the search's outcome (the data service parses
+  // it once): a root query lists the root's words only, as in the Search tab.
+  useEffect(() => {
+    if (isSearchMode) prefetchQuranSearch();
+  }, [isSearchMode]);
+  const [quranQuery, setQuranQuery] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setQuranQuery(searchQuery),
+      QURAN_SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  // Idle for a command or a name: the hook asks the service only for Quran
+  // queries.
+  const quranState = useQuranSearch(quranQuery, {enabled: isSearchMode});
+  // The commands show at once, except for a query whose answer may be a
+  // root (ر ح م): they wait for the search of the query as typed, and a
+  // root answer hides them, so they never show only to go.
+  const commandsShown = showsOwnRows(
+    quranQuery === searchQuery ? quranState : NOT_SEARCHED_YET,
+    mayBeRootQuery(searchQuery),
+  );
+  // Rows shown and the lemma chosen, both reset when the query changes.
+  const [quranPaging, setQuranPaging] = useState({
+    query: '',
+    shown: QURAN_PAGE_SIZE,
+    lemma: null as number | null,
+  });
+  const paging =
+    quranPaging.query === quranQuery
+      ? quranPaging
+      : {query: quranQuery, shown: QURAN_PAGE_SIZE, lemma: null};
+  const quranRows = useMemo(
+    () =>
+      quranResultRows(quranState, {
+        shown: paging.shown,
+        selectedLemma: paging.lemma,
+        hafsNote: shown.rewayah !== 'hafs',
+        query: quranQuery,
+        includeEmpty: false,
+      }),
+    [quranState, paging.shown, paging.lemma, shown.rewayah, quranQuery],
+  );
+  // A command shows no Ayahs rows (none left from an earlier query); a
+  // Quran query shows "Searching" until its first results arrive, and a
+  // root query the root's words without the command results.
+  const typedQuranQuery = isQuranQuery(searchQuery);
+  const listData = useMemo<SearchListItem[]>(() => {
+    if (!typedQuranQuery) return searchResults;
+    const waiting = quranQuery !== searchQuery && quranRows.length === 0;
+    const commands = commandsShown ? searchResults : [];
+    return [...commands, ...(waiting ? [QURAN_LOADING_ROW] : quranRows)];
+  }, [
+    typedQuranQuery,
+    searchResults,
+    quranQuery,
+    searchQuery,
+    quranRows,
+    commandsShown,
+  ]);
+  // A new query starts its results at the top, where the best matches are,
+  // not at the offset the last query was scrolled to.
+  const resultsListRef = useRef<FlatList<SearchListItem>>(null);
+  useEffect(() => {
+    resultsListRef.current?.scrollToOffset({offset: 0, animated: false});
+  }, [searchQuery]);
+
   // @ai-start
   // Opens a verse of the rewayah on screen on its page (the page of the
-  // Hafs verse holding its first word); its surah when no page is known.
+  // Hafs verse holding its first word, or `page`); its surah when no page
+  // is known.
   const navigateToTarget = useCallback(
-    (target: VerseTarget, surahId: number) => {
-      const versePage = digitalKhattDataService.getPageForVerse(
-        target.pageVerseKey,
-      );
+    (target: VerseTarget, surahId: number, page?: number) => {
+      const versePage =
+        page ?? digitalKhattDataService.getPageForVerse(target.pageVerseKey);
       if (!versePage) {
         onNavigateToSurah(surahId);
       } else if (target.rewayah === 'hafs') {
@@ -754,16 +874,107 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     [addToHistory, onNavigateToPage, onNavigateToSurah, navigateToTarget], // @ai
   );
 
+  // An ayah of the Quran search: its matched words flash, it is kept in the
+  // history like a typed "N:M", and it opens in the rewayah on screen on the
+  // page of its first matched word (that page while the verses load).
+  const handleVersePress = useCallback(
+    (hit: QuranVerseHit) => {
+      Keyboard.dismiss();
+      const positions = matchedPositions(hit);
+      const first = positions[0] ?? 1;
+      const [surah, ayah] = hit.verseKey.split(':').map(Number);
+      const page = digitalKhattDataService.getPageForWord(hit.verseKey, first);
+      useMushafWordFlashStore.getState().show(hit.verseKey, positions);
+      const target = hitTarget(hit.verseKey, first, shown);
+      if (!target) {
+        if (page) onNavigateToPage(page);
+        else onNavigateToSurah(surah);
+        return;
+      }
+      const label = verseResultTexts(target, surahNameForId(surah)).primary;
+      const historyItem: SearchHistoryItem = {
+        type: 'verse',
+        label,
+        timestamp: Date.now(),
+        surahId: surah,
+      };
+      if (target.rewayah === 'hafs') {
+        historyItem.verse = ayah;
+      } else {
+        historyItem.anchor = target.anchor;
+        historyItem.rewayah = target.rewayah;
+        historyItem.label = verseHistoryLabel(target, label);
+      }
+      historyItem.flash = {verseKey: hit.verseKey, positions};
+      addToHistory(historyItem);
+      navigateToTarget(target, surah, page);
+    },
+    [
+      shown,
+      addToHistory,
+      navigateToTarget,
+      onNavigateToPage,
+      onNavigateToSurah,
+    ],
+  );
+
+  const quranRowAction = useMemo<Omit<QuranResultRowViewProps, 'row'>>(
+    () => ({
+      verseLabel: hit =>
+        hitLabel(
+          hit.verseKey,
+          matchedPositions(hit)[0] ?? 1,
+          shown,
+          surahNameForId(Number(hit.verseKey.split(':')[0])),
+        ),
+      onVersePress: handleVersePress,
+      onRootPress: root =>
+        setSearchQuery(rootQuery(root.root, t('quranSearch.rootKeyword'))),
+      onLemmaPress: lemma =>
+        setQuranPaging({query: quranQuery, shown: QURAN_PAGE_SIZE, lemma}),
+      onShowMore: () =>
+        setQuranPaging({
+          query: quranQuery,
+          shown: paging.shown + QURAN_PAGE_SIZE,
+          lemma: paging.lemma,
+        }),
+      inset: !inCard,
+    }),
+    [
+      shown,
+      handleVersePress,
+      t,
+      quranQuery,
+      paging.shown,
+      paging.lemma,
+      inCard,
+    ],
+  );
+
   const handleHistoryPress = useCallback(
     (item: SearchHistoryItem) => {
       Keyboard.dismiss();
+      // An ayah of the Quran search: its words flash again, and it opens on
+      // the page of the first of them, as when it was found.
+      const flash = item.flash?.positions.length ? item.flash : null;
+      if (flash) {
+        useMushafWordFlashStore
+          .getState()
+          .show(flash.verseKey, flash.positions);
+      }
+      const flashPage = flash
+        ? digitalKhattDataService.getPageForWord(
+            flash.verseKey,
+            Math.min(...flash.positions),
+          )
+        : undefined;
       // @ai-start
       // A verse searched in another rewayah: the verse holding its anchor in
       // the rewayah on screen (the same verse when that is the rewayah it
       // was searched in), or its page while no verse can be named.
       if (item.anchor && item.surahId) {
         const target = anchorTarget(item.anchor, shown);
-        if (target) navigateToTarget(target, item.surahId);
+        if (target) navigateToTarget(target, item.surahId, flashPage);
         else {
           const [surah, ayah] = item.anchor.split(':');
           navigateToHafsPage(`${surah}:${ayah}`, item.surahId);
@@ -773,7 +984,8 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
       // @ai-end
       if (item.surahId && item.verse) {
         const verseKey = `${item.surahId}:${item.verse}`;
-        const versePage = digitalKhattDataService.getPageForVerse(verseKey);
+        const versePage =
+          flashPage ?? digitalKhattDataService.getPageForVerse(verseKey);
         if (versePage) {
           onNavigateToVerse(verseKey, versePage);
           return;
@@ -1024,15 +1236,18 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // Search mode renderers
   // ──────────────────────────────────────────────────────────
   const renderSearchResult = useCallback(
-    ({item}: ListRenderItemInfo<SearchResultItem>) => (
-      <SearchResultRow
-        item={item}
-        textColor={theme.colors.text}
-        secondaryColor={theme.colors.textSecondary}
-        onPress={() => handleResultPress(item)}
-      />
-    ),
-    [theme.colors, handleResultPress],
+    ({item}: ListRenderItemInfo<SearchListItem>) =>
+      isQuranRow(item) ? (
+        <QuranResultRowView row={item} {...quranRowAction} />
+      ) : (
+        <SearchResultRow
+          item={item}
+          textColor={theme.colors.text}
+          secondaryColor={theme.colors.textSecondary}
+          onPress={() => handleResultPress(item)}
+        />
+      ),
+    [theme.colors, handleResultPress, quranRowAction],
   );
 
   const isQueryEmpty = searchQuery.trim().length === 0;
@@ -1213,11 +1428,14 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           </ScrollView>
         ) : (
           // With query: show results
-          <FlatList
-            data={searchResults}
+          <FlatList<SearchListItem>
+            ref={resultsListRef}
+            data={listData}
             renderItem={renderSearchResult}
             keyExtractor={(item, index) =>
-              `${item.type}-${item.primary}-${index}`
+              isQuranRow(item)
+                ? item.key
+                : `${item.type}-${item.primary}-${index}`
             }
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -1243,6 +1461,19 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                   ]}>
                   {t('common:status.noResults')}
                 </Text>
+                {typedQuranQuery && (
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.2)
+                          .toString(),
+                      },
+                    ]}>
+                    {t('quranSearch.noAyahsHint')}
+                  </Text>
+                )}
               </View>
             }
           />

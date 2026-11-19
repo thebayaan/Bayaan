@@ -36,7 +36,13 @@ jest.mock('../verse-actions/TafseerContent', () => ({
 }));
 jest.mock('../verse-actions/ThemeContent', () => ({ThemeContent: () => null}));
 jest.mock('../verse-actions/WBWContent', () => ({WBWContent: () => null}));
-jest.mock('../verse-actions/IrabContent', () => ({IrabContent: () => null}));
+jest.mock('../verse-actions/WordStudyContent', () => ({
+  WordStudyContent: () => null,
+}));
+// Root search (RootResults uses FlashList) is not under test here.
+jest.mock('@/components/search/quran/RootResults', () => ({
+  RootResults: () => null,
+}));
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: () => null,
 }));

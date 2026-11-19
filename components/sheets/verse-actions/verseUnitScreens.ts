@@ -17,13 +17,16 @@
  */
 import {
   formatUnitRangeLabel,
+  hafsKeysOfUnits, // @ai
   type RewayahVerseUnits,
   type VerseUnit,
 } from '@/services/mushaf/RewayahVerseUnits';
 import type {TafseerResult} from '@/services/tafseer/TafseerDbService';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity'; // @ai
 import {
   selectionTranslationParts,
   unitSelection,
+  type ReadyVerseSelection, // @ai
 } from '@/components/share/rewayahVerseSelection';
 
 /** A rewayah verse a screen starts from, with its rewayah's units. */
@@ -159,6 +162,105 @@ export function wbwParts(verseKey: string, unitStart?: UnitStart): WBWPart[] {
     caption: plain ? null : `Hafs ${part.hafsKey}`,
   }));
 }
+
+// @ai-start
+/**
+ * How Word Study captions a part: 'none' (a single verse shown under its own
+ * number), 'verse' ("2:3", a part of a Hafs range) or 'hafsVerse'
+ * ("Hafs 1:7", another rewayah's selection).
+ */
+export type WordPartCaption = 'none' | 'verse' | 'hafsVerse';
+
+/** A Hafs verse whose words Word Study steps through. */
+export interface WordStudyPart {
+  /** The Hafs verse whose words the part shows. */
+  verseKey: string;
+  caption: WordPartCaption;
+  /**
+   * The DigitalKhatt slot positions of the verse the selection holds
+   * (inclusive; the end marker's slot when it is held), as WBWVerseView's
+   * wordRange. Undefined: the whole verse.
+   */
+  wordRange?: {first: number; last: number};
+}
+
+/**
+ * The Hafs verses a selection's words come from, in reading order
+ * (word-by-word, i'rab and word audio are keyed by Hafs verses).
+ *  - Hafs: one part per selected verse, captioned 'verse' when there are
+ *    several.
+ *  - Another rewayah: every Hafs verse holding words of the selected verses
+ *    (consecutive units), cut to the slots the selection holds: a split Hafs
+ *    verse gives only its own words (Warsh 1:6 is Hafs 1:7 slots 1-4). Each
+ *    part is captioned 'hafsVerse' unless the selection is one verse that is
+ *    exactly the Hafs verse of the same number (wbwParts' plain rule).
+ */
+export function selectionWordParts(
+  selection: ReadyVerseSelection,
+): WordStudyPart[] {
+  const {units, model} = selection;
+  if (!units || !model || units.length === 0) {
+    return hafsVerseWordParts(selection.hafsKeys, 'hafs');
+  }
+  const firstId = units[0].firstWordId;
+  const lastId = units[units.length - 1].lastWordId;
+  const plain =
+    units.length === 1 &&
+    wbwParts(units[0].key, {model, unit: units[0]}).every(
+      part => part.caption === null,
+    );
+  const parts: WordStudyPart[] = [];
+  for (const verseKey of hafsKeysOfUnits(units)) {
+    const range = model.hafsVerseWordRange(verseKey);
+    if (!range) continue;
+    const from = Math.max(range.first, firstId);
+    const to = Math.min(range.last, lastId);
+    if (from > to) continue;
+    const part: WordStudyPart = {
+      verseKey,
+      caption: plain ? 'none' : 'hafsVerse',
+    };
+    if (from !== range.first || to !== range.last) {
+      part.wordRange = {
+        first: from - range.first + 1,
+        last: to - range.first + 1,
+      };
+    }
+    parts.push(part);
+  }
+  return parts;
+}
+
+/**
+ * Word Study's parts for whole Hafs verses shown in `rewayah`, captioned as
+ * selectionWordParts captions a selection's parts: Hafs as a Hafs selection
+ * ('verse' when there are several); another rewayah always 'hafsVerse'
+ * ("Hafs 1:1"). This is what the verse actions sheet's Word Study only mode
+ * studies (its payload's `wordStudyOnly`): words that are no verse of the
+ * rewayah, the unnumbered Fatiha basmala of the Madani and Basri counts
+ * (Warsh, Qalun, al-Duri, al-Susi). They have no number of the rewayah's
+ * own, so their Hafs reference is always named as Hafs.
+ */
+export function hafsVerseWordParts(
+  hafsKeys: readonly string[],
+  rewayah: RewayahId,
+): WordStudyPart[] {
+  const caption: WordPartCaption =
+    rewayah !== 'hafs' ? 'hafsVerse' : hafsKeys.length > 1 ? 'verse' : 'none';
+  return hafsKeys.map(verseKey => ({verseKey, caption}));
+}
+
+/** What Word Study studies: Hafs verses' words, in the rewayah shown. */
+export interface WordStudySubject {
+  /**
+   * The rewayah the sheet shows: the grid's, the card's Hafs chip and note,
+   * and the reading Readings marks Current.
+   */
+  rewayah: RewayahId;
+  /** selectionWordParts() of a selection, or hafsVerseWordParts(). */
+  parts: readonly WordStudyPart[];
+}
+// @ai-end
 
 /**
  * A theme's passage (Hafs verses from..to of one surah) in the shown

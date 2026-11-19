@@ -123,6 +123,15 @@ export default function SearchScreen() {
     inputRef.current?.blur();
   };
 
+  // A root suggestion replaces the query ('root:ر ح م'). The native bar may
+  // not report text set from code, so the state is set here too; Android's
+  // field reads `query`.
+  const handleQueryChange = useCallback((text: string) => {
+    setQuery(text);
+    setIsSearchActive(true);
+    if (USE_GLASS) searchBarRef.current?.setText(text);
+  }, []);
+
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
@@ -216,6 +225,7 @@ export default function SearchScreen() {
         isSearchActive={isSearchActive}
         skipTopInset={!USE_GLASS}
         onDismissKeyboard={dismissSearchBarKeyboard}
+        onQueryChange={handleQueryChange}
       />
     </View>
   );

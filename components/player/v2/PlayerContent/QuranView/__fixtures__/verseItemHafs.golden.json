@@ -1421,7 +1421,10 @@
        "borderBottomColor": "#cccccc"
       },
       null,
-      false
+      {
+       "backgroundColor": "rgba(17, 17, 17, 0.06)",
+       "borderRadius": 8.914285714285715
+      }
      ],
      "collapsable": false
     },
@@ -1577,20 +1580,30 @@
   ],
   "sheets": [
    [
-    "word-detail",
+    "verse-actions",
     {
      "payload": {
       "verseKey": "2:1",
-      "position": 3
+      "surahNumber": 2,
+      "ayahNumber": 1,
+      "translation": "TRANSLATION-OF-2:1<sup foot_note=\"9001\">1</sup>",
+      "transliteration": "TRANSLITERATION-OF-2:1",
+      "source": "player",
+      "rewayah": "hafs",
+      "initialScreen": "words",
+      "word": {
+       "verseKey": "2:1",
+       "position": 3
+      }
      }
     }
    ]
   ],
   "pressed": [],
   "selection": {
-   "verseKey": null,
-   "surah": null,
-   "ayah": null
+   "verseKey": "2:1",
+   "surah": 2,
+   "ayah": 1
   }
  },
  "long press opens the verse actions sheet": {

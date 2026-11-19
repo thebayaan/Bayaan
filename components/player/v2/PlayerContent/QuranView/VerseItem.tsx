@@ -30,7 +30,11 @@ import type {RewayahWordsStatus} from '@/hooks/useRewayahWords'; // @ai
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
 // @ai-start
-import {unitVerseActionsPayload, type VerseUnitRow} from './verseUnitRows';
+import {
+  unitVerseActionsPayload,
+  unnumberedWordStudyPayload,
+  type VerseUnitRow,
+} from './verseUnitRows';
 import {
   UnitRowTranslations,
   UnitRowWordByWord,
@@ -128,7 +132,8 @@ interface VerseItemProps {
    * label, text, selection, bookmark / note dots and verse-actions payload
    * follow the rewayah's own verse, and its translation, notes and word by
    * word come per Hafs verse it holds. The basmala row has no number and no
-   * actions. Omitted: a Hafs verse row, exactly as before.
+   * verse actions; a word of its grid opens Word Study alone. Omitted: a
+   * Hafs verse row, exactly as before.
    */
   unitRow?: VerseUnitRow;
   /**
@@ -377,11 +382,14 @@ export const VerseItem = memo<VerseItemProps>(
     // the unit (in its rewayah's numbering) and opens the verse actions with
     // the unit (contract 4.1). The unnumbered Fatiha basmala is no verse
     // there: nothing to select, no actions.
+    // With a word of its grid, the sheet opens on Word Study at that word
+    // (a Hafs verse and word-by-word position); the promise settles when the
+    // sheet closes. Null when there is no verse to act on.
     const openUnitActions = useCallback(
-      (withHaptics: boolean) => {
-        if (!unitRow?.unit) return;
+      (withHaptics: boolean, word?: UnitRowWord) => {
+        if (!unitRow?.unit) return null;
         const payload = unitVerseActionsPayload(unitRow, source ?? 'player');
-        if (!payload) return;
+        if (!payload) return null;
         if (withHaptics) mediumHaptics();
         selectVerse(
           unitRow.unit.key,
@@ -389,9 +397,37 @@ export const VerseItem = memo<VerseItemProps>(
           unitRow.unit.ayah,
           unitRow.rewayah,
         );
-        SheetManager.show('verse-actions', {payload});
+        return SheetManager.show('verse-actions', {
+          payload: word
+            ? {
+                ...payload,
+                initialScreen: 'words' as const,
+                word: {verseKey: word.hafsKey, position: word.position},
+              }
+            : payload,
+        });
       },
       [unitRow, source, selectVerse],
+    );
+    // @ai-end
+
+    // @ai-start
+    // The verse-actions payload of a Hafs verse row: one builder, so the
+    // long-press, options and word payloads stay the same.
+    const hafsVerseActionsPayload = useCallback(
+      () => ({
+        verseKey,
+        surahNumber: verse.surah_number,
+        ayahNumber: verse.ayah_number,
+        // arabicText omitted — the sheet reads from DK so it always
+        // matches the current rewayah instead of the static Hafs
+        // text on this VerseItem prop.
+        translation: verse.translation || '',
+        transliteration: verse.transliteration || '',
+        source: source ?? 'player',
+        rewayah,
+      }),
+      [verseKey, verse, source, rewayah],
     );
     // @ai-end
 
@@ -406,25 +442,13 @@ export const VerseItem = memo<VerseItemProps>(
       mediumHaptics();
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
       SheetManager.show('verse-actions', {
-        payload: {
-          verseKey,
-          surahNumber: verse.surah_number,
-          ayahNumber: verse.ayah_number,
-          // arabicText omitted — the sheet reads from DK so it always
-          // matches the current rewayah instead of the static Hafs
-          // text on this VerseItem prop.
-          translation: verse.translation || '',
-          transliteration: verse.transliteration || '',
-          source: source ?? 'player',
-          rewayah,
-        },
+        payload: hafsVerseActionsPayload(), // @ai
       });
     }, [
       verseKey,
       verse,
       selectVerse,
-      source,
-      rewayah,
+      hafsVerseActionsPayload, // @ai
       unitRow,
       openUnitActions,
     ]); // @ai
@@ -439,52 +463,61 @@ export const VerseItem = memo<VerseItemProps>(
       // @ai-end
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
       SheetManager.show('verse-actions', {
-        payload: {
-          verseKey,
-          surahNumber: verse.surah_number,
-          ayahNumber: verse.ayah_number,
-          // arabicText omitted — the sheet reads from DK so it always
-          // matches the current rewayah instead of the static Hafs
-          // text on this VerseItem prop.
-          translation: verse.translation || '',
-          transliteration: verse.transliteration || '',
-          source: source ?? 'player',
-          rewayah,
-        },
+        payload: hafsVerseActionsPayload(), // @ai
       });
     }, [
       verseKey,
       verse,
       selectVerse,
-      source,
-      rewayah,
+      hafsVerseActionsPayload, // @ai
       unitRow,
       openUnitActions,
     ]); // @ai
 
+    // @ai-start
+    // A word of the word-by-word grid: the verse is selected and its sheet
+    // opens on Word Study at that word; the word stays lifted until the
+    // sheet closes.
     const handleWordPress = useCallback(
       (position: number) => {
         setSelectedWordPosition(position);
-        SheetManager.show('word-detail', {
-          payload: {verseKey, position},
+        selectVerse(verseKey, verse.surah_number, verse.ayah_number);
+        SheetManager.show('verse-actions', {
+          payload: {
+            ...hafsVerseActionsPayload(),
+            initialScreen: 'words',
+            word: {verseKey, position},
+          },
         }).then(() => {
           setSelectedWordPosition(null);
         });
       },
-      [verseKey],
+      [verseKey, verse, selectVerse, hafsVerseActionsPayload],
     );
 
-    // @ai-start
-    // A verse row's word-by-word word: word detail of its HAFS verse (word
-    // by word is Hafs data, keyed by Hafs verse and word position).
-    const handleUnitWordPress = useCallback((word: UnitRowWord) => {
-      setSelectedUnitWord(word);
-      SheetManager.show('word-detail', {
-        payload: {verseKey: word.hafsKey, position: word.position},
-      }).then(() => {
-        setSelectedUnitWord(null);
-      });
-    }, []);
+    // A verse row's word-by-word word: Word Study of the rewayah verse, at
+    // the word of its HAFS verse (word by word is Hafs data, keyed by Hafs
+    // verse and word position). A word of the unnumbered basmala, which is
+    // no verse here: Word Study alone at that word (Hafs 1:1's words, shown
+    // for the row's rewayah as its verses' are), with no verse selected.
+    // The word stays lifted until the sheet closes.
+    const handleUnitWordPress = useCallback(
+      (word: UnitRowWord) => {
+        const basmala =
+          unitRow && !unitRow.unit
+            ? unnumberedWordStudyPayload(unitRow, word, source ?? 'player')
+            : null;
+        const shown = basmala
+          ? SheetManager.show('verse-actions', {payload: basmala})
+          : openUnitActions(false, word);
+        if (!shown) return;
+        setSelectedUnitWord(word);
+        shown.then(() => {
+          setSelectedUnitWord(null);
+        });
+      },
+      [unitRow, source, openUnitActions],
+    );
     // @ai-end
 
     const handlePress = useCallback(() => {
