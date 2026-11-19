@@ -56,6 +56,7 @@ import {
 import {getTranslationName} from '@/utils/translationLookup';
 import {useCurrentTrackRewayah} from '@/hooks/useCurrentTrackRewayah';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useAppForeground} from '@/hooks/useAppForeground'; // @ai
 import branding from '@/config/branding';
 // @ai-start
 import {
@@ -235,7 +236,7 @@ interface QuranViewProps {
 
 // @ai-start
 export const QuranView: React.FC<QuranViewProps> = ({
-  currentSurah,
+  currentSurah: trackSurah,
   onVersePress,
   showTranslation = false,
   showTransliteration = false,
@@ -246,6 +247,17 @@ export const QuranView: React.FC<QuranViewProps> = ({
   contentPaddingBottom,
   parentContentWidth,
 }) => {
+  // @ai-start
+  // The surah shown: the track's, but held while the app is in the
+  // background. On Android the view updates made there wait for the first
+  // frame on return. A second track change in the background disposed the
+  // Skia verse text of the first before its views were made, and the return
+  // then threw "Attempted to access a disposed object". On return the list
+  // shows the current surah once.
+  const foreground = useAppForeground();
+  const [currentSurah, setCurrentSurah] = useState(trackSurah);
+  if (foreground && currentSurah !== trackSurah) setCurrentSurah(trackSurah);
+  // @ai-end
   const {theme} = useTheme();
   const readingColors = useReadingThemeColors();
   const {width: screenWidth} = useWindowDimensions();
