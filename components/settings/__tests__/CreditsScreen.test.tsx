@@ -8,6 +8,7 @@
  * post-processor unless the call opts out.
  */
 import React from 'react';
+import {Linking} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import i18next from 'i18next';
 import {I18nextProvider, initReactI18next} from 'react-i18next';
@@ -72,6 +73,15 @@ async function render(language: 'en' | 'ar') {
   return credits;
 }
 
+async function linkOf(credit: {press: () => void} | undefined) {
+  if (!credit) throw new Error('no such credit');
+  const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  await act(async () => credit.press());
+  const url = open.mock.calls[0]?.[0];
+  open.mockRestore();
+  return url;
+}
+
 describe('Credits, in English', () => {
   it('credits the corpus, not the treebank, for the morphology', async () => {
     const credits = await render('en');
@@ -81,6 +91,18 @@ describe('Credits, in English', () => {
     expect(credits.get('Quranic Arabic Corpus')?.description).toMatch(
       /GNU GPL, with the corpus's terms of use/,
     );
+  });
+
+  it('credits KFGQPC for the riwayah texts and the Uthmani font', async () => {
+    const credits = await render('en');
+    const kfgqpc = credits.get("King Fahd Glorious Qur'an Printing Complex");
+    expect(kfgqpc?.description).toMatch(
+      /Warsh, Qalun, al-Bazzi, Qunbul, al-Duri, al-Susi and Shu'bah/,
+    );
+    expect(await linkOf(kfgqpc)).toBe('https://qurancomplex.gov.sa');
+    const font = credits.get('Uthmani Font');
+    expect(font?.description).toMatch(/King Fahd Glorious Qur'an/);
+    expect(await linkOf(font)).toBe('https://qurancomplex.gov.sa');
   });
 });
 
@@ -106,5 +128,10 @@ describe('Credits, in Arabic', () => {
     expect(credits.get('The Quranic Treebank')?.description).toContain(
       'وتحليله الصرفي من المدونة القرآنية العربية',
     );
+  });
+
+  it('names KFGQPC in Arabic', async () => {
+    const credits = await render('ar');
+    expect(credits.has('مجمع الملك فهد لطباعة المصحف الشريف')).toBe(true);
   });
 });

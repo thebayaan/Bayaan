@@ -45,6 +45,11 @@ function getCredits(
           link: 'https://api-docs.quran.foundation',
         },
         {
+          title: t('credits.items.kfgqpcTitle'),
+          description: t('credits.items.kfgqpc'),
+          link: 'https://qurancomplex.gov.sa',
+        },
+        {
           title: 'The Quranic Treebank',
           description: t('credits.items.quranicTreebank'),
           link: 'https://github.com/NoorBayan/Quranic',
@@ -138,7 +143,7 @@ function getCredits(
         {
           title: t('credits.items.uthmaniTitle'),
           description: t('credits.items.uthmani'),
-          link: 'https://arabicfonts.net',
+          link: 'https://qurancomplex.gov.sa',
         },
         {
           title: t('credits.items.quranComTitle'),
