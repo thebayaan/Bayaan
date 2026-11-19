@@ -103,6 +103,26 @@ export const TAA_MARBUTA_LEMMAS: readonly string[] = [
  */
 export const ALIF_MAQSURA_LEMMAS: readonly string[] = ['أَقْصَا', 'تَتْرَا'];
 
+/**
+ * Everyday spellings no rule derives, by slot, reviewed by hand:
+ * لْـَٔيْكَةِ (26:176, 38:13) is drawn without the alif of its article
+ * (الأيكة, as the text draws it at 15:78 and 50:14), لَتَّخَذْتَ (18:77)
+ * is لاتخذت, and بِمُصَيْطِرٍ (88:22) is spelled with س in modern writing
+ * (بمسيطر). Each entry names the word's letters as drawn, which a build
+ * gate checks, so a change of the text cannot move a spelling onto another
+ * word.
+ */
+export const REVIEWED_SPELLINGS: readonly {
+  location: string;
+  drawn: string;
+  spellings: readonly string[];
+}[] = [
+  {location: '18:77:22', drawn: 'لتخذت', spellings: ['لاتخذت']},
+  {location: '26:176:3', drawn: 'ليكه', spellings: ['الأيكة']},
+  {location: '38:13:5', drawn: 'ليكه', spellings: ['الأيكة']},
+  {location: '88:22:3', drawn: 'بمصيطر', spellings: ['بمسيطر']},
+];
+
 export const QURAN_SEARCH_SCHEMA = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE forms (
@@ -455,6 +475,20 @@ export function buildQuranSearchIndex(
     const current = slots.get(slot);
     if (!current || formScore(form) > formScore(current)) slots.set(slot, form);
   };
+  // An extra everyday spelling of one slot: a full-word spelling.
+  const putSpelling = (slot: number, spelling: string, where: string) =>
+    put(
+      slot,
+      {
+        form: foldQuranQueryWord(spelling),
+        tier: 3,
+        rasmOnly: false,
+        hasHamza: /[ءآأؤإئ]/.test(spelling),
+      },
+      where,
+    );
+  const reviewed = new Map(REVIEWED_SPELLINGS.map(r => [r.location, r]));
+  const reviewedSeen = new Set<string>();
   verses.forEach((verse, verseIndex) => {
     for (const [position, text] of verse.words) {
       const slot = verseIndex * QURAN_SLOT_STRIDE + position;
@@ -467,20 +501,26 @@ export function buildQuranSearchIndex(
       gate(forms.length > 0, `${where}: no spelling`);
       for (const form of forms) put(slot, form, where);
       const imlaei = input.imlaei?.get(where);
-      if (imlaei !== undefined) {
-        put(
-          slot,
-          {
-            form: foldQuranQueryWord(imlaei),
-            tier: 3,
-            rasmOnly: false,
-            hasHamza: /[ءآأؤإئ]/.test(imlaei),
-          },
-          `${where} (imla'i)`,
+      if (imlaei !== undefined) putSpelling(slot, imlaei, `${where} (imla'i)`);
+      const entry = reviewed.get(where);
+      if (entry) {
+        gate(
+          quranWordSpellings(text).rasm === entry.drawn,
+          `${where}: reviewed spelling of «${entry.drawn}» on «${text}»`,
         );
+        for (const spelling of entry.spellings) {
+          putSpelling(slot, spelling, `${where} (reviewed)`);
+        }
+        reviewedSeen.add(where);
       }
     }
   });
+  gate(
+    reviewedSeen.size === reviewed.size,
+    `reviewed spellings without a slot: ${[...reviewed.keys()]
+      .filter(location => !reviewedSeen.has(location))
+      .join(' ')}`,
+  );
   // The letters exactly as drawn of a vocative or a one-lam word are, as
   // often as not, another word: يَٰقَوْمِ is drawn يقوم (يَقُومُ), ٱلَّٰتِى
   // التي and ٱلَّٰٓـِٔى الي (إِلَى). Typed, those mean the other word, so a

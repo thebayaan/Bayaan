@@ -87,6 +87,17 @@ const FINAL_SEATED_HAMZA_AFTER_MADD =
   /([\u{0627}\u{0648}])[\u{0623}\u{0626}](\p{M}*)$/u; // @ai
 const SAAL_IMPERATIVE =
   /^([\u{0641}\u{0648}]\p{M}*)(\u{0633}\u{0652}\u{0640})/u;
+// A sad with a small seen over or under it is read, and written everyday,
+// as a seen (يَبْصُۜطُ → يبسط, بَصْۜطَةً → بسطة, ٱلْمُصَۣيْطِرُونَ).
+const SAD_WITH_SMALL_SEEN = /\u{0635}(\p{M}*[\u{06DC}\u{06E3}])/gu;
+// A silent waw is not written, except in أُو۟لَٰٓئِكَ, أُو۟لُوا۟ and their
+// kin, where it comes before a lam (سَأُو۟رِيكُمْ → سأريكم).
+const SILENT_WAW = /\u{0648}\u{06DF}(?!\p{M}*\u{0644})/gu;
+// A hamza on an alif followed by a silent yeh and the pronoun is a hamza on
+// a yeh in everyday writing (وَمَلَإِي۟هِۦ → وملئه); before other letters
+// the yeh just goes (أَفَإِي۟ن → أفإن).
+const HAMZA_BEFORE_SILENT_YEH =
+  /\u{0625}(\p{M}*)\u{064A}\u{06DF}(?=\p{M}*\u{0647})/u;
 const HAMZA = /[\u{0621}-\u{0626}]|[\u{0654}-\u{0655}]/u;
 const MARK = /\p{M}/u;
 // With the Persian, Urdu and Kurdish letters foldArabicLetters reads as
@@ -139,7 +150,9 @@ function prepare(text: string): string {
  *   line (يَبْدَؤُا۟ → يبدأ, جَزَٰٓؤُا۟ → جزاء);
  * - a final hamza and alif is a hamza and alif maqsura (رَءَا → رأى);
  * - a plural waw after a hamza gets its alif (جَآءُو → جاءوا);
- * - the imperative of سأل after ف or و gets its alif (فَسْـَٔلْ → فاسأل).
+ * - the imperative of سأل after ف or و gets its alif (فَسْـَٔلْ → فاسأل);
+ * - a sad with a small seen is a seen (يَبْصُۜطُ → يبسط);
+ * - a silent waw is dropped, except before a lam (سَأُو۟رِيكُمْ → سأريكم).
  */
 function imlaeiAlternates(base: string): string[] {
   const out: string[] = [];
@@ -157,6 +170,8 @@ function imlaeiAlternates(base: string): string[] {
   push(base.replace(FINAL_HAMZA_WAW, '$1\u{0627}$2'));
   push(base.replace(SAAL_IMPERATIVE, '$1\u{0627}$2'));
   push(base.replace(FINAL_SEATED_HAMZA_AFTER_MADD, '$1\u{0621}$2')); // @ai
+  push(base.replace(SAD_WITH_SMALL_SEEN, '\u{0633}$1'));
+  push(base.replace(SILENT_WAW, ''));
   return out;
 }
 
@@ -345,21 +360,32 @@ interface Spellings {
   mixed: string[];
 }
 
-/** The spellings of a prepared word (see the file comment). */
-function spellingsOf(prepared: string): Spellings {
-  const word = prepared.trim().replace(VOCATIVE, '\u{064A}$1\u{0627}');
-  const imlaeiBase = word
+/** The small letters spelled out, the silent yeh dropped (before folding). */
+function imlaeiBaseOf(word: string): string {
+  return word
     .replace(MEDIAL_MAQSURA_DAGGER, '\u{0627}$1')
     .replace(WAW_ALIF, '\u{0627}')
     .replace(SMALL_HIGH_YEH, '\u{064A}')
     .replace(SMALL_HIGH_NOON, '\u{0646}')
     .replace(SMALL_WAW_YEH, spellOutSmallLetter)
     .replace(SILENT_YEH, '');
+}
+
+/** The spellings of a prepared word (see the file comment). */
+function spellingsOf(prepared: string): Spellings {
+  const word = prepared.trim().replace(VOCATIVE, '\u{064A}$1\u{0627}');
+  const imlaeiBase = imlaeiBaseOf(word);
   const imlaei = fold(imlaeiBase.replace(DAGGER_ALIF, '\u{0627}'));
   // fold() drops the dagger alif and the small letters with the other marks.
   const rasm = fold(word);
   const alternates: string[] = [];
-  for (const base of [imlaeiBase, ...imlaeiAlternates(imlaeiBase)]) {
+  const bases = [imlaeiBase, ...imlaeiAlternates(imlaeiBase)];
+  if (HAMZA_BEFORE_SILENT_YEH.test(word)) {
+    bases.push(
+      imlaeiBaseOf(word.replace(HAMZA_BEFORE_SILENT_YEH, '\u{0626}$1')),
+    );
+  }
+  for (const base of bases) {
     for (const alternate of [base, ...seatedHamzas(base)]) {
       const form = fold(alternate.replace(DAGGER_ALIF, '\u{0627}'));
       if (form && form !== imlaei && !alternates.includes(form)) {
@@ -584,6 +610,8 @@ export interface QuranWordMorph {
   definiteByArticle: boolean;
   /** الأصل المعجمي, the lemma in Uthmani spelling. */
   lemma: string | null;
+  /** الجذر, the root in the corpus's spelling (ر ح م). */
+  root?: string | null;
 }
 
 function formScore(form: QuranWordForm): number {
@@ -651,6 +679,18 @@ export function quranWordForms(
     const innermost = chain[chain.length - 1] ?? prepared;
     const bare = morph.definiteByArticle ? stripArticleOf(innermost) : null;
     if (bare !== null) add(bare, QURAN_TIER.withoutArticle);
+    // Every everyday spelling (not the letters as drawn) ending in `ending`
+    // also ends in `everyday`.
+    const respell = (ending: string, everyday: string) => {
+      for (const form of [...best.values()]) {
+        if (form.form.endsWith(ending) && !form.rasmOnly) {
+          put({
+            ...form,
+            form: form.form.slice(0, -ending.length) + everyday,
+          });
+        }
+      }
+    };
     // A feminine ending drawn as an open taa (رَحْمَتَ, نِعْمَتَ, ٱمْرَأَتُ) is
     // written ة in everyday writing. The lemma (رَحْمَة) says which final ت
     // is one: the word is the lemma with its ة drawn as ت. The letters as
@@ -663,11 +703,7 @@ export function quranWordForms(
       lemmaSpelling.endsWith('ه') &&
       stem.slice(0, -1) === lemmaSpelling.slice(0, -1)
     ) {
-      for (const form of [...best.values()]) {
-        if (form.form.endsWith('ت') && !form.rasmOnly) {
-          put({...form, form: `${form.form.slice(0, -1)}ه`});
-        }
-      }
+      respell('ت', 'ه');
     }
     // An alif maqsura drawn as a final alif (طَغَا, لَدَا, ٱلْأَقْصَا) is
     // written ى in everyday writing. The lemma written with ى (طَغَىٰ,
@@ -684,11 +720,24 @@ export function quranWordForms(
         );
       })
     ) {
-      for (const form of [...best.values()]) {
-        if (form.form.endsWith('ا') && !form.rasmOnly) {
-          put({...form, form: `${form.form.slice(0, -1)}ي`});
-        }
-      }
+      respell('ا', 'ي');
+    }
+    const core = innermost.trim();
+    // A verb whose plural waw is drawn with a sukun and no alif (وَعَتَوْ,
+    // سَعَوْ) is written with the alif; لَوْ and أَوْ are of two letters.
+    if (
+      /\u{064E}\u{0648}\u{0652}\p{M}*$/u.test(core) &&
+      [...core].filter(char => !MARK.test(char)).length >= 3
+    ) {
+      respell('و', 'وا');
+    }
+    // A word of the root ح ي ي drawn with one final yeh (يُحْيِ, لَمُحْيِ)
+    // is written with both (يحيي, لمحيي); وَحْيِ, of و ح ي, keeps one.
+    if (
+      morph.root === 'ح ي ي' &&
+      /\u{0652}\u{064A}\u{0650}\p{M}*$/u.test(core)
+    ) {
+      respell('ي', 'يي');
     }
   }
   return [...best.values()];

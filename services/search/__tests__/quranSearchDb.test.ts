@@ -286,6 +286,17 @@ describe(QURAN_SEARCH_DB_NAME, () => {
     expect(at('التي')).not.toContain('4:23:21');
   });
 
+  it('puts a reviewed spelling only on the word it was reviewed for', () => {
+    // REVIEWED_SPELLINGS gives 18:77:22 (لَتَّخَذْتَ) لاتخذت.
+    expect(rebuilt.forms.get('لاتخذت')?.length).toBe(1);
+    const moved = input.dkWords.map(row =>
+      row.location === '18:77:22' ? {...row, text: 'لَوْ'} : row,
+    );
+    expect(() => buildQuranSearchIndex({...input, dkWords: moved})).toThrow(
+      /18:77:22: reviewed spelling/,
+    );
+  });
+
   it('holds every root once, counted in words', () => {
     const roots = db.prepare('SELECT root, words FROM roots').all() as {
       root: string;

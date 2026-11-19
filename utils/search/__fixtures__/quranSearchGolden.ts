@@ -158,6 +158,26 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'لما طغى الماء', exactly: ['69:11']},
   {query: 'رسلنا تترى', exactly: ['23:44']},
   {query: 'لدى الباب', exactly: ['12:25']},
+  // Other Uthmani spellings: a sad with a small seen, a hamza before a silent
+  // yeh, a plural waw without its alif, a silent waw, the yeh of يحيي left
+  // out, and the reviewed spellings (REVIEWED_SPELLINGS).
+  {query: 'يقبض ويبسط', includes: ['2:245']},
+  {query: 'وزادكم في الخلق بسطة', exactly: ['7:69']},
+  {query: 'المسيطرون', exactly: ['52:37']},
+  {
+    query: 'فرعون وملئه',
+    includes: ['7:103', '10:75', '11:97', '23:46', '28:32', '43:46'],
+  },
+  {query: 'وملئهم', includes: ['10:83']},
+  {query: 'وعتوا عتوا كبيرا', exactly: ['25:21']},
+  {query: 'سعوا في آياتنا', includes: ['22:51', '34:5']},
+  {query: 'سأريكم', exactly: ['7:145', '21:37']},
+  {query: 'يحيي الموتى', includes: ['22:6', '42:9', '46:33', '75:40']},
+  {query: 'لمحيي الموتى', exactly: ['30:50', '41:39']},
+  {query: 'ليسوءوا وجوهكم', exactly: ['17:7']},
+  {query: 'أصحاب الأيكة', exactly: ['15:78', '26:176', '38:13', '50:14']},
+  {query: 'لاتخذت عليه أجرا', exactly: ['18:77']},
+  {query: 'بمسيطر', exactly: ['88:22']},
   // Proclitics and the article
   {query: 'الله', first: '1:1', includes: ['2:7']},
   {query: 'والله', includes: ['2:19']},

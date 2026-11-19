@@ -92,6 +92,20 @@ describe('quranWordSpellings', () => {
     ['3:184:8', 'جَآءُو', ['جاو', 'جاوا', 'جاوو', 'جاووا']],
     ['10:94:8', 'فَسْـَٔلِ', ['فاسال', 'فاسل', 'فسال', 'فسل']],
     ['3:144:10', 'أَفَإِي۟ن (silent yeh)', ['افان', 'افاين']],
+    ['2:245:14', 'وَيَبْصُۜطُ (sad with a small seen)', ['ويبسط', 'ويبصط']],
+    ['7:69:22', 'بَصْۜطَةࣰ', ['بسطه', 'بصطه']],
+    [
+      '52:37:7',
+      'ٱلْمُصَۣيْطِرُونَ (small seen under it)',
+      ['المسيطرون', 'المصيطرون'],
+    ],
+    [
+      '7:103:9',
+      'وَمَلَإِي۟هِۦ (hamza and silent yeh)',
+      ['وملاه', 'وملايه', 'ومليه'],
+    ],
+    ['10:83:12', 'وَمَلَإِي۟هِمْ', ['وملاهم', 'وملايهم', 'ومليهم']],
+    ['7:145:18', 'سَأُو۟رِيكُمْ (silent waw)', ['ساريكم', 'ساوريكم']],
   ])('%s %s', (location, _word, expected) => {
     expect(spellingSet(location)).toEqual(expected);
   });
@@ -326,6 +340,36 @@ describe('quranWordForms (proclitics and the article)', () => {
     expect(
       quranWordForms('أَتَيَا', morph([], false, 'أَتَىٰ')).map(f => f.form),
     ).toEqual(['اتيا']);
+  });
+
+  it('gives a plural waw drawn with a sukun its alif', () => {
+    // وَعَتَوْ, سَعَوْ; not لَوْ (two letters)
+    expect(forms('25:21:17', morph(['wa'], false, 'عَتَ'))).toEqual([
+      'وعتو 3',
+      'عتو 2',
+      'وعتوا 3',
+      'عتوا 2',
+    ]);
+    expect(forms('34:5:2', morph([], false, 'سَعَىٰ'))).toEqual([
+      'سعو 3',
+      'سعوا 3',
+    ]);
+    expect(forms('2:96:11', morph([], false, 'لَو'))).toEqual(['لو 3']);
+  });
+
+  it('spells out the second yeh of ح ي ي that the text leaves out', () => {
+    const ofRoot = (root: string, m: QuranWordMorph) => ({...m, root});
+    // يُحْيِ, لَمُحْيِ
+    expect(
+      forms('2:73:5', ofRoot('ح ي ي', morph([], false, 'أَحْيَا'))),
+    ).toEqual(['يحي 3', 'يحيي 3']);
+    expect(
+      forms('30:50:13', ofRoot('ح ي ي', morph(['li'], false, 'مُحْى'))),
+    ).toEqual(['لمحي 3', 'محي 2', 'لمحيي 3', 'محيي 2']);
+    // بِٱلْوَحْيِ, of و ح ي, has one yeh.
+    expect(
+      forms('21:45:4', ofRoot('و ح ي', morph(['bi'], true, 'وَحْى'))),
+    ).toEqual(['بالوحي 3', 'الوحي 2', 'وحي 1']);
   });
 
   it('flags the hamza of the part each form spells', () => {
