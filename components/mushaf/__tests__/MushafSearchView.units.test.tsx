@@ -659,6 +659,83 @@ describe('Quran text search: the Ayahs section', () => {
     });
   });
 
+  it('keeps each ayah of one surah in the history, and reopens it on its words', async () => {
+    mockPages['2:7'] = 3;
+    mockQuranStates.set('الله', textDone([hit('2:255', 1), hit('2:7', 2, 2)]));
+    const {renderer, calls} = await renderSearch();
+    await searchQuran(renderer, 'الله');
+    for (const key of ['quran-verse-2:255', 'quran-verse-2:7']) {
+      const {props, hit: found} = verseRow(renderer, key);
+      await act(async () => props.onVersePress(found));
+    }
+    expect((await storedHistory()).map(entry => entry.label)).toEqual([
+      'Al-Baqarah 2:7',
+      'Al-Baqarah 2:255',
+    ]);
+
+    await search(renderer, '');
+    const rows = historyRows(renderer);
+    expect(rows.map(row => row.label)).toEqual([
+      'Al-Baqarah 2:7',
+      'Al-Baqarah 2:255',
+    ]);
+    calls.onNavigateToVerse.mockClear();
+    useMushafWordFlashStore.getState().clear();
+    await act(async () => rows[1].press());
+    expect(calls.onNavigateToVerse.mock.calls).toEqual([['2:255', 42]]);
+    expect(useMushafWordFlashStore.getState().flash).toMatchObject({
+      verseKey: '2:255',
+      positions: [1],
+    });
+    await act(async () => historyRows(renderer)[0].press());
+    expect(calls.onNavigateToVerse).toHaveBeenLastCalledWith('2:7', 3);
+    expect(useMushafWordFlashStore.getState().flash).toMatchObject({
+      verseKey: '2:7',
+      positions: [2, 3],
+    });
+  });
+
+  it('Warsh on screen: keeps both Warsh verses of one Hafs verse in the history', async () => {
+    mockShownRewayah = 'warsh';
+    // Hafs 106:4 word 1 is in Warsh 106:4, word 7 in Warsh 106:5.
+    mockQuranStates.set('الذي اطعمهم', textDone([hit('106:4', 1, 2)]));
+    mockQuranStates.set('خوف', textDone([hit('106:4', 7)]));
+    const {renderer, calls} = await renderSearch();
+    for (const query of ['الذي اطعمهم', 'خوف']) {
+      await searchQuran(renderer, query);
+      const {props, hit: found} = verseRow(renderer, 'quran-verse-106:4');
+      await act(async () => props.onVersePress(found));
+    }
+    expect((await storedHistory()).map(entry => entry.label)).toEqual([
+      'Quraysh 106:5 · Warsh',
+      'Quraysh 106:4 · Warsh',
+    ]);
+    // Reopened, each is its own Warsh verse, with its words.
+    await search(renderer, '');
+    calls.onNavigateToVerse.mockClear();
+    await act(async () => historyRows(renderer)[1].press());
+    expect(calls.onNavigateToVerse.mock.calls).toEqual([
+      ['106:4', 602, 'warsh'],
+    ]);
+    expect(useMushafWordFlashStore.getState().flash).toMatchObject({
+      verseKey: '106:4',
+      positions: [1, 2],
+    });
+  });
+
+  it('typed verses of one surah each keep their history entry', async () => {
+    mockPages['2:7'] = 3;
+    const {renderer} = await renderSearch();
+    await search(renderer, '2:255');
+    await act(async () => results(renderer)[0].press());
+    await search(renderer, '2:7');
+    await act(async () => results(renderer)[0].press());
+    expect((await storedHistory()).map(entry => entry.label)).toEqual([
+      'Al-Baqarah 2:7',
+      'Al-Baqarah 2:255',
+    ]);
+  });
+
   it('a root suggestion searches the root', async () => {
     const root: QuranRoot = {id: 7, root: 'ر ح م', words: 339, ayahs: 313};
     mockQuranStates.set('رحم', textDone([hit('19:21', 5)], [root]));
