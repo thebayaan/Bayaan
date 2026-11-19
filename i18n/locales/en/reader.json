@@ -59,6 +59,8 @@
     "rootTitle": "Root {{root}}",
     "wordCount_one": "{{count}} word",
     "wordCount_other": "{{count}} words",
+    "inAyahCount_one": "{{count}} ayah",
+    "inAyahCount_other": "{{count}} ayahs",
     "rootSummary": "{{words}} in {{ayahs}}",
     "allForms": "All forms",
     "otherForms": "Other forms",

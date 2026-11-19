@@ -193,7 +193,8 @@ export const QuranResultRowView: React.FC<QuranResultRowViewProps> = ({
           <Text style={styles.secondary}>
             {t('quranSearch.rootSummary', {
               words: t('quranSearch.wordCount', {count: row.root.words}),
-              ayahs: t('quranSearch.ayahCount', {count: row.root.ayahs}),
+              // After "in": Arabic takes the genitive here (آيتين).
+              ayahs: t('quranSearch.inAyahCount', {count: row.root.ayahs}),
             })}
           </Text>
         </View>
