@@ -54,6 +54,10 @@
     "setupFilesAfterEnv": [
       "<rootDir>/test-utils/setupI18n.ts"
     ],
+    "moduleNameMapper": {
+      "^@tilawa/core-v1$": "<rootDir>/node_modules/@tilawa/core-v1/dist/index.js",
+      "^@tilawa/core-v1/react-native$": "<rootDir>/node_modules/@tilawa/core-v1/dist/react-native.js"
+    },
     "modulePathIgnorePatterns": [
       "<rootDir>/scripts/recitation-bench/.out"
     ],
@@ -83,6 +87,7 @@
     "@shopify/react-native-skia": "2.14.0",
     "@supabase/supabase-js": "^2.91.0",
     "@tilawa/core": "^0.4.0",
+    "@tilawa/core-v1": "npm:@tilawa/core@1.0.0-rc.0",
     "bayaan-widgets": "file:./modules/bayaan-widgets",
     "burnt": "^0.13.0",
     "colorthief": "^2.4.0",
