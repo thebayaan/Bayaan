@@ -94,12 +94,25 @@ describe(QURAN_SEARCH_DB_NAME, () => {
       'postings',
       'roots',
       'lemmas',
+      'morphology_source',
+      'morphology_license',
+      'morphology_notice',
     ]) {
       expect(meta[key]).toBeTruthy();
     }
     expect(meta.format).toBe('1');
     expect(meta.complete).toBe('1');
     expect(meta.imlaei_sha256).toBeUndefined();
+  });
+
+  it('names where its roots and lemmas come from, with the corpus notice', () => {
+    expect(meta.morphology_source).toContain('Quranic Arabic Corpus');
+    expect(meta.morphology_source).toContain('Quranic Treebank');
+    expect(meta.morphology_license).toContain('GNU General Public License');
+    expect(meta.morphology_license).toContain('MIT License');
+    // The corpus asks for its notice in works derived from it.
+    expect(meta.morphology_notice).toContain('TERMS OF USE:');
+    expect(meta.morphology_notice).toContain('http://corpus.quran.com');
   });
 
   it('records the sha256 of what it was built from', () => {

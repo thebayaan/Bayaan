@@ -12,7 +12,8 @@
  * i'rab prose, the books or the text ids leaves the index fresh. Of the
  * Digital Khatt DB it reads each word's location and text, and meta records
  * the sha256 of those rows (dk_words_sha256), not of the file, so a rewrite
- * with the same rows leaves it fresh too.
+ * with the same rows leaves it fresh too. meta also names the source of the
+ * morphology and carries its licence notice (QURAN_MORPHOLOGY_META).
  *
  * buildQuranSearchIndex (gates 1-4):
  *  1. 6,236 verses in mushaf order and 77,432 words outside the markers;
@@ -74,6 +75,51 @@ export const ROOT_COUNT_EXCEPTIONS: Readonly<Record<string, number>> = {
 };
 /** Words pasted per verse by the every-verse check. */
 export const VERSE_CHECK_WORDS = 12;
+
+/**
+ * The meta rows that name where the index's roots, lemmas and proclitic
+ * segmentation come from: the Quranic Arabic Corpus morphology that the
+ * Quranic Treebank carries, read from the i'rab database. Its terms ask
+ * that its copyright notice be reproduced in works derived from it, so
+ * morphology_notice holds that notice, as published at
+ * https://corpus.quran.com/download. See THIRD_PARTY_LICENSES.md.
+ */
+export const QURAN_MORPHOLOGY_META: Readonly<Record<string, string>> = {
+  morphology_source:
+    'Quranic Arabic Corpus, version 0.4 (https://corpus.quran.com): its ' +
+    'morphology as carried by the Quranic Treebank ' +
+    "(https://github.com/NoorBayan/Quranic) and read from the i'rab " +
+    'database: the roots, lemmas and proclitic segmentation.',
+  morphology_license:
+    'Quranic Arabic Corpus: GNU General Public License, with the terms of ' +
+    'use in morphology_notice. Quranic Treebank: MIT License, Copyright (c) ' +
+    '2025 NoorBayan.',
+  morphology_notice: [
+    'Quranic Arabic Corpus (Version 0.4)',
+    'Copyright (C) 2011 Kais Dukes',
+    'License: GNU General Public License',
+    '',
+    'The Quranic Arabic Corpus includes syntactic and morphological',
+    'annotation of the Quran, and builds on the verified Arabic text',
+    'distributed by the Tanzil project.',
+    '',
+    'TERMS OF USE:',
+    '',
+    '- Permission is granted to copy and distribute verbatim copies',
+    '  of this file, but CHANGING IT IS NOT ALLOWED.',
+    '',
+    '- This annotation can be used in any website or application,',
+    '  provided its source (the Quranic Arabic Corpus) is clearly',
+    '  indicated, and a link is made to http://corpus.quran.com to enable',
+    '  users to keep track of changes.',
+    '',
+    '- This copyright notice shall be included in all verbatim copies',
+    '  of the text, and shall be reproduced appropriately in all works',
+    '  derived from or containing substantial portion of this file.',
+    '',
+    'Please check updates at: http://corpus.quran.com/download',
+  ].join('\n'),
+};
 
 /**
  * Lemmas the corpus spells with the open taa of their drawn words, none of
@@ -628,6 +674,7 @@ export function buildQuranSearchIndex(
     roots: String(roots.length),
     lemmas: String(lemmas.length),
     content_sha256: contentSha256(content),
+    ...QURAN_MORPHOLOGY_META,
   };
   if (input.sources.imlaeiSha256) {
     meta.imlaei_sha256 = input.sources.imlaeiSha256;
