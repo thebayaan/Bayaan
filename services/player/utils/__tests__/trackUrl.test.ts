@@ -2,7 +2,8 @@
 /**
  * A queue track's url is fixed when the queue is built. resolveTrackUrl()
  * picks the source again at load time: a file downloaded since then, a
- * stream when the download is gone, and a fresh path for local files.
+ * stream when the download is gone, a fresh path for local files, and a new
+ * ?v= for a remote file replaced in place.
  */
 
 const mockReciters = new Map<string, {id: string}>();
@@ -27,11 +28,17 @@ jest.mock('@/services/player/store/playerStore', () => ({
 }));
 
 import {resolveTrackUrl} from '../trackUrl';
+import {audioFileUrl} from '@/utils/audioFileUrl';
 import type {Track} from '@/types/audio';
 
 const REMOTE = 'https://cdn.example.com/hafs/002.mp3';
 const LOCAL_NOW = 'file:///now/downloads/r1-2-hafs.mp3';
 const LOCAL_OLD = 'file:///old-container/downloads/r1-2-hafs.mp3';
+// A rewayah in AUDIO_FILE_VERSIONS (every surah at v=2), on REMOTE's server.
+const VERSIONED_REWAYAT = {
+  id: '65962996-0864-4ef9-9001-932fdc87c8f8',
+  server: 'https://cdn.example.com/hafs',
+};
 
 function track(overrides: Partial<Track>): Track {
   return {
@@ -79,6 +86,25 @@ describe('resolveTrackUrl()', () => {
   it('never swaps one remote url for another', () => {
     mockSmartUrl.mockReturnValue('https://cdn.example.com/other/002.mp3');
     expect(resolveTrackUrl(track({}))).toBe(REMOTE);
+    // A version does not make another path the same recording.
+    mockSmartUrl.mockReturnValue('https://cdn.example.com/other/002.mp3?v=2');
+    expect(resolveTrackUrl(track({}))).toBe(REMOTE);
+  });
+
+  it('takes the new ?v= of a file replaced since the queue was saved', () => {
+    // The saved url has no ?v=, and the CDN keeps serving the old copy
+    // under it.
+    mockSmartUrl.mockImplementation((_reciter, surah) =>
+      audioFileUrl(VERSIONED_REWAYAT, surah),
+    );
+    expect(resolveTrackUrl(track({url: REMOTE}))).toBe(`${REMOTE}?v=2`);
+  });
+
+  it('takes a later ?v= over the one the queue saved', () => {
+    mockSmartUrl.mockReturnValue(`${REMOTE}?v=3`);
+    expect(resolveTrackUrl(track({url: `${REMOTE}?v=2`}))).toBe(
+      `${REMOTE}?v=3`,
+    );
   });
 
   it('keeps the url of a track whose reciter is not in the catalogue', () => {

@@ -8,6 +8,9 @@ import {setTrackUrlResolver} from '@/services/player/store/playerStore';
 
 const isRemote = (url: string): boolean => /^https?:\/\//i.test(url);
 
+/** A url without its query: the file it names. */
+const withoutQuery = (url: string): string => url.split('?')[0];
+
 /**
  * The url a queue track should be played from right now.
  *
@@ -21,8 +24,10 @@ const isRemote = (url: string): boolean => /^https?:\/\//i.test(url);
  *   container. Downloads and uploads store file names for that reason, so
  *   the path is rebuilt from the name.
  *
- * A remote url is never swapped for another remote url: that would be a
- * different recording.
+ * A remote url is never swapped for one with another path: that would be a
+ * different recording. The same file with a new `?v=` is taken: the file was
+ * replaced in place (see AUDIO_FILE_VERSIONS), and the saved url would still
+ * get the old copy from the CDN cache.
  */
 export function resolveTrackUrl(track: Track): string {
   if (track.isUserUpload) {
@@ -43,6 +48,8 @@ export function resolveTrackUrl(track: Track): string {
     if (!isRemote(best)) return best;
     // No download (any more): a saved local path is dead, so stream.
     if (!isRemote(track.url)) return best;
+    // The same file, versioned since the queue was saved.
+    if (withoutQuery(best) === withoutQuery(track.url)) return best;
   } catch {
     // The reciter no longer has this rewayah: keep what the queue has.
   }
