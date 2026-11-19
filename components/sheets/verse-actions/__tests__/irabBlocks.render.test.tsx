@@ -13,7 +13,8 @@ import TestRenderer from 'react-test-renderer';
 import {StyleSheet, Text} from 'react-native';
 import {useTranslation} from 'react-i18next';
 
-// IrabContent.tsx also holds the I'rab screen: keep its heavy imports out.
+// IrabContent.tsx holds only the i'rab building blocks now (the I'rab screen
+// became Word Study); these mocks keep native and data modules out.
 jest.mock(
   '@/components/player/v2/PlayerContent/QuranView/WBWVerseView',
   () => ({WBWVerseView: () => null}),

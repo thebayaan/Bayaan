@@ -127,7 +127,7 @@ interface PositionedWord {
   totalItemHeight: number;
   /** DK word position — always unique, used as React key */
   dkPosition: number;
-  /** WBW word position — used for tap lookup in WordDetailSheet */
+  /** WBW word position: what onWordPress reports for this word */
   position: number;
   translation: string;
   transliteration: string;
