@@ -45,7 +45,7 @@ This plan covers five features, each with its own design doc:
 - **`WordDetailSheet` is retired (01 T9).**
   - A word long-press in a list or the player opens the verse sheet on Word Study at that word.
   - A long-press in the Word by Word screen does the same (01 T10); Back then returns to Word by Word.
-  - Arrow-key stepping on iPad is in scope (01 T12). The arrows stay bound while Word Study shows, greyed out outside one-word mode, and the sheet covers Space, ⇧Space and the arrows on its other screens: no key turns the page or seeks the recitation behind the sheet.
+  - Arrow-key stepping on iPad is in scope (01 T12). The arrows stay bound while Word Study shows, greyed out outside one-word mode, and the sheet covers Space, ⇧Space and the arrows on its other screens: no key turns the page or seeks the recitation behind the sheet. Over the full player, Space is still the app-wide play / pause.
 - **Readings section:** comes from 02 (`WordReadingsSection`). 01's `WordReadings.tsx` and `mergeSlotReadings` are **dropped**.
 - **Root chip:**
   - It opens a new `root` sub-screen of `VerseActionsSheet` that renders 03's `RootResults`.

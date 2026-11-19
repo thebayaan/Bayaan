@@ -284,6 +284,7 @@ import {
   resetKeyCommandsForTests,
   type KeyId,
 } from '@/services/keyboard/keyCommands';
+import {BayaanKeyboard} from '@/modules/bayaan-keyboard';
 import {
   buildRewayahVerseUnits,
   type RewayahVerseUnits,
@@ -1491,9 +1492,16 @@ describe('iPad keys while the sheet is over the reader', () => {
   const KEYS: KeyId[] = ['space', 'shift-space', 'left', 'right'];
   // The reader's page turns, bound under the sheet as on iPad.
   let reader: Map<KeyId, jest.Mock>;
+  // The app-wide Space (play / pause), which the reader's Space overrides.
+  let playPause: jest.Mock;
 
   beforeEach(() => {
     resetKeyCommandsForTests(true);
+    playPause = jest.fn();
+    addKeyLayer(
+      [{key: 'space', title: 'Play/Pause', menu: 'playback', run: playPause}],
+      {base: true},
+    );
     reader = new Map(KEYS.map(key => [key, jest.fn()]));
     addKeyLayer(
       KEYS.map(key => ({
@@ -1522,10 +1530,14 @@ describe('iPad keys while the sheet is over the reader', () => {
     await press('Translation');
     pressAll();
     expect(pageTurns()).toEqual([0, 0, 0, 0]);
+    // Over the reader, Space is its page turn, never the app-wide play /
+    // pause: the sheet takes it, and nothing plays or pauses.
+    expect(playPause).not.toHaveBeenCalled();
     act(() => renderer?.unmount());
     renderer = null;
     pressAll();
     expect(pageTurns()).toEqual([1, 1, 1, 1]);
+    expect(playPause).not.toHaveBeenCalled();
   });
 
   it('leaves the arrows to Word Study, also when the sheet opens on it', async () => {
@@ -1571,5 +1583,80 @@ describe('iPad keys while the sheet is over the reader', () => {
     expect(last('words')).toBeUndefined();
     pressAll();
     expect(pageTurns()).toEqual([0, 0, 0, 0]);
+  });
+});
+
+describe('iPad keys while the sheet is over the full player', () => {
+  const payload = {
+    verseKey: '2:255',
+    surahNumber: 2,
+    ayahNumber: 255,
+    source: 'player' as const,
+  };
+  // As on iPad with the full player open: the app-wide Space (play /
+  // pause) and the player's seeks; the reader's layer is off.
+  let playPause: jest.Mock;
+  let seeks: Map<KeyId, jest.Mock>;
+  let setCommands: jest.SpyInstance;
+
+  beforeEach(() => {
+    resetKeyCommandsForTests(true);
+    setCommands = jest.spyOn(BayaanKeyboard, 'setCommands');
+    playPause = jest.fn();
+    addKeyLayer(
+      [{key: 'space', title: 'Play/Pause', menu: 'playback', run: playPause}],
+      {base: true},
+    );
+    seeks = new Map<KeyId, jest.Mock>([
+      ['left', jest.fn()],
+      ['right', jest.fn()],
+    ]);
+    addKeyLayer(
+      [...seeks].map(([key, run]) => ({
+        key,
+        title: 'Seek',
+        menu: 'playback' as const,
+        run,
+      })),
+    );
+  });
+
+  afterEach(() => {
+    setCommands.mockRestore();
+    resetKeyCommandsForTests(false);
+  });
+
+  const pressKey = (key: KeyId) => act(() => pressKeyForTests(key));
+  const seekCount = () => [...seeks.values()].map(s => s.mock.calls.length);
+  /** The keys the Playback menu lists now. */
+  const playbackMenu = () => {
+    const commands = (setCommands.mock.calls.at(-1)?.[1] ?? []) as {
+      id: string;
+      menu: string;
+    }[];
+    return commands.filter(c => c.menu === 'playback').map(c => c.id);
+  };
+
+  it('still plays and pauses with Space, from the menu and Word Study, and seeks nothing', async () => {
+    await openSheet(payload);
+    pressKey('space');
+    expect(playPause).toHaveBeenCalledTimes(1);
+    expect(playbackMenu()).toEqual(['space']);
+    pressKey('left');
+    pressKey('right');
+    expect(seekCount()).toEqual([0, 0]);
+
+    // A word's Play in Word Study pauses the recitation: Space resumes it.
+    await press('Word Study');
+    expect(last('words')).toBeDefined();
+    pressKey('space');
+    expect(playPause).toHaveBeenCalledTimes(2);
+
+    act(() => renderer?.unmount());
+    renderer = null;
+    pressKey('space');
+    pressKey('left');
+    expect(playPause).toHaveBeenCalledTimes(3);
+    expect(seekCount()).toEqual([1, 0]);
   });
 });

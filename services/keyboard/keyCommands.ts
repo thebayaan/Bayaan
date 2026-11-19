@@ -70,9 +70,12 @@ export interface KeyLayerOptions {
   /** Under every other layer (the app-wide table). */
   base?: boolean;
   /**
-   * Keys taken from the layers under this one without binding them: they do
+   * Keys taken from the screens under this one without binding them: they do
    * nothing and leave the menus while it is on (a sheet over the reader
-   * covers its page turns). A layer added later can bind them again.
+   * covers its page turns). An app-wide binding is never taken: where no
+   * screen under the layer binds the key, it keeps working (Space plays or
+   * pauses under a sheet over the full player). A layer added later can
+   * bind them again.
    */
   covers?: readonly KeyId[];
 }
@@ -108,15 +111,21 @@ function menuTitle(menu: KeyMenuId): string {
 
 /**
  * The binding on top for each key: the last layer that binds it, unless a
- * layer above that one covers the key.
+ * layer above that one covers the key. A cover takes a key only from a
+ * screen: an app-wide binding no screen overrides stays on top.
  */
 function effectiveBindings(
   stack: readonly LayerEntry[],
 ): Map<KeyId, KeyBinding> {
-  const ordered = [...stack.filter(l => l.base), ...stack.filter(l => !l.base)];
+  const base = stack.filter(l => l.base);
+  const appWide = new Set(base.flatMap(l => l.bindings));
+  const ordered = [...base, ...stack.filter(l => !l.base)];
   const map = new Map<KeyId, KeyBinding>();
   for (const layer of ordered) {
-    for (const key of layer.covers) map.delete(key);
+    for (const key of layer.covers) {
+      const top = map.get(key);
+      if (top && !appWide.has(top)) map.delete(key);
+    }
     for (const binding of layer.bindings) map.set(binding.key, binding);
   }
   return map;
