@@ -777,9 +777,14 @@ export interface QuranQueryToken {
   /**
    * The first word after a verse number pasted with its verse (۝٢, ﴿٢﴾,
    * (2)): the start of the next ayah. Ayahs pasted together that make no
-   * phrase are searched by the first of them.
+   * phrase are searched one by one, and the one with the fewest hits wins.
    */
   ayahStart?: true;
+  /**
+   * The last word before a verse number pasted with its verse: a whole
+   * word, never the start of a longer one (الم (1) is not الملك).
+   */
+  ayahEnd?: true;
 }
 
 /**
@@ -942,10 +947,14 @@ function joinsNextWord(word: string): boolean {
  * ب, ك) to the next word, as the text writes them as one, from the right,
  * so و ب الله is وبالله. ل drops the alif of an article after it (ل الناس
  * → للناس, ل الله → لله). Never to a single letter (ب س م, ك ه ي ع ص), nor
- * across the end of an ayah: `starts` (kept in step) marks the words that
- * begin one.
+ * across the end of an ayah: `starts` and `ends` (kept in step) mark the
+ * words that begin and end one.
  */
-function joinProcliticLetters(words: string[], starts: boolean[]): void {
+function joinProcliticLetters(
+  words: string[],
+  starts: boolean[],
+  ends: boolean[],
+): void {
   for (let i = words.length - 2; i >= 0; i--) {
     const letter = foldArabicLetters(rawLetters(words[i]));
     const next = rawLetters(words[i + 1]);
@@ -959,6 +968,7 @@ function joinProcliticLetters(words: string[], starts: boolean[]): void {
         : words[i] + words[i + 1],
     );
     starts.splice(i, 2, starts[i]);
+    ends.splice(i, 2, ends[i + 1]);
   }
 }
 
@@ -1017,21 +1027,28 @@ export function parseQuranQuery(
 
   if (/[0-9]/.test(text.replace(VERSE_NUMBER, ' '))) return {kind: 'none'};
   // A verse number pasted with its verse ends an ayah: starts[i] says that
-  // words[i] begins the next one.
+  // words[i] begins the next one, ends[i] that a verse number follows it.
   const words: string[] = [];
   const starts: boolean[] = [];
-  for (const ayah of text.split(VERSE_NUMBER)) {
+  const ends: boolean[] = [];
+  const ayahs = text.split(VERSE_NUMBER);
+  ayahs.forEach((ayah, a) => {
+    const before = words.length;
     prepare(ayah)
       .replace(/[^\p{L}\p{M}]+/gu, ' ')
       .split(' ')
       .filter(word => ARABIC_LETTER.test(word))
       .forEach((word, k) => {
         starts.push(k === 0 && words.length > 0);
+        ends.push(false);
         words.push(word);
       });
-  }
+    if (a < ayahs.length - 1 && words.length > before) {
+      ends[words.length - 1] = true;
+    }
+  });
   if (!words.length) return {kind: 'none'};
-  joinProcliticLetters(words, starts);
+  joinProcliticLetters(words, starts, ends);
 
   // Single letters typed apart (or one letter): a surah opening (ا ل م, ح م,
   // ك ه ي ع ص, ن), text matched as a whole word; else a root when 3-4 of
@@ -1059,6 +1076,11 @@ export function parseQuranQuery(
       : [words.slice(0, count).join('')];
     words.splice(0, count, ...spelled);
     starts.splice(0, count, ...(k ? [starts[0], starts[k]] : [starts[0]]));
+    ends.splice(
+      0,
+      count,
+      ...(k ? [ends[k - 1], ends[count - 1]] : [ends[count - 1]]),
+    );
     openings = spelled.length;
   };
   if (words.length <= 5 && words.every(word => rawLetters(word).length === 1)) {
@@ -1076,6 +1098,7 @@ export function parseQuranQuery(
     } else {
       words.splice(0, words.length, words.join(''));
       starts.splice(0, starts.length, starts[0]);
+      ends.splice(0, ends.length, ends[ends.length - 1]);
     }
   } else {
     // Letters typed apart before other words (ا ل ر تلك آيات الكتاب, ح م
@@ -1092,14 +1115,18 @@ export function parseQuranQuery(
     }
   }
 
-  const merged: {parts: string[]; ayahStart: boolean}[] = [];
+  const merged: {parts: string[]; ayahStart: boolean; ayahEnd: boolean}[] = [];
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
     if (i + 1 < words.length && joinsNextWord(word) && !starts[i + 1]) {
-      merged.push({parts: [word, words[i + 1]], ayahStart: starts[i]});
+      merged.push({
+        parts: [word, words[i + 1]],
+        ayahStart: starts[i],
+        ayahEnd: ends[i + 1],
+      });
       i++;
     } else {
-      merged.push({parts: [word], ayahStart: starts[i]});
+      merged.push({parts: [word], ayahStart: starts[i], ayahEnd: ends[i]});
     }
   }
 
@@ -1108,7 +1135,7 @@ export function parseQuranQuery(
   const tokens: QuranQueryToken[] = [];
   const tokenWords: string[] = [];
   let letters = 0;
-  for (const [i, {parts, ayahStart}] of merged.entries()) {
+  for (const [i, {parts, ayahStart, ayahEnd}] of merged.entries()) {
     if (tokens.length === QURAN_QUERY_MAX_TOKENS) break;
     const {keys, caseKeys} = tokenKeys(parts);
     if (!keys.length) continue;
@@ -1122,6 +1149,7 @@ export function parseQuranQuery(
     if (caseKeys.length) token.caseKeys = caseKeys;
     if (i < openings) token.opening = true;
     if (ayahStart && tokens.length) token.ayahStart = true;
+    if (ayahEnd) token.ayahEnd = true;
     tokens.push(token);
     tokenWords.push(word);
   }

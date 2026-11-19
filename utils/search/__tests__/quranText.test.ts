@@ -613,6 +613,32 @@ describe('parseQuranQuery', () => {
     expect(
       tokens('الحمد لله رب العالمين (2) الرحمن الرحيم (3)')[4],
     ).toMatchObject({keys: ['الرحمن'], ayahStart: true});
+    // The word before a number ends its ayah: a whole word, no prefix.
+    expect(
+      tokens('الحمد لله رب العالمين (2) الرحمن الرحيم (3)').map(
+        t => t.ayahEnd ?? false,
+      ),
+    ).toEqual([false, false, false, true, false, true]);
+    expect(
+      tokens('الحمد لله رب العالمين (2) الرحمن').map(t => t.ayahEnd ?? false),
+    ).toEqual([false, false, false, true, false]);
+    expect(tokens('الم (1)')).toEqual([
+      {keys: ['الم'], needsHamza: false, ayahEnd: true},
+    ]);
+    // Through the joins: و الله (2), ي س (1) and يا أيها (1) end there too.
+    expect(tokens('و الله (2) ربنا')[0]).toMatchObject({
+      keys: ['والله'],
+      ayahEnd: true,
+    });
+    expect(tokens('ي س (1) والقرآن')[0]).toMatchObject({
+      keys: ['يس'],
+      opening: true,
+      ayahEnd: true,
+    });
+    expect(tokens('يا أيها (1)')[0]).toMatchObject({
+      keys: ['ياايها'],
+      ayahEnd: true,
+    });
     // Other digits keep the query out (commands), as do numbers alone.
     expect(parseQuranQuery('سورة 2')).toEqual({kind: 'none'});
     expect(parseQuranQuery('(2)')).toEqual({kind: 'none'});

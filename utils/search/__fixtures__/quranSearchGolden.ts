@@ -236,7 +236,26 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
     exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
   },
   {query: 'رب العالمين', includes: ['1:2']},
-  // Pasted with a verse number, or two ayahs with theirs: the first ayah.
+  // Pasted with a verse number, or ayahs with theirs: the pasted ayah with
+  // the fewest hits (1:2 and 1:3 have 6 each: the first), its last word a
+  // whole word (الم (1) is not الملك, 67:1).
+  {
+    query: 'الم (1)',
+    first: '2:1',
+    includes: ['3:1', '2:106'],
+    excludes: ['67:1'],
+  },
+  {
+    query:
+      'الم (1) ذلك الكتاب لا ريب فيه هدى للمتقين (2) الذين يؤمنون بالغيب ويقيمون الصلاة ومما رزقناهم ينفقون (3)',
+    kind: 'phrase',
+    exactly: ['2:2'],
+  },
+  {
+    query: 'الرحمن (1) علم القرآن (2) خلق الإنسان (3) علمه البيان (4)',
+    kind: 'phrase',
+    exactly: ['55:2'],
+  },
   {
     query: 'الحمد لله رب العالمين (2)',
     exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],

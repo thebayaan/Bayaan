@@ -7,10 +7,11 @@
  * 1. Look up every key of every token at once; the last token also matches
  *    as a prefix when it has 3 or more letters (feedback while typing, and
  *    pronoun suffixes: كتاب finds كتابه), unless it is a surah opening
- *    (typed as letters, ا ل م, or pasted, الٓمٓ), which matches whole
- *    words only. A token's keys with a hamza seat left out (امرأة → امره)
- *    count only when the token is no word of the text as typed or in
- *    another case (caseKeys: أهوائهم, أهواءهم).
+ *    (typed as letters, ا ل م, or pasted, الٓمٓ) or a word pasted before
+ *    its verse number (الم (1)), which match whole words only. A token's
+ *    keys with a hamza seat left out (امرأة → امره) count only when the
+ *    token is no word of the text as typed or in another case (caseKeys:
+ *    أهوائهم, أهواءهم).
  * 2. Score each word slot per token: exact 100 or prefix 60, plus 10 per
  *    tier (3 full spelling, 2 without proclitics, 1 without the article),
  *    minus 5 for a rasm-only spelling. A token typed with a hamza skips
@@ -22,8 +23,9 @@
  *    tokens make no phrase, every key with a seat left out counts too, as
  *    the words around it say which word it is (فلما رئى الشمس, رَءَا).
  * 4. Without any phrase, ayahs pasted together with their numbers (... ۝٢
- *    ... ۝٣) are searched by the first of them, as no other ayah boundary
- *    is known. Otherwise a query of 2 or more words falls back to the ayahs
+ *    ... ۝٣) are searched one by one, as no other ayah boundary is known,
+ *    and the one with the fewest hits wins (not الم (1), which lists every
+ *    ألم). Otherwise a query of 2 or more words falls back to the ayahs
  *    that hold every word somewhere ('allWords'), closest together first.
  * 5. Hits are ranked by score, then in mushaf order.
  */
@@ -473,6 +475,29 @@ function keysOf(token: QuranQueryToken): string[] {
   return [...token.keys, ...(token.caseKeys ?? [])];
 }
 
+/** The ayahs pasted with their numbers: the tokens from each ayahStart. */
+function pastedAyahs(tokens: readonly QuranQueryToken[]): QuranQueryToken[][] {
+  const ayahs: QuranQueryToken[][] = [];
+  tokens.forEach((token, k) => {
+    if (k === 0 || token.ayahStart) ayahs.push([]);
+    ayahs[ayahs.length - 1].push(token);
+  });
+  return ayahs;
+}
+
+/**
+ * The most specific of the results of pasted ayahs: one with hits, a phrase
+ * before all words, then the fewest ayahs, then the first.
+ */
+function mostSpecific(results: readonly QuranTextResult[]): QuranTextResult {
+  const better = (a: QuranTextResult, b: QuranTextResult) => {
+    if (a.ayahCount > 0 !== b.ayahCount > 0) return a.ayahCount > 0;
+    if (a.kind !== b.kind) return a.kind === 'phrase';
+    return a.ayahCount < b.ayahCount;
+  };
+  return results.reduce((best, r) => (better(r, best) ? r : best));
+}
+
 /** Searches the Quran text for the tokens of a parsed query. */
 export async function searchQuranText(
   queryTokens: readonly QuranQueryToken[],
@@ -482,10 +507,12 @@ export async function searchQuranText(
   if (!tokens.length) return result('phrase', []);
   const allKeys = [...new Set(tokens.flatMap(keysOf))];
   const last = tokens[tokens.length - 1];
-  // An opening (typed as letters, or pasted) is a whole word: no prefixes.
-  const prefixKeys = last.opening
-    ? []
-    : keysOf(last).filter(key => key.length >= QURAN_PREFIX_MIN_LETTERS);
+  // An opening (typed as letters, or pasted), or a word pasted before its
+  // verse number, is a whole word: no prefixes.
+  const prefixKeys =
+    last.opening || last.ayahEnd
+      ? []
+      : keysOf(last).filter(key => key.length >= QURAN_PREFIX_MIN_LETTERS);
   const [exact, ...prefixes] = await Promise.all([
     source.exact(allKeys),
     ...prefixKeys.map(key => source.prefix(key, QURAN_PREFIX_FORM_LIMIT)),
@@ -537,9 +564,14 @@ export async function searchQuranText(
     return result('phrase', phrase.hits.sort(byScoreThenMushaf));
   }
   // Ayahs pasted with their numbers make one phrase only across an ayah of
-  // one word (run-on, above); otherwise search the first of them.
-  const nextAyah = tokens.findIndex((token, k) => k > 0 && token.ayahStart);
-  if (nextAyah > 0) return searchQuranText(tokens.slice(0, nextAyah), source);
+  // one word (run-on, above); otherwise each is searched on its own, and the
+  // most specific wins (a pasted الم (1) alone lists every ألم).
+  const ayahs = pastedAyahs(tokens);
+  if (ayahs.length > 1) {
+    return mostSpecific(
+      await Promise.all(ayahs.map(ayah => searchQuranText(ayah, source))),
+    );
+  }
   const allWords = joinAllWords(phrase.slotMaps());
   allWords.sort(
     (a, b) =>
