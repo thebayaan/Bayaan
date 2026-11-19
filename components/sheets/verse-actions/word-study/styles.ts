@@ -77,6 +77,16 @@ function createStyles(theme: Theme, isTablet: boolean) {
       textAlign: RIGHT,
       writingDirection: 'rtl',
     },
+    moreButton: {
+      alignSelf: 'flex-start',
+      justifyContent: 'center',
+      minHeight: 28,
+      paddingHorizontal: moderateScale(8),
+      borderRadius: moderateScale(8),
+    },
+    moreButtonActive: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
     more: {
       fontFamily: 'Manrope-SemiBold',
       fontSize: moderateScale(footnote),

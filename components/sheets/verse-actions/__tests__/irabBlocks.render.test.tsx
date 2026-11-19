@@ -10,7 +10,7 @@
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
-import {Text} from 'react-native';
+import {StyleSheet, Text} from 'react-native';
 import {useTranslation} from 'react-i18next';
 
 // IrabContent.tsx also holds the I'rab screen: keep its heavy imports out.
@@ -290,6 +290,49 @@ describe('IrabBooksTab', () => {
     // No books: no caption.
     expect(text).not.toContain('Hafs 103:2');
     expect(text).toEqual(expect.arrayContaining(['كتاب', 'مؤلف', 'نص']));
+    act(() => renderer.unmount());
+  });
+
+  it('cuts a long passage, with a Read more button that says whether it is open', () => {
+    const long = `${'نص '.repeat(300)}نهاية`;
+    const {renderer} = render(
+      context => (
+        <IrabBooksTab
+          parts={[
+            {
+              verseKey: '2:255',
+              caption: null,
+              books: [
+                {...BOOK, passages: [{text: long, part: '1', page: '20'}]},
+              ],
+            },
+          ]}
+          styles={context.styles}
+          t={context.t}
+        />
+      ),
+      () => true,
+    );
+    const button = () =>
+      renderer.root.findByProps({accessibilityRole: 'button'});
+    expect(strings(renderer).join('')).not.toContain('نهاية');
+    expect(button().props.accessibilityState).toEqual({expanded: false});
+    // A 44pt target, and a hover state.
+    const {hitSlop, style} = button().props;
+    const minHeight = StyleSheet.flatten(
+      typeof style === 'function' ? style({pressed: false}) : style,
+    ).minHeight as number;
+    expect(minHeight + hitSlop.top + hitSlop.bottom).toBeGreaterThanOrEqual(44);
+    expect(typeof button().props.onPointerEnter).toBe('function');
+    // Chrome: the text colour, not the accent.
+    const label = renderer.root.find(
+      n => (n.type as unknown) === Text && n.props.children === 'Read more',
+    );
+    expect(StyleSheet.flatten(label.props.style).color).toBe('#111111');
+    act(() => button().props.onPress());
+    expect(strings(renderer).join('')).toContain('نهاية');
+    expect(strings(renderer)).toContain('Show less');
+    expect(button().props.accessibilityState).toEqual({expanded: true});
     act(() => renderer.unmount());
   });
 

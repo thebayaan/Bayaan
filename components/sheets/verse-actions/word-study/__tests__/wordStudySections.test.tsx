@@ -124,10 +124,21 @@ describe('GharibSection', () => {
     );
     expect(allText(tree.toJSON())).not.toContain('نهاية');
     expect(allText(tree.toJSON())).toContain('Show more');
-    const button = tree.root.findByProps({accessibilityRole: 'button'});
-    act(() => button.props.onPress());
+    const button = () => tree.root.findByProps({accessibilityRole: 'button'});
+    // A button that says whether it is open, with a 44pt target.
+    expect(button().props.accessibilityState).toEqual({expanded: false});
+    const {hitSlop} = button().props;
+    const minHeight = StyleSheet.flatten(
+      typeof button().props.style === 'function'
+        ? button().props.style({pressed: false})
+        : button().props.style,
+    ).minHeight as number;
+    expect(minHeight + hitSlop.top + hitSlop.bottom).toBeGreaterThanOrEqual(44);
+    expect(typeof button().props.onPointerEnter).toBe('function');
+    act(() => button().props.onPress());
     expect(allText(tree.toJSON())).toContain('نهاية');
     expect(allText(tree.toJSON())).toContain('Show less');
+    expect(button().props.accessibilityState).toEqual({expanded: true});
   });
 });
 

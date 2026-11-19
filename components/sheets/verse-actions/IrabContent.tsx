@@ -18,6 +18,7 @@ import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTranslation} from 'react-i18next';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
+import {useHover} from '@/hooks/useHover';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {
@@ -265,8 +266,8 @@ export const IrabBooksTab: React.FC<{
                         : passage.text}
                     </Text>
                     {long && (
-                      <Pressable
-                        hitSlop={8}
+                      <ReadMoreButton
+                        open={open}
                         onPress={() =>
                           setExpanded(prev => {
                             const next = new Set(prev);
@@ -274,13 +275,10 @@ export const IrabBooksTab: React.FC<{
                             else next.add(key);
                             return next;
                           })
-                        }>
-                        <Text style={styles.readMore}>
-                          {t(open ? 'irab.readLess' : 'irab.readMore', {
-                            ns: 'sheets', // @ai
-                          })}
-                        </Text>
-                      </Pressable>
+                        }
+                        styles={styles}
+                        t={t}
+                      />
                     )}
                   </View>
                 );
@@ -293,6 +291,35 @@ export const IrabBooksTab: React.FC<{
         {t('irab.booksSources', {ns: 'sheets'}) /* @ai */}
       </Text>
     </View>
+  );
+};
+
+/**
+ * Read more / Show less under a long passage: a button that says whether
+ * the passage is open, with a 44pt target (28pt plus its hit slop).
+ */
+const ReadMoreButton: React.FC<{
+  open: boolean;
+  onPress: () => void;
+  styles: IrabStyles;
+  t: IrabT;
+}> = ({open, onPress, styles, t}) => {
+  const {hovered, hoverProps} = useHover();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{expanded: open}}
+      hitSlop={{top: 8, bottom: 8}}
+      onPress={onPress}
+      {...hoverProps}
+      style={({pressed}) => [
+        styles.readMore,
+        (pressed || hovered) && styles.readMoreActive,
+      ]}>
+      <Text style={styles.readMoreText}>
+        {t(open ? 'irab.readLess' : 'irab.readMore', {ns: 'sheets'})}
+      </Text>
+    </Pressable>
   );
 };
 
@@ -484,10 +511,21 @@ export const createIrabStyles = (theme: Theme) => {
       writingDirection: 'rtl',
     },
     readMore: {
-      fontFamily: 'Manrope-SemiBold',
-      fontSize: moderateScale(12),
-      color: theme.colors.primary,
+      alignSelf: 'flex-start',
+      justifyContent: 'center',
+      minHeight: 28,
+      paddingHorizontal: moderateScale(8),
       marginTop: verticalScale(4),
+      borderRadius: moderateScale(8),
+    },
+    readMoreActive: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    // Chrome: the text colour, never the accent.
+    readMoreText: {
+      fontFamily: 'Manrope-SemiBold',
+      fontSize: moderateScale(13),
+      color: theme.colors.text,
     },
   });
 };
