@@ -303,8 +303,13 @@ class LockScreenService {
    * entry: moves by verse there and returns true. They used to skip in the
    * surah queue underneath, which started another recitation over the one
    * the car was showing. False when the Mushaf does not hold the entry.
+   * iOS only: CarPlay's Now Playing shows this entry, but Android Auto shows
+   * the car bridge's now playing, the surah queue. There next / previous
+   * stay with that queue, as moving verse audio it does not show (often
+   * paused) left its screen as it was.
    */
   skipMushafVerseIfHeld(forward: boolean): boolean {
+    if (Platform.OS !== 'ios') return false;
     if (this.lastMushafPlayer === null) return false;
     const mushaf = useMushafPlayerStore.getState();
     if (forward) mushaf.nextVerse();

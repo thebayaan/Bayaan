@@ -72,6 +72,7 @@ jest.mock('@/utils/reciterImageLookup', () => ({
     name === 'Bundled Reciter' ? 42 : undefined,
 }));
 
+import {Platform} from 'react-native';
 import {lockScreenService} from '../LockScreenService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -321,7 +322,13 @@ describe('main player artwork', () => {
 
 // @ai-start
 describe('next / previous from the car while verse audio holds the entry', () => {
-  it('move by verse in the Mushaf, and say so', () => {
+  const originalOS = Platform.OS;
+  afterEach(() => {
+    Platform.OS = originalOS;
+  });
+
+  it('on iOS, move by verse in the Mushaf, and say so', () => {
+    Platform.OS = 'ios';
     const nextVerse = jest.fn();
     const previousVerse = jest.fn();
     setMushaf({
@@ -346,5 +353,42 @@ describe('next / previous from the car while verse audio holds the entry', () =>
     expect(lockScreenService.skipMushafVerseIfHeld(true)).toBe(false);
     expect(nextVerse).not.toHaveBeenCalled();
   });
+
+  it('on iOS, move by verse while it is paused too', () => {
+    // CarPlay's Now Playing shows the paused verse audio.
+    Platform.OS = 'ios';
+    const nextVerse = jest.fn();
+    setMushaf({playbackState: 'playing', currentSurah: 2, nextVerse});
+    setMushaf({playbackState: 'paused'});
+
+    expect(lockScreenService.skipMushafVerseIfHeld(true)).toBe(true);
+    expect(nextVerse).toHaveBeenCalledTimes(1);
+  });
+
+  // Android Auto shows the car bridge's now playing, the surah queue, and
+  // never this entry. Moving the hidden verse audio left its screen as it
+  // was, so next / previous there seemed to do nothing.
+  it.each(['playing', 'paused'])(
+    'on Android, are left to the surah queue Android Auto shows (verse audio %s)',
+    playbackState => {
+      Platform.OS = 'android';
+      const nextVerse = jest.fn();
+      const previousVerse = jest.fn();
+      setMushaf({
+        playbackState: 'playing',
+        currentSurah: 2,
+        nextVerse,
+        previousVerse,
+      });
+      setMushaf({playbackState});
+      // The verse audio does hold the phone's entry.
+      expect(mockMushafPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+
+      expect(lockScreenService.skipMushafVerseIfHeld(true)).toBe(false);
+      expect(lockScreenService.skipMushafVerseIfHeld(false)).toBe(false);
+      expect(nextVerse).not.toHaveBeenCalled();
+      expect(previousVerse).not.toHaveBeenCalled();
+    },
+  );
 });
 // @ai-end
