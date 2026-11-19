@@ -14,6 +14,8 @@ class AudioCoordinator {
   private activeSource: AudioSource = 'none';
   private listeners = new Set<() => void>();
 
+  // Private and empty: getInstance() makes the one instance.
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   private constructor() {}
 
   static getInstance(): AudioCoordinator {
@@ -106,6 +108,31 @@ class AudioCoordinator {
       useMushafPlayerStore.getState().setPlaybackState('paused');
     }
     this.setActiveSource('adhkar');
+  }
+
+  /**
+   * Called before the recording of one word plays (Word Study, which has a
+   * player of its own). Pauses the main and mushaf players and adhkar,
+   * whichever plays, and stops a recitation session, as any Quran audio
+   * does. The word lasts a second or two: it takes no active source of its
+   * own, and nothing resumes after it.
+   */
+  wordWillPlay(): void {
+    this.stopRecitation();
+    this.pauseAdhkarIfActive();
+    const store = usePlayerStore.getState();
+    if (
+      store.playback.state === 'playing' ||
+      store.playback.state === 'buffering'
+    ) {
+      store.pause();
+    }
+    const {mushafAudioService} = require('./MushafAudioService');
+    if (mushafAudioService.getIsPlaying()) {
+      mushafAudioService.pause();
+      const {useMushafPlayerStore} = require('@/store/mushafPlayerStore');
+      useMushafPlayerStore.getState().setPlaybackState('paused');
+    }
   }
 
   private pauseAdhkarIfActive(): void {

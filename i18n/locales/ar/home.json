@@ -41,7 +41,7 @@
     "searchSurahs": "ابحث عن سورة…"
   },
   "search": {
-    "placeholder": "ابحث عن سورة أو قارئ",
+    "placeholder": "ابحث عن سورة أو قارئ أو آية",
     "recentSearches": "عمليات البحث الأخيرة",
     "noRecent": "لا توجد عمليات بحث حديثة",
     "noRecentHint": "سيظهر سجل البحث هنا",

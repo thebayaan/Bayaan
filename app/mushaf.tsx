@@ -20,6 +20,7 @@ import {
 import {useFirstContent} from '@/hooks/useFirstContent'; // @ai
 import {useReaderLinkPage} from '@/hooks/useReaderLinkPage'; // @ai
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore'; // @ai
 // @ai-start
 import {
   mushafVerseMapService,
@@ -70,6 +71,12 @@ export type MushafScreenParams = {
   // '1' from the player's Repeat, sent with no page. The screen shows the
   // player options when the page of the verse is known.
   playerOptions?: string;
+  // @ai-end
+  // @ai-start
+  // Digital Khatt slots of Hafs verse `surah`:`ayah` to flash, comma-
+  // separated ('3,4'): the words a Quran search matched. Sent with no page:
+  // the screen opens the page of the first of them (useMushafOpenTarget).
+  words?: string;
   // @ai-end
 };
 
@@ -211,7 +218,7 @@ function MushafReader({
   onFirstContent: () => void;
 }) {
   const {theme} = useTheme();
-  const {page, anchor, verseKey} = target;
+  const {page, anchor, verseKey, words} = target;
 
   // The options of the player's Repeat need the page (VerseActionsSheet).
   useEffect(() => {
@@ -233,6 +240,10 @@ function MushafReader({
         selection.selectUnits(unitSelection.rewayah, unitSelection.units, page);
       } else if (verseKey) {
         selection.selectVerse(verseKey, page);
+      }
+      // The words a Quran search matched flash with their verse.
+      if (verseKey && words?.length) {
+        useMushafWordFlashStore.getState().show(verseKey, words);
       }
       timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
@@ -258,8 +269,9 @@ function MushafReader({
       cancelled = true;
       if (timer !== null) clearTimeout(timer);
       useMushafVerseSelectionStore.getState().clearSelection();
+      useMushafWordFlashStore.getState().clear();
     };
-  }, [anchor, verseKey, page]);
+  }, [anchor, verseKey, page, words]);
 
   return (
     <View

@@ -50,6 +50,12 @@ const TABLES_FILE = 'services/mushaf/mushafTables.generated.ts';
 const LAYOUT_SOURCE = 'digital-khatt-15-lines.db';
 // A source line of TABLES_FILE: `//   <sha256> <file>`.
 const TABLES_SOURCE_RE = /^\/\/ {3}([0-9a-f]{64}) (\S+)$/gm;
+// @ai-start
+// Bundled DBs the tables are not made from: the auxiliary DBs, which
+// DigitalKhattDataService reads only through readAuxDb (AUX_DB_DATA). They are
+// in the manifest like every bundled DB.
+const AUX_DBS = new Set(['dk_readings.db']);
+// @ai-end
 
 // require('../../data/mushaf/digitalkhatt/<file>.db'), quotes and whitespace
 // tolerated. Only plain file names (no sub-directories) are bundled today.
@@ -104,7 +110,11 @@ function checkTablesSources(tablesSource, entries) {
   const recorded = new Map(
     [...tablesSource.matchAll(TABLES_SOURCE_RE)].map(m => [m[2], m[1]]),
   );
-  const current = new Map(entries.map(([file, sha256]) => [file, sha256]));
+  const current = new Map(
+    entries
+      .filter(([file]) => !AUX_DBS.has(file)) // @ai
+      .map(([file, sha256]) => [file, sha256]),
+  );
   const layoutPath = path.join(REPO_ROOT, ASSET_DIR, LAYOUT_SOURCE);
   if (!existsSync(layoutPath)) fail(`${ASSET_DIR}/${LAYOUT_SOURCE} not found`);
   current.set(LAYOUT_SOURCE, hashOfFile(layoutPath, 'sha256'));

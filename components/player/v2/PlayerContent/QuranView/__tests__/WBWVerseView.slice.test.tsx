@@ -68,6 +68,9 @@ jest.mock('@/utils/skiaTextWeight', () => ({
   getArabicTextWeightStrokeWidth: () => 0,
 }));
 
+import {StyleSheet, Text} from 'react-native';
+import Color from 'color';
+import {moderateScale} from '@/utils/scale';
 import {WBWVerseView} from '../WBWVerseView';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -153,5 +156,42 @@ describe('WBWVerseView word range', () => {
 
   it('a Hafs context shows no disclosure, as before', () => {
     expect(grid({rewayah: 'hafs'})[0]).toBe('h1');
+  });
+
+  it('draws the disclosure at 4.5:1 or more on the grid, at the caption size', () => {
+    // The light theme's text and sheet, under Word Study's 4% grid fill.
+    const text = '#06151C';
+    const surface = Color('#f4f3ec').mix(Color(text), 0.04);
+    let out: TestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      out = TestRenderer.create(
+        <WBWVerseView
+          verseKey="1:7"
+          textColor={text}
+          arabicFontSize={24}
+          dkFontFamily="DigitalKhattV2"
+          fontMgr={null}
+          showTranslation={false}
+          showTransliteration={false}
+          onWordPress={() => undefined}
+          selectedWordPosition={null}
+          showTajweed={false}
+          indexedTajweedData={null}
+          rewayah="warsh"
+        />,
+      );
+    });
+    const rendered = out as unknown as TestRenderer.ReactTestRenderer;
+    const notice = rendered.root.find(
+      n =>
+        (n.type as unknown) === Text &&
+        n.props.children === 'Word-by-word shown in Hafs',
+    );
+    const style = StyleSheet.flatten(notice.props.style);
+    const color = Color(String(style.color));
+    const drawn = surface.mix(color.alpha(1), color.alpha());
+    expect(drawn.contrast(surface)).toBeGreaterThanOrEqual(4.5);
+    expect(style.fontSize).toBeGreaterThanOrEqual(moderateScale(11));
+    act(() => rendered.unmount());
   });
 });

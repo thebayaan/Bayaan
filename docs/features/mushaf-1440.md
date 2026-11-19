@@ -17,10 +17,11 @@ of its page's QCF V4 font, placed on the print's own lines.
   theme's colour, from the same downloaded font.
 - Everything the Digital Khatt pages draw over the text: bookmarks, colour
   highlights, themes, the playback band (also for reciters of other rewayat),
-  the recited basmala, selection, and recitation tracking (recited ayat, the
-  word being recited, mistakes in red with their underline, added-word carets,
-  skipped and look-alike ayat, hidden text while memorising, the mistake
-  sheet on a tap).
+  the recited basmala, selection, the words a Quran search matched (flashed
+  for 3 seconds), and recitation tracking (recited ayat, the word being
+  recited, mistakes in red with their underline, added-word carets, skipped
+  and look-alike ayat, hidden text while memorising, the mistake sheet on a
+  tap).
 - Bold and medium text weight, Allah's name highlighted, two-page spreads on
   iPad, and the vertical scroll.
 - Every rewayah. The printed glyphs are Hafs, so another rewayah's text is
@@ -121,6 +122,6 @@ Digital Khatt words.
 - `QCFDataService.test.ts`: every word once, 15 lines a page, titles and basmalas, centred lines.
 - `QCFPageLayout.test.ts`: justification, centring, squeeze, hit-testing; all 604 pages with the real fonts' advances.
 - `qcfDkWordMap.test.ts`: both layouts map word for word on all 604 pages (bundled DBs).
-- `qcfDrawing.test.ts`, `QCFPage.test.tsx`: glyph runs, highlights, recitation marks, hidden text, the mistake sheet.
+- `qcfDrawing.test.ts`, `QCFPage.test.tsx`: glyph runs, highlights, recitation marks, hidden text, the mistake sheet, the Quran search word flash (the paged page and `ContinuousQCFPage`).
 - `QCFFontLoader.test.ts`, `QCFColorPalette.test.ts`: downloads, variants, a real font's tables.
 - `mushaf1440Rewayat.test.ts`: rewayat under Mushaf 1440 with the real store, data service and selection flow.

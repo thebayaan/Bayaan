@@ -9,9 +9,10 @@
 //    own colour (a mistake, Allah's name) uses the plain outlines.
 //  - Everything painted over the text comes from the overlays the
 //    DigitalKhatt pages share (verse highlight layers, recitation
-//    follow-along, hidden text, mistakes, verse-unit selection, the mistake
-//    sheet), mapped onto these words by word id (qcfDkWordMap.ts). The page
-//    is drawn only while the DigitalKhatt data service serves Hafs.
+//    follow-along, the Quran search word flash, hidden text, mistakes,
+//    verse-unit selection, the mistake sheet), mapped onto these words by
+//    word id (qcfDkWordMap.ts). The page is drawn only while the
+//    DigitalKhatt data service serves Hafs.
 //
 // Surah titles render via SkiaSurahHeader and basmala lines with the
 // DigitalKhatt basmala (the printed surah-opening basmala), as on the
@@ -119,6 +120,7 @@ import {
 } from '../skia/verseHighlightLayers';
 import {usePlaybackBand} from '../skia/playbackBand';
 import {useRecitationLineHighlights} from '../skia/useRecitationLineHighlights';
+import {useWordFlashHighlights} from '../skia/useWordFlashHighlights';
 import {useRecitationHiddenText} from '../skia/useRecitationHiddenText';
 import {useRecitationMarkColors} from '../skia/useRecitationMarkColors';
 import {markAtChar} from '../skia/recitationTap';
@@ -516,10 +518,18 @@ const QCFPage: React.FC<QCFPageProps> = ({
 
   // Recitation follow-along: recited ayat, the word being recited, mistake
   // underlines, added-word carets, skipped / look-alike ayah bands.
-  const dkHighlights = useRecitationLineHighlights(
+  const recitationHighlights = useRecitationLineHighlights(
     pageNumber,
     dkLines,
     baseHighlights,
+    textColor,
+    isDarkMode,
+  );
+  // The words a Quran search matched, flashed when the reader opens there.
+  const dkHighlights = useWordFlashHighlights(
+    pageNumber,
+    dkLines,
+    recitationHighlights,
     textColor,
     isDarkMode,
   );
