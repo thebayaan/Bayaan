@@ -138,7 +138,8 @@ run('dk_readings.db against the bundled data', () => {
     data: string;
   }[] = [];
   let info: ReturnType<typeof parseReadingsInfo>;
-  let issues: {rid: string; location: string; sibling: string}[] = [];
+  let issues: {rid: string; location: string; sibling: string; text: string}[] =
+    [];
 
   beforeAll(() => {
     for (const r of READINGS_REWAYAT) {
