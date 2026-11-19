@@ -215,6 +215,31 @@ describe('hitTarget and hitLabel: a Quran search hit in the rewayah on screen', 
       'Quraysh 106:4 · Hafs',
     );
   });
+
+  it('a word of the unnumbered Fatiha basmala names no verse', () => {
+    // The Madani and Basri counts (Warsh, al-Duri) do not number the
+    // basmala: their 1:1 is Hafs 1:2. A hit on the basmala (الله, بسم الله
+    // الرحمن الرحيم) is in no verse there, so it names none: the Hafs verse,
+    // saying so, never the next verse under the rewayah's name.
+    for (const rewayah of ['warsh', 'al-duri-abi-amr'] as const) {
+      const shown = shownReady(rewayah);
+      for (const position of [1, 2, 3, 4]) {
+        expect(hitTarget('1:1', position, shown)).toBeNull();
+      }
+      expect(hitLabel('1:1', 2, shown, 'Al-Fatihah')).toBe(
+        'Al-Fatihah 1:1 · Hafs',
+      );
+      // Its first verse holds Hafs 1:2's words.
+      expect(hitTarget('1:2', 1, shown)?.verseKey).toBe('1:1');
+    }
+    // The counts that number it (Shu'bah, al-Bazzi): their verse 1:1.
+    for (const rewayah of ['shubah', 'al-bazzi'] as const) {
+      expect(hitTarget('1:1', 2, shownReady(rewayah))).toMatchObject({
+        verseKey: '1:1',
+        pageVerseKey: '1:1',
+      });
+    }
+  });
 });
 // @ai-end
 

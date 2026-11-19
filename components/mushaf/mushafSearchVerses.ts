@@ -136,7 +136,10 @@ export function anchorTarget(
  * Where a Quran text search hit leads: the verse of the rewayah on screen
  * holding its first matched word (Hafs `verseKey`, Digital Khatt slot
  * `position`, which every rewayah's text keeps). Hafs: the Hafs verse. Null
- * for another rewayah while its verses are not ready.
+ * for another rewayah while its verses are not ready, and for a word of the
+ * unnumbered Fatiha basmala of the Madani / Basri counts, which no verse
+ * holds: unlike a stored anchor (anchorTarget), a hit never stands for the
+ * verse after it.
  */
 export function hitTarget(
   verseKey: string,
@@ -144,7 +147,9 @@ export function hitTarget(
   shown: ShownVerses,
 ): VerseTarget | null {
   if (shown.rewayah === 'hafs') return anchorTarget(verseKey, shown);
-  return anchorTarget(`${verseKey}:${position}`, shown);
+  const units = readyUnits(shown);
+  const unit = units?.unitForAnchor(`${verseKey}:${position}`) ?? null;
+  return units && unit ? unitTarget(units, unit) : null;
 }
 
 /**
