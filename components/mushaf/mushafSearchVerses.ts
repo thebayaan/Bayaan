@@ -155,8 +155,10 @@ export function hitTarget(
 /**
  * A Quran text search hit's label in the numbering of the rewayah on
  * screen ("Al-Baqarah 2:255"; "Al-Baqarah 2:254 · Warsh"). While that
- * rewayah's verses load: the Hafs verse, saying so ("Al-Baqarah 2:255 ·
- * Hafs"), as the results are the Hafs text.
+ * rewayah's verses load, and for a word no verse holds: the Hafs verse,
+ * saying so ("Al-Baqarah 2:255 · Hafs"), as the results are the Hafs text.
+ * Word Study's root search labels its ayahs the same way, in the verse
+ * sheet's rewayah (RootSearchContent).
  */
 export function hitLabel(
   verseKey: string,

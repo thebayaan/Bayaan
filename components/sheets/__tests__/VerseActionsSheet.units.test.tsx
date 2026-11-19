@@ -615,6 +615,16 @@ describe('Hafs (unchanged)', () => {
       root: 'ء ل ه',
       initialLemma: 'ٱللَّه',
     });
+    // Hafs: each ayah by its Hafs verse, as in the Search tab.
+    const verseLabel = last('root').verseLabel as (hit: unknown) => string;
+    expect(
+      verseLabel({
+        verseIndex: 0,
+        verseKey: '2:255',
+        matches: [{position: 1, length: 1}],
+        score: 1,
+      }),
+    ).toBe('Al-Baqarah 2:255');
     expect(texts()).toContain('Root search');
     await press('Root search');
     expect(last('words')).toMatchObject({
@@ -993,6 +1003,32 @@ describe('Warsh verses in their own numbering', () => {
     expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(
       `${warshText('103:1')}\n\nT(103:1)\nT(103:2)\n\nQuran 103:1 · Warsh`,
     );
+  });
+
+  it('root search names its ayahs in Warsh numbering, never bare Hafs numbers', async () => {
+    const rootHit = (verseKey: string, position: number) => ({
+      verseIndex: 0,
+      verseKey,
+      matches: [{position, length: 1}],
+      score: 1,
+    });
+    await openSheet(warshUnitPayload(['106:5']));
+    await press('Word Study');
+    const onRootPress = last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+    await act(async () =>
+      onRootPress('خ و ف', null, {verseKey: '106:4', position: 7}),
+    );
+    const verseLabel = last('root').verseLabel as (hit: unknown) => string;
+    // Hafs 106:4 is Warsh 106:4 and 106:5: the row names the Warsh verse
+    // holding the matched word, the one the reader then selects.
+    expect(verseLabel(rootHit('106:4', 7))).toBe('Quraysh 106:5 · Warsh');
+    expect(verseLabel(rootHit('106:4', 1))).toBe('Quraysh 106:4 · Warsh');
+    // The unnumbered basmala is no Warsh verse: its Hafs verse, saying so.
+    expect(verseLabel(rootHit('1:1', 3))).toBe('Al-Fatihah 1:1 · Hafs');
   });
 });
 

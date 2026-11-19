@@ -1018,6 +1018,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     sheetId={props.sheetId}
                     root={rootTarget.root}
                     initialLemma={rootTarget.lemma ?? undefined}
+                    rewayah={resolvedRewayah}
                   />
                 )}
                 {/* @ai-end */}
