@@ -35,11 +35,8 @@ export const FavoriteRecitersSheet = (
                 count: reciter.rewayat.length,
               })
             : getDisplayLabelFromName(reciter.rewayat[0]?.name),
-        searchTerms: [
-          reciter.name,
-          getReciterDisplayName(reciter, 'ar'),
-          ...reciter.rewayat.map(rewaya => rewaya.name ?? ''),
-        ],
+        searchTerms: [reciter.name, getReciterDisplayName(reciter, 'ar')],
+        rewayahTerms: reciter.rewayat.map(rewaya => rewaya.name ?? ''),
       })),
     [t],
   );

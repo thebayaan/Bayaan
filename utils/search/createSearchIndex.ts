@@ -40,9 +40,24 @@ const DEFINITE_ARTICLES: ReadonlySet<string> = new Set([
 ]);
 // @ai-end
 
+// A sounded article glued to a Latin name: "Arrifai", "Assadan".
+const GLUED_ARTICLE = /^a([tdrzsn])\1[a-z]{3,}$/;
+
+// What reading a typed article as another spelling costs the whole entry:
+// more than the featured boost, so "as s" lists As-Sayegh before the
+// featured Saud Al-Shuraim, whose words would otherwise score the same.
+const ARTICLE_SPELLING_COST = 2;
+
 export interface SearchField<T> {
   get: (item: T) => string | readonly string[];
   weight: number;
+  /**
+   * Whether a typed article ("al") also matches another spelling of an
+   * article in this field ("An-Nur"). Defaults to true. False where the
+   * article-like words are not articles: rewayah names join reader and
+   * teacher with "A'n" ("from"), keyed "an".
+   */
+  articleSpellings?: boolean;
 }
 
 export interface SearchIndexOptions<T> {
@@ -94,6 +109,9 @@ interface PreparedField {
   // penalise skeleton matches by real spelling distance.
   rawSuffixes: string[];
   weight: number;
+  // The words that follow an article ("nur" in "An-Nur"), for reading a
+  // typed article as another spelling of it; null when there are none.
+  afterArticle: PreparedField | null;
 }
 
 interface PreparedItem<T> {
@@ -113,7 +131,11 @@ interface PreparedQuery {
   raw: string;
 }
 
-function prepareField(text: string, weight: number): PreparedField {
+function prepareField(
+  text: string,
+  weight: number,
+  articleSpellings: boolean,
+): PreparedField {
   const key = toSearchKey(text);
   const baseTokens = tokenize(key);
   const content = baseTokens
@@ -126,12 +148,20 @@ function prepareField(text: string, weight: number): PreparedField {
     // @ai-start
     // A sounded article glued to a Latin name ("Arrifai", "Assadan") is
     // also split off, so "hani al rifai" and "hani rifai" find "Hani Arrifai".
-    const glued = /^a([tdrzsn])\1[a-z]{3,}$/.test(token);
-    if (glued) return [token, token.slice(0, 2), token.slice(2)];
+    // The article is matched only as an article (afterArticle), not as a
+    // word: a typed "ar" or "as" still lists Al-Arkani and As-Sayegh first.
+    if (GLUED_ARTICLE.test(token)) return [token, token.slice(2)];
     // @ai-end
     const bare = stripArabicArticle(token);
     return bare === token ? [token] : [token, bare];
   });
+  const afterArticle = articleSpellings
+    ? baseTokens.flatMap((token, i) => {
+        if (GLUED_ARTICLE.test(token)) return [token.slice(2)];
+        const next = baseTokens[i + 1];
+        return next && DEFINITE_ARTICLES.has(token) ? [next] : [];
+      })
+    : [];
   return {
     key,
     compact: baseTokens.join(''),
@@ -143,6 +173,10 @@ function prepareField(text: string, weight: number): PreparedField {
     skeletonSuffixes: skeleton.map((_, i) => skeleton.slice(i).join('')),
     rawSuffixes: content.map((_, i) => content.slice(i).join('')),
     weight,
+    afterArticle:
+      afterArticle.length > 0
+        ? prepareField(afterArticle.join(' '), weight, false)
+        : null,
   };
 }
 
@@ -217,10 +251,6 @@ function scoreToken(
   const folded = foldLongVowels(token);
   const isFolded = folded !== token;
   // @ai-end
-  // The word still being typed is not read as an article: "ad", "ar", "ash"
-  // are also how "Adel", "Arkani" and "Ash-Shams" begin, and would otherwise
-  // match every "Al-" name above the names that really start that way.
-  const isArticle = !isLast && DEFINITE_ARTICLES.has(token); // @ai
   let best = 0;
   for (const field of fields) {
     for (let t = 0; t < field.tokens.length; t++) {
@@ -228,10 +258,6 @@ function scoreToken(
       let tier = 0;
       if (fieldToken === token) {
         tier = TIER.exact;
-        // @ai-start
-      } else if (isArticle && DEFINITE_ARTICLES.has(fieldToken)) {
-        tier = TIER.exact - 5;
-        // @ai-end
       } else if (fieldToken.startsWith(token)) {
         tier = TIER.wordPrefix;
       } else if (
@@ -275,6 +301,59 @@ function scoreToken(
   return best;
 }
 
+/**
+ * Typed word `i` read as another spelling of an article in the entry: "al
+ * nur" for "An-Nur", "al rum" for "Ar-Rum". The article belongs to the next
+ * typed word, which must match a word that follows an article in the same
+ * field: "at tariq" is not the "Al" of Al-Airawy plus his rewayah's "Tariq".
+ * Never the word still being typed: "ad", "ar", "ash" are also how "Adel",
+ * "Arkani" and "Ash-Shams" begin, and would otherwise match every "Al-" name
+ * above the names that really start that way.
+ */
+function articleSpelling(
+  fields: readonly PreparedField[],
+  tokens: readonly string[],
+  i: number,
+  allowTypos: boolean,
+): number {
+  const last = tokens.length - 1;
+  if (i >= last || !DEFINITE_ARTICLES.has(tokens[i])) return 0;
+  let best = 0;
+  for (const field of fields) {
+    const after = field.afterArticle;
+    if (
+      after &&
+      scoreToken([after], tokens[i + 1], i + 1 === last, allowTypos) > 0
+    ) {
+      best = Math.max(best, (TIER.exact - 5) * field.weight);
+    }
+  }
+  return best;
+}
+
+type WordScorer = (token: string, isLast: boolean) => number;
+
+/**
+ * Scores each word once per entry: the pass without filler words ("sheikh",
+ * "bin") repeats the words of the first pass.
+ */
+function wordScorer(
+  fields: readonly PreparedField[],
+  allowTypos: boolean,
+): WordScorer {
+  const scored = new Map<string, number>();
+  return (token, isLast) => {
+    // A space never occurs inside a word.
+    const key = isLast ? `${token} ` : token;
+    let score = scored.get(key);
+    if (score === undefined) {
+      score = scoreToken(fields, token, isLast, allowTypos);
+      scored.set(key, score);
+    }
+    return score;
+  };
+}
+
 function toTexts(value: string | readonly string[]): readonly string[] {
   return typeof value === 'string' ? [value] : value;
 }
@@ -290,38 +369,63 @@ export function createSearchIndex<T>(
     fields: options.fields.flatMap(field =>
       toTexts(field.get(item))
         .filter(text => text.length > 0)
-        .map(text => prepareField(text, field.weight)),
+        .map(text =>
+          prepareField(text, field.weight, field.articleSpellings !== false),
+        ),
     ),
   }));
 
   // @ai-start
-  function scoreEntry(entry: PreparedItem<T>, query: PreparedQuery): number {
+  function scoreEntry(
+    entry: PreparedItem<T>,
+    query: PreparedQuery,
+    scoreWord: WordScorer,
+  ): number {
     let score = 0;
     for (const field of entry.fields) {
       score = Math.max(score, scoreWholeField(field, query) * field.weight);
     }
-    const tokenScores = query.tokens.map((token, i) =>
-      scoreToken(entry.fields, token, i === query.tokens.length - 1),
-    );
-    return Math.max(score, Math.min(...tokenScores));
+    // Every word must match, so the weakest word scores the entry (and the
+    // rest need no scoring once one misses). A typed article read as another
+    // spelling costs the whole entry a little, where the weakest word cannot
+    // hide it.
+    const last = query.tokens.length - 1;
+    let plain = Number.POSITIVE_INFINITY;
+    let spelled = Number.POSITIVE_INFINITY;
+    for (let i = 0; i <= last && spelled > 0; i++) {
+      const word = scoreWord(query.tokens[i], i === last);
+      plain = Math.min(plain, word);
+      spelled = Math.min(
+        spelled,
+        Math.max(word, articleSpelling(entry.fields, query.tokens, i, true)),
+      );
+    }
+    return Math.max(score, plain, spelled - ARTICLE_SPELLING_COST);
   }
 
   function scoreWithOneMissing(
     entry: PreparedItem<T>,
     query: PreparedQuery,
+    scoreWord: WordScorer,
   ): number {
     if (query.tokens.length < 2) return 0;
+    const last = query.tokens.length - 1;
     const scores = query.tokens.map((token, i) =>
-      scoreToken(entry.fields, token, i === query.tokens.length - 1, false),
+      Math.max(
+        scoreWord(token, i === last),
+        articleSpelling(entry.fields, query.tokens, i, false),
+      ),
     );
     const matched = query.tokens.filter((_, i) => scores[i] > 0);
     if (matched.length !== query.tokens.length - 1) return 0;
     // "al x" must not list every reciter with an article.
     if (matched.join('').length < 3) return 0;
     // One real word must match closely: a loose consonant match alone
-    // ("kursi" in "Alquraishi") is a guess, not a result.
+    // ("kursi" in "Alquraishi") is a guess, not a result. An article with a
+    // doubled vowel is still an article: "aal" matches as "al".
     const anchored = query.tokens.some(
-      (token, i) => !ARTICLES.has(token) && scores[i] >= TIER.skeleton - 2,
+      (token, i) =>
+        !ARTICLES.has(foldLongVowels(token)) && scores[i] >= TIER.skeleton - 2,
     );
     if (!anchored) return 0;
     return Math.min(...scores.filter(score => score > 0)) / 2;
@@ -334,8 +438,9 @@ export function createSearchIndex<T>(
     if (kept.length === 0 || kept.length === query.tokens.length) return null;
     // @ai-start
     // A bare article is no name: "al qari" scored as just "al" listed every
-    // reciter carrying "Al" above Al-Qari'ah and Al-Qaria Yassen.
-    if (kept.every(token => ARTICLES.has(token))) return null;
+    // reciter carrying "Al" above Al-Qari'ah and Al-Qaria Yassen. So is one
+    // with a doubled vowel: "aal" matches as "al".
+    if (kept.every(token => ARTICLES.has(foldLongVowels(token)))) return null;
     // @ai-end
     return prepareQuery(kept.join(' '));
   }
@@ -350,11 +455,12 @@ export function createSearchIndex<T>(
     const scoreOf = oneMissing ? scoreWithOneMissing : scoreEntry;
     const hits: (SearchHit<T> & {index: number})[] = [];
     for (const entry of prepared) {
-      let score = scoreOf(entry, query);
+      const scoreWord = wordScorer(entry.fields, !oneMissing);
+      let score = scoreOf(entry, query, scoreWord);
       if (bare) {
         // Two points under the full query: "sheikh sudais" finds Alsudaes,
         // and "Shaik Abu Bakr Al Shatri" still outranks a bare "Shatri".
-        score = Math.max(score, scoreOf(entry, bare) - 2);
+        score = Math.max(score, scoreOf(entry, bare, scoreWord) - 2);
       }
       // @ai-end
       if (score > 0) {

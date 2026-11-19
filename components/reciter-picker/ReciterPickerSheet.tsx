@@ -34,8 +34,11 @@ export interface ReciterPickerItem {
   imageUrl: string | null;
   subtitle: string;
   // Extra strings matched by search besides the name (e.g. English and Arabic
-  // names, rewayah names).
+  // names).
   searchTerms: string[];
+  // Rewayah names, matched by search apart from searchTerms: they join reader
+  // and teacher with "A'n" ("from"), which must not count as an article.
+  rewayahTerms?: string[];
 }
 
 interface ReciterPickerSheetProps {
@@ -52,6 +55,7 @@ interface ReciterPickerSheetProps {
 const PICKER_FIELDS: readonly SearchField<ReciterPickerItem>[] = [
   {get: item => item.name, weight: 1},
   {get: item => item.searchTerms, weight: 0.9},
+  {get: item => item.rewayahTerms ?? [], weight: 0.9, articleSpellings: false},
 ];
 
 export function ReciterPickerSheet({

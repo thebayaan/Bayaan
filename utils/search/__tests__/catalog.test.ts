@@ -208,22 +208,34 @@ describe('createCatalogSearch (Home)', () => {
     expect(names.indexOf(name)).toBeLessThan(max);
   });
 
-  it.each(['al qari', 'al imam', 'al sheikh'])(
+  it.each([
+    'al qari',
+    'al imam',
+    'al sheikh',
+    // A doubled vowel folds to the same article.
+    'aal qari',
+    'aal imam',
+    'aal sheikh',
+  ])(
     'does not list every "Al" reciter for an article plus a title: %s',
     query => {
       expect(search.search(query).length).toBeLessThan(40);
+      expect(rankReciters(query, reciters).length).toBeLessThan(40);
     },
   );
 
-  it('keeps Al-Qari\'ah and Al-Qaria Yassen near the top of "al qari"', () => {
-    const names = search
-      .search('al qari')
-      .slice(0, 3)
-      .map(r => r.item.name);
-    expect(names).toEqual(
-      expect.arrayContaining(["Al-Qari'ah", 'Al-Qaria Yassen']),
-    );
-  });
+  it.each(['al qari', 'aal qari'])(
+    'keeps Al-Qari\'ah and Al-Qaria Yassen near the top of "%s"',
+    query => {
+      const names = search
+        .search(query)
+        .slice(0, 3)
+        .map(r => r.item.name);
+      expect(names).toEqual(
+        expect.arrayContaining(["Al-Qari'ah", 'Al-Qaria Yassen']),
+      );
+    },
+  );
   // @ai-end
 });
 
@@ -314,5 +326,52 @@ describe('review fixes', () => {
   it('does not match across words with a distant spelling', () => {
     RECITERS.splice(0, RECITERS.length, ...reciters);
     expect(rankReciters('sudais').map(r => r.id)).not.toContain(SHURAIM);
+  });
+});
+
+// Regression review of the article, folding and one-missing-word changes.
+describe('typed articles and the one-missing-word fallback', () => {
+  const home = createCatalogSearch(reciters, SURAHS);
+  const names = (query: string, within: readonly Reciter[] = reciters) =>
+    rankReciters(query, within).map(r => r.name);
+
+  // Every rewayah name joins reader and teacher with "A'n" ("from"), which
+  // is keyed "an" like the article.
+  it('does not read the rewayah word "A\'n" as an article', () => {
+    expect(home.search('abdulrahman al s')[0]?.item.name).toBe(
+      'Abdulrahman Alsudaes',
+    );
+    const pair = reciters.filter(r =>
+      ['Saidin Abdulrahman', 'Abdulrahman Alsudaes'].includes(r.name),
+    );
+    expect(names('abdulrahman al s', pair)).toEqual(['Abdulrahman Alsudaes']);
+    // Not even before a word that starts the teacher's name ("Assem").
+    expect(names('abdulrahman al a', pair)).toEqual(['Abdulrahman Alsudaes']);
+    // A name without an article is not listed for "el" plus a letter.
+    expect(names('el m')).not.toContain('Mohammad Abdullkarem');
+    expect(names('el m').length).toBeLessThan(reciters.length);
+  });
+
+  it.each([
+    ['as', 'Tawfeeq As-Sayegh'],
+    ['ar', 'Abdulmajeed Al-Arkani'],
+  ])('lists a name with the article "%s" as typed first', (query, name) => {
+    expect(names(query)[0]).toBe(name);
+  });
+
+  it('keeps the name spelled as typed near the top of a two-word query', () => {
+    expect(names('as sa').slice(0, 2)).toContain('Tawfeeq As-Sayegh');
+    expect(names('as s').slice(0, 2)).toContain('Tawfeeq As-Sayegh');
+    // The "Al" of Al-Airawy does not pair with his rewayah's "Tariq".
+    expect(names('at tariq')[0]).toBe('Tareq Abdulgani daawob');
+    // Only names whose article comes before an "s" word.
+    expect(names('ash s')).not.toContain('Mohammed Siddiq Al-Minshawi');
+  });
+
+  it('does not take a doubled-vowel article for a matched word: aal imran', () => {
+    expect(names('aal imran')).toEqual([]);
+    const top = home.search('aal imran')[0];
+    expect(top?.type).toBe('surah');
+    expect((top?.item as Surah | undefined)?.id).toBe(3);
   });
 });

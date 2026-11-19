@@ -115,11 +115,19 @@ export function createReciterSearch(
     fields: [
       {get: reciter => reciter.name, weight: 1},
       {get: reciter => getReciterDisplayName(reciter, 'ar'), weight: 1},
-      {get: reciter => reciter.rewayat.map(r => r.name), weight: 0.6},
+      // Every rewayah name joins reader and teacher with "A'n" ("from"),
+      // keyed "an": read as an article, it let "al" and "el" match every
+      // reciter.
+      {
+        get: reciter => reciter.rewayat.map(r => r.name),
+        weight: 0.6,
+        articleSpellings: false,
+      },
       {
         get: reciter =>
           reciter.rewayat.map(r => getDisplayLabelFromName(r.name)),
         weight: 0.6,
+        articleSpellings: false,
       },
       {get: reciter => reciter.rewayat.map(r => r.style), weight: 0.4},
     ],
