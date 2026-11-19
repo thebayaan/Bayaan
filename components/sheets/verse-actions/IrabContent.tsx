@@ -333,13 +333,16 @@ export const createIrabStyles = (theme: Theme) => {
   const phraseRule = Color(theme.colors.primary).alpha(0.45).toString();
   // Text in the accent (labels, «word» references, the agreed mark) at
   // 4.5:1 or more on each surface it is drawn on: the sheet, the 4% fill
-  // of the morphology block, the 6% fill of a pressed or hovered word, and
-  // an alternative entry's 7% accent tint.
+  // of the morphology block, the 6% fill of a pressed or hovered word, an
+  // alternative entry's 7% accent tint, and that tint over the 6% fill (an
+  // alternative entry inside a pressed or hovered whole-verse word card).
+  const hovered = overBackground(theme, theme.colors.text, 0.06);
   const accentText = readableAccent(theme, [
     theme.colors.background,
     overBackground(theme, theme.colors.text, 0.04),
-    overBackground(theme, theme.colors.text, 0.06),
+    hovered,
     overBackground(theme, theme.colors.primary, 0.07),
+    Color(hovered).mix(Color(theme.colors.primary), 0.07).hex(),
   ]);
   return StyleSheet.create({
     partCaption: {
