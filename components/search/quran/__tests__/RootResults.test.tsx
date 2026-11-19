@@ -165,6 +165,14 @@ describe('RootResults', () => {
     ]);
   });
 
+  it('says the ayahs are the Hafs text only when asked', () => {
+    mockState = {status: 'done', result};
+    expect(texts(render())).not.toContain('Searched in the Hafs text');
+    expect(texts(render({hafsNote: true}))).toContain(
+      'Searched in the Hafs text',
+    );
+  });
+
   it("starts on the word's own lemma", () => {
     mockState = {status: 'done', result};
     const root = render({initialLemma: 'رَّحِيم'});

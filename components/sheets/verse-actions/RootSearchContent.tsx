@@ -36,7 +36,8 @@ function surahNameOf(verseKey: string): string {
  * holding its first matched word ("Quraysh 106:5 · Warsh"), the one the
  * reader selects, or its Hafs verse saying so while that rewayah's verses
  * load and for the unnumbered Fatiha basmala ("Al-Fatihah 1:1 · Hafs"):
- * never a Hafs number under the rewayah's name.
+ * never a Hafs number under the rewayah's name. The root's header then
+ * says the ayahs are the Hafs text, as the Search tab's header does.
  *
  * An ayah closes the sheet and opens in the Mushaf on its matched words, as
  * in the Search tab: in the reader already open under the sheet or the
@@ -84,6 +85,7 @@ export const RootSearchContent: React.FC<RootSearchContentProps> = ({
       root={root}
       initialLemma={initialLemma}
       verseLabel={verseLabel}
+      hafsNote={rewayah !== 'hafs'}
       onVersePress={handleVersePress}
     />
   );

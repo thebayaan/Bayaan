@@ -625,6 +625,7 @@ describe('Hafs (unchanged)', () => {
         score: 1,
       }),
     ).toBe('Al-Baqarah 2:255');
+    expect(last('root')).toMatchObject({hafsNote: false});
     expect(texts()).toContain('Root search');
     await press('Root search');
     expect(last('words')).toMatchObject({
@@ -1029,6 +1030,8 @@ describe('Warsh verses in their own numbering', () => {
     expect(verseLabel(rootHit('106:4', 1))).toBe('Quraysh 106:4 · Warsh');
     // The unnumbered basmala is no Warsh verse: its Hafs verse, saying so.
     expect(verseLabel(rootHit('1:1', 3))).toBe('Al-Fatihah 1:1 · Hafs');
+    // The ayahs shown are the Hafs text: the screen says so.
+    expect(last('root')).toMatchObject({hafsNote: true});
   });
 });
 

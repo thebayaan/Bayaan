@@ -149,6 +149,14 @@ describe('quranResultRows', () => {
     ).toEqual(['quran-verse-1:4']);
     expect(quranAyahCount(done(outcome), 2)).toBe(1);
     expect(isRootOutcome(done(outcome))).toBe(true);
+    // The root's ayahs are the Hafs text too: its header says so when asked.
+    expect(quranResultRows(done(outcome), view())[0]).toMatchObject({
+      type: 'quran-root-header',
+      note: 'none',
+    });
+    expect(
+      quranResultRows(done(outcome), view({hafsNote: true}))[0],
+    ).toMatchObject({type: 'quran-root-header', note: 'hafs'});
   });
 
   it('adds an empty row only when asked', () => {

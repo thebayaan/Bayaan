@@ -21,6 +21,8 @@ export interface RootResultsProps {
    * · Warsh"); default its Hafs verse ("Quraysh 106:4").
    */
   verseLabel?: (hit: QuranVerseHit) => string;
+  /** Say the ayahs are the Hafs text (the sheet reads another rewayah). */
+  hafsNote?: boolean;
   onVersePress: (hit: QuranVerseHit) => void;
 }
 
@@ -36,6 +38,7 @@ export const RootResults: React.FC<RootResultsProps> = ({
   root,
   initialLemma,
   verseLabel,
+  hafsNote = false,
   onVersePress,
 }) => {
   const search = useQuranRootSearch(root);
@@ -87,12 +90,12 @@ export const RootResults: React.FC<RootResultsProps> = ({
       {
         shown,
         selectedLemma,
-        hafsNote: false,
+        hafsNote,
         query: root,
         includeEmpty: true,
       },
     );
-  }, [search.status, result, root, shown, selectedLemma]);
+  }, [search.status, result, root, shown, selectedLemma, hafsNote]);
 
   const handleLemmaPress = useCallback(
     (lemmaId: number | null) =>

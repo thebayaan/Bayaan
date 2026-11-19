@@ -28,7 +28,13 @@ export type QuranResultRow =
       note: QuranResultNote;
     }
   | {type: 'quran-root-suggestion'; key: string; root: QuranRoot}
-  | {type: 'quran-root-header'; key: string; root: QuranRoot}
+  | {
+      type: 'quran-root-header';
+      key: string;
+      root: QuranRoot;
+      /** 'hafs': the root's ayahs are the Hafs text (as the text header). */
+      note: QuranResultNote;
+    }
   | {
       type: 'quran-lemmas';
       key: string;
@@ -101,7 +107,12 @@ function outcomeRows(
     }
     const hits = result.hits(view.selectedLemma);
     return [
-      {type: 'quran-root-header', key: `quran-root-${first.id}`, root: first},
+      {
+        type: 'quran-root-header',
+        key: `quran-root-${first.id}`,
+        root: first,
+        note: view.hafsNote ? 'hafs' : 'none',
+      },
       {
         type: 'quran-lemmas',
         key: `quran-lemmas-${first.id}`,
