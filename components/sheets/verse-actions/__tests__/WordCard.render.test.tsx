@@ -44,20 +44,23 @@ jest.mock('@/components/Icons', () => ({
   PauseIcon: () => null,
 }));
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
-jest.mock('@/hooks/useTheme', () => ({
-  useTheme: () => ({
-    theme: {
-      isDarkMode: false,
-      colors: {
-        text: '#111111',
-        textSecondary: '#666666',
-        background: '#ffffff',
-        primary: '#0a7d5a',
-      },
+// One theme object, as themeStore holds it; a test may swap in another.
+const mockTheme: {current: Record<string, unknown>} = {
+  current: {
+    isDarkMode: false,
+    colors: {
+      text: '#111111',
+      textSecondary: '#666666',
+      background: '#ffffff',
+      primary: '#0a7d5a',
     },
-  }),
+  },
+};
+jest.mock('@/hooks/useTheme', () => ({
+  useTheme: () => ({theme: mockTheme.current}),
 }));
 
+import * as themeUtils from '@/utils/themeUtils';
 import type {WordIrab} from '@/services/irab/irabFormat';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import type {WBWWord} from '@/services/wbw/WBWDataService';
@@ -654,5 +657,41 @@ describe('CompactWordCard', () => {
         }),
       ]),
     );
+  });
+
+  it("works out the i'rab's accent once for the whole list, not once per card", () => {
+    // A theme no card has drawn with yet.
+    mockTheme.current = {...mockTheme.current};
+    const accent = jest.spyOn(themeUtils, 'readableAccent');
+    try {
+      const card = (position: number) => (
+        <CompactWordCard
+          key={position}
+          word={{
+            verseKey: '2:255',
+            position,
+            index: position - 1,
+            part: 0,
+            slots: [`2:255:${position}`],
+            text: `W-${position}`,
+          }}
+          wbw={undefined}
+          irab={{...IRAB, position}}
+          rewayah="hafs"
+          wordTextOf={() => undefined}
+          canOpen={() => true}
+          onRef={jest.fn()}
+          onStudy={jest.fn()}
+        />
+      );
+      render(<>{[1, 2, 3].map(card)}</>);
+      expect(accent).toHaveBeenCalledTimes(1);
+      // Opened again (Whole verse tapped again): nothing to work out.
+      act(() => renderer?.unmount());
+      render(<>{[1, 2, 3].map(card)}</>);
+      expect(accent).toHaveBeenCalledTimes(1);
+    } finally {
+      accent.mockRestore();
+    }
   });
 });
