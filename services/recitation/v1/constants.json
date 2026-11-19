@@ -9,5 +9,8 @@
     "keepGain": 6,
     "beforeSeconds": 1,
     "contextWords": 2
+  },
+  "restart": {
+    "on": true
   }
 }

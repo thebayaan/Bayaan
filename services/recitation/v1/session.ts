@@ -1,4 +1,5 @@
 import followerConstants from '../followerConstants.npl.json';
+import v1Constants from './constants.json';
 import {alternativesOf} from '../secondLook/alternatives';
 import {recentAudio} from '../secondLook/audioRing';
 import {ayahLetters} from '../secondLook/ayahLetters';
@@ -233,7 +234,7 @@ export function noteV1Message(mark: V1Mark): void {
 /** The cursor moved: the restart rule may correct a mark. */
 export function noteV1Cursor(at: Place): void {
   const current = take;
-  if (!current || current.over) return;
+  if (!current || current.over || !v1Constants.restart.on) return;
   const next = noteV1Place(current.book, at);
   if (next === current.book) return;
   current.book = next;
