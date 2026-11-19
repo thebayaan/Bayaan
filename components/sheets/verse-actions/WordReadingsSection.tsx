@@ -279,15 +279,18 @@ const GroupRow: React.FC<GroupRowProps> = ({
   const isCurrent = rewayat.some(r => r === currentRewayah);
   const differs = group.kind === 'differs';
   // The group's text is its first member's own text ('differs'), Hafs's
-  // ('asHafs'): drawn in that rewayah's font.
+  // ('asHafs'): drawn in that rewayah's font, with that member's silah in
+  // colour, so it never reads as a silah every member of the group reads
+  // (the members' own lines show who does).
+  const owner = group.members[0];
   const textOwner: ReadingsRewayah =
-    group.kind === 'asHafs' ? 'hafs' : group.members[0].rewayah;
-  // A reading of one reader whose own text is the group's: its silah is
-  // coloured on the group's text instead of a second, identical line.
+    group.kind === 'asHafs' ? 'hafs' : owner.rewayah;
+  const ownerSilah =
+    owner.ownText === group.text ? owner.silahChars : undefined;
+  // A reading of one reader whose own text is the group's: no second,
+  // identical line under it.
   const sole =
-    group.members.length === 1 && group.members[0].ownText === group.text
-      ? group.members[0]
-      : null;
+    group.members.length === 1 && owner.ownText === group.text ? owner : null;
   const ownLines = group.members.filter(m => m.ownText !== null && m !== sole);
 
   let label: string;
@@ -311,7 +314,7 @@ const GroupRow: React.FC<GroupRowProps> = ({
               text={group.text}
               rewayah={textOwner}
               fontSize={readingSize}
-              silahChars={sole?.silahChars}
+              silahChars={ownerSilah}
               maxWidth={textWidth}
             />
           )}

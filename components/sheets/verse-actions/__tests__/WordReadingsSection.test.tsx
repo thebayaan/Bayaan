@@ -268,6 +268,35 @@ it('notes a span, verse ends, the basmala, and joined or apart words', () => {
   );
 });
 
+it("2:85:18: a differing reading's text keeps its first reader's silah in colour", () => {
+  mockState.result = ready('2:85', 18);
+  render('2:85', 18, 'hafs');
+  const r = mockState.result.status === 'ready' ? mockState.result : null;
+  const group = r?.readings.groups[1];
+  expect(group?.members.map(m => m.rewayah)).toEqual([
+    'al-bazzi',
+    'qunbul',
+    'al-duri-abi-amr',
+    'al-susi',
+  ]);
+  // the group's text is al-Bazzi's, silah and all: marked as his silah, not
+  // drawn as plain text that every reader of the group reads
+  expect(mockReadingTexts[1]).toMatchObject({
+    text: group?.text,
+    rewayah: 'al-bazzi',
+    silahChars: [10, 11],
+  });
+  // al-Duri and al-Susi read it without the silah, on their own lines
+  expect(mockReadingTexts.slice(2).map(p => [p.rewayah, p.silahChars])).toEqual(
+    [
+      ['al-bazzi', [10, 11]],
+      ['qunbul', [10, 11]],
+      ['al-duri-abi-amr', []],
+      ['al-susi', []],
+    ],
+  );
+});
+
 it('shows a suspected misprint as written, as its own reading, with no note', () => {
   mockState.result = ready('17:62', 1);
   const root = render('17:62', 1, 'qalun');
