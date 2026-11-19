@@ -13,7 +13,13 @@ jest.mock('@/services/audio/ExpoAudioService', () => ({
 jest.mock('@/services/player/store/playerStore', () => {
   const state = {
     playback: {position: 0, duration: 600},
-    queue: {tracks: [{url: 'https://cdn.example.com/2.mp3'}], currentIndex: 0},
+    queue: {
+      tracks: [
+        {id: '2', url: 'https://cdn.example.com/2.mp3'},
+        {id: '3', url: 'https://cdn.example.com/3.mp3'},
+      ],
+      currentIndex: 0,
+    },
     seekTo: jest.fn(),
   };
   return {
@@ -58,6 +64,7 @@ beforeEach(() => {
   mockAudio.getCurrentTime.mockReturnValue(0);
   mockAudio.getDuration.mockReturnValue(600);
   setSaved(0);
+  usePlayerStore.getState().queue.currentIndex = 0;
 });
 
 describe('seekBy', () => {
@@ -99,6 +106,32 @@ describe('seekBy', () => {
     await seekBy(15);
     expect(mockSeekTo).toHaveBeenLastCalledWith(155);
   });
+
+  // Next or Previous while a seek on the last track is still in flight: the
+  // new track starts at 0:00. Its first jump used to start from the last
+  // track's target, which sent a five-minute surah to its end.
+  it.each([
+    [15, 15],
+    [-15, 0],
+  ])(
+    'jumps %i s on a new track from its own start, not the last track’s seek',
+    async (by, expected) => {
+      mockAudio.getCurrentTime.mockReturnValue(2400);
+      mockAudio.getDuration.mockReturnValue(3000);
+      const land = seekInFlight();
+      const first = seekBy(15);
+      expect(mockSeekTo).toHaveBeenLastCalledWith(2415);
+
+      usePlayerStore.getState().queue.currentIndex = 1;
+      mockAudio.getCurrentTime.mockReturnValue(0);
+      mockAudio.getDuration.mockReturnValue(300);
+      await seekBy(by);
+      expect(mockSeekTo).toHaveBeenLastCalledWith(expected);
+
+      land();
+      await first;
+    },
+  );
 
   it('forgets a seek that never reports back', async () => {
     const now = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);

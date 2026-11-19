@@ -16,9 +16,10 @@ jest.mock('@/hooks/usePlayerScrollable', () => ({
 
 type MockTrack = {id: string; title: string; reciterName: string};
 let mockQueue: {tracks: MockTrack[]; currentIndex: number};
+let mockPlaybackState = 'playing';
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: (selector: (s: unknown) => unknown) =>
-    selector({queue: mockQueue, playback: {state: 'playing'}}),
+    selector({queue: mockQueue, playback: {state: mockPlaybackState}}),
 }));
 jest.mock('@/store/uploadsStore', () => ({
   useUploadsStore: (selector: (s: unknown) => unknown) =>
@@ -95,6 +96,7 @@ const labelled = (r: TestRenderer.ReactTestRenderer, label: string) =>
 beforeEach(() => {
   // a was played, b is playing, c is up next.
   mockQueue = {tracks: ['a', 'b', 'c'].map(track), currentIndex: 1};
+  mockPlaybackState = 'playing';
   jest.clearAllMocks();
 });
 
@@ -117,5 +119,26 @@ describe('QueueList', () => {
       expect(row.props.onPress).toBeUndefined();
       expect(row.props.accessibilityRole).toBeUndefined();
     }
+  });
+
+  // Once the queue has ended, its last surah sits at 0:00 and nothing plays,
+  // so a tap loses no place. Play starts the queue over, so the row is the
+  // way to hear that surah again.
+  it('plays the last track again from its row once the queue has ended', () => {
+    mockQueue = {tracks: ['a', 'b', 'c'].map(track), currentIndex: 2};
+    mockPlaybackState = 'paused';
+    const paused = labelled(render(), 'Surah c, Reciter');
+    expect(paused.length).toBeGreaterThan(0);
+    expect(paused.every(row => row.props.onPress === undefined)).toBe(true);
+
+    mockPlaybackState = 'ended';
+    const rows = labelled(render(), 'Surah c, Reciter').filter(
+      n => typeof n.props.onPress === 'function',
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    const row = rows[rows.length - 1];
+    expect(row.props.accessibilityRole).toBe('button');
+    act(() => row.props.onPress());
+    expect(onQueueItemPress).toHaveBeenCalledWith(2);
   });
 });
