@@ -680,11 +680,12 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
 
     // Small disclosure when the active context rewayah isn't Hafs —
     // WBW data is Hafs-aligned, so the word grid here is always Hafs.
+    // Secondary text: 0.8 alpha at least (ipad-standards §12).
     const hafsNotice = showingHafsFallback ? (
       <Text
         style={[
           styles.hafsNotice,
-          {color: Color(textColor).alpha(0.5).toString()},
+          {color: Color(textColor).alpha(0.8).toString()},
         ]}>
         {hafsNoticeText ?? t('verse.wbwHafsNotice') /* @ai */}
       </Text>
@@ -891,7 +892,7 @@ WBWVerseView.displayName = 'WBWVerseView';
 const styles = StyleSheet.create({
   hafsNotice: {
     fontFamily: 'Manrope-Medium',
-    fontSize: moderateScale(10.5),
+    fontSize: moderateScale(11), // the caption size of the type ramp
     textAlign: 'center',
     marginBottom: verticalScale(4),
   },
