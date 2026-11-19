@@ -203,16 +203,17 @@ describe('whole Quran', () => {
     const index = new Database(path.join(dir, QURAN_SEARCH_DB_NAME), {
       readonly: true,
     });
-    const forms = new Map(
-      (
-        index.prepare('SELECT form, postings FROM forms').all() as {
-          form: string;
-          postings: string;
-        }[]
-      ).map(row => [row.form, decodePostings(row.postings)]),
-    );
+    const formRows = index
+      .prepare('SELECT form, postings, whole FROM forms')
+      .all() as {form: string; postings: string; whole: number}[];
     index.close();
-    const source = memoryPostingSource(forms);
+    const forms = new Map(
+      formRows.map(row => [row.form, decodePostings(row.postings)]),
+    );
+    const whole = new Set(
+      formRows.filter(row => row.whole).map(row => row.form),
+    );
+    const source = memoryPostingSource(forms, whole);
     const missed: string[] = [];
     for (const [key, words] of verses) {
       const parsed = parseQuranQuery(words.join(' '));

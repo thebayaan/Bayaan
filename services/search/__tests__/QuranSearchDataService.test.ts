@@ -11,7 +11,10 @@ import {
   type QuranSearchDb,
 } from '../QuranSearchDataService';
 import {openAdapterDatabase} from '@/test-utils/sqliteAdapter';
-import {QURAN_SEARCH_DB_NAME} from '@/utils/search/quranIndexFormat';
+import {
+  QURAN_SEARCH_DB_NAME,
+  QURAN_SEARCH_FORMAT,
+} from '@/utils/search/quranIndexFormat';
 
 jest.mock('expo-sqlite', () => ({}));
 
@@ -155,23 +158,44 @@ describe('QuranSearchDataService', () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
-  it('re-imports a copy whose meta lacks complete', async () => {
+  it('never gives a form of the letters as drawn for a prefix', async () => {
+    const {service} = serviceOnCopy();
+    // ٱلَّيْل as drawn (اليل) and يَٰقَوْمَنَآ (يقومنا): whole words only.
+    expect((await service.exact(['اليل', 'يقومنا'])).size).toBe(2);
+    expect([...(await service.prefix('الي', 4000)).keys()]).not.toContain(
+      'اليل',
+    );
+    const people = await service.prefix('يقوم', 4000);
+    expect([...people.keys()]).not.toContain('يقومنا');
+    expect([...people.keys()]).toContain('يقومون');
+  });
+
+  it.each([
+    ['lacks complete', [{key: 'format', value: String(QURAN_SEARCH_FORMAT)}]],
+    [
+      'is of another format',
+      [
+        {key: 'format', value: String(QURAN_SEARCH_FORMAT - 1)},
+        {key: 'complete', value: '1'},
+      ],
+    ],
+  ])('re-imports a copy whose meta %s', async (_why, rows) => {
     const real = openAdapterDatabase(copy) as unknown as QuranSearchDb;
-    const incomplete: QuranSearchDb = {
+    const stale: QuranSearchDb = {
       getAllAsync: async <T>(sql: string, ...params: (string | number)[]) =>
         sql.includes('FROM meta')
-          ? ([{key: 'format', value: '1'}] as T[])
+          ? (rows as T[])
           : real.getAllAsync<T>(sql, ...params),
       getFirstAsync: real.getFirstAsync.bind(real),
       closeAsync: jest.fn(async () => undefined),
     };
     const open = jest.fn(async (reimport: boolean) =>
-      reimport ? real : incomplete,
+      reimport ? real : stale,
     );
     const service = createQuranSearchDataService(open);
     await service.initialize();
     expect(open.mock.calls).toEqual([[false], [true]]);
-    expect(incomplete.closeAsync).toHaveBeenCalled();
+    expect(stale.closeAsync).toHaveBeenCalled();
     expect(service.findRoot('ر ح م')).not.toBeNull();
   });
 

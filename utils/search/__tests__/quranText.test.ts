@@ -504,6 +504,42 @@ describe('parseQuranQuery', () => {
     expect(keys('أنتم')).toEqual([['انتم']]);
   });
 
+  it('tries a hamza the case ending seats on its other seats', () => {
+    const parsed = (query: string) => {
+      const p = parseQuranQuery(query);
+      if (p.kind !== 'text') throw new Error('expected text');
+      return p.tokens.map(({keys: k, caseKeys}) => ({keys: k, caseKeys}));
+    };
+    // Between a long alif and a pronoun suffix: the line (accusative), waw
+    // (nominative) or yeh (genitive), so the same word in another case.
+    expect(parsed('أهوائهم')).toEqual([
+      {keys: ['اهوايهم'], caseKeys: ['اهواهم', 'اهواوهم']},
+    ]);
+    expect(parsed('أبناؤكم')).toEqual([
+      {keys: ['ابناوكم'], caseKeys: ['ابناكم', 'ابنايكم']},
+    ]);
+    expect(parsed('جاؤهم')).toEqual([
+      {keys: ['جاوهم'], caseKeys: ['جاهم', 'جايهم']},
+    ]);
+    // In a phrase too, each word on its own.
+    expect(parsed('ولئن اتبعت أهوائهم')[2]).toEqual({
+      keys: ['اهوايهم'],
+      caseKeys: ['اهواهم', 'اهواوهم'],
+    });
+    // A hamza typed on the line stays as typed (جاءكم is not جاءوكم), and
+    // so does one not between an alif and a suffix.
+    for (const [query, typed] of [
+      ['جاءكم', ['جاكم']],
+      ['امرأة', ['امراه', 'امره']],
+      ['رئاء', ['ريا', 'را']],
+      ['سائل', ['سايل', 'سال']],
+      ['ملائكة', ['ملايكه', 'ملاكه']],
+      ['آبائي', ['ابايي', 'اباي']],
+    ] as const) {
+      expect(parsed(query)).toEqual([{keys: typed, caseKeys: undefined}]);
+    }
+  });
+
   it('counts letters, not marks, for the length cap', () => {
     // 30 pasted words of 10 letters each are cut whole, after 20 words.
     const word = 'كَتَبْنَٰهَا'.repeat(1);
@@ -577,6 +613,32 @@ describe('parseQuranQuery', () => {
     expect(
       tokens('الحمد لله رب العالمين (2) الرحمن الرحيم (3)')[4],
     ).toMatchObject({keys: ['الرحمن'], ayahStart: true});
+    // The word before a number ends its ayah: a whole word, no prefix.
+    expect(
+      tokens('الحمد لله رب العالمين (2) الرحمن الرحيم (3)').map(
+        t => t.ayahEnd ?? false,
+      ),
+    ).toEqual([false, false, false, true, false, true]);
+    expect(
+      tokens('الحمد لله رب العالمين (2) الرحمن').map(t => t.ayahEnd ?? false),
+    ).toEqual([false, false, false, true, false]);
+    expect(tokens('الم (1)')).toEqual([
+      {keys: ['الم'], needsHamza: false, ayahEnd: true},
+    ]);
+    // Through the joins: و الله (2), ي س (1) and يا أيها (1) end there too.
+    expect(tokens('و الله (2) ربنا')[0]).toMatchObject({
+      keys: ['والله'],
+      ayahEnd: true,
+    });
+    expect(tokens('ي س (1) والقرآن')[0]).toMatchObject({
+      keys: ['يس'],
+      opening: true,
+      ayahEnd: true,
+    });
+    expect(tokens('يا أيها (1)')[0]).toMatchObject({
+      keys: ['ياايها'],
+      ayahEnd: true,
+    });
     // Other digits keep the query out (commands), as do numbers alone.
     expect(parseQuranQuery('سورة 2')).toEqual({kind: 'none'});
     expect(parseQuranQuery('(2)')).toEqual({kind: 'none'});

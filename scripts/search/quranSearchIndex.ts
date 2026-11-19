@@ -173,7 +173,8 @@ export const QURAN_SEARCH_SCHEMA = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE forms (
   form TEXT PRIMARY KEY,
-  postings TEXT NOT NULL
+  postings TEXT NOT NULL,
+  whole INTEGER NOT NULL
 ) WITHOUT ROWID;
 CREATE TABLE roots (
   id INTEGER PRIMARY KEY,
@@ -221,6 +222,11 @@ export interface QuranIndexLemma extends QuranLemma {
 export interface QuranSearchIndexContent {
   /** Folded form → ascending posting codes; forms in code-unit order. */
   forms: ReadonlyMap<string, readonly number[]>;
+  /**
+   * The forms only the letters as drawn give (يموسي, اليل): they match a
+   * whole typed word, never the start of one (forms.whole = 1).
+   */
+  wholeWordForms: ReadonlySet<string>;
   roots: readonly QuranRoot[];
   lemmas: readonly QuranIndexLemma[];
   /** Every meta row except complete, which the writer adds last. */
@@ -394,11 +400,20 @@ function sha256(text: string): string {
 
 /** sha256 over every row of the three content tables, in canonical order. */
 export function contentSha256(
-  content: Pick<QuranSearchIndexContent, 'forms' | 'roots' | 'lemmas'>,
+  content: Pick<
+    QuranSearchIndexContent,
+    'forms' | 'wholeWordForms' | 'roots' | 'lemmas'
+  >,
 ): string {
   const lines: string[] = ['forms'];
   for (const form of [...content.forms.keys()].sort()) {
-    lines.push(`${form}\t${encodePostings(content.forms.get(form) ?? [])}`);
+    lines.push(
+      [
+        form,
+        encodePostings(content.forms.get(form) ?? []),
+        content.wholeWordForms.has(form) ? 1 : 0,
+      ].join('\t'),
+    );
   }
   lines.push('roots');
   for (const r of [...content.roots].sort((a, b) => a.id - b.id)) {
@@ -571,10 +586,15 @@ export function buildQuranSearchIndex(
   // often as not, another word: يَٰقَوْمِ is drawn يقوم (يَقُومُ), ٱلَّٰتِى
   // التي and ٱلَّٰٓـِٔى الي (إِلَى). Typed, those mean the other word, so a
   // form keeps them only when no other spelling gives it (يأيها, يموسى,
-  // اليل).
-  for (const slots of formSlots.values()) {
-    if (![...slots.values()].some(f => !f.asDrawn)) continue;
-    for (const [slot, f] of slots) if (f.asDrawn) slots.delete(slot);
+  // اليل). Such a form is also the start of other words a reader types
+  // (اليل of الي, يقومنا of يقوم), so it matches whole words only.
+  const wholeWordForms = new Set<string>();
+  for (const [form, slots] of formSlots) {
+    if ([...slots.values()].some(f => !f.asDrawn)) {
+      for (const [slot, f] of slots) if (f.asDrawn) slots.delete(slot);
+    } else {
+      wholeWordForms.add(form);
+    }
   }
   const forms = new Map<string, number[]>();
   let postings = 0;
@@ -661,7 +681,7 @@ export function buildQuranSearchIndex(
     lemma.id = i + 1;
   });
 
-  const content = {forms, roots, lemmas};
+  const content = {forms, wholeWordForms, roots, lemmas};
   const meta: Record<string, string> = {
     format: String(QURAN_SEARCH_FORMAT),
     normalizer: String(QURAN_TEXT_NORMALIZER_VERSION),
@@ -695,11 +715,17 @@ export function alphabetViolations(slotTexts: Iterable<string>): string[] {
   return bad;
 }
 
-/** Postings read from the built maps (the gates and tests). */
+/**
+ * Postings read from the built maps (the gates and tests); a prefix never
+ * gives one of `wholeWordForms`.
+ */
 export function memoryPostingSource(
   forms: ReadonlyMap<string, readonly number[]>,
+  wholeWordForms: ReadonlySet<string> = new Set(),
 ): QuranPostingSource {
-  const sorted = [...forms.keys()].sort();
+  const sorted = [...forms.keys()]
+    .filter(form => !wholeWordForms.has(form))
+    .sort();
   return {
     async exact(keys) {
       const out = new Map<string, readonly number[]>();
@@ -736,7 +762,7 @@ export async function checkQuranSearchIndex(
   dkWords: QuranSearchIndexInput['dkWords'],
 ): Promise<void> {
   const failures: string[] = [];
-  const source = memoryPostingSource(content.forms);
+  const source = memoryPostingSource(content.forms, content.wholeWordForms);
   const rootsByName = new Map(content.roots.map(r => [r.root, r]));
   const isKnownRoot = (root: string) => rootsByName.has(root);
 

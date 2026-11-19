@@ -274,8 +274,9 @@ export function createQuranSearchDataService(
       const handle = await ready();
       // BINARY order of UTF-8 equals code-unit order for Arabic, so every
       // form that starts with `prefix` sorts between it and prefix + U+FFFF.
+      // A form of the letters as drawn matches whole words only (whole).
       const rows = await handle.getAllAsync<{form: string; postings: string}>(
-        'SELECT form, postings FROM forms WHERE form > ? AND form < ? ORDER BY form LIMIT ?',
+        'SELECT form, postings FROM forms WHERE form > ? AND form < ? AND whole = 0 ORDER BY form LIMIT ?',
         prefix,
         `${prefix}\u{FFFF}`,
         limit,

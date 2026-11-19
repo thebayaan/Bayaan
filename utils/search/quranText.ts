@@ -755,8 +755,17 @@ export function quranWordForms(
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export interface QuranQueryToken {
-  /** Folded keys to look up: the token, then its hamza-seat variants. */
+  /**
+   * Folded keys to look up: the token, then its keys with a hamza seat left
+   * out, which count only where the token as typed makes no match.
+   */
   keys: readonly string[];
+  /**
+   * The token with its hamza on the other seats, where the case ending puts
+   * it: between a long alif and a pronoun suffix (أهوائهم → أهواءهم,
+   * أهواؤهم). The same word, so they count like the token as typed.
+   */
+  caseKeys?: readonly string[];
   /** Typed with a hamza: only words with a hamza match. */
   needsHamza: boolean;
   /**
@@ -768,9 +777,14 @@ export interface QuranQueryToken {
   /**
    * The first word after a verse number pasted with its verse (۝٢, ﴿٢﴾,
    * (2)): the start of the next ayah. Ayahs pasted together that make no
-   * phrase are searched by the first of them.
+   * phrase are searched one by one, and the one with the fewest hits wins.
    */
   ayahStart?: true;
+  /**
+   * The last word before a verse number pasted with its verse: a whole
+   * word, never the start of a longer one (الم (1) is not الملك).
+   */
+  ayahEnd?: true;
 }
 
 /**
@@ -824,17 +838,51 @@ export function foldQuranQueryWord(word: string): string {
   );
 }
 
+/** The seats a case ending gives a hamza after a long alif: ء, ؤ, ئ. */
+const CASE_SEATS: readonly string[] = ['\u{0621}', '\u{0624}', '\u{0626}'];
+const PRONOUN_SUFFIX = /^(?:ه|ها|هم|هما|هن|ك|كم|كما|كن|نا)$/u;
+
 /**
- * The keys of a token (one typed word, or two joined: يا + أيها): the token
- * itself, and each hamza seat also without its seat letter: ؤ and ئ
- * anywhere, أ and إ after a word's first letter (مسؤولا → مسوولا, مسولا;
- * يسألونك → يسالونك, يسلونك; أأنتم → اانتم, انتم), as a reader may put
- * the hamza on another seat than the index's spellings. At most 2 seats, so
- * at most 4 keys, the token as typed first. A key without a seat letter is
- * often another word (امرأة → امره, as أمره), so the engine looks the
- * others up only when the first is no word of the text.
+ * A hamza typed on a waw or a yeh where the case ending, not the word,
+ * gives its seat: after a long alif and before a pronoun suffix it is
+ * written on the line in the accusative, on a waw in the nominative and on
+ * a yeh in the genitive (أبناءَكم, أبناؤُكم, أبنائِكم), and readers often
+ * type one for another. Its index in `chars` (marks are items of their
+ * own), or -1. A hamza typed on the line stays as typed: on a waw it would
+ * be another form of a verb (جاءكم, جاءوكم).
  */
-function tokenKeys(words: readonly string[]): string[] {
+function caseSeatAt(chars: readonly string[]): number {
+  const letters: number[] = [];
+  chars.forEach((c, i) => {
+    if (!MARK.test(c) && c !== '\u{0640}') letters.push(i);
+  });
+  for (let j = 2; j + 1 < letters.length; j++) {
+    const at = letters[j];
+    if (chars[at] !== '\u{0624}' && chars[at] !== '\u{0626}') continue;
+    if (chars[letters[j - 1]] !== '\u{0627}') continue;
+    const suffix = letters.slice(j + 1).map(i => chars[i]);
+    if (PRONOUN_SUFFIX.test(suffix.join(''))) return at;
+  }
+  return -1;
+}
+
+/**
+ * The keys of a token (one typed word, or two joined: يا + أيها).
+ * - keys: the token itself, and each hamza seat also without its seat
+ *   letter: ؤ and ئ anywhere, أ and إ after a word's first letter (مسؤولا →
+ *   مسوولا, مسولا; يسألونك → يسالونك, يسلونك; أأنتم → اانتم, انتم), as a
+ *   reader may put the hamza on another seat than the index's spellings. At
+ *   most 2 seats, so at most 4 keys, the token as typed first. A key without
+ *   a seat letter is often another word (امرأة → امره, as أمره), so the
+ *   engine looks those up only where the token as typed makes no match.
+ * - caseKeys: a hamza whose seat the case ending gives (caseSeatAt) on the
+ *   other seats (أهوائهم → أهواءهم, أهواؤهم): the same word in another
+ *   case, which counts like the token as typed.
+ */
+function tokenKeys(words: readonly string[]): {
+  keys: string[];
+  caseKeys: string[];
+} {
   const chars: string[] = [];
   const seats: number[] = [];
   for (const word of words) {
@@ -855,7 +903,19 @@ function tokenKeys(words: readonly string[]): string[] {
     const key = queryKey(copy.join(''));
     if (key && !keys.includes(key)) keys.push(key);
   }
-  return keys;
+  const caseKeys: string[] = [];
+  const at = caseSeatAt(chars);
+  for (const seat of at < 0 ? [] : CASE_SEATS) {
+    if (seat === chars[at]) continue;
+    const copy = [...chars];
+    copy[at] = seat;
+    const key = queryKey(copy.join(''));
+    if (key && key !== keys[0] && !caseKeys.includes(key)) caseKeys.push(key);
+  }
+  return {
+    keys: keys.filter((key, i) => i === 0 || !caseKeys.includes(key)),
+    caseKeys,
+  };
 }
 
 /** The letters of a token, marks removed, hamza kept (for roots). */
@@ -887,10 +947,14 @@ function joinsNextWord(word: string): boolean {
  * ب, ك) to the next word, as the text writes them as one, from the right,
  * so و ب الله is وبالله. ل drops the alif of an article after it (ل الناس
  * → للناس, ل الله → لله). Never to a single letter (ب س م, ك ه ي ع ص), nor
- * across the end of an ayah: `starts` (kept in step) marks the words that
- * begin one.
+ * across the end of an ayah: `starts` and `ends` (kept in step) mark the
+ * words that begin and end one.
  */
-function joinProcliticLetters(words: string[], starts: boolean[]): void {
+function joinProcliticLetters(
+  words: string[],
+  starts: boolean[],
+  ends: boolean[],
+): void {
   for (let i = words.length - 2; i >= 0; i--) {
     const letter = foldArabicLetters(rawLetters(words[i]));
     const next = rawLetters(words[i + 1]);
@@ -904,6 +968,7 @@ function joinProcliticLetters(words: string[], starts: boolean[]): void {
         : words[i] + words[i + 1],
     );
     starts.splice(i, 2, starts[i]);
+    ends.splice(i, 2, ends[i + 1]);
   }
 }
 
@@ -962,21 +1027,28 @@ export function parseQuranQuery(
 
   if (/[0-9]/.test(text.replace(VERSE_NUMBER, ' '))) return {kind: 'none'};
   // A verse number pasted with its verse ends an ayah: starts[i] says that
-  // words[i] begins the next one.
+  // words[i] begins the next one, ends[i] that a verse number follows it.
   const words: string[] = [];
   const starts: boolean[] = [];
-  for (const ayah of text.split(VERSE_NUMBER)) {
+  const ends: boolean[] = [];
+  const ayahs = text.split(VERSE_NUMBER);
+  ayahs.forEach((ayah, a) => {
+    const before = words.length;
     prepare(ayah)
       .replace(/[^\p{L}\p{M}]+/gu, ' ')
       .split(' ')
       .filter(word => ARABIC_LETTER.test(word))
       .forEach((word, k) => {
         starts.push(k === 0 && words.length > 0);
+        ends.push(false);
         words.push(word);
       });
-  }
+    if (a < ayahs.length - 1 && words.length > before) {
+      ends[words.length - 1] = true;
+    }
+  });
   if (!words.length) return {kind: 'none'};
-  joinProcliticLetters(words, starts);
+  joinProcliticLetters(words, starts, ends);
 
   // Single letters typed apart (or one letter): a surah opening (ا ل م, ح م,
   // ك ه ي ع ص, ن), text matched as a whole word; else a root when 3-4 of
@@ -1004,6 +1076,11 @@ export function parseQuranQuery(
       : [words.slice(0, count).join('')];
     words.splice(0, count, ...spelled);
     starts.splice(0, count, ...(k ? [starts[0], starts[k]] : [starts[0]]));
+    ends.splice(
+      0,
+      count,
+      ...(k ? [ends[k - 1], ends[count - 1]] : [ends[count - 1]]),
+    );
     openings = spelled.length;
   };
   if (words.length <= 5 && words.every(word => rawLetters(word).length === 1)) {
@@ -1021,6 +1098,7 @@ export function parseQuranQuery(
     } else {
       words.splice(0, words.length, words.join(''));
       starts.splice(0, starts.length, starts[0]);
+      ends.splice(0, ends.length, ends[ends.length - 1]);
     }
   } else {
     // Letters typed apart before other words (ا ل ر تلك آيات الكتاب, ح م
@@ -1037,14 +1115,18 @@ export function parseQuranQuery(
     }
   }
 
-  const merged: {parts: string[]; ayahStart: boolean}[] = [];
+  const merged: {parts: string[]; ayahStart: boolean; ayahEnd: boolean}[] = [];
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
     if (i + 1 < words.length && joinsNextWord(word) && !starts[i + 1]) {
-      merged.push({parts: [word, words[i + 1]], ayahStart: starts[i]});
+      merged.push({
+        parts: [word, words[i + 1]],
+        ayahStart: starts[i],
+        ayahEnd: ends[i + 1],
+      });
       i++;
     } else {
-      merged.push({parts: [word], ayahStart: starts[i]});
+      merged.push({parts: [word], ayahStart: starts[i], ayahEnd: ends[i]});
     }
   }
 
@@ -1053,9 +1135,9 @@ export function parseQuranQuery(
   const tokens: QuranQueryToken[] = [];
   const tokenWords: string[] = [];
   let letters = 0;
-  for (const [i, {parts, ayahStart}] of merged.entries()) {
+  for (const [i, {parts, ayahStart, ayahEnd}] of merged.entries()) {
     if (tokens.length === QURAN_QUERY_MAX_TOKENS) break;
-    const keys = tokenKeys(parts);
+    const {keys, caseKeys} = tokenKeys(parts);
     if (!keys.length) continue;
     letters += keys[0].length;
     if (letters > QURAN_QUERY_MAX_LENGTH) break;
@@ -1064,8 +1146,10 @@ export function parseQuranQuery(
       keys,
       needsHamza: HAMZA.test(prepare(word)),
     };
+    if (caseKeys.length) token.caseKeys = caseKeys;
     if (i < openings) token.opening = true;
     if (ayahStart && tokens.length) token.ayahStart = true;
+    if (ayahEnd) token.ayahEnd = true;
     tokens.push(token);
     tokenWords.push(word);
   }

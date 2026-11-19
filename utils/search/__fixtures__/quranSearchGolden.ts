@@ -121,6 +121,34 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
     excludes: ['6:76', '6:77'],
   },
   {query: 'أإله مع الله', includes: ['27:60', '27:61', '27:64']},
+  // A hamza between a long alif and a pronoun suffix takes its seat from the
+  // case ending (أَهْوَآءَهُمْ, بِأَهْوَآئِهِم): typed on another seat it is
+  // the same word, alone or in a phrase.
+  {query: 'أهوائهم', includes: ['6:119', '2:120', '5:48', '13:37', '47:14']},
+  {query: 'آبائنا', includes: ['23:24', '2:170', '5:104', '43:22']},
+  {query: 'أبنائكم', includes: ['4:23', '2:49', '7:141', '14:6', '33:4']},
+  {query: 'ولئن اتبعت أهوائهم', exactly: ['2:120', '2:145', '13:37']},
+  {query: 'ولا تتبع أهوائهم', exactly: ['5:48', '5:49', '42:15']},
+  {query: 'ما وجدنا عليه آبائنا', exactly: ['5:104', '31:21']},
+  {query: 'بل نتبع ما ألفينا عليه آبائنا', exactly: ['2:170']},
+  {query: 'يذبحون أبنائكم ويستحيون نسائكم', exactly: ['2:49', '14:6']},
+  {query: 'ادعوا شركائكم', exactly: ['7:195', '28:64']},
+  {
+    query: 'فلما جاؤهم',
+    exactly: [
+      '2:89',
+      '10:76',
+      '28:36',
+      '28:48',
+      '35:42',
+      '40:25',
+      '43:47',
+      '61:6',
+    ],
+  },
+  // A phrase its words make nowhere as typed is searched again with the keys
+  // without a seat letter: رئى for the text's رَءَا.
+  {query: 'فلما رئى الشمس', exactly: ['6:78']},
   // Vocative يا, ها
   {query: 'يا أيها', includes: ['2:21']},
   // A vocative typed with its conjunction is one Uthmani word (وَيَٰقَوْمِ).
@@ -145,8 +173,25 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'يبني إسرائيل', includes: ['2:40', '2:47']},
   {query: 'اليل', includes: ['2:164', '3:27']},
   {query: 'واليل إذا يغشى', first: '92:1', exactly: ['92:1', '91:4']},
-  {query: 'يقوم', excludes: ['2:54', '5:20']},
-  {query: 'الى', excludes: ['33:4', '58:2']},
+  // The letters as drawn match whole words only, never the start of what a
+  // reader types: يقوم does not list يَٰقَوْمَنَآ (46:30-31), nor الى the
+  // ayahs of ٱلَّيْل.
+  {query: 'يقوم', excludes: ['2:54', '5:20', '46:30', '46:31']},
+  {
+    query: 'الى',
+    excludes: [
+      '33:4',
+      '58:2',
+      '2:164',
+      '2:274',
+      '3:27',
+      '17:79',
+      '36:37',
+      '73:2',
+      '92:1',
+      '93:2',
+    ],
+  },
   // An open taa (فِطْرَتَ, مَرْضَاتِ) typed as ة, also where the corpus
   // spells the lemma with ت (TAA_MARBUTA_LEMMAS).
   {query: 'فطرة الله', exactly: ['30:30']},
@@ -208,7 +253,26 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
     exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
   },
   {query: 'رب العالمين', includes: ['1:2']},
-  // Pasted with a verse number, or two ayahs with theirs: the first ayah.
+  // Pasted with a verse number, or ayahs with theirs: the pasted ayah with
+  // the fewest hits (1:2 and 1:3 have 6 each: the first), its last word a
+  // whole word (الم (1) is not الملك, 67:1).
+  {
+    query: 'الم (1)',
+    first: '2:1',
+    includes: ['3:1', '2:106'],
+    excludes: ['67:1'],
+  },
+  {
+    query:
+      'الم (1) ذلك الكتاب لا ريب فيه هدى للمتقين (2) الذين يؤمنون بالغيب ويقيمون الصلاة ومما رزقناهم ينفقون (3)',
+    kind: 'phrase',
+    exactly: ['2:2'],
+  },
+  {
+    query: 'الرحمن (1) علم القرآن (2) خلق الإنسان (3) علمه البيان (4)',
+    kind: 'phrase',
+    exactly: ['55:2'],
+  },
   {
     query: 'الحمد لله رب العالمين (2)',
     exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
