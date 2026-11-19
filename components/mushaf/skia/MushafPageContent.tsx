@@ -274,6 +274,15 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       [],
     );
 
+    // @ai-start
+    // A line takes its paragraph out of the hit test before it disposes it
+    // (same as SkiaPage): a line that stops drawing while the page stays
+    // mounted then leaves no freed paragraph in the map.
+    const handleParagraphDisposed = useCallback((lineIndex: number) => {
+      paragraphMapRef.current.delete(lineIndex);
+    }, []);
+    // @ai-end
+
     // ── Verse selection store ──────────────────────────────
     // @ai-start
     // Verse units of the shown text, in its rewayah's own numbering, with
@@ -594,6 +603,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 textIdentity={textIdentity} // @ai
                 lineHeight={baseLineHeight}
                 onParagraphReady={handleParagraphReady}
+                onParagraphDisposed={handleParagraphDisposed} // @ai
                 backgroundHighlights={lineHighlights.get(lineIndex)}
               />
             );
