@@ -638,6 +638,7 @@ export function SearchView({
         return (
           <RecentVerseRow
             verseKey={recentItem.verseKey}
+            positions={recentItem.positions}
             onPress={() => openVerse(recentItem.verseKey, recentItem.positions)}
           />
         );

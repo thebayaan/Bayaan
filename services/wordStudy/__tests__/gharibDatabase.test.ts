@@ -5,10 +5,12 @@
  * scripts/word-study/build-gharib-db.ts and compare with --check; a change
  * to any line below must be a reviewed correction.
  */
+import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import lock from '../../../scripts/word-study/sources.lock.json';
 
+const ROOT = path.join(__dirname, '../../..');
 const DB = path.join(__dirname, '../../../assets/data/gharib-v1.db');
 const WBW = path.join(__dirname, '../../../data/wbw/wbw-en.db');
 
@@ -97,6 +99,32 @@ describe('completeness', () => {
     expect(rows).toHaveLength(2746);
     expect(rows.filter(r => r.word_from !== null)).toHaveLength(2694);
     expect([0, 1, 2, 3, 4, 5].map(count)).toEqual([40, 2484, 40, 171, 10, 1]);
+  });
+
+  it('records its counts in meta, and the docs give the same', () => {
+    // A rebuild that changes how many entries go on words must update the
+    // docs that give the number.
+    const meta = (key: string) =>
+      Number(
+        (
+          db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as {
+            value: string;
+          }
+        ).value,
+      );
+    const onWords = meta('source_327_placed');
+    const entries = meta('source_327_entries');
+    expect(onWords).toBe(rows.filter(r => r.word_from !== null).length);
+    expect(entries).toBe(rows.length);
+    const n = (count: number) => count.toLocaleString('en-US');
+    const doc = (file: string) =>
+      fs.readFileSync(path.join(ROOT, file), 'utf8');
+    expect(doc('scripts/word-study/SOURCES.md')).toContain(
+      `${n(onWords)} of ${n(entries)} entries`,
+    );
+    expect(doc('docs/research/surah-app-feature-gaps.md')).toContain(
+      `${n(onWords)} entries placed on words`,
+    );
   });
 
   it('puts every span on words of the app', () => {

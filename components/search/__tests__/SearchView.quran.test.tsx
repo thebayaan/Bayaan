@@ -107,20 +107,27 @@ jest.mock('@/components/search/quran/QuranResultRowView', () => {
     ),
   };
 });
+// Each recent ayah as drawn: its key, and the slots it is named by.
+const mockRecentVerses: {verseKey: string; positions: readonly number[]}[] = [];
 jest.mock('@/components/search/quran/RecentVerseRow', () => {
   const {Text: MockText} = jest.requireActual('react-native');
   return {
     RecentVerseRow: ({
       verseKey,
+      positions,
       onPress,
     }: {
       verseKey: string;
+      positions: readonly number[];
       onPress: () => void;
-    }) => (
-      <MockText testID="recent-verse" onPress={onPress}>
-        {verseKey}
-      </MockText>
-    ),
+    }) => {
+      mockRecentVerses.push({verseKey, positions});
+      return (
+        <MockText testID="recent-verse" onPress={onPress}>
+          {verseKey}
+        </MockText>
+      );
+    },
   };
 });
 jest.mock('@/components/SurahItem', () => {
@@ -345,6 +352,7 @@ beforeEach(async () => {
   mockQuranCalls.length = 0;
   mockPush.mockClear();
   onQueryChange.mockClear();
+  mockRecentVerses.length = 0;
   mockRewayah = 'hafs';
   mockTablet = false;
   mockTabletRows.length = 0;
@@ -593,9 +601,15 @@ describe('SearchView: Quran results', () => {
       },
     ]);
 
-    // The recent searches list it, and it opens the same way.
+    // The recent searches list it, and it opens the same way. The row gets
+    // the matched slots: in another rewayah it names the verse holding the
+    // first one, which the reader selects.
     await retype('');
     expect(rows()).toEqual(['recent-verse|2:255']);
+    expect(mockRecentVerses.at(-1)).toEqual({
+      verseKey: '2:255',
+      positions: [3, 4],
+    });
     mockPush.mockClear();
     press('recent-verse', '2:255');
     expect(mockPush).toHaveBeenCalledWith(

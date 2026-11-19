@@ -93,6 +93,14 @@ describe('Credits, in English', () => {
     );
   });
 
+  it('credits the corpus for the word and root search too', async () => {
+    // The search index keeps its proclitic segmentation, roots and lemmas.
+    const credits = await render('en');
+    expect(credits.get('Quranic Arabic Corpus')?.description).toMatch(
+      /^Morphology behind the i'rab and the Quran word and root search \(/,
+    );
+  });
+
   it('credits KFGQPC for the riwayah texts and the Uthmani font', async () => {
     const credits = await render('en');
     const kfgqpc = credits.get("King Fahd Glorious Qur'an Printing Complex");
@@ -127,6 +135,13 @@ describe('Credits, in Arabic', () => {
     const credits = await render('ar');
     expect(credits.get('The Quranic Treebank')?.description).toContain(
       'وتحليله الصرفي من المدونة القرآنية العربية',
+    );
+  });
+
+  it('credits the corpus for the word and root search too', async () => {
+    const credits = await render('ar');
+    expect(credits.get('Quranic Arabic Corpus')?.description).toMatch(
+      /^التحليل الصرفي الذي بُني عليه الإعراب والبحث في القرآن بالكلمة والجذر \(/,
     );
   });
 
