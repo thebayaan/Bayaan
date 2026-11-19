@@ -11,7 +11,10 @@ import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 import {ActivityIndicator, Text} from 'react-native';
 import i18n from 'i18next';
-import {decodeReadingsRow} from '@/services/mushaf/wordReadingsFormat';
+import {
+  alikeReadings,
+  decodeReadingsRow,
+} from '@/services/mushaf/wordReadingsFormat';
 import type {WordReadingsResult} from '@/hooks/useWordReadings';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 
@@ -101,6 +104,7 @@ function ready(verseKey: string, position: number): WordReadingsResult {
 
 // An inline verse marker (U+06DD + Arabic-Indic two): never part of the word.
 const VERSE_TWO = String.fromCharCode(0x06dd, 0x0662);
+const VERSE_SIX = String.fromCharCode(0x06dd, 0x0666);
 
 let renderer: TestRenderer.ReactTestRenderer | null = null;
 
@@ -317,16 +321,10 @@ it('shows a suspected misprint as written, as its own reading, with no note', ()
 });
 
 it('a word with no row reads alike; the current rewayah shows its own spelling', () => {
+  // what useWordReadings gives for a word with no row
   mockState.result = {
     status: 'ready',
-    readings: {
-      verseKey: '2:2',
-      positions: [3],
-      hafsText: null,
-      groups: [{kind: 'asHafs', text: '', members: []}],
-      alike: true,
-      basmalaUnnumberedIn: [],
-    },
+    readings: alikeReadings('2:2', [3]),
     dkPositions: [3],
   };
   mockState.currentWords = [
@@ -345,6 +343,79 @@ it('a word with no row reads alike; the current rewayah shows its own spelling',
   root = render('2:2', 3, 'hafs');
   expect(mockReadingTexts).toEqual([]);
   expect(texts(root)).not.toContain('Current');
+});
+
+it('a word with a row shows the current rewayah`s own spelling when its group shows another', () => {
+  // 1:7:4: Warsh reads it as Hafs does (no tint) but writes it his own way,
+  // and ends verse 6 after it (an inline marker, never part of the word)
+  mockState.result = ready('1:7', 4);
+  mockState.currentWords = [
+    {text: 'W-THREE', wordPositionInVerse: 3},
+    {text: `W-FOUR ${VERSE_SIX}`, wordPositionInVerse: 4},
+  ];
+  let root = render('1:7', 4, 'warsh');
+  expect(mockReadingTexts.map(p => [p.text, p.rewayah]).pop()).toEqual([
+    'W-FOUR',
+    'warsh',
+  ]);
+  expect(labels(root)).toContain(
+    "W-FOUR, read by Warsh (Nafi'), including the current rewayah",
+  );
+  act(() => renderer?.unmount());
+
+  // its own line already shows it (al-Bazzi's silah): not drawn twice
+  const r = ready('1:7', 4);
+  const bazzi =
+    r.status === 'ready'
+      ? r.readings.groups[0].members.find(m => m.rewayah === 'al-bazzi')
+      : undefined;
+  mockState.result = r;
+  mockState.currentWords = [
+    {text: bazzi?.ownText ?? '', wordPositionInVerse: 4},
+  ];
+  mockReadingTexts.length = 0;
+  render('1:7', 4, 'al-bazzi');
+  expect(mockReadingTexts.map(p => p.rewayah)).toEqual([
+    'hafs',
+    'al-bazzi',
+    'qunbul',
+  ]);
+  act(() => renderer?.unmount());
+
+  // the same text as its group's (Warsh in 1:4:1's مَلِكِ): not drawn twice
+  mockState.result = ready('1:4', 1);
+  const malik =
+    mockState.result.status === 'ready'
+      ? mockState.result.readings.groups[1].text
+      : '';
+  mockState.currentWords = [{text: malik, wordPositionInVerse: 1}];
+  mockReadingTexts.length = 0;
+  root = render('1:4', 1, 'warsh');
+  expect(mockReadingTexts.filter(p => p.rewayah === 'warsh')).toEqual([]);
+  expect(texts(root).filter(s => s === 'Current')).toHaveLength(1);
+  act(() => renderer?.unmount());
+
+  // a span is compared whole: Shu'bah writes 40:26:13-14 as Hafs does
+  mockState.result = ready('40:26', 13);
+  const hafsSpan =
+    mockState.result.status === 'ready'
+      ? mockState.result.readings.groups[0].text.split(' ')
+      : [];
+  mockState.currentWords = [
+    {text: hafsSpan[0], wordPositionInVerse: 13},
+    {text: hafsSpan[1], wordPositionInVerse: 14},
+  ];
+  mockReadingTexts.length = 0;
+  render('40:26', 13, 'shubah');
+  expect(mockReadingTexts.filter(p => p.rewayah === 'shubah')).toEqual([]);
+  act(() => renderer?.unmount());
+
+  // never for Hafs, whose text is the group's by definition
+  mockState.result = ready('1:7', 4);
+  mockState.currentWords = [{text: 'W-FOUR', wordPositionInVerse: 4}];
+  mockReadingTexts.length = 0;
+  render('1:7', 4, 'hafs');
+  expect(mockReadingTexts.map(p => p.text)).not.toContain('W-FOUR');
 });
 
 it('says when the current rewayah is not one of the 8', () => {

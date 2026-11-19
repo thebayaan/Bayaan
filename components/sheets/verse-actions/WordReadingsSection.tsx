@@ -8,7 +8,9 @@
  *
  * Hafs's group comes first; each differing reading follows with a tinted bar
  * and its readers, then the rewayat that do not read the word. A reader whose
- * own text differs from its group's (or carries silah) gets its own line.
+ * own text differs from its group's (or carries silah) gets its own line. The
+ * current rewayah's own spelling, when nothing above shows it, follows in a
+ * row of its own (Current), as for a word with no row.
  * Notes say what the readings alone do not (a word written over two Hafs
  * words, joined or apart, verse ends, al-Fatiha's basmala); a footer gives
  * the scope and the source. Quran text is only ever drawn by ReadingText
@@ -33,10 +35,12 @@ import {useTheme} from '@/hooks/useTheme';
 import {useWordReadings} from '@/hooks/useWordReadings';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
+  findGroup,
   READINGS_REWAYAT,
   type ReadingGroup,
   type ReadingMember,
   type ReadingsRewayah,
+  type WordReadings,
 } from '@/services/mushaf/wordReadingsFormat';
 import {
   getNarratorLabel,
@@ -75,8 +79,8 @@ function isReadingsRewayah(id: RewayahId): id is ReadingsRewayah {
 }
 
 /** The current rewayah's own words at `dkPositions` when they are in memory
- *  (a word with no row: its spelling in the mushaf the reader is looking
- *  at), an inline verse number left out. */
+ *  (its spelling in the mushaf the reader is looking at), an inline verse
+ *  number left out. */
 function currentWordText(
   verseKey: string,
   dkPositions: readonly number[],
@@ -90,6 +94,23 @@ function currentWordText(
     .filter(token => token && !token.startsWith(END_OF_AYAH))
     .join(' ');
   return text || null;
+}
+
+/** The current rewayah's own spelling of the word (all of a span) when the
+ *  readings do not show it already: not on its own line in its group, and
+ *  not its group's text. A word with no row shows no text, so there it is
+ *  always drawn. Null for Hafs, whose text is its group's. */
+function currentOwnText(
+  verseKey: string,
+  readings: WordReadings,
+  rewayah: ReadingsRewayah,
+): string | null {
+  if (rewayah === 'hafs') return null;
+  const group = findGroup(readings, rewayah);
+  const member = group?.members.find(m => m.rewayah === rewayah);
+  if (!group || !member || member.ownText !== null) return null;
+  const text = currentWordText(verseKey, readings.positions, rewayah);
+  return text !== null && text !== group.text ? text : null;
 }
 
 export function WordReadingsSection({
@@ -165,9 +186,7 @@ export function WordReadingsSection({
   const current = isReadingsRewayah(currentRewayah) ? currentRewayah : null;
   const noRow = readings.hafsText === null;
   const ownCurrent =
-    noRow && current !== null && current !== 'hafs'
-      ? currentWordText(verseKey, dkPositions, current)
-      : null;
+    current !== null ? currentOwnText(verseKey, readings, current) : null;
   let summary: string;
   if (readings.groups.length > 1) {
     summary = t('wordReadings.differs');
