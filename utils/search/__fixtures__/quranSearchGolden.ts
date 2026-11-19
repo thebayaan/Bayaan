@@ -203,6 +203,26 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
     exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
   },
   {query: 'رب العالمين', includes: ['1:2']},
+  // Pasted with a verse number, or two ayahs with theirs: the first ayah.
+  {
+    query: 'الحمد لله رب العالمين (2)',
+    exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
+  },
+  {
+    query: 'الحمد لله رب العالمين (٢)',
+    exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
+  },
+  {
+    query:
+      'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ ۝٢ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ۝٣',
+    kind: 'phrase',
+    exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
+  },
+  {
+    query: 'الحمد لله رب العالمين (2) الرحمن الرحيم (3)',
+    first: '1:2',
+    kind: 'phrase',
+  },
   {query: 'اهدنا الصراط المستقيم', includes: ['1:6']},
   {query: 'إياك نعبد', includes: ['1:5']},
   {query: 'صراط الذين أنعمت عليهم', includes: ['1:7']},
@@ -356,6 +376,7 @@ export const QURAN_KIND_FIXTURES: readonly QuranKindFixture[] = [
   {query: 'ا ل م', kind: 'text', roots: ['ء ل م']},
   {query: 'ح م', kind: 'text', roots: []},
   {query: 'ح م ع س ق', kind: 'text', roots: []},
+  {query: 'الحمد لله رب العالمين (2)', kind: 'text', roots: []},
   {query: '2:255', kind: 'none', roots: []},
   {query: 'husary', kind: 'none', roots: []},
 ];

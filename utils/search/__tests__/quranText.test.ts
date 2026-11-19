@@ -539,6 +539,46 @@ describe('parseQuranQuery', () => {
     expect(keys('ہ')).toEqual([['ه']]);
   });
 
+  it('reads verse numbers pasted with their verses as the ends of ayahs', () => {
+    const tokens = (query: string) => {
+      const parsed = parseQuranQuery(query);
+      if (parsed.kind !== 'text') throw new Error(`${query}: ${parsed.kind}`);
+      return parsed.tokens;
+    };
+    const praise = [['الحمد'], ['لله'], ['رب'], ['العالمين']];
+    // A number in parentheses or brackets after the verse, in any digits.
+    for (const query of [
+      'الحمد لله رب العالمين (2)',
+      'الحمد لله رب العالمين (٢)',
+      'الحمد لله رب العالمين [2]',
+      'الحمد لله رب العالمين ﴿٢﴾',
+      'الحمد لله رب العالمين ۝٢',
+    ]) {
+      expect(keys(query)).toEqual(praise);
+      expect(tokens(query).some(t => t.ayahStart)).toBe(false);
+    }
+    // Two ayahs pasted together: the second starts at the first word after
+    // the number.
+    const verses = `${['1:2:1', '1:2:2', '1:2:3', '1:2:4', '1:2:5']
+      .map(dk)
+      .join(' ')} ${['1:3:1', '1:3:2', '1:3:3'].map(dk).join(' ')}`;
+    expect(tokens(verses).map(t => t.ayahStart ?? false)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+    ]);
+    expect(
+      tokens('الحمد لله رب العالمين (2) الرحمن الرحيم (3)')[4],
+    ).toMatchObject({keys: ['الرحمن'], ayahStart: true});
+    // Other digits keep the query out (commands), as do numbers alone.
+    expect(parseQuranQuery('سورة 2')).toEqual({kind: 'none'});
+    expect(parseQuranQuery('(2)')).toEqual({kind: 'none'});
+    expect(parseQuranQuery('2:255 (الكرسي)')).toEqual({kind: 'none'});
+  });
+
   it('drops words without an Arabic letter from an Arabic query', () => {
     expect(keys('الله x')).toEqual([['الله']]);
   });

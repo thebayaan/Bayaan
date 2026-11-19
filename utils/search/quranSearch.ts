@@ -18,7 +18,9 @@
  *    its weakest token's. It may also run on from an ayah of one word
  *    (QURAN_ONE_WORD_AYAHS: الم, حم, الرحمن, والعصر) into the start of
  *    the next ayah, which is the hit: الم ذلك الكتاب finds 2:2.
- * 4. Without any phrase, a query of 2 or more words falls back to the ayahs
+ * 4. Without any phrase, ayahs pasted together with their numbers (... ۝٢
+ *    ... ۝٣) are searched by the first of them, as no other ayah boundary
+ *    is known. Otherwise a query of 2 or more words falls back to the ayahs
  *    that hold every word somewhere ('allWords'), closest together first.
  * 5. Hits are ranked by score, then in mushaf order.
  */
@@ -498,6 +500,10 @@ export async function searchQuranText(
   if (phrase.length || tokens.length < 2) {
     return result('phrase', phrase.sort(byScoreThenMushaf));
   }
+  // Ayahs pasted with their numbers make one phrase only across an ayah of
+  // one word (run-on, above); otherwise search the first of them.
+  const nextAyah = tokens.findIndex((token, k) => k > 0 && token.ayahStart);
+  if (nextAyah > 0) return searchQuranText(tokens.slice(0, nextAyah), source);
   const allWords = joinAllWords(
     postings.map((token, k) => maps[k] ?? slotsOf(token)),
   );

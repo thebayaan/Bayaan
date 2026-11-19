@@ -290,6 +290,42 @@ describe('searchQuranText', () => {
     expect(water.hits.map(h => h.verseIndex)).toEqual([13]);
   });
 
+  it('searches ayahs pasted with their numbers by the first of them', async () => {
+    const {source} = sourceOf({
+      // الحمد لله in verses 1 and 4; الرحمن الرحيم at the start of verse 2
+      الحمد: [
+        {verseIndex: 1, position: 1},
+        {verseIndex: 4, position: 3},
+      ],
+      لله: [
+        {verseIndex: 1, position: 2},
+        {verseIndex: 4, position: 4},
+      ],
+      الرحمن: [
+        {verseIndex: 2, position: 1},
+        {verseIndex: 1, position: 7},
+      ],
+    });
+    const pasted: QuranQueryToken[] = [
+      token('الحمد'),
+      token('لله'),
+      {...token('الرحمن'), ayahStart: true},
+    ];
+    const found = await searchQuranText(pasted, source);
+    expect(found.kind).toBe('phrase');
+    expect(found.hits.map(h => [h.verseIndex, h.matches])).toEqual([
+      [1, [{position: 1, length: 2}]],
+      [4, [{position: 3, length: 2}]],
+    ]);
+    // Without the ayah boundary: no phrase, the ayahs with all three words.
+    const typed = await searchQuranText(
+      [token('الحمد'), token('لله'), token('الرحمن')],
+      source,
+    );
+    expect(typed.kind).toBe('allWords');
+    expect(typed.hits.map(h => h.verseIndex)).toEqual([1]);
+  });
+
   it('falls back to every word in one ayah, closest together first', async () => {
     const {source} = sourceOf({
       رب: [
