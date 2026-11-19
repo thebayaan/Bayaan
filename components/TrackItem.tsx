@@ -11,8 +11,7 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {
   useDownloadProgress,
-  useIsDownloaded,
-  useIsDownloadedWithRewayat,
+  useIsDownloadedForPlayback,
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {CircularProgress} from '@/components/CircularProgress';
@@ -115,16 +114,14 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       [reciterId, surahId, rewayatId],
     );
 
-    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided
-    const isDownloadedBase = useIsDownloaded(reciterId, surahId);
-    const isDownloadedRewayat = useIsDownloadedWithRewayat(
+    // Downloaded when playing the row uses a downloaded file. A row in the
+    // reciter's first rewayah also plays one an older version recorded
+    // without a rewayah (Loved surahs saved without one).
+    const isDownloadedState = useIsDownloadedForPlayback(
       reciterId,
       surahId,
-      rewayatId || '',
+      rewayatId,
     );
-    const isDownloadedState = rewayatId
-      ? isDownloadedRewayat
-      : isDownloadedBase;
 
     // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
     const isCurrentlyDownloading = useIsDownloading(downloadId);

@@ -19,6 +19,7 @@ jest.mock('@/services/downloadService', () => ({
   extractFilename: (path: string) => path,
 }));
 
+import {RECITERS, type Reciter} from '@/data/reciterData';
 import {
   useDownloadStore,
   type DownloadedSurah,
@@ -66,6 +67,10 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => {
+  RECITERS.splice(0, RECITERS.length);
+});
+
 it('follows downloads added and removed after the first render', async () => {
   const items = [item('1', 'hafs'), item('2', 'hafs')];
   render(items);
@@ -97,6 +102,21 @@ it('keeps downloads of one rewayah apart from another', () => {
     useDownloadStore.getState().addDownload(download('2'));
   });
   expect(latest).toMatchObject({allDownloaded: true, downloadedCount: 2});
+});
+
+it("counts a download without a rewayah for the reciter's first rewayah", () => {
+  // Catalogue order: such a download fetched Warsh, and plays only for it.
+  RECITERS.splice(0, RECITERS.length, {
+    id: 'reciter',
+    rewayat: [{id: 'warsh'}, {id: 'hafs'}],
+  } as unknown as Reciter);
+  render([item('1', 'warsh'), item('2', 'hafs')]);
+
+  act(() => {
+    useDownloadStore.getState().addDownload(download('1'));
+    useDownloadStore.getState().addDownload(download('2'));
+  });
+  expect(latest).toMatchObject({allDownloaded: false, downloadedCount: 1});
 });
 
 it("leaves the user's own uploads out of the count", () => {

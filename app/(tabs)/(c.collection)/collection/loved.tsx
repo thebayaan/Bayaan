@@ -91,7 +91,7 @@ const LovedScreen = () => {
   const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const {
     isDownloaded,
-    isDownloadedWithRewayat,
+    isDownloadedForPlayback,
     isDownloading,
     isDownloadingWithRewayat,
     setDownloading,
@@ -424,7 +424,10 @@ const LovedScreen = () => {
       const summary = await bulkDownloadSurahs(items, {
         downloadSurah,
         isDownloaded,
-        isDownloadedWithRewayat,
+        // Skips what already plays offline, the way the row's badge counts
+        // it: a surah an older version downloaded without a rewayah plays
+        // that file in the reciter's first rewayah, the one its row takes.
+        isDownloadedWithRewayat: isDownloadedForPlayback,
         isDownloading,
         isDownloadingWithRewayat,
         setDownloading,
@@ -471,7 +474,7 @@ const LovedScreen = () => {
   }, [
     downloadableLoved,
     isDownloaded,
-    isDownloadedWithRewayat,
+    isDownloadedForPlayback,
     isDownloadingWithRewayat,
     isDownloading,
     setDownloading,

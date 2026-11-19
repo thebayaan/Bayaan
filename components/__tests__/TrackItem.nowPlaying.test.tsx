@@ -21,8 +21,7 @@ jest.mock('@/services/player/store/playerStore', () => {
   };
 });
 jest.mock('@/services/player/store/downloadSelectors', () => ({
-  useIsDownloaded: () => false,
-  useIsDownloadedWithRewayat: () => false,
+  useIsDownloadedForPlayback: () => false,
   useIsDownloading: () => false,
   useDownloadProgress: () => 0,
 }));

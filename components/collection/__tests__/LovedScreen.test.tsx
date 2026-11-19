@@ -92,11 +92,16 @@ jest.mock('@/services/player/store/downloadSelectors', () => ({
   useDownloadQueries: () => ({
     isDownloaded: (reciterId: string, surahId: string) =>
       mockDownloaded.has(`${reciterId}:${surahId}:`),
-    isDownloadedWithRewayat: (
+    // The store's rule: the rewayah's own download, or, for the reciter's
+    // first rewayah, one recorded without a rewayah.
+    isDownloadedForPlayback: (
       reciterId: string,
       surahId: string,
-      rewayatId: string,
-    ) => mockDownloaded.has(`${reciterId}:${surahId}:${rewayatId}`),
+      rewayatId = '',
+    ) =>
+      mockDownloaded.has(`${reciterId}:${surahId}:${rewayatId}`) ||
+      (rewayatId === `${reciterId}-default` &&
+        mockDownloaded.has(`${reciterId}:${surahId}:`)),
     isDownloading: () => false,
     isDownloadingWithRewayat: () => false,
   }),

@@ -1,5 +1,6 @@
 import {useMemo} from 'react';
 import {useDownloads} from '@/services/player/store/downloadSelectors'; // @ai
+import {downloadRewayatForPlayback} from '@/services/player/store/downloadStore';
 
 interface CollectionItem {
   reciter: {id: string} | null;
@@ -49,8 +50,9 @@ export function useCollectionDownloadState(
     }
 
     // @ai-start
-    // Same rule as the store's isDownloaded / isDownloadedWithRewayat: a
-    // completed record for this reciter, surah and rewayah ('' for none).
+    // Same rule as the store's isDownloadedForPlayback: a completed record
+    // for this reciter, surah and rewayah ('' for none), or, for the
+    // reciter's first rewayah, one recorded without a rewayah.
     const key = (reciterId: string, surahId: string, rewayatId?: string) =>
       `${reciterId}|${surahId}|${rewayatId || ''}`;
     const completed = new Set<string>();
@@ -80,8 +82,12 @@ export function useCollectionDownloadState(
 
       // @ai-start
       // Check if downloaded (with or without rewayatId)
-      const isTrackDownloaded = completed.has(
-        key(item.track.reciterId, item.track.surahId, item.track.rewayatId),
+      const {reciterId, surahId, rewayatId} = item.track;
+      const isTrackDownloaded = downloadRewayatForPlayback(
+        reciterId,
+        rewayatId,
+      ).some(downloadRewayatId =>
+        completed.has(key(reciterId, surahId, downloadRewayatId)),
       );
       // @ai-end
 
