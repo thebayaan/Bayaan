@@ -487,6 +487,38 @@ describe('one Hafs verse (1:4)', () => {
     expect(() => control('Next word')).toThrow();
   });
 
+  it('shows a book page that discusses several verses once, captioned with all of them', async () => {
+    const page = (id: number, text: string) => ({
+      bookId: 1,
+      nameAr: 'كتاب',
+      authorAr: 'مؤلف',
+      passages: [{id, text, part: '1', page: `${id}`}],
+    });
+    // 1:6 and 1:7 are on one page of the book; 1:7 has a page of its own.
+    (irabDataService.getBooks as jest.Mock)
+      .mockImplementationOnce(async () => [page(10, 'نص مشترك')])
+      .mockImplementationOnce(async () => [
+        {
+          ...page(10, 'نص مشترك'),
+          passages: [
+            ...page(10, 'نص مشترك').passages,
+            ...page(11, 'نص خاص').passages,
+          ],
+        },
+      ]);
+    await open(hafs('1:6', '1:7'));
+    await press("I'rab books");
+    await settle();
+    const shown = texts();
+    expect(shown.filter(t => t === 'نص مشترك')).toHaveLength(1);
+    expect(shown.filter(t => t === 'نص خاص')).toHaveLength(1);
+    // The shared page under both verses, then 1:7's own.
+    const captions = shown.filter(t => /^1:[67]/.test(t));
+    expect(captions).toEqual(['1:6-7', '1:7']);
+    expect(shown.indexOf('نص مشترك')).toBeLessThan(shown.indexOf('1:7'));
+    expect(shown.indexOf('1:7')).toBeLessThan(shown.indexOf('نص خاص'));
+  });
+
   it('says so when a verse has no word-by-word words', async () => {
     const words = mockWbw.get('1:4') ?? [];
     mockWbw.set('1:4', []);
@@ -628,7 +660,7 @@ describe("Warsh's unnumbered Fatiha basmala (Word Study only)", () => {
         bookId: 1,
         nameAr: 'كتاب',
         authorAr: 'مؤلف',
-        passages: [{text: 'نص', part: '1', page: '2'}],
+        passages: [{id: 1, text: 'نص', part: '1', page: '2'}],
       },
     ]);
     await open(warshBasmala());

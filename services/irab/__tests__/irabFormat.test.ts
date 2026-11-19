@@ -1,9 +1,11 @@
 import {
   decodeEntries,
   decodeMorph,
+  mergeBookPassages,
   parseWordKey,
   quotableWord,
   splitRefs,
+  type IrabBookPassages,
 } from '../irabFormat';
 
 const texts = ['', 'الواو', 'حرف عطف', 'خبر {{3}} محذوف', 'الجذر', 'ك ت ب'];
@@ -103,5 +105,44 @@ describe('quotableWord', () => {
     // 75:27:2: a combining grapheme joiner (U+034F) before the sign.
     const man = '\u0645\u064E\u0646\u0652\u034F\u06DC';
     expect(quotableWord(man)).toBe(man);
+  });
+});
+
+describe('mergeBookPassages', () => {
+  /** A book with placeholder passages of these ids. */
+  const book = (bookId: number, ...ids: number[]): IrabBookPassages => ({
+    bookId,
+    nameAr: `\u0643\u062A\u0627\u0628 ${bookId}`,
+    authorAr: '\u0645\u0624\u0644\u0641',
+    passages: ids.map(id => ({
+      id,
+      text: `\u0646\u0635 ${id}`,
+      part: '1',
+      page: `${id}`,
+    })),
+  });
+
+  it('shows a page shared by several verses once, under all of them (100:1-5)', () => {
+    const verses = ['100:1', '100:2', '100:3', '100:4', '100:5'];
+    const parts = verses.map(verseKey => ({
+      verseKey,
+      books: [book(309, 34), book(318, 1343)],
+    }));
+    expect(mergeBookPassages(parts)).toEqual([
+      {verseKeys: verses, books: [book(309, 34), book(318, 1343)]},
+    ]);
+  });
+
+  it("keeps a verse's own passages under it, in reading order", () => {
+    const parts = [
+      {verseKey: '2:1', books: [book(309, 1, 2)]},
+      {verseKey: '2:2', books: [book(309, 2, 3), book(318, 9)]},
+      {verseKey: '2:3', books: []},
+    ];
+    expect(mergeBookPassages(parts)).toEqual([
+      {verseKeys: ['2:1'], books: [book(309, 1)]},
+      {verseKeys: ['2:1', '2:2'], books: [book(309, 2)]},
+      {verseKeys: ['2:2'], books: [book(309, 3), book(318, 9)]},
+    ]);
   });
 });

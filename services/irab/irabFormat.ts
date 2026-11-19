@@ -168,5 +168,62 @@ export interface IrabBookPassages {
   bookId: number;
   nameAr: string;
   authorAr: string;
-  passages: {text: string; part: string; page: string}[];
+  /** `id` names the passage: a page discussing several verses has one. */
+  passages: {id: number; text: string; part: string; page: string}[];
+}
+
+/** Book passages and the verses (of those given) they discuss. */
+export interface VerseBooksGroup {
+  /** In the order given; a passage discusses a run of verses. */
+  verseKeys: string[];
+  books: IrabBookPassages[];
+}
+
+/**
+ * The passages of several verses' books with each passage once: a page
+ * that discusses 100:1 to 100:5 is linked to each of them. Each passage
+ * goes into the group of exactly the verses that have it, and groups,
+ * books and passages keep the order they first appear in, verse by verse.
+ * A verse with no passage of its own makes no group.
+ */
+export function mergeBookPassages(
+  parts: readonly {
+    verseKey: string;
+    books: readonly IrabBookPassages[];
+  }[],
+): VerseBooksGroup[] {
+  const versesOf = new Map<number, string[]>();
+  for (const part of parts) {
+    for (const book of part.books) {
+      for (const passage of book.passages) {
+        const verses = versesOf.get(passage.id) ?? [];
+        if (!verses.includes(part.verseKey)) verses.push(part.verseKey);
+        versesOf.set(passage.id, verses);
+      }
+    }
+  }
+  const groups = new Map<string, VerseBooksGroup>();
+  const placed = new Set<number>();
+  for (const part of parts) {
+    for (const book of part.books) {
+      for (const passage of book.passages) {
+        if (placed.has(passage.id)) continue;
+        placed.add(passage.id);
+        const verseKeys = versesOf.get(passage.id) ?? [part.verseKey];
+        const key = verseKeys.join(',');
+        let group = groups.get(key);
+        if (!group) {
+          group = {verseKeys, books: []};
+          groups.set(key, group);
+        }
+        let shown = group.books.find(b => b.bookId === book.bookId);
+        if (!shown) {
+          shown = {...book, passages: []};
+          group.books.push(shown);
+        }
+        shown.passages.push(passage);
+      }
+    }
+  }
+  return [...groups.values()];
 }

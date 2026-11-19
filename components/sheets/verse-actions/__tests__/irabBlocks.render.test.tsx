@@ -273,7 +273,7 @@ describe('IrabBooksTab', () => {
     bookId: 1,
     nameAr: 'كتاب',
     authorAr: 'مؤلف',
-    passages: [{text: 'نص', part: '1', page: '20'}],
+    passages: [{id: 1, text: 'نص', part: '1', page: '20'}],
   };
 
   it('shows each part with its caption and books', () => {
@@ -308,7 +308,10 @@ describe('IrabBooksTab', () => {
               verseKey: '2:255',
               caption: null,
               books: [
-                {...BOOK, passages: [{text: long, part: '1', page: '20'}]},
+                {
+                  ...BOOK,
+                  passages: [{id: 2, text: long, part: '1', page: '20'}],
+                },
               ],
             },
           ]}

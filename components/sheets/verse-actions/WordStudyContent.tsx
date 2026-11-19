@@ -57,7 +57,9 @@ import {useKeyCommands} from '@/hooks/useKeyCommands';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {useResponsive} from '@/hooks/useResponsive';
 import {useTheme} from '@/hooks/useTheme';
+import {formatVerseRange} from '@/components/share/rewayahVerseText';
 import {localizeDigits} from '@/i18n/format';
+import {mergeBookPassages} from '@/services/irab/irabFormat';
 import {
   keyCommandsSupported,
   type KeyBinding,
@@ -128,6 +130,21 @@ function partLabel(
     part.caption === 'hafsVerse'
       ? t('irab.hafsVerse', {verse: part.verseKey})
       : part.verseKey,
+  );
+}
+
+/**
+ * The label of a run of the parts' verses, as partLabel names one: "2:3-5",
+ * or "Hafs 1:6-7" for another rewayah.
+ */
+function versesLabel(
+  verseKeys: readonly string[],
+  caption: WordStudyPart['caption'],
+  t: ReturnType<typeof useTranslation<'sheets'>>['t'],
+): string {
+  const verses = formatVerseRange(verseKeys);
+  return localizeDigits(
+    caption === 'hafsVerse' ? t('irab.hafsVerse', {verse: verses}) : verses,
   );
 }
 
@@ -540,15 +557,24 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
         <ActivityIndicator style={styles.loading} color={theme.colors.text} />
       );
     }
+    // A book page that discusses several of the verses shows once, under
+    // all of them ("100:1-5"), not once per verse.
+    const groups = mergeBookPassages(
+      parts.map(p => ({
+        verseKey: p.verseKey,
+        books: books.books.get(p.verseKey) ?? [],
+      })),
+    );
+    const caption = parts[0]?.caption ?? 'none';
     return (
       <IrabBooksTab
-        parts={parts.map(p => ({
-          verseKey: p.verseKey,
+        parts={groups.map(group => ({
+          verseKey: group.verseKeys.join(','),
           caption:
-            parts.length > 1 || p.caption === 'hafsVerse'
-              ? partLabel(p, sheetsT)
+            parts.length > 1 || caption === 'hafsVerse'
+              ? versesLabel(group.verseKeys, caption, sheetsT)
               : null,
-          books: books.books.get(p.verseKey) ?? [],
+          books: group.books,
         }))}
         styles={irabStyles}
         t={sheetsT}

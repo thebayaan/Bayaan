@@ -209,8 +209,9 @@ const EntryRow: React.FC<{entry: IrabEntry; context: IrabRefContext}> = ({
 
 // @ai-start
 /**
- * The classical i'rab books' passages on each verse. A part's caption is the
- * label shown over its books ("Hafs 1:7"), null for none.
+ * The classical i'rab books' passages on each verse, or on each run of
+ * verses a passage discusses together (mergeBookPassages). A part's caption
+ * is the label shown over its books ("Hafs 1:7", "2:3-5"), null for none.
  */
 export const IrabBooksTab: React.FC<{
   parts: readonly {
@@ -243,8 +244,8 @@ export const IrabBooksTab: React.FC<{
             <View key={book.bookId} style={styles.bookCard}>
               <Text style={styles.bookTitle}>{book.nameAr}</Text>
               <Text style={styles.bookAuthor}>{book.authorAr}</Text>
-              {book.passages.map((passage, i) => {
-                const key = `${part.verseKey}:${book.bookId}:${i}`;
+              {book.passages.map(passage => {
+                const key = `${part.verseKey}:${passage.id}`;
                 const open = expanded.has(key);
                 const long = passage.text.length > 700;
                 return (
