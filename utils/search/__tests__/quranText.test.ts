@@ -255,6 +255,12 @@ describe('quranWordForms (proclitics and the article)', () => {
       'امرات 3',
       'امراه 3',
     ]);
+    // The letters as drawn keep their ت: غَيَٰبَتِ is غيابة or غيبت.
+    expect(forms('12:10:9', morph([], false, 'غَيَٰبَة'))).toEqual([
+      'غيابت 3',
+      'غيبت 3 rasm',
+      'غيابه 3',
+    ]);
     // Not for a plural -at (صلوات, lemma صَلَوٰة) or a word whose lemma ends
     // in ت (أخت).
     expect(

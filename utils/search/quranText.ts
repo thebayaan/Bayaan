@@ -623,7 +623,8 @@ export function quranWordForms(
     }
     // A feminine ending drawn as an open taa (رَحْمَتَ, نِعْمَتَ, ٱمْرَأَتُ) is
     // written ة in everyday writing. The lemma (رَحْمَة) says which final ت
-    // is one: the word is the lemma with its ة drawn as ت.
+    // is one: the word is the lemma with its ة drawn as ت. The letters as
+    // drawn keep their ت (غَيَٰبَتِ is غيابة or غيبت, never غيبة).
     const stem = spellingsOf(innermost).imlaei;
     const lemmaSpelling = lemma ? spellingsOf(prepare(lemma)).imlaei : '';
     if (
@@ -633,7 +634,7 @@ export function quranWordForms(
       stem.slice(0, -1) === lemmaSpelling.slice(0, -1)
     ) {
       for (const form of [...best.values()]) {
-        if (form.form.endsWith('ت')) {
+        if (form.form.endsWith('ت') && !form.rasmOnly) {
           put({...form, form: `${form.form.slice(0, -1)}ه`});
         }
       }

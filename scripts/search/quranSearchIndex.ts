@@ -75,6 +75,25 @@ export const ROOT_COUNT_EXCEPTIONS: Readonly<Record<string, number>> = {
 /** Words pasted per verse by the every-verse check. */
 export const VERSE_CHECK_WORDS = 12;
 
+/**
+ * Lemmas the corpus spells with the open taa of their drawn words, none of
+ * which is written with ة, whose final ت is a taa marbuta in everyday
+ * writing all the same: فطرة الله, ابتغاء مرضاة الله, ابنة عمران, غيابة
+ * الجب, معصية الرسول, جمالة. Reviewed by hand. The other lemmas that end in
+ * ت and are never drawn with ة are plurals (صَٰلِحَٰت), verbs, or words
+ * written with ت in everyday writing too (طَٰغُوت, أُخْت, مَلَكُوت,
+ * عَنكَبُوت, عِفْرِيت). A build gate checks that each is a lemma of the
+ * data.
+ */
+export const TAA_MARBUTA_LEMMAS: readonly string[] = [
+  'فِطْرَت',
+  'مَرْضَات',
+  'ٱبْنَت',
+  'غَيَٰبَت',
+  'مَعْصِيَت',
+  'جِمَٰلَت',
+];
+
 export const QURAN_SEARCH_SCHEMA = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE forms (
@@ -381,10 +400,17 @@ export function buildQuranSearchIndex(
 
   // The corpus spells some lemmas with the open taa of their drawn words:
   // ٱمْرَأَت for every امرأة. When a word of such a lemma is written with ة
-  // (ٱمْرَأَةٌ), the lemma's ت is a taa marbuta, and the forms read every
-  // word against the lemma with ة, so the open-taa words (ٱمْرَأَتُ) get
-  // their ة spelling too. The roots and lemmas tables keep the i'rab lemma.
-  const taaMarbutaLemmas = new Set<string>();
+  // (ٱمْرَأَةٌ), or the lemma is one of TAA_MARBUTA_LEMMAS, the lemma's ت
+  // is a taa marbuta, and the forms read every word against the lemma with
+  // ة, so the open-taa words (ٱمْرَأَتُ, فِطْرَتَ) get their ة spelling too.
+  // The roots and lemmas tables keep the i'rab lemma.
+  const lemmasOfData = new Set(
+    [...morphBySlot.values()].map(morph => morph.lemma),
+  );
+  for (const lemma of TAA_MARBUTA_LEMMAS) {
+    gate(lemmasOfData.has(lemma), `taa marbuta lemma ${lemma} is no lemma`);
+  }
+  const taaMarbutaLemmas = new Set<string>(TAA_MARBUTA_LEMMAS);
   for (const [slot, morph] of morphBySlot) {
     if (!morph.lemma || taaMarbutaLemmas.has(morph.lemma)) continue;
     const spelling = quranWordSpellings(morph.lemma).imlaei;

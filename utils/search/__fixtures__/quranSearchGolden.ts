@@ -130,6 +130,15 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'يا قوم', includes: ['2:54']},
   {query: 'قوم', includes: ['2:54']},
   {query: 'يا بني آدم', includes: ['7:26']},
+  // An open taa (فِطْرَتَ, مَرْضَاتِ) typed as ة, also where the corpus
+  // spells the lemma with ت (TAA_MARBUTA_LEMMAS).
+  {query: 'فطرة الله', exactly: ['30:30']},
+  {query: 'ابتغاء مرضاة الله', exactly: ['2:207', '2:265', '4:114']},
+  {query: 'ابنة عمران', exactly: ['66:12']},
+  {query: 'غيابة الجب', exactly: ['12:10', '12:15']},
+  {query: 'معصية الرسول', exactly: ['58:8', '58:9']},
+  {query: 'جمالة صفر', exactly: ['77:33']},
+  {query: 'رحمة ربك', includes: ['19:2', '43:32']},
   // Proclitics and the article
   {query: 'الله', first: '1:1', includes: ['2:7']},
   {query: 'والله', includes: ['2:19']},
