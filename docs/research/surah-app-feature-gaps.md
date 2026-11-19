@@ -15,7 +15,7 @@ This lists every Surah feature we know of and checks each one against Bayaan's `
 - **In progress**: not on `develop`, but code exists on an unmerged branch or PR, or was merged and then pulled back.
 - **Missing**: nothing on `develop` and no code in progress. If a plan doc exists, the row names it.
 
-## Update: built on `claude/youthful-dijkstra-nqb3yg` (2026-11-14)
+## Update: built on the word study branch (2026-11-14)
 
 The tables below describe `develop` before this work. The branch then built the following. The plan is in [docs/plans/2026-11-14-word-study](../plans/2026-11-14-word-study/README.md).
 
@@ -149,7 +149,7 @@ Of 79 Surah features, Bayaan has 34, has part of 21, has 3 in progress and is mi
 | Ayah i'rab from a book (`eerab-aya`) | Ayah | **Has.** I'rab › Classical books: the ayah's passages from al-'Ukbari's التبيان في إعراب القرآن and al-Nahhas's إعراب القرآن, offline, for 6,127 of 6,236 ayahs.<br>`components/sheets/verse-actions/IrabContent.tsx:446`, `assets/data/irab-v1.db` | Different books (not النهج القويم). Passages are whole book pages, and 109 ayahs have none (mostly al-Shu'ara and al-Saffat). | Already in the Books tab of `IrabContent.tsx`. |
 | I'rab of every word of the ayah in one view (`eerab-word-aya`) | Ayah | **Has.** I'rab › Words › "Whole verse" lists every word's i'rab in one scroll.<br>`components/sheets/verse-actions/IrabContent.tsx:101` | The morphology table is hidden in that mode. | Already in `IrabContent.tsx` (toggle at :323). |
 | Asbab al-nuzul (`ayat-nozool`) | Ayah | **Partial, inside tafsir text only.** No asbab feature. The pre-installed English Ibn Kathir reports occasions of revelation inside its commentary (about 10 explicit headings, 126 passages saying "revealed about…"), and so do the downloadable Arabic tafsirs.<br>`data/ibn-kathir-tafseer-compact.json`, `services/AppInitializer.ts:433` | A dedicated per-ayah view from a curated book, shown only on ayahs that have an occasion. Nothing marks which ayahs have one. | A new `asbab` screen in `VerseActionsSheet` (`:103`) with a row beside Tafseer (`:1072`), shown only when the ayah has an entry. |
-| The ayah's tajweed rules explained (`tajweed-aya`) | Ayah | **Partial.** Tajweed colouring from per-letter data with 19 rule classes, on pages and in the word grids. The rule names never reach the user.<br>`utils/tajweedLoader.ts:38`, `constants/tajweedColors.ts:2` | No legend, no tap-to-explain, and no per-ayah list of the rules in its words. A colour legend (with no per-ayah list) exists only on the unmerged `claude/mushaf-options-redesign`. | A `tajweed` screen in `VerseActionsSheet` next to `wbw`/`irab` that reuses the per-letter rule map, plus a legend by the Tajweed toggle (`components/MushafSettingsContent.tsx:1377`). |
+| The ayah's tajweed rules explained (`tajweed-aya`) | Ayah | **Partial.** Tajweed colouring from per-letter data with 19 rule classes, on pages and in the word grids. The rule names never reach the user.<br>`utils/tajweedLoader.ts:38`, `constants/tajweedColors.ts:2` | No legend, no tap-to-explain, and no per-ayah list of the rules in its words. A colour legend (with no per-ayah list) exists only on an unmerged Mushaf options branch. | A `tajweed` screen in `VerseActionsSheet` next to `wbw`/`irab` that reuses the per-letter rule map, plus a legend by the Tajweed toggle (`components/MushafSettingsContent.tsx:1377`). |
 | Virtues of specific ayahs | Ayah | **Partial, inside tafsir text only.** The pre-installed English Ibn Kathir has virtue sections with hadith (e.g. "The Virtue of Ayat Al-Kursi" at 2:255; 73 virtue or merit headings across 43 surahs), plus a few adhkar notes.<br>`data/ibn-kathir-tafseer-compact.json` | A dedicated, curated virtues section, discoverable from the ayah. English only unless an Arabic tafsir is downloaded. | A virtues block in `VerseActionsSheet` (`:103`); surah virtues go in About {surah} (see Surah level). |
 | Benefits per ayah (`fwaed_qassim`) | Ayah | **Missing.** The nearest things are the QUL passage-theme titles (Theme screen) and the Community Reflections row, which is off because no provider is configured.<br>`components/sheets/VerseActionsSheet.tsx:1143`, `config/branding.js:53` | Short lessons (fawa'id) per ayah. | A `benefits` screen in the Explore card of `VerseActionsSheet`, next to the gated Community Reflections row (`:1143`). |
 | Video reflections (`taamolatvideo`) | Ayah | **Missing.** No video anywhere and no video player dependency. Moments (draft PR #387) is audio clips. | Reflection videos per ayah, and a video player. | A video screen in `VerseActionsSheet`, or video cards in the Moments feed if #387 lands. |
@@ -269,7 +269,7 @@ Of 79 Surah features, Bayaan has 34, has part of 21, has 3 in progress and is mi
 
 Things found while checking that are worth a ticket of their own:
 
-- **Copy pastes raw footnote markup.** With the default Saheeh International translation, Copy and "Share as Text" paste raw `<sup foot_note="…">` tags, because the copy path uses `getTranslationTextRaw` (`utils/translationLookup.ts:147`, called from `components/sheets/VerseActionsSheet.tsx:285`). The checking agent counted 1,613 of 6,236 verses carrying such tags.
+- **Copy pastes raw footnote markup.** With the default Saheeh International translation, Copy and "Share as Text" paste raw `<sup foot_note="…">` tags, because the copy path uses `getTranslationTextRaw` (`utils/translationLookup.ts:147`, called from `components/sheets/VerseActionsSheet.tsx:285`). A count over all 6,236 verses found 1,613 carrying such tags.
 - **Data and helpers that ship but nothing uses:**
   - `HIZB_START_PAGES` / `getHizbForPage` (`components/mushaf/constants.ts:510`)
   - the khatma model in `services/analytics/LocalAggregationStore.ts:141`
@@ -280,8 +280,8 @@ Things found while checking that are worth a ticket of their own:
 ## How this was checked
 
 - **Surah's feature list:** the brief's own research (API projects, web-app routes and labels, App Store listing). The App Store page could not be re-read from the checking environment.
-- **Checking:** each feature group was checked against `develop` by one agent, then re-checked by a second agent told to disprove every status. That agent searched again in English and Arabic for "missing" rows, and confirmed that "has" rows are reachable in the UI and not dev-only or flagged off.
-- **Final pass:** two more agents checked coverage and consistency across groups. Every item in the brief's inventory maps to a row. Surah's tasks-backend is a service rather than a feature; its likely user-facing side is plans and worksheets.
+- **Checking:** each feature group was checked against `develop`, then re-checked in a second pass that set out to disprove every status. That pass searched again in English and Arabic for "missing" rows, and confirmed that "has" rows are reachable in the UI and not dev-only or flagged off.
+- **Final pass:** two more passes checked coverage and consistency across groups. Every item in the brief's inventory maps to a row. Surah's tasks-backend is a service rather than a feature; its likely user-facing side is plans and worksheets.
 - **In-progress work:** open PRs and unmerged branches were inspected for code, not just docs.
 - **Limits:**
   - Surah's own content was not opened, so differences inside a feature (e.g. which morphology fields Surah shows) are not compared.

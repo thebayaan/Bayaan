@@ -1,7 +1,7 @@
 <!-- @ai-generated -->
 # Arabic word meanings (gharib) and rasm: data and sections
 
-> Design written against `develop` at `b0a151ce` (2026-11-14) by a read-only design agent. Decisions that override it are in [README.md](README.md); where they disagree, README.md wins.
+> Design written against `develop` at `b0a151ce` (2026-11-14). Decisions that override it are in [README.md](README.md); where they disagree, README.md wins.
 
 ## Summary
 
@@ -88,7 +88,7 @@ Order of work: format, Arabic letter model, rasm module, gharib module, DB write
 - **Nothing ships until a source is chosen.** `services/wordStudy/bundledWordStudy.ts` holds `null` for both files.
   - The service then returns empty results without touching SQLite, and both sections render nothing.
   - Dropping data in later means: build the DB, set the constant to `require(asset)`, add the DB tests and credits.
-- **Evidence.** I downloaded nothing. The numbers below come from throwaway prototypes I ran on files that already sat in this session's scratchpad, downloaded by an earlier step.
+- **Evidence.** Nothing was downloaded for this design. The numbers below come from throwaway prototypes run on files an earlier step had downloaded.
   - Those files are Quranpedia `meanings.json.gz` (version 2026-11-14), Quranpedia `tafsir-book-*` dumps, Quran.com v4 word pages with `text_imlaei`, Tanzil Simple, and QUL and Quran Foundation pages.
   - They are not in the repo and were not checked against the publishers. Read the numbers as indicative and re-check everything on the real download.
 

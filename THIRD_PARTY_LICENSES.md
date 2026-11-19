@@ -153,8 +153,11 @@ records how each was obtained.
 - **Tanzil Project** — https://tanzil.net, Tanzil Quran Text (Simple),
   **version 1.1** (released 2021-02-12), downloaded on 2026-11-14 from
   https://tanzil.net/download/ as text without pause marks (SHA-256
-  `f3268cfe7a400add8a8024fe23368d66f58cc8baa51773fe94e323625c66344b`). It is
-  used as the standard (imla'i) spelling the app compares with the mushaf's.
+  `f3268cfe7a400add8a8024fe23368d66f58cc8baa51773fe94e323625c66344b`).
+  Licensed under Creative Commons Attribution 3.0 (CC BY 3.0,
+  https://creativecommons.org/licenses/by/3.0/), with the terms of use in its
+  notice below. It is used as the standard (imla'i) spelling the app compares
+  with the mushaf's.
   Each verse is split into its words and stored letter for letter, only for
   the 6,913 words whose spelling differs from the mushaf's; the basmala the
   text file puts before verse 1 of each surah is not used. The copyright

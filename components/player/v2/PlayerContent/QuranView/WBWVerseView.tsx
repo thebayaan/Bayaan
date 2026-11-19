@@ -33,6 +33,7 @@ import {
 import {wordContainsAllahName} from '@/services/mushaf/AllahNameHighlightService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {slotTajweedSegments} from '@/utils/quranWordPositions';
 import type {
   MushafArabicTextWeight,
   RewayahId,
@@ -465,12 +466,12 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
         // Compute per-character tajweed rules for this word
         let wordCharToRule: Map<number, string> | null = null;
         if (tajweedWords) {
-          const tajweedWord = tajweedWords.find(w => {
-            const pos = parseInt(w.location.split(':')[2], 10);
-            return pos === dkWord.wordPositionInVerse;
-          });
-          wordCharToRule = tajweedWord
-            ? alignWordTajweed(dkWord.text, tajweedWord.segments)
+          const segments = slotTajweedSegments(
+            tajweedWords,
+            dkWord.wordPositionInVerse,
+          );
+          wordCharToRule = segments
+            ? alignWordTajweed(dkWord.text, segments)
             : detectWordTafkhim(dkWord.text);
         }
 

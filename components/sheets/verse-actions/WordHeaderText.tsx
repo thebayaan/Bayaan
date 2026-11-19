@@ -39,6 +39,7 @@ import {
   detectWordTafkhim,
 } from '@/services/mushaf/TajweedAlignmentService';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
+import {slotTajweedSegments} from '@/utils/quranWordPositions';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {
   createTextStrokePaint,
@@ -67,8 +68,9 @@ export function headerWordText(slots: readonly Slot[]): string {
  * The colour of each coloured character of headerWordText(slots), slot by
  * slot as the word-by-word grid colours a word: a slot holding the Allah
  * name takes the highlight colour whole; otherwise its tajweed (the Hafs QPC
- * rules of its position aligned onto its text, or the tafkhim detected in
- * it). `tajweedWords` is null when tajweed is off.
+ * rules of its position, both words of «إِلْ يَاسِينَ» for its one slot,
+ * aligned onto its text, or the tafkhim detected in it). `tajweedWords` is
+ * null when tajweed is off.
  */
 export function headerCharColors(
   slots: readonly Slot[],
@@ -83,11 +85,12 @@ export function headerCharColors(
         colors.set(start + i, allahNameHighlightColor);
       }
     } else if (tajweedWords) {
-      const tajweedWord = tajweedWords.find(
-        w => Number(w.location.split(':')[2]) === slot.wordPositionInVerse,
+      const segments = slotTajweedSegments(
+        tajweedWords,
+        slot.wordPositionInVerse,
       );
-      const rules = tajweedWord
-        ? alignWordTajweed(slot.text, tajweedWord.segments)
+      const rules = segments
+        ? alignWordTajweed(slot.text, segments)
         : detectWordTafkhim(slot.text);
       rules?.forEach((rule, i) => {
         const color = tajweedColors[rule];
