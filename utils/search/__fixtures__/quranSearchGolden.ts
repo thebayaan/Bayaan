@@ -100,6 +100,11 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'فاسالوا اهل الذكر', exactly: ['16:43', '21:7']},
   {query: 'قل لا اسالكم عليه اجرا', includes: ['6:90', '42:23']},
   {query: 'يستأذنك', includes: ['9:44', '9:45']},
+  // After the question hamza (أَءِذَا, أَءُنزِلَ), on either seat.
+  {query: 'أئذا متنا', includes: ['23:82', '37:16']},
+  {query: 'أإذا متنا', includes: ['23:82', '37:16']},
+  {query: 'ااذا متنا', includes: ['23:82', '37:16']},
+  {query: 'أأنزل عليه الذكر', exactly: ['38:8']},
   {query: 'يسأ', includes: ['2:189', '2:215']},
   // Without its seat letter a typed hamza is often another word: امرأة is
   // not أمره (5:95, 12:21), رئاء not رأى (6:76), امرأت not أمرت (6:14).

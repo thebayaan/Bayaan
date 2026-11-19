@@ -129,6 +129,10 @@ describe('quranWordSpellings', () => {
     ['2:48:8', 'شَيْـࣰٔا (a tanween alif after ي)', 'شييا'],
     ['17:31:12', 'خِطْـࣰٔا (after a joining letter)', 'خطيا'],
     ['2:6:6', 'ءَأَنذَرْتَهُمْ (first in the word: on an alif)', 'اانذرتهم'],
+    ['13:5:5', 'أَءِذَا (after the question hamza: by the rule)', 'ايذا'],
+    ['13:5:5', 'أَءِذَا (or as the first letter of إذا)', 'ااذا'],
+    ['38:8:1', 'أَءُنزِلَ', 'اونزل'],
+    ['38:8:1', 'أَءُنزِلَ', 'اانزل'],
   ])('%s %s is also typed %s', (location, _word, typed) => {
     expect(quranWordSpellings(dk(location)).alternates).toContain(typed);
   });

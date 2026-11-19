@@ -242,6 +242,8 @@ function isUnseatedHamza(unit: Unit): boolean {
  *   takes ؤ (جاؤوا) and a kasra ئ (إسرائيل). After ي it sits on a tooth
  *   (خطيئة, كهيئة), and after a ي with a sukun also on an alif (ييأس).
  *   بِ or لِ before a hamza and a long alif is a proclitic (بآيات, لآدم).
+ *   After the question hamza, the hamza that starts the word it asks
+ *   about also takes the seat of a first letter (أَءِذَا → أئذا, أإذا).
  */
 function everydaySeats(units: readonly Unit[], i: number): string[] {
   const unit = units[i];
@@ -305,7 +307,12 @@ function everydaySeats(units: readonly Unit[], i: number): string[] {
         ? 'a'
         : null;
   if (strongest === null || (strongest === 'a' && alifAfter)) return [];
-  return [SEAT_OF[strongest]];
+  const seat = SEAT_OF[strongest];
+  if (i === 1 && prev.letter === '\u{0623}' && before === 'a') {
+    const first = own === 'i' ? '\u{0625}' : '\u{0623}';
+    return first === seat ? [seat] : [seat, first];
+  }
+  return [seat];
 }
 
 /**
