@@ -94,6 +94,15 @@ export const TAA_MARBUTA_LEMMAS: readonly string[] = [
   'جِمَٰلَت',
 ];
 
+/**
+ * Lemmas the corpus spells with the final alif of their drawn words, whose
+ * alif is an alif maqsura in everyday writing: أَقْصَا (المسجد الأقصى, من
+ * أقصى المدينة) and تَتْرَا (تترى). Reviewed by hand. Words of a lemma the
+ * corpus writes with ى (طَغَا of طَغَىٰ, لَدَا of لَدَى) need no entry. A
+ * build gate checks that each is a lemma of the data.
+ */
+export const ALIF_MAQSURA_LEMMAS: readonly string[] = ['أَقْصَا', 'تَتْرَا'];
+
 export const QURAN_SEARCH_SCHEMA = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE forms (
@@ -407,8 +416,8 @@ export function buildQuranSearchIndex(
   const lemmasOfData = new Set(
     [...morphBySlot.values()].map(morph => morph.lemma),
   );
-  for (const lemma of TAA_MARBUTA_LEMMAS) {
-    gate(lemmasOfData.has(lemma), `taa marbuta lemma ${lemma} is no lemma`);
+  for (const lemma of [...TAA_MARBUTA_LEMMAS, ...ALIF_MAQSURA_LEMMAS]) {
+    gate(lemmasOfData.has(lemma), `reviewed lemma ${lemma} is no lemma`);
   }
   const taaMarbutaLemmas = new Set<string>(TAA_MARBUTA_LEMMAS);
   for (const [slot, morph] of morphBySlot) {
@@ -422,10 +431,17 @@ export function buildQuranSearchIndex(
       taaMarbutaLemmas.add(morph.lemma);
     }
   }
-  const formsLemma = (morph: SlotMorph): string | null =>
-    morph.lemma && taaMarbutaLemmas.has(morph.lemma)
-      ? morph.lemma.replace(/\u{062A}(\p{M}*)$/u, '\u{0629}$1')
-      : morph.lemma;
+  // Likewise the final alif of ALIF_MAQSURA_LEMMAS is read as ى.
+  const maqsuraLemmas = new Set<string>(ALIF_MAQSURA_LEMMAS);
+  const formsLemma = (morph: SlotMorph): string | null => {
+    if (morph.lemma && taaMarbutaLemmas.has(morph.lemma)) {
+      return morph.lemma.replace(/\u{062A}(\p{M}*)$/u, '\u{0629}$1');
+    }
+    if (morph.lemma && maqsuraLemmas.has(morph.lemma)) {
+      return morph.lemma.replace(/\u{0627}(\p{M}*)$/u, '\u{0649}$1');
+    }
+    return morph.lemma;
+  };
 
   // Forms, best code per slot (gate 3).
   const formSlots = new Map<string, Map<number, QuranWordForm>>();

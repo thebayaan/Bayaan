@@ -617,10 +617,8 @@ export function quranWordForms(
     const chain = procliticChain(prepared, morph.proclitics, definite, isAllah);
     for (const word of chain) add(word, QURAN_TIER.withoutProclitics);
     const innermost = chain[chain.length - 1] ?? prepared;
-    if (morph.definiteByArticle) {
-      const bare = stripArticleOf(innermost);
-      if (bare !== null) add(bare, QURAN_TIER.withoutArticle);
-    }
+    const bare = morph.definiteByArticle ? stripArticleOf(innermost) : null;
+    if (bare !== null) add(bare, QURAN_TIER.withoutArticle);
     // A feminine ending drawn as an open taa (رَحْمَتَ, نِعْمَتَ, ٱمْرَأَتُ) is
     // written ة in everyday writing. The lemma (رَحْمَة) says which final ت
     // is one: the word is the lemma with its ة drawn as ت. The letters as
@@ -636,6 +634,27 @@ export function quranWordForms(
       for (const form of [...best.values()]) {
         if (form.form.endsWith('ت') && !form.rasmOnly) {
           put({...form, form: `${form.form.slice(0, -1)}ه`});
+        }
+      }
+    }
+    // An alif maqsura drawn as a final alif (طَغَا, لَدَا, ٱلْأَقْصَا) is
+    // written ى in everyday writing. The lemma written with ى (طَغَىٰ,
+    // لَدَى) says which final ا is one: the word, with or without its
+    // article, is the lemma with its ى drawn as ا.
+    if (
+      /\u{0649}\p{M}*$/u.test(prepare(lemma)) &&
+      [innermost, bare].some(word => {
+        const spelling = word === null ? '' : spellingsOf(word).imlaei;
+        return (
+          spelling.length > 1 &&
+          spelling.endsWith('ا') &&
+          spelling.slice(0, -1) === lemmaSpelling.slice(0, -1)
+        );
+      })
+    ) {
+      for (const form of [...best.values()]) {
+        if (form.form.endsWith('ا') && !form.rasmOnly) {
+          put({...form, form: `${form.form.slice(0, -1)}ي`});
         }
       }
     }

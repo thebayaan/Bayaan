@@ -271,6 +271,30 @@ describe('quranWordForms (proclitics and the article)', () => {
     ).toEqual(['اخت']);
   });
 
+  it('spells a final alif as ى when the lemma has one there', () => {
+    // طَغَا (lemma طَغَىٰ), لَدَا (lemma لَدَى)
+    expect(forms('69:11:3', morph([], false, 'طَغَىٰ'))).toEqual([
+      'طغا 3',
+      'طغي 3',
+    ]);
+    expect(forms('12:25:9', morph([], false, 'لَدَى'))).toEqual([
+      'لدا 3',
+      'لدي 3',
+    ]);
+    // ٱلْأَقْصَا, with the lemma the build reads as أَقْصَى: with and
+    // without its article.
+    expect(forms('17:1:11', morph([], true, 'أَقْصَى'))).toEqual([
+      'الاقصا 3',
+      'اقصا 1',
+      'الاقصي 3',
+      'اقصي 1',
+    ]);
+    // Not for an alif after the lemma's letters (a dual: أَتَيَا of أَتَىٰ).
+    expect(
+      quranWordForms('أَتَيَا', morph([], false, 'أَتَىٰ')).map(f => f.form),
+    ).toEqual(['اتيا']);
+  });
+
   it('flags the hamza of the part each form spells', () => {
     const [full, bare] = quranWordForms(
       dk('2:4:10'),

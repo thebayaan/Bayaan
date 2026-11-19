@@ -139,6 +139,13 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'معصية الرسول', exactly: ['58:8', '58:9']},
   {query: 'جمالة صفر', exactly: ['77:33']},
   {query: 'رحمة ربك', includes: ['19:2', '43:32']},
+  // An alif maqsura drawn as a final alif (ٱلْأَقْصَا, طَغَا), typed as ى.
+  {query: 'المسجد الأقصى', exactly: ['17:1']},
+  {query: 'المسجد الاقصي', exactly: ['17:1']},
+  {query: 'من أقصى المدينة', exactly: ['28:20', '36:20']},
+  {query: 'لما طغى الماء', exactly: ['69:11']},
+  {query: 'رسلنا تترى', exactly: ['23:44']},
+  {query: 'لدى الباب', exactly: ['12:25']},
   // Proclitics and the article
   {query: 'الله', first: '1:1', includes: ['2:7']},
   {query: 'والله', includes: ['2:19']},
