@@ -688,10 +688,43 @@ describe('parseQuranQuery', () => {
           tokens: [{keys: ['ب'], needsHamza: false}],
           rootLetters: null,
         });
+        expect(parseQuranQuery('ب ت ث ج د', knowsAlam)).toEqual({
+          kind: 'text',
+          tokens: [{keys: ['بتثجد'], needsHamza: false}],
+          rootLetters: null,
+        });
+      });
+
+      it('reads letters typed apart that spell two openings as both (ح م ع س ق)', () => {
+        const two = [
+          {keys: ['حم'], needsHamza: false, opening: true},
+          {keys: ['عسق'], needsHamza: false, opening: true},
+        ];
         expect(parseQuranQuery('ح م ع س ق', knowsAlam)).toEqual({
           kind: 'text',
-          tokens: [{keys: ['حمعسق'], needsHamza: false}],
+          tokens: two,
           rootLetters: null,
+        });
+        // Before other words too (42:1-3).
+        const parsed = parseQuranQuery('ح م ع س ق كذلك يوحي', knowsAlam);
+        expect(parsed.kind === 'text' && parsed.tokens).toEqual([
+          ...two,
+          {keys: ['كذلك'], needsHamza: false},
+          {keys: ['يوحي'], needsHamza: false},
+        ]);
+        // Two openings that are not one after the other in the text (ص,
+        // طه) find nothing as text, so a known root they spell comes first.
+        expect(parseQuranQuery('ص ط ه', () => true)).toEqual({
+          kind: 'root',
+          letters: 'صطه',
+          explicit: false,
+        });
+        expect(parseQuranQuery('ص ط ه', knowsAlam)).toMatchObject({
+          kind: 'text',
+          tokens: [
+            {keys: ['ص'], opening: true},
+            {keys: ['طه'], opening: true},
+          ],
         });
       });
     });

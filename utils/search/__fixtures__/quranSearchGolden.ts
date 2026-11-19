@@ -232,6 +232,9 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
     exactly: ['40:1', '41:1', '42:1', '43:1', '44:1', '45:1', '46:1'],
   },
   {query: 'ع س ق', exactly: ['42:2']},
+  // Two openings in a row (حم عسق, 42:1-2), typed apart.
+  {query: 'ح م ع س ق', exactly: ['42:2']},
+  {query: 'ح م ع س ق كذلك يوحي', exactly: ['42:3']},
   {query: 'ق', exactly: ['50:1']},
   {query: 'ن', exactly: ['68:1']},
   // A phrase runs on from an ayah of one word (QURAN_ONE_WORD_AYAHS: an
@@ -346,6 +349,7 @@ export const QURAN_KIND_FIXTURES: readonly QuranKindFixture[] = [
   {query: 'رحم', kind: 'text', roots: ['ر ح م']},
   {query: 'ا ل م', kind: 'text', roots: ['ء ل م']},
   {query: 'ح م', kind: 'text', roots: []},
+  {query: 'ح م ع س ق', kind: 'text', roots: []},
   {query: '2:255', kind: 'none', roots: []},
   {query: 'husary', kind: 'none', roots: []},
 ];

@@ -887,8 +887,10 @@ function startsWithDrawnOpening(query: string): boolean {
  * `root:رحم` / `جذر: ر ح م` ask for a root; 3-4 spaced letters (ر ح م) do
  * too when they spell a known root, unless they spell a surah opening
  * (QURAN_OPENINGS: ا ل م is the text الم, its root ء ل م only a suggestion).
- * Letters typed apart before other words that spell an opening, and a first
- * word pasted as the mushaf draws an opening (الٓمٓ), are that opening too.
+ * Letters typed apart that spell two openings in a row are both (ح م ع س ق,
+ * 42:1-2). Letters typed apart before other words that spell an opening (or
+ * two), and a first word pasted as the mushaf draws an opening (الٓمٓ), are
+ * that opening too.
  * Otherwise the text is split into words; a standalone يا, ها or إل joins
  * the next word (يا أيها → ياايها), as the Uthmani text writes them as one.
  *
@@ -928,38 +930,58 @@ export function parseQuranQuery(
 
   // Single letters typed apart (or one letter): a surah opening (ا ل م, ح م,
   // ك ه ي ع ص, ن), text matched as a whole word; else a root when 3-4 of
-  // them spell a known one (ر ح م); else one word. The openings are drawn
-  // without a hamza, so letters typed with one (أ ل م) are not an opening.
-  let opening = false;
-  // The first word is an opening (its letters typed apart, words after).
-  let leadOpening = false;
+  // them spell a known one (ر ح م); else two openings in a row (ح م ع س ق,
+  // 42:1-2); else one word. The openings are drawn without a hamza, so
+  // letters typed with one (أ ل م) are not an opening.
+  // How many words, from the first, are openings.
+  let openings = 0;
   const isOpening = (letters: readonly string[]) =>
     !letters.some(word => HAMZA.test(word)) &&
     QURAN_OPENINGS.has(fold(letters.map(rawLetters).join('')));
+  // The letters as two openings (حم, عسق), or null.
+  const twoOpenings = (letters: readonly string[]): string[] | null => {
+    for (let k = 1; k < letters.length; k++) {
+      const first = letters.slice(0, k);
+      const second = letters.slice(k);
+      if (isOpening(first) && isOpening(second)) {
+        return [first.join(''), second.join('')];
+      }
+    }
+    return null;
+  };
   if (words.length <= 5 && words.every(word => rawLetters(word).length === 1)) {
     const letters = words.map(rawLetters).join('');
-    opening = isOpening(words);
-    if (
-      !opening &&
+    if (isOpening(words)) {
+      words.splice(0, words.length, words.join(''));
+      openings = 1;
+    } else if (
       words.length <= 4 &&
       words.length >= 3 &&
       rootCandidates(letters, isKnownRoot).length > 0
     ) {
       return {kind: 'root', letters, explicit: false};
+    } else {
+      const two = twoOpenings(words);
+      words.splice(0, words.length, ...(two ?? [words.join('')]));
+      openings = two ? 2 : 0;
     }
-    words.splice(0, words.length, words.join(''));
   } else {
     // Letters typed apart before other words (ا ل ر تلك آيات الكتاب, ح م
-    // تنزيل): when they spell an opening, that opening as one word.
+    // تنزيل): when they spell an opening, or two, those openings as words.
     let lead = 0;
     while (lead < words.length && rawLetters(words[lead]).length === 1) lead++;
-    if (lead >= 1 && lead <= 5 && isOpening(words.slice(0, lead))) {
-      words.splice(0, lead, words.slice(0, lead).join(''));
-      leadOpening = true;
+    const leading = lead >= 1 && lead <= 5 ? words.slice(0, lead) : [];
+    const spelled = !leading.length
+      ? null
+      : isOpening(leading)
+        ? [leading.join('')]
+        : twoOpenings(leading);
+    if (spelled) {
+      words.splice(0, lead, ...spelled);
+      openings = spelled.length;
     } else if (drawnOpening) {
       // Pasted from the mushaf (الٓمٓ): the opening, alone or before words.
-      if (words.length === 1) opening = true;
-      else leadOpening = true;
+      openings = 1;
     }
   }
 
@@ -979,7 +1001,7 @@ export function parseQuranQuery(
   const tokens: QuranQueryToken[] = [];
   const tokenWords: string[] = [];
   let letters = 0;
-  for (const parts of merged) {
+  for (const [i, parts] of merged.entries()) {
     if (tokens.length === QURAN_QUERY_MAX_TOKENS) break;
     const keys = tokenKeys(parts);
     if (!keys.length) continue;
@@ -990,7 +1012,7 @@ export function parseQuranQuery(
       keys,
       needsHamza: HAMZA.test(prepare(word)),
     };
-    if (opening || (leadOpening && !tokens.length)) token.opening = true;
+    if (i < openings) token.opening = true;
     tokens.push(token);
     tokenWords.push(word);
   }

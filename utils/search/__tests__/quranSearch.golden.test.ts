@@ -161,8 +161,15 @@ describe('what a query is (the surfaces read it from the outcome)', () => {
     expect(roots).toEqual(
       expect.arrayContaining(['ر ح م', 'root:رحم', 'جذر: ر ح م', 'أ ل م']),
     );
-    // One word, an opening, or 5 letters typed apart never wait.
-    for (const query of ['رحم', 'البقرة', 'ا ل م', 'ح م', 'ل ك ن ه م']) {
+    // One word, an opening (or two), or 5 letters typed apart never wait.
+    for (const query of [
+      'رحم',
+      'البقرة',
+      'ا ل م',
+      'ح م',
+      'ح م ع س ق',
+      'ل ك ن ه م',
+    ]) {
       expect({query, mayBeRoot: mayBeRootQuery(query)}).toEqual({
         query,
         mayBeRoot: false,
