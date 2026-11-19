@@ -10,6 +10,9 @@
  * all built by rule from its own letters:
  * - imlaei: the dagger alif and the waw-alif written as alif, the small yeh
  *   as yeh;
+ * - alternates: everyday spellings of conventions that depend on the word
+ *   (يدعو, رأى), and a hamza drawn on the line or on a tatweel written on
+ *   its everyday seat (يَسْـَٔلُونَكَ → يسألونك);
  * - rasm: the letters as drawn, without the small letters;
  * - mixed: for words with two or three dagger alifs, the other combinations.
  * Each spelling is then folded like the catalogue keys (normalize.ts): marks
@@ -21,7 +24,7 @@
 import {ARABIC_MARKS, foldArabicLetters, foldHamzaCarriers} from './normalize';
 
 /** Bump when a spelling rule changes: the search index must be rebuilt. */
-export const QURAN_TEXT_NORMALIZER_VERSION = 2;
+export const QURAN_TEXT_NORMALIZER_VERSION = 3;
 
 /** Queries are cut to this many words, and this many letters (not marks). */
 export const QURAN_QUERY_MAX_TOKENS = 24;
@@ -35,9 +38,11 @@ const MADDAH = /\u{0653}/gu;
 // An end-of-ayah sign with its number (a pasted verse, or a slot of a words
 // DB that ends an ayah).
 const VERSE_END = /\u{06DD}[\u{0660}-\u{0669}\u{06F0}-\u{06F9}0-9]*/gu;
-// Ornate parentheses around a verse number, once its digits are ASCII.
-const ORNATE_VERSE_NUMBER =
-  /[\u{FD3E}\u{FD3F}]\s*[0-9]+\s*[\u{FD3E}\u{FD3F}]/gu;
+// A verse number pasted with its verse, once its digits are ASCII: the
+// end-of-ayah sign, or the number in ornate parentheses (﴿٢﴾), in
+// parentheses or in brackets ((2), [2]).
+const VERSE_NUMBER =
+  /\u{06DD}[0-9]*|[\u{FD3E}\u{FD3F}]\s*[0-9]+\s*[\u{FD3E}\u{FD3F}]|[([]\s*[0-9]+\s*[)\]]/gu;
 // Rub el hizb, sajdah sign, combining grapheme joiner.
 const DECORATIONS = /[\u{06DE}\u{06E9}]|\u{034F}/gu;
 // ىٰ ending a word is a written alif maqsura (عَلَىٰ): its dagger alif is not
@@ -84,10 +89,23 @@ const FINAL_SEATED_HAMZA_AFTER_MADD =
   /([\u{0627}\u{0648}])[\u{0623}\u{0626}](\p{M}*)$/u; // @ai
 const SAAL_IMPERATIVE =
   /^([\u{0641}\u{0648}]\p{M}*)(\u{0633}\u{0652}\u{0640})/u;
+// A sad with a small seen over or under it is read, and written everyday,
+// as a seen (يَبْصُۜطُ → يبسط, بَصْۜطَةً → بسطة, ٱلْمُصَۣيْطِرُونَ).
+const SAD_WITH_SMALL_SEEN = /\u{0635}(\p{M}*[\u{06DC}\u{06E3}])/gu;
+// A silent waw is not written, except in أُو۟لَٰٓئِكَ, أُو۟لُوا۟ and their
+// kin, where it comes before a lam (سَأُو۟رِيكُمْ → سأريكم).
+const SILENT_WAW = /\u{0648}\u{06DF}(?!\p{M}*\u{0644})/gu;
+// A hamza on an alif followed by a silent yeh and the pronoun is a hamza on
+// a yeh in everyday writing (وَمَلَإِي۟هِۦ → وملئه); before other letters
+// the yeh just goes (أَفَإِي۟ن → أفإن).
+const HAMZA_BEFORE_SILENT_YEH =
+  /\u{0625}(\p{M}*)\u{064A}\u{06DF}(?=\p{M}*\u{0647})/u;
 const HAMZA = /[\u{0621}-\u{0626}]|[\u{0654}-\u{0655}]/u;
 const MARK = /\p{M}/u;
+// With the Persian, Urdu and Kurdish letters foldArabicLetters reads as
+// Arabic ones (ک ی ہ ھ ە ۀ ۂ ۃ ے ې).
 const ARABIC_LETTER =
-  /[\u{0621}-\u{063A}\u{0641}-\u{064A}\u{0671}\u{06A9}\u{06CC}]/u;
+  /[\u{0621}-\u{063A}\u{0641}-\u{064A}\u{0671}\u{06A9}\u{06BE}\u{06C0}-\u{06C3}\u{06CC}\u{06D0}\u{06D2}\u{06D5}]/u;
 const BIDI_AND_ZERO_WIDTH =
   /[\u{200B}-\u{200F}\u{202A}-\u{202E}\u{2066}-\u{2069}\u{FEFF}]/gu;
 const ROOT_PREFIX = /^\s*(root|جذر)\s*[:：]\s*/iu;
@@ -106,14 +124,19 @@ export function isVerseMarker(slotText: string): boolean {
   return slotText.startsWith('\u{06DD}');
 }
 
-/** Maddah removed, NFC, decorations removed, final ىٰ → ى, one-lam words. */
-function prepare(text: string): string {
+/** Maddah removed, NFC, decorations removed, final ىٰ → ى. */
+function prepareDrawn(text: string): string {
   return text
     .replace(MADDAH, '')
     .normalize('NFC')
     .replace(VERSE_END, ' ')
     .replace(DECORATIONS, '')
-    .replace(FINAL_MAQSURA_DAGGER, '\u{0649}$1')
+    .replace(FINAL_MAQSURA_DAGGER, '\u{0649}$1');
+}
+
+/** prepareDrawn, and the one-lam words written with two. */
+function prepare(text: string): string {
+  return prepareDrawn(text)
     .replace(LAYL, '\u{0671}\u{0644}\u{0644}$1\u{064A}$2\u{0644}')
     .replace(LAM_DAGGER, '\u{0671}\u{0644}\u{0644}$1')
     .replace(DUAL_RELATIVE, '\u{0671}\u{0644}\u{0644}$1\u{0630}\u{064E}');
@@ -129,7 +152,9 @@ function prepare(text: string): string {
  *   line (يَبْدَؤُا۟ → يبدأ, جَزَٰٓؤُا۟ → جزاء);
  * - a final hamza and alif is a hamza and alif maqsura (رَءَا → رأى);
  * - a plural waw after a hamza gets its alif (جَآءُو → جاءوا);
- * - the imperative of سأل after ف or و gets its alif (فَسْـَٔلْ → فاسأل).
+ * - the imperative of سأل after ف or و gets its alif (فَسْـَٔلْ → فاسأل);
+ * - a sad with a small seen is a seen (يَبْصُۜطُ → يبسط);
+ * - a silent waw is dropped, except before a lam (سَأُو۟رِيكُمْ → سأريكم).
  */
 function imlaeiAlternates(base: string): string[] {
   const out: string[] = [];
@@ -147,6 +172,177 @@ function imlaeiAlternates(base: string): string[] {
   push(base.replace(FINAL_HAMZA_WAW, '$1\u{0627}$2'));
   push(base.replace(SAAL_IMPERATIVE, '$1\u{0627}$2'));
   push(base.replace(FINAL_SEATED_HAMZA_AFTER_MADD, '$1\u{0621}$2')); // @ai
+  push(base.replace(SAD_WITH_SMALL_SEEN, '\u{0633}$1'));
+  push(base.replace(SILENT_WAW, ''));
+  return out;
+}
+
+// ── Hamza seats ────────────────────────────────────────────────────────────
+
+type Vowel = 'a' | 'u' | 'i' | null;
+
+const FATHA_SIGN = /[\u{064B}\u{064E}\u{08F0}]/u;
+const DAMMA_SIGN = /[\u{064C}\u{064F}\u{08F1}]/u;
+const KASRA_SIGN = /[\u{064D}\u{0650}\u{08F2}]/u;
+const TANWEEN_FATH = /[\u{064B}\u{08F0}]/u;
+const SUKUN = '\u{0652}';
+const HAMZA_SIGN = /[\u{0654}\u{0655}]/gu;
+// Letters that never join the next one (a final hamza after one stays on
+// the line: جزءا, ردءا; after a joining letter it sits on a tooth: خطئا).
+const NON_JOINING =
+  /[\u{0621}-\u{0625}\u{0627}\u{0629}\u{062F}-\u{0632}\u{0648}\u{0649}\u{0671}]/u;
+const SEAT_OF: Readonly<Record<'a' | 'u' | 'i', string>> = {
+  a: '\u{0623}',
+  u: '\u{0624}',
+  i: '\u{0626}',
+};
+
+interface Unit {
+  letter: string;
+  marks: string;
+}
+
+function unitsOf(word: string): Unit[] {
+  const units: Unit[] = [];
+  for (const char of word) {
+    const last = units[units.length - 1];
+    if (last && MARK.test(char)) last.marks += char;
+    else units.push({letter: char, marks: ''});
+  }
+  return units;
+}
+
+function vowelOf(marks: string): Vowel {
+  if (KASRA_SIGN.test(marks)) return 'i';
+  if (DAMMA_SIGN.test(marks)) return 'u';
+  if (FATHA_SIGN.test(marks)) return 'a';
+  return null;
+}
+
+/** A hamza the text draws without a seat: on the line, or on a tatweel. */
+function isUnseatedHamza(unit: Unit): boolean {
+  return (
+    unit.letter === '\u{0621}' ||
+    (unit.letter === '\u{0640}' && /[\u{0654}\u{0655}]/u.test(unit.marks))
+  );
+}
+
+/**
+ * The everyday seats of the unseated hamza at units[i], by the usual rules
+ * ([] when everyday writing keeps it on the line, or writes it with the
+ * alif after it as آ):
+ * - first in the word: on an alif (ءَأَنتُمْ → أأنتم), آ before a long alif;
+ * - last in the word: on the line after a long vowel or a sukun (سماء, سوء,
+ *   شيء, جزء); with the alif of a tanween fath, on a tooth after ي or a
+ *   joining letter (شيئا, خطئا), on the line otherwise (جزءا, سوءا);
+ * - inside the word: on the seat of the strongest vowel of the hamza and the
+ *   letter before it, kasra (ئ) over damma (ؤ) over fatha (أ): يسألونك,
+ *   رؤوف, الأفئدة; a fatha before a long alif gives آ (القرآن). After a
+ *   long alif or waw, a fatha stays on the line (شركاءهم, سوءة), a damma
+ *   takes ؤ (جاؤوا) and a kasra ئ (إسرائيل). After ي it sits on a tooth
+ *   (خطيئة, كهيئة), and after a ي with a sukun also on an alif (ييأس).
+ *   بِ or لِ before a hamza and a long alif is a proclitic (بآيات, لآدم).
+ *   After the question hamza, the hamza that starts the word it asks
+ *   about also takes the seat of a first letter (أَءِذَا → أئذا, أإذا).
+ */
+function everydaySeats(units: readonly Unit[], i: number): string[] {
+  const unit = units[i];
+  const own = vowelOf(unit.marks);
+  const prev = units[i - 1];
+  const next = units[i + 1];
+  const alifAfter =
+    unit.marks.includes('\u{0670}') || next?.letter === '\u{0627}';
+  if (!prev) {
+    if (own === 'a' && alifAfter) return [];
+    return [own === 'i' ? '\u{0625}' : '\u{0623}'];
+  }
+  const before = vowelOf(prev.marks);
+  const longAlif =
+    prev.letter === '\u{0627}' || prev.marks.includes('\u{0670}');
+  const yeh =
+    (prev.letter === '\u{064A}' || prev.letter === '\u{0649}') &&
+    before === null;
+  const waw = prev.letter === '\u{0648}' && before === null;
+  const tanweenAlif =
+    TANWEEN_FATH.test(unit.marks) &&
+    next?.letter === '\u{0627}' &&
+    i + 2 === units.length;
+  if (tanweenAlif) {
+    if (yeh) return [SEAT_OF.i];
+    if (before === 'i' || before === 'u') return [SEAT_OF[before]];
+    if (before === null && !longAlif && !waw) {
+      return NON_JOINING.test(prev.letter) ? [] : [SEAT_OF.i];
+    }
+    // After a fatha the alif goes (خطأ), which folds like the hamza
+    // dropped; after a long alif or waw it stays on the line.
+    return [];
+  }
+  if (!next) {
+    if (before === null || longAlif || yeh || waw) return [];
+    return [SEAT_OF[before]];
+  }
+  if (
+    i === 1 &&
+    (prev.letter === '\u{0628}' || prev.letter === '\u{0644}') &&
+    before === 'i' &&
+    own === 'a' &&
+    alifAfter
+  ) {
+    return [];
+  }
+  if (longAlif || waw) {
+    return own === 'i' || own === 'u' ? [SEAT_OF[own]] : [];
+  }
+  if (yeh) {
+    return own === 'a' && prev.marks.includes(SUKUN)
+      ? [SEAT_OF.i, SEAT_OF.a]
+      : [SEAT_OF.i];
+  }
+  const vowels = [before, own];
+  const strongest = vowels.includes('i')
+    ? 'i'
+    : vowels.includes('u')
+      ? 'u'
+      : vowels.includes('a')
+        ? 'a'
+        : null;
+  if (strongest === null || (strongest === 'a' && alifAfter)) return [];
+  const seat = SEAT_OF[strongest];
+  if (i === 1 && prev.letter === '\u{0623}' && before === 'a') {
+    const first = own === 'i' ? '\u{0625}' : '\u{0623}';
+    return first === seat ? [seat] : [seat, first];
+  }
+  return [seat];
+}
+
+/**
+ * `word` with each hamza drawn on the line or on a tatweel written on its
+ * everyday seat (يَسْـَٔلُونَكَ → يَسْأَلُونَكَ, رَءَى → رَأَى): the spellings
+ * that differ from `word`, at most 4.
+ */
+function seatedHamzas(word: string): string[] {
+  const units = unitsOf(word);
+  let spellings: Unit[][] = [units];
+  units.forEach((unit, i) => {
+    if (!isUnseatedHamza(unit)) return;
+    const seats = everydaySeats(units, i);
+    if (!seats.length) return;
+    const marks = unit.marks.replace(HAMZA_SIGN, '');
+    spellings = spellings
+      .flatMap(spelling =>
+        seats.map(seat => {
+          const copy = [...spelling];
+          copy[i] = {letter: seat, marks};
+          return copy;
+        }),
+      )
+      .slice(0, 4);
+  });
+  const out: string[] = [];
+  for (const spelling of spellings) {
+    const text = spelling.map(u => u.letter + u.marks).join('');
+    if (text !== word && !out.includes(text)) out.push(text);
+  }
   return out;
 }
 
@@ -173,24 +369,37 @@ interface Spellings {
   mixed: string[];
 }
 
-/** The spellings of a prepared word (see the file comment). */
-function spellingsOf(prepared: string): Spellings {
-  const word = prepared.trim().replace(VOCATIVE, '\u{064A}$1\u{0627}');
-  const imlaeiBase = word
+/** The small letters spelled out, the silent yeh dropped (before folding). */
+function imlaeiBaseOf(word: string): string {
+  return word
     .replace(MEDIAL_MAQSURA_DAGGER, '\u{0627}$1')
     .replace(WAW_ALIF, '\u{0627}')
     .replace(SMALL_HIGH_YEH, '\u{064A}')
     .replace(SMALL_HIGH_NOON, '\u{0646}')
     .replace(SMALL_WAW_YEH, spellOutSmallLetter)
     .replace(SILENT_YEH, '');
+}
+
+/** The spellings of a prepared word (see the file comment). */
+function spellingsOf(prepared: string): Spellings {
+  const word = prepared.trim().replace(VOCATIVE, '\u{064A}$1\u{0627}');
+  const imlaeiBase = imlaeiBaseOf(word);
   const imlaei = fold(imlaeiBase.replace(DAGGER_ALIF, '\u{0627}'));
   // fold() drops the dagger alif and the small letters with the other marks.
   const rasm = fold(word);
   const alternates: string[] = [];
-  for (const alternate of imlaeiAlternates(imlaeiBase)) {
-    const form = fold(alternate.replace(DAGGER_ALIF, '\u{0627}'));
-    if (form && form !== imlaei && !alternates.includes(form)) {
-      alternates.push(form);
+  const bases = [imlaeiBase, ...imlaeiAlternates(imlaeiBase)];
+  if (HAMZA_BEFORE_SILENT_YEH.test(word)) {
+    bases.push(
+      imlaeiBaseOf(word.replace(HAMZA_BEFORE_SILENT_YEH, '\u{0626}$1')),
+    );
+  }
+  for (const base of bases) {
+    for (const alternate of [base, ...seatedHamzas(base)]) {
+      const form = fold(alternate.replace(DAGGER_ALIF, '\u{0627}'));
+      if (form && form !== imlaei && !alternates.includes(form)) {
+        alternates.push(form);
+      }
     }
   }
   const mixed: string[] = [];
@@ -394,6 +603,13 @@ export interface QuranWordForm {
   rasmOnly: boolean;
   /** The part of the word this form spells holds a hamza. */
   hasHamza: boolean;
+  /**
+   * Only the letters exactly as drawn give this form: those of a vocative
+   * (يَٰٓأَيُّهَا → يايها) or of a word drawn with one lam (ٱلَّيْل → اليل),
+   * which every other spelling writes with the alif or lam everyday writing
+   * adds. The index keeps such a form only where no other word has it.
+   */
+  asDrawn?: true;
 }
 
 /** What the i'rab data says about a word (all optional facts). */
@@ -403,6 +619,8 @@ export interface QuranWordMorph {
   definiteByArticle: boolean;
   /** الأصل المعجمي, the lemma in Uthmani spelling. */
   lemma: string | null;
+  /** الجذر, the root in the corpus's spelling (ر ح م). */
+  root?: string | null;
 }
 
 function formScore(form: QuranWordForm): number {
@@ -439,22 +657,53 @@ export function quranWordForms(
     put({form: rasm, tier, rasmOnly: true, hasHamza});
     for (const form of mixed) put({form, tier, rasmOnly: true, hasHamza});
   };
+  // The letters exactly as drawn (يَٰمُوسَىٰ → يموسي, وَٱلَّيْلِ → واليل): a
+  // new form only where the spellings added the vocative's alif or a lam.
+  const addDrawn = (word: string, tier: QuranTier) =>
+    put({
+      form: fold(word),
+      tier,
+      rasmOnly: true,
+      hasHamza: HAMZA.test(word),
+      asDrawn: true,
+    });
   const prepared = prepare(uthmani);
+  const drawn = prepareDrawn(uthmani);
   add(prepared, QURAN_TIER.full);
+  addDrawn(drawn, QURAN_TIER.full);
   if (morph) {
     const lemma = morph.lemma ?? '';
     const definite = morph.definiteByArticle || lemma.startsWith('\u{0671}');
     const isAllah = lemma !== '' && fold(lemma) === 'الله';
     const chain = procliticChain(prepared, morph.proclitics, definite, isAllah);
     for (const word of chain) add(word, QURAN_TIER.withoutProclitics);
-    const innermost = chain[chain.length - 1] ?? prepared;
-    if (morph.definiteByArticle) {
-      const bare = stripArticleOf(innermost);
-      if (bare !== null) add(bare, QURAN_TIER.withoutArticle);
+    for (const word of procliticChain(
+      drawn,
+      morph.proclitics,
+      definite,
+      isAllah,
+    )) {
+      addDrawn(word, QURAN_TIER.withoutProclitics);
     }
+    const innermost = chain[chain.length - 1] ?? prepared;
+    const bare = morph.definiteByArticle ? stripArticleOf(innermost) : null;
+    if (bare !== null) add(bare, QURAN_TIER.withoutArticle);
+    // Every everyday spelling (not the letters as drawn) ending in `ending`
+    // also ends in `everyday`.
+    const respell = (ending: string, everyday: string) => {
+      for (const form of [...best.values()]) {
+        if (form.form.endsWith(ending) && !form.rasmOnly) {
+          put({
+            ...form,
+            form: form.form.slice(0, -ending.length) + everyday,
+          });
+        }
+      }
+    };
     // A feminine ending drawn as an open taa (رَحْمَتَ, نِعْمَتَ, ٱمْرَأَتُ) is
     // written ة in everyday writing. The lemma (رَحْمَة) says which final ت
-    // is one: the word is the lemma with its ة drawn as ت.
+    // is one: the word is the lemma with its ة drawn as ت. The letters as
+    // drawn keep their ت (غَيَٰبَتِ is غيابة or غيبت, never غيبة).
     const stem = spellingsOf(innermost).imlaei;
     const lemmaSpelling = lemma ? spellingsOf(prepare(lemma)).imlaei : '';
     if (
@@ -463,11 +712,41 @@ export function quranWordForms(
       lemmaSpelling.endsWith('ه') &&
       stem.slice(0, -1) === lemmaSpelling.slice(0, -1)
     ) {
-      for (const form of [...best.values()]) {
-        if (form.form.endsWith('ت')) {
-          put({...form, form: `${form.form.slice(0, -1)}ه`});
-        }
-      }
+      respell('ت', 'ه');
+    }
+    // An alif maqsura drawn as a final alif (طَغَا, لَدَا, ٱلْأَقْصَا) is
+    // written ى in everyday writing. The lemma written with ى (طَغَىٰ,
+    // لَدَى) says which final ا is one: the word, with or without its
+    // article, is the lemma with its ى drawn as ا.
+    if (
+      /\u{0649}\p{M}*$/u.test(prepare(lemma)) &&
+      [innermost, bare].some(word => {
+        const spelling = word === null ? '' : spellingsOf(word).imlaei;
+        return (
+          spelling.length > 1 &&
+          spelling.endsWith('ا') &&
+          spelling.slice(0, -1) === lemmaSpelling.slice(0, -1)
+        );
+      })
+    ) {
+      respell('ا', 'ي');
+    }
+    const core = innermost.trim();
+    // A verb whose plural waw is drawn with a sukun and no alif (وَعَتَوْ,
+    // سَعَوْ) is written with the alif; لَوْ and أَوْ are of two letters.
+    if (
+      /\u{064E}\u{0648}\u{0652}\p{M}*$/u.test(core) &&
+      [...core].filter(char => !MARK.test(char)).length >= 3
+    ) {
+      respell('و', 'وا');
+    }
+    // A word of the root ح ي ي drawn with one final yeh (يُحْيِ, لَمُحْيِ)
+    // is written with both (يحيي, لمحيي); وَحْيِ, of و ح ي, keeps one.
+    if (
+      morph.root === 'ح ي ي' &&
+      /\u{0652}\u{064A}\u{0650}\p{M}*$/u.test(core)
+    ) {
+      respell('ي', 'يي');
     }
   }
   return [...best.values()];
@@ -486,6 +765,12 @@ export interface QuranQueryToken {
    * hamza match, so ا ل م finds الٓمٓ and not ألم or الملك.
    */
   opening?: true;
+  /**
+   * The first word after a verse number pasted with its verse (۝٢, ﴿٢﴾,
+   * (2)): the start of the next ayah. Ayahs pasted together that make no
+   * phrase are searched by the first of them.
+   */
+  ayahStart?: true;
 }
 
 /**
@@ -543,10 +828,11 @@ export function foldQuranQueryWord(word: string): string {
  * The keys of a token (one typed word, or two joined: يا + أيها): the token
  * itself, and each hamza seat also without its seat letter: ؤ and ئ
  * anywhere, أ and إ after a word's first letter (مسؤولا → مسوولا, مسولا;
- * يسألونك → يسالونك, يسلونك; أأنتم → اانتم, انتم), as the Uthmani text
- * often writes that hamza on the line or on a tatweel. At most 2 seats, so
- * at most 4 keys. A token that needs a hamza only matches words with one, so
- * a key without a seat letter stays specific.
+ * يسألونك → يسالونك, يسلونك; أأنتم → اانتم, انتم), as a reader may put
+ * the hamza on another seat than the index's spellings. At most 2 seats, so
+ * at most 4 keys, the token as typed first. A key without a seat letter is
+ * often another word (امرأة → امره, as أمره), so the engine looks the
+ * others up only when the first is no word of the text.
  */
 function tokenKeys(words: readonly string[]): string[] {
   const chars: string[] = [];
@@ -588,9 +874,37 @@ function joinsNextWord(word: string): boolean {
   const letters = rawLetters(word);
   if (letters === 'إل') return true;
   // A vocative typed with its conjunction (ويا قوم) is one Uthmani word too
-  // (وَيَٰقَوْمِ). @ai
-  const bare = letters.replace(/^\u{0648}(?=\u{064A}\u{0627}$)/u, ''); // @ai
+  // (وَيَٰقَوْمِ), and so is one typed with a Persian yeh (یا). @ai
+  const bare = foldArabicLetters(letters).replace(
+    /^\u{0648}(?=\u{064A}\u{0627}$)/u,
+    '',
+  ); // @ai
   return (bare === 'يا' || bare === 'ها') && !HAMZA.test(word);
+}
+
+/**
+ * Joins a conjunction or preposition typed as a word of its own (و الله, ف,
+ * ب, ك) to the next word, as the text writes them as one, from the right,
+ * so و ب الله is وبالله. ل drops the alif of an article after it (ل الناس
+ * → للناس, ل الله → لله). Never to a single letter (ب س م, ك ه ي ع ص), nor
+ * across the end of an ayah: `starts` (kept in step) marks the words that
+ * begin one.
+ */
+function joinProcliticLetters(words: string[], starts: boolean[]): void {
+  for (let i = words.length - 2; i >= 0; i--) {
+    const letter = foldArabicLetters(rawLetters(words[i]));
+    const next = rawLetters(words[i + 1]);
+    if (!/^[\u{0648}\u{0641}\u{0628}\u{0644}\u{0643}]$/u.test(letter)) continue;
+    if (next.length < 2 || starts[i + 1]) continue;
+    words.splice(
+      i,
+      2,
+      letter === '\u{0644}' && /^[\u{0627}\u{0671}]\u{0644}/u.test(next)
+        ? `\u{0644}${next.slice(1)}`.replace(/^\u{0644}{3}/u, 'لل')
+        : words[i] + words[i + 1],
+    );
+    starts.splice(i, 2, starts[i]);
+  }
 }
 
 /**
@@ -613,8 +927,10 @@ function startsWithDrawnOpening(query: string): boolean {
  * `root:رحم` / `جذر: ر ح م` ask for a root; 3-4 spaced letters (ر ح م) do
  * too when they spell a known root, unless they spell a surah opening
  * (QURAN_OPENINGS: ا ل م is the text الم, its root ء ل م only a suggestion).
- * Letters typed apart before other words that spell an opening, and a first
- * word pasted as the mushaf draws an opening (الٓمٓ), are that opening too.
+ * Letters typed apart that spell two openings in a row are both (ح م ع س ق,
+ * 42:1-2). Letters typed apart before other words that spell an opening (or
+ * two), and a first word pasted as the mushaf draws an opening (الٓمٓ), are
+ * that opening too.
  * Otherwise the text is split into words; a standalone يا, ها or إل joins
  * the next word (يا أيها → ياايها), as the Uthmani text writes them as one.
  *
@@ -628,7 +944,7 @@ export function parseQuranQuery(
   isKnownRoot: (root: string) => boolean = () => false,
 ): ParsedQuranQuery {
   const drawnOpening = startsWithDrawnOpening(query);
-  let text = query
+  const text = query
     .replace(MADDAH, '')
     .normalize('NFKC')
     .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x0660))
@@ -644,59 +960,91 @@ export function parseQuranQuery(
     return {kind: 'root', letters, explicit: true};
   }
 
-  text = text.replace(VERSE_END, ' ').replace(ORNATE_VERSE_NUMBER, ' ');
-  if (/[0-9]/.test(text)) return {kind: 'none'};
-  const words = prepare(text)
-    .replace(/[^\p{L}\p{M}]+/gu, ' ')
-    .split(' ')
-    .filter(word => ARABIC_LETTER.test(word));
+  if (/[0-9]/.test(text.replace(VERSE_NUMBER, ' '))) return {kind: 'none'};
+  // A verse number pasted with its verse ends an ayah: starts[i] says that
+  // words[i] begins the next one.
+  const words: string[] = [];
+  const starts: boolean[] = [];
+  for (const ayah of text.split(VERSE_NUMBER)) {
+    prepare(ayah)
+      .replace(/[^\p{L}\p{M}]+/gu, ' ')
+      .split(' ')
+      .filter(word => ARABIC_LETTER.test(word))
+      .forEach((word, k) => {
+        starts.push(k === 0 && words.length > 0);
+        words.push(word);
+      });
+  }
   if (!words.length) return {kind: 'none'};
+  joinProcliticLetters(words, starts);
 
   // Single letters typed apart (or one letter): a surah opening (ا ل م, ح م,
   // ك ه ي ع ص, ن), text matched as a whole word; else a root when 3-4 of
-  // them spell a known one (ر ح م); else one word. The openings are drawn
-  // without a hamza, so letters typed with one (أ ل م) are not an opening.
-  let opening = false;
-  // The first word is an opening (its letters typed apart, words after).
-  let leadOpening = false;
+  // them spell a known one (ر ح م); else two openings in a row (ح م ع س ق,
+  // 42:1-2); else one word. The openings are drawn without a hamza, so
+  // letters typed with one (أ ل م) are not an opening.
+  // How many words, from the first, are openings.
+  let openings = 0;
   const isOpening = (letters: readonly string[]) =>
     !letters.some(word => HAMZA.test(word)) &&
     QURAN_OPENINGS.has(fold(letters.map(rawLetters).join('')));
+  // Where the letters split into two openings (حم, عسق), or 0.
+  const twoOpenings = (letters: readonly string[]): number => {
+    for (let k = 1; k < letters.length; k++) {
+      if (isOpening(letters.slice(0, k)) && isOpening(letters.slice(k))) {
+        return k;
+      }
+    }
+    return 0;
+  };
+  // The first `count` words as one opening, or as two split at `k`.
+  const spellOpenings = (count: number, k: number) => {
+    const spelled = k
+      ? [words.slice(0, k).join(''), words.slice(k, count).join('')]
+      : [words.slice(0, count).join('')];
+    words.splice(0, count, ...spelled);
+    starts.splice(0, count, ...(k ? [starts[0], starts[k]] : [starts[0]]));
+    openings = spelled.length;
+  };
   if (words.length <= 5 && words.every(word => rawLetters(word).length === 1)) {
     const letters = words.map(rawLetters).join('');
-    opening = isOpening(words);
-    if (
-      !opening &&
+    if (isOpening(words)) {
+      spellOpenings(words.length, 0);
+    } else if (
       words.length <= 4 &&
       words.length >= 3 &&
       rootCandidates(letters, isKnownRoot).length > 0
     ) {
       return {kind: 'root', letters, explicit: false};
+    } else if (twoOpenings(words)) {
+      spellOpenings(words.length, twoOpenings(words));
+    } else {
+      words.splice(0, words.length, words.join(''));
+      starts.splice(0, starts.length, starts[0]);
     }
-    words.splice(0, words.length, words.join(''));
   } else {
     // Letters typed apart before other words (ا ل ر تلك آيات الكتاب, ح م
-    // تنزيل): when they spell an opening, that opening as one word.
+    // تنزيل): when they spell an opening, or two, those openings as words.
     let lead = 0;
     while (lead < words.length && rawLetters(words[lead]).length === 1) lead++;
-    if (lead >= 1 && lead <= 5 && isOpening(words.slice(0, lead))) {
-      words.splice(0, lead, words.slice(0, lead).join(''));
-      leadOpening = true;
+    const leading = lead >= 1 && lead <= 5 ? words.slice(0, lead) : [];
+    const k = leading.length && !isOpening(leading) ? twoOpenings(leading) : 0;
+    if (leading.length && (k || isOpening(leading))) {
+      spellOpenings(lead, k);
     } else if (drawnOpening) {
       // Pasted from the mushaf (الٓمٓ): the opening, alone or before words.
-      if (words.length === 1) opening = true;
-      else leadOpening = true;
+      openings = 1;
     }
   }
 
-  const merged: string[][] = [];
+  const merged: {parts: string[]; ayahStart: boolean}[] = [];
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
-    if (i + 1 < words.length && joinsNextWord(word)) {
-      merged.push([word, words[i + 1]]);
+    if (i + 1 < words.length && joinsNextWord(word) && !starts[i + 1]) {
+      merged.push({parts: [word, words[i + 1]], ayahStart: starts[i]});
       i++;
     } else {
-      merged.push([word]);
+      merged.push({parts: [word], ayahStart: starts[i]});
     }
   }
 
@@ -705,7 +1053,7 @@ export function parseQuranQuery(
   const tokens: QuranQueryToken[] = [];
   const tokenWords: string[] = [];
   let letters = 0;
-  for (const parts of merged) {
+  for (const [i, {parts, ayahStart}] of merged.entries()) {
     if (tokens.length === QURAN_QUERY_MAX_TOKENS) break;
     const keys = tokenKeys(parts);
     if (!keys.length) continue;
@@ -716,7 +1064,8 @@ export function parseQuranQuery(
       keys,
       needsHamza: HAMZA.test(prepare(word)),
     };
-    if (opening || (leadOpening && !tokens.length)) token.opening = true;
+    if (i < openings) token.opening = true;
+    if (ayahStart && tokens.length) token.ayahStart = true;
     tokens.push(token);
     tokenWords.push(word);
   }
@@ -760,7 +1109,8 @@ function rootLetterOptions(letter: string): string[] {
 /**
  * The known roots that 3-4 typed letters may spell, in the i'rab format
  * ('ر ح م'): أ إ آ ء → ء; ا → ء, و or ي; ؤ → ء or و; ئ → ء or ي; ى → ي or
- * و. `isKnownRoot` keeps the roots that occur in the Quran.
+ * و. `isKnownRoot` keeps the roots that occur in the Quran. طمأن and شمأز
+ * spell the roots the corpus writes without the hamza (ROOTS_WITHOUT_HAMZA).
  */
 export function rootCandidates(
   letters: string,
@@ -776,11 +1126,21 @@ export function rootCandidates(
   }
   const out: string[] = [];
   for (const root of roots) {
-    const key = root.join(' ');
+    const typed = root.join(' ');
+    const key = ROOTS_WITHOUT_HAMZA[typed] ?? typed;
     if (!out.includes(key) && isKnownRoot(key)) out.push(key);
   }
   return out;
 }
+
+/**
+ * The corpus files the two verbs of the form افعألّ under their three other
+ * letters: اطمأن under ط م ن, اشمأز under ش م ز. A reader types the hamza.
+ */
+const ROOTS_WITHOUT_HAMZA: Readonly<Record<string, string>> = {
+  'ط م ء ن': 'ط م ن',
+  'ش م ء ز': 'ش م ز',
+};
 
 /** The query that searches a root: rootQuery('ر ح م') → 'root:ر ح م'. */
 export function rootQuery(root: string, keyword = 'root'): string {

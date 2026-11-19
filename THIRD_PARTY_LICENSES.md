@@ -220,15 +220,29 @@ repository; it adds no outside source:
   SIL Open Font License 1.1 (see Fonts above). The index stores search
   spellings derived from each word by rule (the Quran text itself is not
   copied into it) with the word's position.
-- **Quranic Arabic Corpus** morphology, through `assets/data/irab-v1.db`
-  (see Quran i'rab above), GNU General Public License: the proclitic
-  segmentation, roots and lemmas. The roots and lemmas are stored as they are
-  in `irab-v1.db`.
+- **Quranic Arabic Corpus** morphology, version 0.4 —
+  https://corpus.quran.com, GNU General Public License with the corpus's
+  terms of use — as carried by **the Quranic Treebank**
+  (https://github.com/NoorBayan/Quranic, MIT License, Copyright (c) 2025
+  NoorBayan) and read from the i'rab database (see Quran i'rab above): the
+  proclitic segmentation, roots and lemmas. The roots and lemmas are stored
+  as they are in the i'rab database.
 
-The build records the sha256 of both inputs in the database's `meta` table.
-The build's `--imlaei` option, unused in this version, would add the words of
-an imla'i Quran text; a text fed in that way needs its own licence check and
-notice here first.
+The database's `meta` table names these sources (`morphology_source`,
+`morphology_license`) and holds the Quranic Arabic Corpus copyright notice
+and terms of use (`morphology_notice`), as published at
+https://corpus.quran.com/download (read on 2026-11-18): the terms ask that
+the notice be reproduced in works derived from the corpus.
+
+- **Open question.** The terms also say "CHANGING IT IS NOT ALLOWED" of the
+  corpus file. The index stores the corpus's roots and lemmas per word, as
+  the i'rab database does; whether that counts as a change is not stated.
+
+The build records, in the database's `meta` table, a sha256 of the Digital
+Khatt words and of the morphology it reads (not of the files). The build's
+`--imlaei` option, unused in this version, would add the words of an imla'i
+Quran text; a text fed in that way needs its own licence check and notice
+here first.
 
 ## Adhkar content & audio
 

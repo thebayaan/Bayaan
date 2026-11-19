@@ -31,7 +31,10 @@ import {
 import {IRAB_DB_NAME} from '@/constants/bundledDatabases';
 import {
   decodePostings,
+  QURAN_FLAG_RANGE,
   QURAN_SEARCH_DB_NAME,
+  QURAN_SLOT_STRIDE,
+  verseKeyAt,
 } from '@/utils/search/quranIndexFormat';
 import {QURAN_ONE_WORD_AYAHS} from '@/utils/search/quranSearch';
 import {isFoldedForm, isVerseMarker} from '@/utils/search/quranText';
@@ -91,12 +94,25 @@ describe(QURAN_SEARCH_DB_NAME, () => {
       'postings',
       'roots',
       'lemmas',
+      'morphology_source',
+      'morphology_license',
+      'morphology_notice',
     ]) {
       expect(meta[key]).toBeTruthy();
     }
     expect(meta.format).toBe('1');
     expect(meta.complete).toBe('1');
     expect(meta.imlaei_sha256).toBeUndefined();
+  });
+
+  it('names where its roots and lemmas come from, with the corpus notice', () => {
+    expect(meta.morphology_source).toContain('Quranic Arabic Corpus');
+    expect(meta.morphology_source).toContain('Quranic Treebank');
+    expect(meta.morphology_license).toContain('GNU General Public License');
+    expect(meta.morphology_license).toContain('MIT License');
+    // The corpus asks for its notice in works derived from it.
+    expect(meta.morphology_notice).toContain('TERMS OF USE:');
+    expect(meta.morphology_notice).toContain('http://corpus.quran.com');
   });
 
   it('records the sha256 of what it was built from', () => {
@@ -262,6 +278,36 @@ describe(QURAN_SEARCH_DB_NAME, () => {
     expect(
       db.prepare('SELECT id, root, words, ayahs FROM roots ORDER BY id').all(),
     ).toEqual(rebuilt.roots);
+  });
+
+  it('keeps the letters exactly as drawn only where no other word has them', () => {
+    const at = (form: string) =>
+      (rebuilt.forms.get(form) ?? []).map(code => {
+        const slot = Math.floor(code / QURAN_FLAG_RANGE);
+        const verse = verseKeyAt(Math.floor(slot / QURAN_SLOT_STRIDE));
+        return `${verse}:${slot % QURAN_SLOT_STRIDE}`;
+      });
+    // يَٰٓأَيُّهَا, يَٰمُوسَىٰ and ٱلَّيْلِ as drawn
+    expect(at('يايها')).toContain('2:21:1');
+    expect(at('يموسي')).toContain('2:55:3');
+    expect(at('اليل')).toContain('2:164:7');
+    // يَٰقَوْمِ is drawn يقوم, ٱلَّٰٓـِٔى الي and ٱلَّٰتِى التي: the
+    // spellings of يَقُومُ, إِلَى and ٱلَّتِى, which keep them alone.
+    expect(at('يقوم').length).toBeGreaterThan(0);
+    expect(at('يقوم')).not.toContain('2:54:5');
+    expect(at('الي')).not.toContain('33:4:12');
+    expect(at('التي')).not.toContain('4:23:21');
+  });
+
+  it('puts a reviewed spelling only on the word it was reviewed for', () => {
+    // REVIEWED_SPELLINGS gives 18:77:22 (لَتَّخَذْتَ) لاتخذت.
+    expect(rebuilt.forms.get('لاتخذت')?.length).toBe(1);
+    const moved = input.dkWords.map(row =>
+      row.location === '18:77:22' ? {...row, text: 'لَوْ'} : row,
+    );
+    expect(() => buildQuranSearchIndex({...input, dkWords: moved})).toThrow(
+      /18:77:22: reviewed spelling/,
+    );
   });
 
   it('holds every root once, counted in words', () => {

@@ -13,13 +13,16 @@
 export const ARABIC_MARKS =
   /[\u034f\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u08d3-\u08ff\u0640]/g;
 
-/** ٱ أ إ آ → ا, ى ی → ي, ک → ك, ة → ه. */
+/**
+ * ٱ أ إ آ → ا, ى ی → ي, ک → ك, ة → ه, and the heh, teh marbuta and yeh of
+ * Persian, Urdu and Kurdish keyboards: ہ ھ ە ۀ ۂ ۃ → ه, ے ې → ي.
+ */
 export function foldArabicLetters(text: string): string {
   return text
     .replace(/[أإآٱ]/g, 'ا')
-    .replace(/[ىی]/g, 'ي')
+    .replace(/[ىیےې]/g, 'ي')
     .replace(/ک/g, 'ك')
-    .replace(/ة/g, 'ه');
+    .replace(/[ةہھەۀۂۃ]/g, 'ه');
 }
 
 /** ؤ → و, ئ → ي; a hamza on the line (ء) is dropped. */

@@ -12,7 +12,8 @@
  * i'rab prose, the books or the text ids leaves the index fresh. Of the
  * Digital Khatt DB it reads each word's location and text, and meta records
  * the sha256 of those rows (dk_words_sha256), not of the file, so a rewrite
- * with the same rows leaves it fresh too.
+ * with the same rows leaves it fresh too. meta also names the source of the
+ * morphology and carries its licence notice (QURAN_MORPHOLOGY_META).
  *
  * buildQuranSearchIndex (gates 1-4):
  *  1. 6,236 verses in mushaf order and 77,432 words outside the markers;
@@ -74,6 +75,99 @@ export const ROOT_COUNT_EXCEPTIONS: Readonly<Record<string, number>> = {
 };
 /** Words pasted per verse by the every-verse check. */
 export const VERSE_CHECK_WORDS = 12;
+
+/**
+ * The meta rows that name where the index's roots, lemmas and proclitic
+ * segmentation come from: the Quranic Arabic Corpus morphology that the
+ * Quranic Treebank carries, read from the i'rab database. Its terms ask
+ * that its copyright notice be reproduced in works derived from it, so
+ * morphology_notice holds that notice, as published at
+ * https://corpus.quran.com/download. See THIRD_PARTY_LICENSES.md.
+ */
+export const QURAN_MORPHOLOGY_META: Readonly<Record<string, string>> = {
+  morphology_source:
+    'Quranic Arabic Corpus, version 0.4 (https://corpus.quran.com): its ' +
+    'morphology as carried by the Quranic Treebank ' +
+    "(https://github.com/NoorBayan/Quranic) and read from the i'rab " +
+    'database: the roots, lemmas and proclitic segmentation.',
+  morphology_license:
+    'Quranic Arabic Corpus: GNU General Public License, with the terms of ' +
+    'use in morphology_notice. Quranic Treebank: MIT License, Copyright (c) ' +
+    '2025 NoorBayan.',
+  morphology_notice: [
+    'Quranic Arabic Corpus (Version 0.4)',
+    'Copyright (C) 2011 Kais Dukes',
+    'License: GNU General Public License',
+    '',
+    'The Quranic Arabic Corpus includes syntactic and morphological',
+    'annotation of the Quran, and builds on the verified Arabic text',
+    'distributed by the Tanzil project.',
+    '',
+    'TERMS OF USE:',
+    '',
+    '- Permission is granted to copy and distribute verbatim copies',
+    '  of this file, but CHANGING IT IS NOT ALLOWED.',
+    '',
+    '- This annotation can be used in any website or application,',
+    '  provided its source (the Quranic Arabic Corpus) is clearly',
+    '  indicated, and a link is made to http://corpus.quran.com to enable',
+    '  users to keep track of changes.',
+    '',
+    '- This copyright notice shall be included in all verbatim copies',
+    '  of the text, and shall be reproduced appropriately in all works',
+    '  derived from or containing substantial portion of this file.',
+    '',
+    'Please check updates at: http://corpus.quran.com/download',
+  ].join('\n'),
+};
+
+/**
+ * Lemmas the corpus spells with the open taa of their drawn words, none of
+ * which is written with ة, whose final ت is a taa marbuta in everyday
+ * writing all the same: فطرة الله, ابتغاء مرضاة الله, ابنة عمران, غيابة
+ * الجب, معصية الرسول, جمالة. Reviewed by hand. The other lemmas that end in
+ * ت and are never drawn with ة are plurals (صَٰلِحَٰت), verbs, or words
+ * written with ت in everyday writing too (طَٰغُوت, أُخْت, مَلَكُوت,
+ * عَنكَبُوت, عِفْرِيت). A build gate checks that each is a lemma of the
+ * data.
+ */
+export const TAA_MARBUTA_LEMMAS: readonly string[] = [
+  'فِطْرَت',
+  'مَرْضَات',
+  'ٱبْنَت',
+  'غَيَٰبَت',
+  'مَعْصِيَت',
+  'جِمَٰلَت',
+];
+
+/**
+ * Lemmas the corpus spells with the final alif of their drawn words, whose
+ * alif is an alif maqsura in everyday writing: أَقْصَا (المسجد الأقصى, من
+ * أقصى المدينة) and تَتْرَا (تترى). Reviewed by hand. Words of a lemma the
+ * corpus writes with ى (طَغَا of طَغَىٰ, لَدَا of لَدَى) need no entry. A
+ * build gate checks that each is a lemma of the data.
+ */
+export const ALIF_MAQSURA_LEMMAS: readonly string[] = ['أَقْصَا', 'تَتْرَا'];
+
+/**
+ * Everyday spellings no rule derives, by slot, reviewed by hand:
+ * لْـَٔيْكَةِ (26:176, 38:13) is drawn without the alif of its article
+ * (الأيكة, as the text draws it at 15:78 and 50:14), لَتَّخَذْتَ (18:77)
+ * is لاتخذت, and بِمُصَيْطِرٍ (88:22) is spelled with س in modern writing
+ * (بمسيطر). Each entry names the word's letters as drawn, which a build
+ * gate checks, so a change of the text cannot move a spelling onto another
+ * word.
+ */
+export const REVIEWED_SPELLINGS: readonly {
+  location: string;
+  drawn: string;
+  spellings: readonly string[];
+}[] = [
+  {location: '18:77:22', drawn: 'لتخذت', spellings: ['لاتخذت']},
+  {location: '26:176:3', drawn: 'ليكه', spellings: ['الأيكة']},
+  {location: '38:13:5', drawn: 'ليكه', spellings: ['الأيكة']},
+  {location: '88:22:3', drawn: 'بمصيطر', spellings: ['بمسيطر']},
+];
 
 export const QURAN_SEARCH_SCHEMA = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -381,10 +475,17 @@ export function buildQuranSearchIndex(
 
   // The corpus spells some lemmas with the open taa of their drawn words:
   // ٱمْرَأَت for every امرأة. When a word of such a lemma is written with ة
-  // (ٱمْرَأَةٌ), the lemma's ت is a taa marbuta, and the forms read every
-  // word against the lemma with ة, so the open-taa words (ٱمْرَأَتُ) get
-  // their ة spelling too. The roots and lemmas tables keep the i'rab lemma.
-  const taaMarbutaLemmas = new Set<string>();
+  // (ٱمْرَأَةٌ), or the lemma is one of TAA_MARBUTA_LEMMAS, the lemma's ت
+  // is a taa marbuta, and the forms read every word against the lemma with
+  // ة, so the open-taa words (ٱمْرَأَتُ, فِطْرَتَ) get their ة spelling too.
+  // The roots and lemmas tables keep the i'rab lemma.
+  const lemmasOfData = new Set(
+    [...morphBySlot.values()].map(morph => morph.lemma),
+  );
+  for (const lemma of [...TAA_MARBUTA_LEMMAS, ...ALIF_MAQSURA_LEMMAS]) {
+    gate(lemmasOfData.has(lemma), `reviewed lemma ${lemma} is no lemma`);
+  }
+  const taaMarbutaLemmas = new Set<string>(TAA_MARBUTA_LEMMAS);
   for (const [slot, morph] of morphBySlot) {
     if (!morph.lemma || taaMarbutaLemmas.has(morph.lemma)) continue;
     const spelling = quranWordSpellings(morph.lemma).imlaei;
@@ -396,10 +497,17 @@ export function buildQuranSearchIndex(
       taaMarbutaLemmas.add(morph.lemma);
     }
   }
-  const formsLemma = (morph: SlotMorph): string | null =>
-    morph.lemma && taaMarbutaLemmas.has(morph.lemma)
-      ? morph.lemma.replace(/\u{062A}(\p{M}*)$/u, '\u{0629}$1')
-      : morph.lemma;
+  // Likewise the final alif of ALIF_MAQSURA_LEMMAS is read as ى.
+  const maqsuraLemmas = new Set<string>(ALIF_MAQSURA_LEMMAS);
+  const formsLemma = (morph: SlotMorph): string | null => {
+    if (morph.lemma && taaMarbutaLemmas.has(morph.lemma)) {
+      return morph.lemma.replace(/\u{062A}(\p{M}*)$/u, '\u{0629}$1');
+    }
+    if (morph.lemma && maqsuraLemmas.has(morph.lemma)) {
+      return morph.lemma.replace(/\u{0627}(\p{M}*)$/u, '\u{0649}$1');
+    }
+    return morph.lemma;
+  };
 
   // Forms, best code per slot (gate 3).
   const formSlots = new Map<string, Map<number, QuranWordForm>>();
@@ -413,6 +521,20 @@ export function buildQuranSearchIndex(
     const current = slots.get(slot);
     if (!current || formScore(form) > formScore(current)) slots.set(slot, form);
   };
+  // An extra everyday spelling of one slot: a full-word spelling.
+  const putSpelling = (slot: number, spelling: string, where: string) =>
+    put(
+      slot,
+      {
+        form: foldQuranQueryWord(spelling),
+        tier: 3,
+        rasmOnly: false,
+        hasHamza: /[ءآأؤإئ]/.test(spelling),
+      },
+      where,
+    );
+  const reviewed = new Map(REVIEWED_SPELLINGS.map(r => [r.location, r]));
+  const reviewedSeen = new Set<string>();
   verses.forEach((verse, verseIndex) => {
     for (const [position, text] of verse.words) {
       const slot = verseIndex * QURAN_SLOT_STRIDE + position;
@@ -425,20 +547,35 @@ export function buildQuranSearchIndex(
       gate(forms.length > 0, `${where}: no spelling`);
       for (const form of forms) put(slot, form, where);
       const imlaei = input.imlaei?.get(where);
-      if (imlaei !== undefined) {
-        put(
-          slot,
-          {
-            form: foldQuranQueryWord(imlaei),
-            tier: 3,
-            rasmOnly: false,
-            hasHamza: /[ءآأؤإئ]/.test(imlaei),
-          },
-          `${where} (imla'i)`,
+      if (imlaei !== undefined) putSpelling(slot, imlaei, `${where} (imla'i)`);
+      const entry = reviewed.get(where);
+      if (entry) {
+        gate(
+          quranWordSpellings(text).rasm === entry.drawn,
+          `${where}: reviewed spelling of «${entry.drawn}» on «${text}»`,
         );
+        for (const spelling of entry.spellings) {
+          putSpelling(slot, spelling, `${where} (reviewed)`);
+        }
+        reviewedSeen.add(where);
       }
     }
   });
+  gate(
+    reviewedSeen.size === reviewed.size,
+    `reviewed spellings without a slot: ${[...reviewed.keys()]
+      .filter(location => !reviewedSeen.has(location))
+      .join(' ')}`,
+  );
+  // The letters exactly as drawn of a vocative or a one-lam word are, as
+  // often as not, another word: يَٰقَوْمِ is drawn يقوم (يَقُومُ), ٱلَّٰتِى
+  // التي and ٱلَّٰٓـِٔى الي (إِلَى). Typed, those mean the other word, so a
+  // form keeps them only when no other spelling gives it (يأيها, يموسى,
+  // اليل).
+  for (const slots of formSlots.values()) {
+    if (![...slots.values()].some(f => !f.asDrawn)) continue;
+    for (const [slot, f] of slots) if (f.asDrawn) slots.delete(slot);
+  }
   const forms = new Map<string, number[]>();
   let postings = 0;
   for (const form of [...formSlots.keys()].sort()) {
@@ -537,6 +674,7 @@ export function buildQuranSearchIndex(
     roots: String(roots.length),
     lemmas: String(lemmas.length),
     content_sha256: contentSha256(content),
+    ...QURAN_MORPHOLOGY_META,
   };
   if (input.sources.imlaeiSha256) {
     meta.imlaei_sha256 = input.sources.imlaeiSha256;

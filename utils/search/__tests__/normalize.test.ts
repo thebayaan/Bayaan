@@ -62,6 +62,17 @@ describe('shared Arabic folds', () => {
     expect(foldHamzaCarriers('مؤمن شاطئ سماء')).toBe('مومن شاطي سما');
   });
 
+  it('folds the heh, teh marbuta and yeh of Persian, Urdu and Kurdish keyboards', () => {
+    // ہ ھ ە ۀ ۂ ۃ, then ے ې
+    expect(
+      foldArabicLetters(
+        '\u{06C1} \u{06BE} \u{06D5} \u{06C0} \u{06C2} \u{06C3}',
+      ),
+    ).toBe('ه ه ه ه ه ه');
+    expect(foldArabicLetters('\u{06D2} \u{06D0}')).toBe('ي ي');
+    expect(toSearchKey('سورۃ البقرۃ')).toBe('سوره البقره');
+  });
+
   it('lists every mark the keys drop', () => {
     const marks =
       '\u{034F}\u{0610}\u{064B}\u{0652}\u{0653}\u{0654}\u{0670}\u{06D6}\u{06DD}\u{06ED}\u{08F0}\u{08FF}\u{0640}';

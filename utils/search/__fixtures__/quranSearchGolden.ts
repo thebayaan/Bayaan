@@ -65,6 +65,15 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'الرحمـن', includes: ['1:1']},
   {query: 'ﺍﻟﺮﺣﻤﻦ', includes: ['1:1']},
   {query: '\u{200F}الرحمن\u{200F}', includes: ['1:1']},
+  // Persian and Urdu keyboards (ی ک, ہ ھ ۃ)
+  {query: 'یا أیها الذین آمنوا', first: '2:104', count: 89},
+  {query: 'یا قوم', includes: ['2:54']},
+  {query: 'بسم اللہ الرحمن الرحیم', exactly: ['1:1', '27:30']},
+  {query: 'ذلک الکتاب', exactly: ['2:2']},
+  {query: 'ھدی للمتقین', includes: ['2:2']},
+  {query: 'إبراہیم', first: '2:124'},
+  {query: 'الجنۃ', includes: ['2:35']},
+  {query: 'رحمہ', includes: ['7:56']},
   // Hamza
   {query: 'السماء', includes: ['2:19', '2:22']},
   {query: 'شيء', includes: ['2:20']},
@@ -81,6 +90,37 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'يؤمنون', includes: ['2:3']},
   {query: 'يومنون', includes: ['2:3']},
   {query: 'الأرض', includes: ['2:11']},
+  // A hamza drawn on the line or on a tatweel, typed on its seat or as a
+  // bare alif (يَسْـَٔلُونَكَ, رَءَا, أَرَءَيْتَ, فَسْـَٔلُوٓا۟).
+  {query: 'يسالونك عن الروح', exactly: ['17:85']},
+  {query: 'ويسألونك عن الروح', exactly: ['17:85']},
+  {query: 'فلما راى', includes: ['6:77', '6:78', '11:70', '12:28']},
+  {query: 'ارايت الذي ينهى', exactly: ['96:9']},
+  {query: 'افرايتم ما تمنون', exactly: ['56:58']},
+  {query: 'فاسالوا اهل الذكر', exactly: ['16:43', '21:7']},
+  {query: 'قل لا اسالكم عليه اجرا', includes: ['6:90', '42:23']},
+  {query: 'يستأذنك', includes: ['9:44', '9:45']},
+  // After the question hamza (أَءِذَا, أَءُنزِلَ), on either seat.
+  {query: 'أئذا متنا', includes: ['23:82', '37:16']},
+  {query: 'أإذا متنا', includes: ['23:82', '37:16']},
+  {query: 'ااذا متنا', includes: ['23:82', '37:16']},
+  {query: 'أأنزل عليه الذكر', exactly: ['38:8']},
+  {query: 'يسأ', includes: ['2:189', '2:215']},
+  // Without its seat letter a typed hamza is often another word: امرأة is
+  // not أمره (5:95, 12:21), رئاء not رأى (6:76), امرأت not أمرت (6:14).
+  // Only a word the text does not have falls back to it (أإله, 27:60).
+  {
+    query: 'امرأة',
+    includes: ['3:35', '4:12', '27:23'],
+    excludes: ['5:95', '12:21'],
+  },
+  {query: 'امرأت', includes: ['3:35', '66:11'], excludes: ['6:14', '39:11']},
+  {
+    query: 'رئاء',
+    includes: ['2:264', '4:38', '8:47'],
+    excludes: ['6:76', '6:77'],
+  },
+  {query: 'أإله مع الله', includes: ['27:60', '27:61', '27:64']},
   // Vocative يا, ها
   {query: 'يا أيها', includes: ['2:21']},
   // A vocative typed with its conjunction is one Uthmani word (وَيَٰقَوْمِ).
@@ -95,6 +135,54 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'يا قوم', includes: ['2:54']},
   {query: 'قوم', includes: ['2:54']},
   {query: 'يا بني آدم', includes: ['7:26']},
+  // The vocative and one-lam words typed as drawn (يَٰٓأَيُّهَا, ٱلَّيْل),
+  // except where the letters spell another word: يقوم is يَقُومُ, not
+  // يَٰقَوْمِ (2:54), and الى is إِلَى, not ٱلَّٰٓـِٔى (33:4, 58:2).
+  {query: 'يأيها الذين آمنوا', first: '2:104', count: 89},
+  {query: 'يايها الناس', includes: ['2:21']},
+  {query: 'يموسى', includes: ['2:55', '7:115']},
+  {query: 'يآدم', includes: ['2:33', '2:35']},
+  {query: 'يبني إسرائيل', includes: ['2:40', '2:47']},
+  {query: 'اليل', includes: ['2:164', '3:27']},
+  {query: 'واليل إذا يغشى', first: '92:1', exactly: ['92:1', '91:4']},
+  {query: 'يقوم', excludes: ['2:54', '5:20']},
+  {query: 'الى', excludes: ['33:4', '58:2']},
+  // An open taa (فِطْرَتَ, مَرْضَاتِ) typed as ة, also where the corpus
+  // spells the lemma with ت (TAA_MARBUTA_LEMMAS).
+  {query: 'فطرة الله', exactly: ['30:30']},
+  {query: 'ابتغاء مرضاة الله', exactly: ['2:207', '2:265', '4:114']},
+  {query: 'ابنة عمران', exactly: ['66:12']},
+  {query: 'غيابة الجب', exactly: ['12:10', '12:15']},
+  {query: 'معصية الرسول', exactly: ['58:8', '58:9']},
+  {query: 'جمالة صفر', exactly: ['77:33']},
+  {query: 'رحمة ربك', includes: ['19:2', '43:32']},
+  // An alif maqsura drawn as a final alif (ٱلْأَقْصَا, طَغَا), typed as ى.
+  {query: 'المسجد الأقصى', exactly: ['17:1']},
+  {query: 'المسجد الاقصي', exactly: ['17:1']},
+  {query: 'من أقصى المدينة', exactly: ['28:20', '36:20']},
+  {query: 'لما طغى الماء', exactly: ['69:11']},
+  {query: 'رسلنا تترى', exactly: ['23:44']},
+  {query: 'لدى الباب', exactly: ['12:25']},
+  // Other Uthmani spellings: a sad with a small seen, a hamza before a silent
+  // yeh, a plural waw without its alif, a silent waw, the yeh of يحيي left
+  // out, and the reviewed spellings (REVIEWED_SPELLINGS).
+  {query: 'يقبض ويبسط', includes: ['2:245']},
+  {query: 'وزادكم في الخلق بسطة', exactly: ['7:69']},
+  {query: 'المسيطرون', exactly: ['52:37']},
+  {
+    query: 'فرعون وملئه',
+    includes: ['7:103', '10:75', '11:97', '23:46', '28:32', '43:46'],
+  },
+  {query: 'وملئهم', includes: ['10:83']},
+  {query: 'وعتوا عتوا كبيرا', exactly: ['25:21']},
+  {query: 'سعوا في آياتنا', includes: ['22:51', '34:5']},
+  {query: 'سأريكم', exactly: ['7:145', '21:37']},
+  {query: 'يحيي الموتى', includes: ['22:6', '42:9', '46:33', '75:40']},
+  {query: 'لمحيي الموتى', exactly: ['30:50', '41:39']},
+  {query: 'ليسوءوا وجوهكم', exactly: ['17:7']},
+  {query: 'أصحاب الأيكة', exactly: ['15:78', '26:176', '38:13', '50:14']},
+  {query: 'لاتخذت عليه أجرا', exactly: ['18:77']},
+  {query: 'بمسيطر', exactly: ['88:22']},
   // Proclitics and the article
   {query: 'الله', first: '1:1', includes: ['2:7']},
   {query: 'والله', includes: ['2:19']},
@@ -106,6 +194,12 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
   {query: 'الضالين', includes: ['1:7']},
   {query: 'ولا الضالين', includes: ['1:7']},
   {query: 'هدى للمتقين', includes: ['2:2']},
+  // A conjunction or preposition typed as a word of its own.
+  {query: 'و الله', includes: ['2:19']},
+  {query: 'و الله على كل شيء قدير', includes: ['2:284', '3:29']},
+  {query: 'ل الناس', includes: ['2:185']},
+  {query: 'ب الله', includes: ['2:8']},
+  {query: 'ح م و الكتاب المبين', exactly: ['43:2', '44:2']},
   // Phrases
   {query: 'بسم الله الرحمن الرحيم', exactly: ['1:1', '27:30']},
   {query: 'الحمد لله', includes: ['1:2', '6:1', '18:1', '34:1', '35:1']},
@@ -114,6 +208,26 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
     exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
   },
   {query: 'رب العالمين', includes: ['1:2']},
+  // Pasted with a verse number, or two ayahs with theirs: the first ayah.
+  {
+    query: 'الحمد لله رب العالمين (2)',
+    exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
+  },
+  {
+    query: 'الحمد لله رب العالمين (٢)',
+    exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
+  },
+  {
+    query:
+      'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ ۝٢ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ۝٣',
+    kind: 'phrase',
+    exactly: ['1:2', '6:45', '10:10', '37:182', '39:75', '40:65'],
+  },
+  {
+    query: 'الحمد لله رب العالمين (2) الرحمن الرحيم (3)',
+    first: '1:2',
+    kind: 'phrase',
+  },
   {query: 'اهدنا الصراط المستقيم', includes: ['1:6']},
   {query: 'إياك نعبد', includes: ['1:5']},
   {query: 'صراط الذين أنعمت عليهم', includes: ['1:7']},
@@ -149,6 +263,9 @@ export const QURAN_TEXT_FIXTURES: readonly QuranTextFixture[] = [
     exactly: ['40:1', '41:1', '42:1', '43:1', '44:1', '45:1', '46:1'],
   },
   {query: 'ع س ق', exactly: ['42:2']},
+  // Two openings in a row (حم عسق, 42:1-2), typed apart.
+  {query: 'ح م ع س ق', exactly: ['42:2']},
+  {query: 'ح م ع س ق كذلك يوحي', exactly: ['42:3']},
   {query: 'ق', exactly: ['50:1']},
   {query: 'ن', exactly: ['68:1']},
   // A phrase runs on from an ayah of one word (QURAN_ONE_WORD_AYAHS: an
@@ -240,6 +357,9 @@ export const QURAN_ROOT_QUERY_FIXTURES: readonly {
   // An opening keeps its root reachable as a suggestion.
   {letters: 'ا ل م', roots: ['ء ل م']},
   {letters: 'الم', roots: ['ء ل م']},
+  // The corpus files اطمأن and اشمأز under their other three letters.
+  {letters: 'طمأن', roots: ['ط م ن']},
+  {letters: 'شمأز', roots: ['ش م ز']},
 ];
 
 /**
@@ -260,9 +380,13 @@ export const QURAN_KIND_FIXTURES: readonly QuranKindFixture[] = [
   {query: 'ل ك ن', kind: 'text', roots: []},
   {query: 'root:رحم', kind: 'root', roots: ['ر ح م']},
   {query: 'جذر: ر ح م', kind: 'root', roots: ['ر ح م']},
+  {query: 'root:طمأن', kind: 'root', roots: ['ط م ن']},
+  {query: 'ط م أ ن', kind: 'root', roots: ['ط م ن']},
   {query: 'رحم', kind: 'text', roots: ['ر ح م']},
   {query: 'ا ل م', kind: 'text', roots: ['ء ل م']},
   {query: 'ح م', kind: 'text', roots: []},
+  {query: 'ح م ع س ق', kind: 'text', roots: []},
+  {query: 'الحمد لله رب العالمين (2)', kind: 'text', roots: []},
   {query: '2:255', kind: 'none', roots: []},
   {query: 'husary', kind: 'none', roots: []},
 ];

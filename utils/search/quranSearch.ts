@@ -8,7 +8,8 @@
  *    as a prefix when it has 3 or more letters (feedback while typing, and
  *    pronoun suffixes: كتاب finds كتابه), unless it is a surah opening
  *    (typed as letters, ا ل م, or pasted, الٓمٓ), which matches whole
- *    words only.
+ *    words only. A token's keys with a hamza seat left out (امرأة →
+ *    امره) count only when the token as typed is no word of the text.
  * 2. Score each word slot per token: exact 100 or prefix 60, plus 10 per
  *    tier (3 full spelling, 2 without proclitics, 1 without the article),
  *    minus 5 for a rasm-only spelling. A token typed with a hamza skips
@@ -17,7 +18,9 @@
  *    its weakest token's. It may also run on from an ayah of one word
  *    (QURAN_ONE_WORD_AYAHS: الم, حم, الرحمن, والعصر) into the start of
  *    the next ayah, which is the hit: الم ذلك الكتاب finds 2:2.
- * 4. Without any phrase, a query of 2 or more words falls back to the ayahs
+ * 4. Without any phrase, ayahs pasted together with their numbers (... ۝٢
+ *    ... ۝٣) are searched by the first of them, as no other ayah boundary
+ *    is known. Otherwise a query of 2 or more words falls back to the ayahs
  *    that hold every word somewhere ('allWords'), closest together first.
  * 5. Hits are ranked by score, then in mushaf order.
  */
@@ -442,21 +445,32 @@ export async function searchQuranText(
     source.exact(allKeys),
     ...prefixKeys.map(key => source.prefix(key, QURAN_PREFIX_FORM_LIMIT)),
   ]);
+  const prefixOf = new Map(prefixKeys.map((key, i) => [key, prefixes[i]]));
 
   const postings: TokenPostings[] = tokens.map((token, k) => {
-    const lists: TokenPostings['lists'] = [];
-    for (const key of token.keys) {
-      const codes = exact.get(key);
-      if (codes?.length) lists.push({codes, exact: true});
-    }
-    if (k === tokens.length - 1) {
-      for (const forms of prefixes) {
-        for (const codes of forms.values()) {
-          if (codes.length) lists.push({codes, exact: false});
+    const hamza = hamzaRule(token);
+    const listsOf = (keys: readonly string[]) => {
+      const lists: TokenPostings['lists'] = [];
+      for (const key of keys) {
+        const codes = exact.get(key);
+        if (codes?.length) lists.push({codes, exact: true});
+        if (k !== tokens.length - 1) continue;
+        for (const prefixCodes of prefixOf.get(key)?.values() ?? []) {
+          if (prefixCodes.length)
+            lists.push({codes: prefixCodes, exact: false});
         }
       }
-    }
-    return {lists, hamza: hamzaRule(token)};
+      return lists;
+    };
+    // The keys without a seat letter (امرأة → امره) are other words as
+    // often as the same word (أمره), so they count only when the token as
+    // typed is no word of the text (أإله, which the text writes أَءِلَٰهٌ).
+    const typed = exact.get(token.keys[0]) ?? [];
+    const isWord = typed.some(code => allows(hamza, code));
+    return {
+      lists: listsOf(isWord ? token.keys.slice(0, 1) : token.keys),
+      hamza,
+    };
   });
 
   // Walk the rarest token's slots and look the others up only where the
@@ -486,6 +500,10 @@ export async function searchQuranText(
   if (phrase.length || tokens.length < 2) {
     return result('phrase', phrase.sort(byScoreThenMushaf));
   }
+  // Ayahs pasted with their numbers make one phrase only across an ayah of
+  // one word (run-on, above); otherwise search the first of them.
+  const nextAyah = tokens.findIndex((token, k) => k > 0 && token.ayahStart);
+  if (nextAyah > 0) return searchQuranText(tokens.slice(0, nextAyah), source);
   const allWords = joinAllWords(
     postings.map((token, k) => maps[k] ?? slotsOf(token)),
   );
