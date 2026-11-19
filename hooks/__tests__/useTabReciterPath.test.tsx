@@ -15,6 +15,7 @@ jest.mock('@/services/player/store/playerStore', () => ({
 }));
 
 import {
+  reciterBrowsePathname,
   reciterProfilePathname,
   reciterTabStack,
 } from '@/hooks/useTabReciterPath';
@@ -25,6 +26,7 @@ describe('reciterTabStack', () => {
     [['(tabs)', '(a.home)'], '(a.home)'],
     [['(tabs)', '(b.search)', 'reciter', 'browse'], '(b.search)'],
     [['(tabs)', '(c.collection)', 'collection', 'loved'], '(c.collection)'],
+    [['(tabs)', '(b.surahs)', 'reciter', 'browse'], '(b.surahs)'],
     // Settings has no reciter screen; root routes are outside the tabs.
     [['(tabs)', '(d.settings)'], '(a.home)'],
     [['mushaf'], '(a.home)'],
@@ -36,6 +38,21 @@ describe('reciterTabStack', () => {
   it('builds the profile pathname for that tab', () => {
     expect(reciterProfilePathname(['(tabs)', '(b.search)'])).toBe(
       '/(tabs)/(b.search)/reciter/[id]',
+    );
+  });
+});
+
+describe('reciterBrowsePathname', () => {
+  it.each([
+    [['(tabs)', '(a.home)', 'browse-all-surahs'], '(a.home)'],
+    [['(tabs)', '(b.search)', 'browse-all-surahs'], '(b.search)'],
+    [['(tabs)', '(b.surahs)'], '(b.surahs)'],
+    // Library has no reciter browser.
+    [['(tabs)', '(c.collection)'], '(a.home)'],
+    [['mushaf'], '(a.home)'],
+  ])('%j -> %s', (segments, stack) => {
+    expect(reciterBrowsePathname(segments)).toBe(
+      `/(tabs)/${stack}/reciter/browse`,
     );
   });
 });

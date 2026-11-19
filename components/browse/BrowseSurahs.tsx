@@ -308,7 +308,7 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
           break;
         default:
           SheetManager.show('select-reciter', {
-            payload: {surahId, source: 'home'},
+            payload: {surahId},
           });
       }
       // @ai-end
