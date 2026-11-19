@@ -260,14 +260,7 @@ it('draws each reading inside its labelled row, as no element of its own', () =>
   mockReadingTexts.length = 0;
   mockState.result = {
     status: 'ready',
-    readings: {
-      verseKey: '2:2',
-      positions: [3],
-      hafsText: null,
-      groups: [{kind: 'asHafs', text: '', members: []}],
-      alike: true,
-      basmalaUnnumberedIn: [],
-    },
+    readings: alikeReadings('2:2', [3]),
     dkPositions: [3],
   };
   mockState.currentWords = [{text: 'W-THREE', wordPositionInVerse: 3}];
