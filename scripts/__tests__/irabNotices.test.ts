@@ -32,6 +32,18 @@ it('keeps the Quranic Arabic Corpus notice and terms of use', () => {
   );
 });
 
+it('is quoted word for word in THIRD_PARTY_LICENSES.md', () => {
+  const doc = read('THIRD_PARTY_LICENSES.md').toString('utf8');
+  const quoted = read(NOTICE_FILES.qac_notice)
+    .toString('utf8')
+    .trimEnd()
+    .split('\n')
+    .map(line => `  ${line}`)
+    .join('\n');
+  expect(doc).toContain(quoted);
+  expect(doc).toContain('licenses/NoorBayan-Quranic-MIT.txt');
+});
+
 it("ships the GPL version 3 text the corpus's licence page gives", () => {
   expect(sha256('licenses/GPL-3.0.txt')).toBe(
     '3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986',
