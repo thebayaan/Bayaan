@@ -27,11 +27,20 @@ let mockDeviceLanguage = 'en';
 jest.mock('expo-localization', () => ({
   getLocales: () => [{languageCode: mockDeviceLanguage}],
 }));
+// Whether the screen on show was opened from the launcher with nothing to
+// hand over (no link, no shared file).
+let mockLaunchedFromLauncher = true;
 jest.mock('@/modules/bayaan-restart', () => ({
   get canRestartApp() {
     return mockCanRestartApp;
   },
   restartApp: (rtl: boolean) => mockRestartApp(rtl),
+  launchedFromLauncher: () => mockLaunchedFromLauncher,
+}));
+// The first boot of a JS runtime sets up the audio session (services/appBoot).
+let mockAudioInitialized = false;
+jest.mock('@/services/audio/ExpoAudioService', () => ({
+  expoAudioService: {getIsInitialized: () => mockAudioInitialized},
 }));
 
 function loadRestart() {
@@ -55,6 +64,8 @@ beforeEach(() => {
   mockDirection.isRTL = false;
   mockDirection.doLeftAndRightSwapInRTL = true;
   mockDeviceLanguage = 'en';
+  mockLaunchedFromLauncher = true;
+  mockAudioInitialized = false;
   mockRestartApp.mockReturnValue(true);
 });
 
@@ -149,6 +160,35 @@ describe('a launch in the wrong native direction', () => {
     expect(mockRestartApp).not.toHaveBeenCalled();
     // Nothing recorded, so a build that can restart still gets its one try.
     mockCanRestartApp = true;
+    expect(launch(false)).toBe(true);
+  });
+
+  // The restart starts the app again the way the launcher does. A launch
+  // opened by a widget link, an app link or a shared audio file landed on
+  // Home instead of its target, and the shared file was never imported.
+  it('does not restart a launch that opened a link or a shared file', () => {
+    mockDeviceLanguage = 'ar';
+    mockLaunchedFromLauncher = false;
+    expect(launch(false)).toBe(false);
+    expect(mockRestartApp).not.toHaveBeenCalled();
+    // Nothing recorded: a later launch from the launcher that still
+    // disagrees gets the one restart.
+    expect(mockStorage.has('direction_restart')).toBe(false);
+    mockLaunchedFromLauncher = true;
+    expect(launch(false)).toBe(true);
+    expect(mockRestartApp).toHaveBeenCalledWith(true);
+  });
+
+  // Android Auto or a widget starts the process with no screen and boots it,
+  // as does a screen opened earlier in the same process. The restart killed
+  // the paused session it held: the car showed the app disconnected.
+  it('does not restart a process that has booted already', () => {
+    mockDeviceLanguage = 'ar';
+    mockAudioInitialized = true;
+    expect(launch(false)).toBe(false);
+    expect(mockRestartApp).not.toHaveBeenCalled();
+    expect(mockStorage.has('direction_restart')).toBe(false);
+    mockAudioInitialized = false;
     expect(launch(false)).toBe(true);
   });
 });

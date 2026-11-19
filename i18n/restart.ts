@@ -1,5 +1,10 @@
 // @ai-generated
-import {canRestartApp, restartApp} from '@/modules/bayaan-restart';
+import {
+  canRestartApp,
+  launchedFromLauncher,
+  restartApp,
+} from '@/modules/bayaan-restart';
+import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {
   claimDirectionRestart,
   currentLanguage,
@@ -30,9 +35,21 @@ export function restartWithLanguage(preference: LanguagePreference): boolean {
  * layout direction for its language (see claimDirectionRestart). Returns
  * false when no restart is needed or possible; the launch then goes on as
  * before and the direction is right from the next launch.
+ *
+ * Only a launch from the launcher restarts. The new process starts the way
+ * the launcher opens the app, so a link (a widget, an app link) or a shared
+ * file that opened this launch would be lost. Nor does a process restart
+ * that has booted already: Android Auto or a widget started it, or a screen
+ * opened earlier in it. Its first boot set up the audio session, and the
+ * restart would end the session it holds. Neither uses up the one restart.
  */
 export function restartIfDirectionMismatched(): boolean {
-  if (!canRestartApp || !claimDirectionRestart()) {
+  if (
+    !canRestartApp ||
+    expoAudioService.getIsInitialized() ||
+    !launchedFromLauncher() ||
+    !claimDirectionRestart()
+  ) {
     return false;
   }
   return restartApp(isRTLLanguage(currentLanguage));

@@ -170,8 +170,17 @@ function AnalyticsConnector(): null {
   return null;
 }
 
+// How long a launch that has asked Android to relaunch it waits for the kill
+// before it boots after all. ProcessPhoenix kills the old process from a
+// process of its own, usually within a second or two.
+const RELAUNCH_WAIT_MS = 5000;
+
 // @ai-start
 function RootLayout() {
+  // Set while Android relaunches this process (below). Nothing boots in it
+  // meanwhile (audio session, catalogue, databases, session restore), and the
+  // splash stays up. If the kill has not come in time, the launch goes on.
+  const relaunchingRef = useRef(false);
   // Start reloads after the root has mounted, when native reload listeners are
   // ready, rather than as a side effect of importing translation resources.
   useEffect(() => {
@@ -182,9 +191,19 @@ function RootLayout() {
     // before anything below has mounted. Not while audio is going: the car
     // or a widget may have started this process and be playing already.
     const {state} = usePlayerStore.getState().playback;
-    if (state !== 'playing' && state !== 'buffering' && state !== 'loading') {
-      restartIfDirectionMismatched();
-    }
+    const audioGoing =
+      state === 'playing' || state === 'buffering' || state === 'loading';
+    if (audioGoing || !restartIfDirectionMismatched()) return;
+    relaunchingRef.current = true;
+    const timer = setTimeout(() => {
+      relaunchingRef.current = false;
+      // Runs the boot effect below again, this time to the end.
+      setBootAttempt(attempt => attempt + 1);
+    }, RELAUNCH_WAIT_MS);
+    return () => {
+      clearTimeout(timer);
+      relaunchingRef.current = false;
+    };
     // @ai-end
   }, []);
   const [appIsReady, setAppIsReady] = useState(false);
@@ -301,6 +320,8 @@ function RootLayout() {
     if (initializationRef.current) {
       return;
     }
+    // This process is being relaunched (see the direction check above).
+    if (relaunchingRef.current) return;
 
     async function prepare() {
       try {

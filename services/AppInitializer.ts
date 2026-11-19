@@ -8,6 +8,7 @@ import {qulDataService} from '@/services/mushaf/QulDataService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
 import {followSelectedTranslation} from '@/services/translation/selectedTranslation'; // @ai
 import {useTranslationStore} from '@/store/translationStore'; // @ai
+import {whenSplashHidden} from '@/utils/splashHidden';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {useTafseerStore} from '@/store/tafseerStore';
 import {wbwDataService} from '@/services/wbw/WBWDataService';
@@ -416,10 +417,18 @@ appInitializer.registerService({
       // raw id ("ur.jalandhry") with "not available".
       await useTranslationStore.getState().loadDownloadedMeta();
     } finally {
-      // Apply the selected translation to the verse data, now and on every
+      // Apply the selected translation to the verse data, then on every
       // change. Started also when the database failed to open: the bundled
-      // translations do not need it.
-      followSelectedTranslation();
+      // translations do not need it. Not before the splash has gone: the
+      // first build reads the Quran and transliteration data and makes 6,236
+      // verses on the JS thread, which held the splash on every launch. The
+      // player's verse list, mounted before the splash goes when a session
+      // is restored, still applies the selection itself.
+      whenSplashHidden()
+        .then(followSelectedTranslation)
+        .catch((error: unknown) => {
+          console.warn('[AppInitializer] Translation follower failed:', error);
+        });
     }
     // @ai-end
   },
