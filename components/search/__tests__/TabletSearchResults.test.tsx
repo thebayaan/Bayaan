@@ -1,6 +1,6 @@
 // @ai-generated
 import React from 'react';
-import {StyleSheet, Text} from 'react-native';
+import {ScrollView, StyleSheet, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {
   TabletSearchResults,
@@ -476,6 +476,40 @@ describe('TabletSearchResults: Ayahs', () => {
     const renderer = renderWithAyahs([]);
     expect(texts(renderer)).not.toContain('search.topResult');
     expect(quranRowKeys(renderer)).toHaveLength(4);
+  });
+
+  it('starts at the top for another scope (See all) and for a new query', () => {
+    // The ayahs are ranked: the best matches are at the top.
+    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    const view = (query: string, quranRows: readonly QuranResultRow[]) => (
+      <TabletSearchResults
+        query={query}
+        results={results}
+        onResultPress={jest.fn()}
+        onSurahPlay={jest.fn()}
+        onSurahOptions={jest.fn()}
+        quranRows={quranRows}
+        bottomPadding={0}
+      />
+    );
+    try {
+      let renderer!: TestRenderer.ReactTestRenderer;
+      act(() => {
+        renderer = TestRenderer.create(view('الله', QURAN_ROWS));
+      });
+      scrollTo.mockClear();
+      pressTab(renderer, 'common:terms.ayahs');
+      expect(scrollTo).toHaveBeenCalledWith({y: 0, animated: false});
+      scrollTo.mockClear();
+      act(() => renderer.update(view('الرحمن', QURAN_ROWS)));
+      expect(scrollTo).toHaveBeenCalledWith({y: 0, animated: false});
+      // New rows of the same query ("Show more") keep the place.
+      scrollTo.mockClear();
+      act(() => renderer.update(view('الرحمن', [...QURAN_ROWS, verseRow(7)])));
+      expect(scrollTo).not.toHaveBeenCalled();
+    } finally {
+      scrollTo.mockRestore();
+    }
   });
 
   it('falls back to All once the Quran rows are gone', () => {

@@ -154,6 +154,11 @@ interface SearchHistoryItem {
   anchor?: string;
   rewayah?: RewayahId;
   // @ai-end
+  /**
+   * An ayah opened from the Quran search: its Hafs verse and the Digital
+   * Khatt slots it matched, which flash again when the entry is reopened.
+   */
+  flash?: {verseKey: string; positions: number[]};
 }
 
 // ============================================================================
@@ -686,13 +691,18 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // ──────────────────────────────────────────────────────────
   const addToHistory = useCallback(
     async (item: SearchHistoryItem) => {
+      // The same surah, page, juz or verse: a verse is its Hafs number, or
+      // its anchor and rewayah, so two verses of one surah are two entries.
       const deduped = searchHistory.filter(
         h =>
           !(
             h.type === item.type &&
             h.surahId === item.surahId &&
             h.page === item.page &&
-            h.juz === item.juz
+            h.juz === item.juz &&
+            h.verse === item.verse &&
+            h.anchor === item.anchor &&
+            h.rewayah === item.rewayah
           ),
       );
       const updated = [item, ...deduped].slice(0, MAX_HISTORY);
@@ -779,6 +789,12 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     quranRows,
     commandsShown,
   ]);
+  // A new query starts its results at the top, where the best matches are,
+  // not at the offset the last query was scrolled to.
+  const resultsListRef = useRef<FlatList<SearchListItem>>(null);
+  useEffect(() => {
+    resultsListRef.current?.scrollToOffset({offset: 0, animated: false});
+  }, [searchQuery]);
 
   // @ai-start
   // Opens a verse of the rewayah on screen on its page (the page of the
@@ -889,6 +905,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         historyItem.rewayah = target.rewayah;
         historyItem.label = verseHistoryLabel(target, label);
       }
+      historyItem.flash = {verseKey: hit.verseKey, positions};
       addToHistory(historyItem);
       navigateToTarget(target, surah, page);
     },
@@ -937,13 +954,27 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   const handleHistoryPress = useCallback(
     (item: SearchHistoryItem) => {
       Keyboard.dismiss();
+      // An ayah of the Quran search: its words flash again, and it opens on
+      // the page of the first of them, as when it was found.
+      const flash = item.flash?.positions.length ? item.flash : null;
+      if (flash) {
+        useMushafWordFlashStore
+          .getState()
+          .show(flash.verseKey, flash.positions);
+      }
+      const flashPage = flash
+        ? digitalKhattDataService.getPageForWord(
+            flash.verseKey,
+            Math.min(...flash.positions),
+          )
+        : undefined;
       // @ai-start
       // A verse searched in another rewayah: the verse holding its anchor in
       // the rewayah on screen (the same verse when that is the rewayah it
       // was searched in), or its page while no verse can be named.
       if (item.anchor && item.surahId) {
         const target = anchorTarget(item.anchor, shown);
-        if (target) navigateToTarget(target, item.surahId);
+        if (target) navigateToTarget(target, item.surahId, flashPage);
         else {
           const [surah, ayah] = item.anchor.split(':');
           navigateToHafsPage(`${surah}:${ayah}`, item.surahId);
@@ -953,7 +984,8 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
       // @ai-end
       if (item.surahId && item.verse) {
         const verseKey = `${item.surahId}:${item.verse}`;
-        const versePage = digitalKhattDataService.getPageForVerse(verseKey);
+        const versePage =
+          flashPage ?? digitalKhattDataService.getPageForVerse(verseKey);
         if (versePage) {
           onNavigateToVerse(verseKey, versePage);
           return;
@@ -1397,6 +1429,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         ) : (
           // With query: show results
           <FlatList<SearchListItem>
+            ref={resultsListRef}
             data={listData}
             renderItem={renderSearchResult}
             keyExtractor={(item, index) =>
@@ -1428,6 +1461,19 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                   ]}>
                   {t('common:status.noResults')}
                 </Text>
+                {typedQuranQuery && (
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.2)
+                          .toString(),
+                      },
+                    ]}>
+                    {t('quranSearch.noAyahsHint')}
+                  </Text>
+                )}
               </View>
             }
           />

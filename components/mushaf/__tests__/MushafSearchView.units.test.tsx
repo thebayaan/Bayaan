@@ -13,6 +13,7 @@
  *    exactly those of before.
  */
 import React, {act} from 'react';
+import {FlatList, Text} from 'react-native';
 import TestRenderer from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
@@ -657,6 +658,124 @@ describe('Quran text search: the Ayahs section', () => {
       verseKey: '106:4',
       positions: [5],
     });
+  });
+
+  it('keeps each ayah of one surah in the history, and reopens it on its words', async () => {
+    mockPages['2:7'] = 3;
+    mockQuranStates.set('الله', textDone([hit('2:255', 1), hit('2:7', 2, 2)]));
+    const {renderer, calls} = await renderSearch();
+    await searchQuran(renderer, 'الله');
+    for (const key of ['quran-verse-2:255', 'quran-verse-2:7']) {
+      const {props, hit: found} = verseRow(renderer, key);
+      await act(async () => props.onVersePress(found));
+    }
+    expect((await storedHistory()).map(entry => entry.label)).toEqual([
+      'Al-Baqarah 2:7',
+      'Al-Baqarah 2:255',
+    ]);
+
+    await search(renderer, '');
+    const rows = historyRows(renderer);
+    expect(rows.map(row => row.label)).toEqual([
+      'Al-Baqarah 2:7',
+      'Al-Baqarah 2:255',
+    ]);
+    calls.onNavigateToVerse.mockClear();
+    useMushafWordFlashStore.getState().clear();
+    await act(async () => rows[1].press());
+    expect(calls.onNavigateToVerse.mock.calls).toEqual([['2:255', 42]]);
+    expect(useMushafWordFlashStore.getState().flash).toMatchObject({
+      verseKey: '2:255',
+      positions: [1],
+    });
+    await act(async () => historyRows(renderer)[0].press());
+    expect(calls.onNavigateToVerse).toHaveBeenLastCalledWith('2:7', 3);
+    expect(useMushafWordFlashStore.getState().flash).toMatchObject({
+      verseKey: '2:7',
+      positions: [2, 3],
+    });
+  });
+
+  it('Warsh on screen: keeps both Warsh verses of one Hafs verse in the history', async () => {
+    mockShownRewayah = 'warsh';
+    // Hafs 106:4 word 1 is in Warsh 106:4, word 7 in Warsh 106:5.
+    mockQuranStates.set('الذي اطعمهم', textDone([hit('106:4', 1, 2)]));
+    mockQuranStates.set('خوف', textDone([hit('106:4', 7)]));
+    const {renderer, calls} = await renderSearch();
+    for (const query of ['الذي اطعمهم', 'خوف']) {
+      await searchQuran(renderer, query);
+      const {props, hit: found} = verseRow(renderer, 'quran-verse-106:4');
+      await act(async () => props.onVersePress(found));
+    }
+    expect((await storedHistory()).map(entry => entry.label)).toEqual([
+      'Quraysh 106:5 · Warsh',
+      'Quraysh 106:4 · Warsh',
+    ]);
+    // Reopened, each is its own Warsh verse, with its words.
+    await search(renderer, '');
+    calls.onNavigateToVerse.mockClear();
+    await act(async () => historyRows(renderer)[1].press());
+    expect(calls.onNavigateToVerse.mock.calls).toEqual([
+      ['106:4', 602, 'warsh'],
+    ]);
+    expect(useMushafWordFlashStore.getState().flash).toMatchObject({
+      verseKey: '106:4',
+      positions: [1, 2],
+    });
+  });
+
+  it('typed verses of one surah each keep their history entry', async () => {
+    mockPages['2:7'] = 3;
+    const {renderer} = await renderSearch();
+    await search(renderer, '2:255');
+    await act(async () => results(renderer)[0].press());
+    await search(renderer, '2:7');
+    await act(async () => results(renderer)[0].press());
+    expect((await storedHistory()).map(entry => entry.label)).toEqual([
+      'Al-Baqarah 2:7',
+      'Al-Baqarah 2:255',
+    ]);
+  });
+
+  it('a new query starts its results at the top', async () => {
+    // The ayahs are ranked: the best matches are at the top of the list.
+    const scrollToOffset = jest.spyOn(FlatList.prototype, 'scrollToOffset');
+    try {
+      mockQuranStates.set('الله', textDone([hit('2:255', 1), hit('1:1', 2)]));
+      const {renderer} = await renderSearch();
+      await searchQuran(renderer, 'الله');
+      scrollToOffset.mockClear();
+      mockQuranStates.set('الرحمن', textDone([hit('55:1', 1)]));
+      await searchQuran(renderer, 'الرحمن');
+      expect(scrollToOffset).toHaveBeenCalledWith({offset: 0, animated: false});
+    } finally {
+      scrollToOffset.mockRestore();
+    }
+  });
+
+  it('an Arabic query with no ayah gets the hint the Search tab gives', async () => {
+    const shownTexts = (renderer: TestRenderer.ReactTestRenderer) => {
+      const text: unknown = Text;
+      return renderer.root
+        .findAll(n => n.type === text)
+        .map(n => [n.props.children].flat().join(''));
+    };
+    // Arabic that names no surah, page or juz either.
+    mockQuranStates.set('قضظغ ثخذ', textDone([]));
+    const {renderer} = await renderSearch();
+    await searchQuran(renderer, 'قضظغ ثخذ');
+    expect(shownTexts(renderer)).toEqual(
+      expect.arrayContaining([
+        'No results found',
+        'Try fewer words or another spelling',
+      ]),
+    );
+    // Not a Quran query: no hint about words and spellings.
+    await searchQuran(renderer, 'zzzz');
+    expect(shownTexts(renderer)).toContain('No results found');
+    expect(shownTexts(renderer)).not.toContain(
+      'Try fewer words or another spelling',
+    );
   });
 
   it('a root suggestion searches the root', async () => {

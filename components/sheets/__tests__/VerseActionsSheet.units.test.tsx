@@ -135,7 +135,32 @@ jest.mock('@/hooks/useTheme', () => ({
 jest.mock('@/utils/haptics', () => ({lightHaptics: jest.fn()}));
 jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('expo-clipboard', () => ({setStringAsync: jest.fn()}));
-jest.mock('expo-router', () => ({router: {push: jest.fn()}}));
+// The root stack's routes when root search opens an ayah: the tabs, and the
+// reader when one is open. The container's state nests the app's root stack
+// under expo-router's own root route.
+const mockRootStack: {routes: {name: string}[]} = {routes: []};
+jest.mock('expo-router', () => {
+  const router = {push: jest.fn(), dismissTo: jest.fn()};
+  return {
+    router,
+    useRouter: () => router,
+    useNavigationContainerRef: () => ({
+      isReady: () => true,
+      getRootState: () => ({
+        routeNames: ['__root'],
+        routes: [
+          {
+            name: '__root',
+            state: {
+              routeNames: ['(tabs)', 'mushaf', 'mushaf/[page]'],
+              routes: mockRootStack.routes,
+            },
+          },
+        ],
+      }),
+    }),
+  };
+});
 jest.mock('@/utils/translationLookup', () => ({
   getTranslationTextRaw: (verseKey: string) => `T(${verseKey})`,
 }));
@@ -398,6 +423,7 @@ beforeEach(() => {
   mockUnits.models = new Map([['warsh', warsh]]);
   mockUnits.status = new Map([['warsh', 'ready']]);
   mockPlayer.rewayatId = 'r1';
+  mockRootStack.routes = [{name: '(tabs)'}];
   (digitalKhattDataService.ensureRewayahLoaded as jest.Mock).mockImplementation(
     async () => {
       throw new Error('not in tests');
@@ -627,6 +653,17 @@ describe('Hafs (unchanged)', () => {
       root: 'ء ل ه',
       initialLemma: 'ٱللَّه',
     });
+    // Hafs: each ayah by its Hafs verse, as in the Search tab.
+    const verseLabel = last('root').verseLabel as (hit: unknown) => string;
+    expect(
+      verseLabel({
+        verseIndex: 0,
+        verseKey: '2:255',
+        matches: [{position: 1, length: 1}],
+        score: 1,
+      }),
+    ).toBe('Al-Baqarah 2:255');
+    expect(last('root')).toMatchObject({hafsNote: false});
     expect(texts()).toContain('Root search');
     await press('Root search');
     expect(last('words')).toMatchObject({
@@ -669,8 +706,8 @@ describe('Hafs (unchanged)', () => {
     expect(SheetManager.hide).not.toHaveBeenCalled();
   });
 
-  it('an ayah of the root opens the Mushaf on its words', async () => {
-    await openSheet(payload);
+  /** Opens root search from Word Study and taps its ayah 1:3. */
+  async function openRootAyah() {
     await press('Word Study');
     const onRootPress = last('words').onRootPress as (
       root: string,
@@ -689,11 +726,45 @@ describe('Hafs (unchanged)', () => {
         score: 1,
       }),
     );
-    // No page: the reader opens the page of the first matched word.
-    expect(router.push).toHaveBeenLastCalledWith({
-      pathname: '/mushaf',
-      params: {surah: '1', ayah: '3', anchor: '1:3:1', words: '1'},
-    });
+  }
+
+  // No page: the reader opens the page of the first matched word.
+  const ROOT_AYAH_HREF = {
+    pathname: '/mushaf',
+    params: {surah: '1', ayah: '3', anchor: '1:3:1', words: '1'},
+  };
+
+  it('from the reader, an ayah of the root turns the open reader to its words', async () => {
+    // The sheet is over the reader: the hit goes to that reader (one reader
+    // stays: components/mushaf/__tests__/quranHitStack.test.ts), never a
+    // second one pushed on top of it.
+    mockRootStack.routes = [{name: '(tabs)'}, {name: 'mushaf'}];
+    await openSheet(payload);
+    await openRootAyah();
+    expect(SheetManager.hide).toHaveBeenCalledWith('verse-actions');
+    expect(router.dismissTo).toHaveBeenCalledTimes(1);
+    expect(router.dismissTo).toHaveBeenLastCalledWith(ROOT_AYAH_HREF);
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('with no reader open, an ayah of the root opens the Mushaf on its words', async () => {
+    await openSheet({...payload, source: 'player'});
+    await openRootAyah();
+    expect(router.push).toHaveBeenLastCalledWith(ROOT_AYAH_HREF);
+    expect(router.dismissTo).not.toHaveBeenCalled();
+  });
+
+  it('from the player over the open reader, an ayah of the root goes to that reader', async () => {
+    mockRootStack.routes = [{name: '(tabs)'}, {name: 'mushaf'}];
+    await openSheet({...payload, source: 'player'});
+    await openRootAyah();
+    expect(mockMainPlayer.setSheetMode).toHaveBeenCalledWith('hidden');
+    expect(router.dismissTo).toHaveBeenLastCalledWith(ROOT_AYAH_HREF);
+    expect(router.push).not.toHaveBeenCalled();
+    const dismissTo = router.dismissTo as jest.Mock;
+    expect(
+      mockMainPlayer.setSheetMode.mock.invocationCallOrder[0],
+    ).toBeLessThan(dismissTo.mock.invocationCallOrder[0]);
   });
 
   it('from the player, an ayah of the root collapses the player before the Mushaf opens', async () => {
@@ -1020,6 +1091,34 @@ describe('Warsh verses in their own numbering', () => {
     expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(
       `${warshText('103:1')}\n\nT(103:1)\nT(103:2)\n\nQuran 103:1 · Warsh`,
     );
+  });
+
+  it('root search names its ayahs in Warsh numbering, never bare Hafs numbers', async () => {
+    const rootHit = (verseKey: string, position: number) => ({
+      verseIndex: 0,
+      verseKey,
+      matches: [{position, length: 1}],
+      score: 1,
+    });
+    await openSheet(warshUnitPayload(['106:5']));
+    await press('Word Study');
+    const onRootPress = last('words').onRootPress as (
+      root: string,
+      lemma: string | null,
+      word: unknown,
+    ) => void;
+    await act(async () =>
+      onRootPress('خ و ف', null, {verseKey: '106:4', position: 7}),
+    );
+    const verseLabel = last('root').verseLabel as (hit: unknown) => string;
+    // Hafs 106:4 is Warsh 106:4 and 106:5: the row names the Warsh verse
+    // holding the matched word, the one the reader then selects.
+    expect(verseLabel(rootHit('106:4', 7))).toBe('Quraysh 106:5 · Warsh');
+    expect(verseLabel(rootHit('106:4', 1))).toBe('Quraysh 106:4 · Warsh');
+    // The unnumbered basmala is no Warsh verse: its Hafs verse, saying so.
+    expect(verseLabel(rootHit('1:1', 3))).toBe('Al-Fatihah 1:1 · Hafs');
+    // The ayahs shown are the Hafs text: the screen says so.
+    expect(last('root')).toMatchObject({hafsNote: true});
   });
 });
 

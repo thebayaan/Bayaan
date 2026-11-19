@@ -8,7 +8,7 @@
  * both searches empty.
  */
 import React from 'react';
-import {Text} from 'react-native';
+import {FlatList, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {QuranSearchState} from '@/hooks/useQuranSearch';
@@ -24,7 +24,23 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 );
 
 const mockPush = jest.fn();
-jest.mock('expo-router', () => ({useRouter: () => ({push: mockPush})}));
+// The Search tab is in the tabs, the root stack's first route: no reader
+// is open while it shows, so a hit pushes one.
+jest.mock('expo-router', () => ({
+  useRouter: () => ({push: mockPush}),
+  useNavigationContainerRef: () => ({
+    isReady: () => true,
+    getRootState: () => ({
+      routeNames: ['__root'],
+      routes: [
+        {
+          name: '__root',
+          state: {routeNames: ['(tabs)', 'mushaf'], routes: [{name: '(tabs)'}]},
+        },
+      ],
+    }),
+  }),
+}));
 jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
 
 // The catalogue: surah and reciter matches by query.
@@ -38,8 +54,11 @@ jest.mock('@/utils/search/catalog', () => ({
     },
   }),
 }));
+// The reciters at once, or held: on a slow network the killswitch fetch
+// keeps them (and so the catalogue) waiting for up to 3 s.
+const mockReciters: {held: Promise<unknown[]> | null} = {held: null};
 jest.mock('@/services/dataService', () => ({
-  getAllReciters: async () => [],
+  getAllReciters: () => mockReciters.held ?? Promise.resolve([]),
   getAllSurahs: async () => [],
 }));
 
@@ -66,7 +85,7 @@ jest.mock('@/hooks/useQuranSearch', () => {
 });
 
 // Rows render as text: the row key (and a header's note); a press acts on
-// the verse or the root suggestion.
+// the verse, the root suggestion, or the first lemma chip.
 jest.mock('@/components/search/quran/QuranResultRowView', () => {
   const {Text: MockText} = jest.requireActual('react-native');
   return {
@@ -74,12 +93,14 @@ jest.mock('@/components/search/quran/QuranResultRowView', () => {
       row,
       onVersePress,
       onRootPress,
+      onLemmaPress,
     }: QuranResultRowViewProps) => (
       <MockText
         testID="quran-row"
         onPress={() => {
           if (row.type === 'quran-verse') onVersePress(row.hit);
           if (row.type === 'quran-root-suggestion') onRootPress(row.root);
+          if (row.type === 'quran-lemmas') onLemmaPress(row.lemmas[0].id);
         }}>
         {row.type === 'quran-header' ? `${row.key}:${row.note}` : row.key}
       </MockText>
@@ -134,9 +155,17 @@ jest.mock('@/components/LoadingIndicator', () => ({
   LoadingIndicator: () => null,
 }));
 const mockTabletRows: unknown[][] = [];
+const mockTabletQueries: unknown[] = [];
 jest.mock('@/components/search/TabletSearchResults', () => ({
-  TabletSearchResults: ({quranRows}: {quranRows: unknown[]}) => {
+  TabletSearchResults: ({
+    quranRows,
+    query,
+  }: {
+    quranRows: unknown[];
+    query?: string;
+  }) => {
     mockTabletRows.push(quranRows);
+    mockTabletQueries.push(query);
     return null;
   },
 }));
@@ -319,6 +348,8 @@ beforeEach(async () => {
   mockRewayah = 'hafs';
   mockTablet = false;
   mockTabletRows.length = 0;
+  mockTabletQueries.length = 0;
+  mockReciters.held = null;
   trackSearchPerformed.mockClear();
   await AsyncStorage.clear();
   // react-test-renderer prints a deprecation notice under React 19.
@@ -494,6 +525,40 @@ describe('SearchView: Quran results', () => {
     ]);
   });
 
+  it("a lemma chip of the last root, tapped while the next one searches, hides none of the new root's ayahs", async () => {
+    mockQuranStates.set('root:رحم', rootDone([hit('1:1', 3)]));
+    await open('root:رحم');
+    // root:كتب searches; the rows on screen are still ر ح م's.
+    mockQuranStates.set('root:كتب', {
+      status: 'searching',
+      previous: rootOutcome([hit('1:1', 3)]),
+    });
+    await retype('root:كتب');
+    press('quran-row', 'quran-lemmas-7');
+    const kataba: QuranRoot = {id: 8, root: 'ك ت ب', words: 319, ayahs: 2};
+    mockQuranStates.set('root:كتب', {
+      status: 'done',
+      outcome: {
+        kind: 'root',
+        letters: 'كتب',
+        candidates: [kataba],
+        result: {
+          root: kataba,
+          lemmas: [{id: 21, rootId: 8, lemma: 'كِتَٰب', words: 1, ayahs: 1}],
+          // Like the service: no ayahs for a lemma of another root.
+          hits: lemmaId =>
+            lemmaId === null || lemmaId === 21 ? [hit('2:2', 1)] : [],
+        },
+      },
+    });
+    await retype('root:كتب');
+    expect(rows()).toEqual([
+      'quran-row|quran-root-8',
+      'quran-row|quran-lemmas-8',
+      'quran-row|quran-verse-2:2',
+    ]);
+  });
+
   it('opens a root suggestion as a root query', async () => {
     mockQuranStates.set('رحم', textDone([hit('19:21', 5)], [RAHMA]));
     await open('رحم');
@@ -541,11 +606,94 @@ describe('SearchView: Quran results', () => {
     );
   });
 
+  describe('recent searches saved before', () => {
+    const SAVED = [
+      {type: 'surah', item: {id: 1, name: 'Al-Fatihah'}, timestamp: 2},
+      {type: 'reciter', item: {id: 'r1', name: 'A Reciter'}, timestamp: 1},
+    ];
+    const storedIds = async () =>
+      (
+        JSON.parse((await AsyncStorage.getItem('recentSearches')) ?? '[]') as {
+          verseKey?: string;
+          item?: {id: unknown};
+        }[]
+      ).map(entry => entry.verseKey ?? entry.item?.id);
+
+    it('survive an ayah opened while the catalogue still loads', async () => {
+      // The Ayahs rows can be tapped before the reciters arrive.
+      let release: (reciters: unknown[]) => void = () => undefined;
+      mockReciters.held = new Promise(resolve => {
+        release = resolve;
+      });
+      await AsyncStorage.setItem('recentSearches', JSON.stringify(SAVED));
+      mockQuranStates.set('الله لا اله', textDone([hit('2:255', 3, 2)]));
+      await open('الله لا اله');
+      press('quran-row', 'quran-verse-2:255');
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      await act(async () => undefined);
+      expect(await storedIds()).toEqual(['2:255', 1, 'r1']);
+
+      await act(async () => {
+        release([]);
+      });
+      await retype('');
+      expect(rows()).toEqual([
+        'recent-verse|2:255',
+        'catalog-row|Al-Fatihah',
+        'catalog-row|A Reciter',
+      ]);
+    });
+
+    it('survive an ayah opened before they are read', async () => {
+      // A slow read of the stored list: the ayah opens at once, and is
+      // remembered on top of the list once it is read.
+      await AsyncStorage.setItem('recentSearches', JSON.stringify(SAVED));
+      const getItem = AsyncStorage.getItem as jest.Mock;
+      const realGetItem = getItem.getMockImplementation();
+      let release: () => void = () => undefined;
+      getItem.mockImplementationOnce(
+        (key: string) =>
+          new Promise(resolve => {
+            release = () => resolve(realGetItem?.(key));
+          }),
+      );
+      mockQuranStates.set('الله لا اله', textDone([hit('2:255', 3, 2)]));
+      await open('الله لا اله');
+      press('quran-row', 'quran-verse-2:255');
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        release();
+      });
+      expect(await storedIds()).toEqual(['2:255', 1, 'r1']);
+    });
+  });
+
+  it('a new query starts its results at the top', async () => {
+    // The ayahs are ranked: the best matches are at the top of the list.
+    const scrollToOffset = jest.spyOn(FlatList.prototype, 'scrollToOffset');
+    try {
+      mockQuranStates.set('الله', textDone([hit('1:1', 2), hit('2:255', 1)]));
+      await open('الله');
+      scrollToOffset.mockClear();
+      mockQuranStates.set('الرحمن', textDone([hit('1:1', 3)]));
+      await retype('الرحمن');
+      expect(scrollToOffset).toHaveBeenCalledWith({offset: 0, animated: false});
+      // The same query again leaves the list where it is.
+      scrollToOffset.mockClear();
+      await retype('الرحمن');
+      expect(scrollToOffset).not.toHaveBeenCalled();
+    } finally {
+      scrollToOffset.mockRestore();
+    }
+  });
+
   it('iPad: Quran rows alone open the tablet results; a root keeps the list', async () => {
     mockTablet = true;
     mockQuranStates.set('الحمد لله', textDone([hit('1:2', 1, 2)]));
     await open('الحمد لله');
     expect(mockTabletRows[mockTabletRows.length - 1]).toHaveLength(2);
+    // The query, so a new one starts the tablet results at the top.
+    expect(mockTabletQueries[mockTabletQueries.length - 1]).toBe('الحمد لله');
     expect(rows()).toEqual([]);
 
     mockQuranStates.set('root:رحم', rootDone([hit('1:1', 3)]));

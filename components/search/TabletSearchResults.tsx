@@ -1,5 +1,5 @@
 // @ai-generated
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 // @ai-start
 import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Keyboard,
   type LayoutChangeEvent,
+  type ScrollViewInstance,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -136,6 +137,8 @@ const NO_QURAN_ACTION: Omit<QuranResultRowViewProps, 'row'> = {
 // @ai-end
 
 interface TabletSearchResultsProps {
+  /** The query of the results: a new one starts them at the top. */
+  query?: string;
   results: readonly CatalogSearchResult[];
   /** Opens a result: the reciter's profile, or the surah in the Mushaf. */
   onResultPress: (result: CatalogSearchResult) => void;
@@ -160,6 +163,7 @@ interface TabletSearchResultsProps {
  * Ayahs section after the surahs (@ai).
  */
 export function TabletSearchResults({
+  query,
   results,
   onResultPress,
   onSurahPlay,
@@ -188,6 +192,12 @@ export function TabletSearchResults({
       row.type === 'quran-header',
   );
   const ayahPreview = useMemo(() => previewQuranRows(quranRows), [quranRows]);
+  // Another scope ("See all" included) or a new query starts at the top,
+  // where the best matches are, not at the offset left by the last one.
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({y: 0, animated: false});
+  }, [scope, query]);
   const quranRow = (row: QuranResultRow) => (
     <QuranResultRowView
       key={row.key}
@@ -309,6 +319,7 @@ export function TabletSearchResults({
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={[styles.fill, style]}
       contentContainerStyle={[styles.content, {paddingBottom: bottomPadding}]}
       keyboardShouldPersistTaps="handled"

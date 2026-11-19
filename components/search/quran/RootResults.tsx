@@ -16,6 +16,13 @@ export interface RootResultsProps {
   root: string;
   /** The word's lemma (الأصل المعجمي): its chip starts selected. */
   initialLemma?: string;
+  /**
+   * The ayah as the sheet names it, in the sheet's rewayah ("Quraysh 106:5
+   * · Warsh"); default its Hafs verse ("Quraysh 106:4").
+   */
+  verseLabel?: (hit: QuranVerseHit) => string;
+  /** Say the ayahs are the Hafs text (the sheet reads another rewayah). */
+  hafsNote?: boolean;
   onVersePress: (hit: QuranVerseHit) => void;
 }
 
@@ -30,6 +37,8 @@ const noop = () => undefined;
 export const RootResults: React.FC<RootResultsProps> = ({
   root,
   initialLemma,
+  verseLabel,
+  hafsNote = false,
   onVersePress,
 }) => {
   const search = useQuranRootSearch(root);
@@ -81,12 +90,12 @@ export const RootResults: React.FC<RootResultsProps> = ({
       {
         shown,
         selectedLemma,
-        hafsNote: false,
+        hafsNote,
         query: root,
         includeEmpty: true,
       },
     );
-  }, [search.status, result, root, shown, selectedLemma]);
+  }, [search.status, result, root, shown, selectedLemma, hafsNote]);
 
   const handleLemmaPress = useCallback(
     (lemmaId: number | null) =>
@@ -108,6 +117,7 @@ export const RootResults: React.FC<RootResultsProps> = ({
     ({item}: ListRenderItemInfo<QuranResultRow>) => (
       <QuranResultRowView
         row={item}
+        verseLabel={verseLabel}
         onVersePress={onVersePress}
         onRootPress={noop}
         onLemmaPress={handleLemmaPress}
@@ -115,7 +125,7 @@ export const RootResults: React.FC<RootResultsProps> = ({
         inset={false}
       />
     ),
-    [onVersePress, handleLemmaPress, handleShowMore],
+    [verseLabel, onVersePress, handleLemmaPress, handleShowMore],
   );
 
   return (

@@ -37,8 +37,8 @@ jest.mock('react-native-actions-sheet', () => ({ScrollView: () => null}));
 jest.mock('../VerseHitRow', () => {
   const {Text: MockText} = jest.requireActual('react-native');
   return {
-    VerseHitRow: ({hit}: {hit: {verseKey: string}}) => (
-      <MockText testID="verse">{hit.verseKey}</MockText>
+    VerseHitRow: ({hit, label}: {hit: {verseKey: string}; label?: string}) => (
+      <MockText testID="verse">{label ?? hit.verseKey}</MockText>
     ),
   };
 });
@@ -152,6 +152,25 @@ describe('RootResults', () => {
     });
     act(() => tab(root, 'All forms').props.onPress());
     expect(verses(root)).toEqual(['1:1', '1:3', '1:6', '2:3']);
+  });
+
+  it('names each ayah as the surface asks (the sheet: in its rewayah)', () => {
+    mockState = {status: 'done', result};
+    const root = render({verseLabel: h => `${h.verseKey} · Warsh`});
+    expect(verses(root)).toEqual([
+      '1:1 · Warsh',
+      '1:3 · Warsh',
+      '1:6 · Warsh',
+      '2:3 · Warsh',
+    ]);
+  });
+
+  it('says the ayahs are the Hafs text only when asked', () => {
+    mockState = {status: 'done', result};
+    expect(texts(render())).not.toContain('Searched in the Hafs text');
+    expect(texts(render({hafsNote: true}))).toContain(
+      'Searched in the Hafs text',
+    );
   });
 
   it("starts on the word's own lemma", () => {

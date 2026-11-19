@@ -49,7 +49,7 @@ The design docs were written by read-only design agents. **Where this README dis
 - **Readings section:** comes from 02 (`WordReadingsSection`). 01's `WordReadings.tsx` and `mergeSlotReadings` are **dropped**.
 - **Root chip:**
   - It opens a new `root` sub-screen of `VerseActionsSheet` that renders 03's `RootResults`.
-  - A verse tap closes the sheet and opens the verse in the Mushaf on its matched words, with `quranHitOpenParams` (`utils/search/quranHitParams.ts`). The params carry no page: the reader resolves it (`useMushafOpenTarget`).
+  - A verse tap closes the sheet and opens the verse on its matched words with `quranHitOpenParams` (`utils/search/quranHitParams.ts`): in the reader already open under the sheet or the player (one reader at a time, as for reader links), else in a new one. The params carry no page: the reader resolves it (`useMushafOpenTarget`).
 - **Gharib and rasm sections:** come from 04 (`GharibSection`, `RasmSection`), fed by `wordStudyDataService` with Hafs keys `s:a:w` in word-by-word (i'rab) numbering.
   - 01's `wordView.gharib.*` / `wordView.rasm.*` keys are dropped.
   - 04 owns those strings under `sheets:wordStudy.*`.

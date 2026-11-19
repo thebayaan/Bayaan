@@ -196,6 +196,9 @@ export const QuranResultRowView: React.FC<QuranResultRowViewProps> = ({
               ayahs: t('quranSearch.ayahCount', {count: row.root.ayahs}),
             })}
           </Text>
+          {row.note === 'hafs' && (
+            <Text style={styles.note}>{t('quranSearch.hafsNote')}</Text>
+          )}
         </View>
       );
     case 'quran-lemmas':
