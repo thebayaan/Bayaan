@@ -84,6 +84,8 @@ export type V1CheckAnswer =
       detail: CheckDetail;
       /** A skipped passage: the word the reader went on with. */
       resumedAt?: {surah: number; ayah: number; word: number};
+      /** An added word: the word after the gap it was heard in. */
+      gapRight?: {surah: number; ayah: number; word: number};
       ms: number;
     }
   | {outcome: 'failed'; reason: string; detail: CheckDetail; ms: number};
@@ -220,7 +222,7 @@ async function checkAddedMark(
   mark: V1Mark,
   ctx: CheckContext,
   detail: CheckDetail,
-): Promise<{outcome: 'kept' | 'cancelled'; why: string}> {
+): Promise<{outcome: 'kept' | 'cancelled'; why: string; gapRight?: Place}> {
   const {keepGain, repeatSlack, contextWords} = v1Constants.added;
   const letters = ctx.letters(mark.surah, mark.ayah);
   if (!letters?.[mark.word]) throw new CheckFailure('no letters for this word');
@@ -234,9 +236,9 @@ async function checkAddedMark(
   detail.slice = [start / SAMPLE_RATE, end / SAMPLE_RATE];
   const out = await modelOn(ctx, start, end);
   // The gap before the word Tilawa names, and the one after it.
-  let best: {gain: number; repeat: number} | null = null;
+  let best: {gain: number; repeat: number; right: Place} | null = null;
   for (const right of [
-    {...mark},
+    {surah: mark.surah, ayah: mark.ayah, word: mark.word},
     {surah: mark.surah, ayah: mark.ayah, word: mark.word + 1},
   ]) {
     const leftEnd = previousPlace(ctx, right);
@@ -245,7 +247,7 @@ async function checkAddedMark(
     const after = wordsAround(ctx, right, contextWords, 'ahead');
     if (left.length === 0 || after.length === 0) continue;
     const score = insertionScore(out.logp, out.frames, left, after);
-    if (!best || score.gain > best.gain) best = score;
+    if (!best || score.gain > best.gain) best = {...score, right};
   }
   if (!best) throw new CheckFailure('no words around the gap');
   detail.insertionGain = best.gain;
@@ -256,7 +258,7 @@ async function checkAddedMark(
   if (best.repeat >= -repeatSlack) {
     return {outcome: 'cancelled', why: 'a repeat, not an added word'};
   }
-  return {outcome: 'kept', why: 'an extra word was said'};
+  return {outcome: 'kept', why: 'an extra word was said', gapRight: best.right};
 }
 
 /** The place the reader went on with after skipping from before `at`. */
