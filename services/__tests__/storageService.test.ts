@@ -109,6 +109,18 @@ describe('clearCacheDirectory', () => {
     ]);
   });
 
+  it('leaves the CarPlay and Android Auto artwork folder', async () => {
+    // iOS makes bayaan-car/artwork once, at launch, and saves artwork with
+    // `try?`: deleted, nothing was saved to disk until the next launch.
+    root = {
+      'bayaan-car': {children: {artwork: {children: {'a.png': {size: 30}}}}},
+      images: {children: {'a.jpg': {size: 20}}},
+    };
+    await clearCacheDirectory();
+    expect(Object.keys(root)).toEqual(['bayaan-car']);
+    await expect(getCacheStorage()).resolves.toBe(0);
+  });
+
   it('carries on past an entry that cannot be deleted', async () => {
     root = {locked: {size: 1}, 'z.tmp': {size: 2}};
     await expect(clearCacheDirectory()).resolves.toBeUndefined();

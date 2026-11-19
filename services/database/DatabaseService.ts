@@ -68,6 +68,12 @@ class DatabaseService {
         await this.createTables();
       } catch (error) {
         console.error('Failed to initialize database:', error);
+        // A failure in the schema step (a locked file fails at the first
+        // statement) comes after the open. Kept, the handle made the retry
+        // return at `if (this.db)` without creating the tables.
+        const db = this.db;
+        this.db = null;
+        await db?.closeAsync().catch(() => undefined);
         this.initPromise = null; // Reset on error so it can be retried
         throw error;
       }

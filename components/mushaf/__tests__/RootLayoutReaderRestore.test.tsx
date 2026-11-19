@@ -190,9 +190,13 @@ jest.mock('@/services/analytics/AnalyticsService', () => ({
 }));
 jest.mock('@/services/audio', () => ({ExpoAudioProvider: mockChildren}));
 // The import of a shared file does not end, so the share holds the splash.
+// An import of several files ends at once.
 jest.mock('@/store/uploadsStore', () => ({
   useUploadsStore: {
-    getState: () => ({importFile: () => new Promise(() => undefined)}),
+    getState: () => ({
+      importFile: () => new Promise(() => undefined),
+      importFiles: () => Promise.resolve([]),
+    }),
   },
 }));
 jest.mock('@/utils/toastUtils', () => ({showToast: () => undefined}));
@@ -430,5 +434,21 @@ describe('a launch with a share intent', () => {
     await settle();
     expect(mockRouter.push).toHaveBeenCalledTimes(1);
     expect(mockSplash.hideAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens Uploads above the Collection home after a share of several files', async () => {
+    mockShare.hasShareIntent = true;
+    mockShare.shareIntent.files = [
+      {mimeType: 'audio/mpeg', path: 'file:///a.mp3', fileName: 'a.mp3'},
+      {mimeType: 'audio/mpeg', path: 'file:///b.mp3', fileName: 'b.mp3'},
+    ];
+    await launch();
+    await settle();
+    // Phone tabs are lazy: with the Collection tab not opened yet, a push
+    // without the anchor made Uploads the first screen of that stack, and
+    // the screen leaves its back arrow out there.
+    expect(mockRouter.push).toHaveBeenCalledWith('/collection/uploads', {
+      withAnchor: true,
+    });
   });
 });

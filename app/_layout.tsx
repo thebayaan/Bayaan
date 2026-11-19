@@ -436,7 +436,10 @@ function RootLayout() {
           resetShareIntent();
           await hideSplash();
           showToast(i18n.t('app.filesImported', {count: audioFiles.length}));
-          router.push('/collection/uploads');
+          // With the anchor, a Collection tab not opened yet (phone tabs are
+          // lazy) gets its home under Uploads. Without it Uploads was the
+          // first screen of that stack and showed no back arrow.
+          router.push('/collection/uploads', {withAnchor: true});
         }
       } catch (error) {
         console.error('[ShareIntent] Import failed:', error);

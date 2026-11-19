@@ -39,10 +39,13 @@ export async function getDownloadsStorage(): Promise<number> {
 // - com.apple.nsurlsessiond: where iOS keeps downloads that are in flight.
 //   Deleting it fails every surah being downloaded.
 // - io.sentry (iOS), sentry (Android): crash reports not sent yet.
+// - bayaan-car: CarPlay and Android Auto artwork. iOS makes the folder only
+//   at launch, so once deleted no artwork was saved to disk until relaunch.
 const IN_USE_CACHE_ENTRIES = new Set([
   'com.apple.nsurlsessiond',
   'io.sentry',
   'sentry',
+  'bayaan-car',
 ]);
 // @ai-end
 
