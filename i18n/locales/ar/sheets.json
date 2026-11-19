@@ -84,6 +84,7 @@
     "groupA11y": "{{text}}، بقراءة {{narrators}}",
     "groupA11yCurrent": "{{text}}، بقراءة {{narrators}}، ومنها الرواية الحالية",
     "notReadA11y": "لا يقرؤها {{narrators}}",
+    "notReadA11yCurrent": "لا يقرؤها {{narrators}}، ومنها الرواية الحالية",
     "memberA11y": "{{name}}: {{text}}"
   },
   "addToCollection": {

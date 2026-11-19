@@ -212,3 +212,23 @@ it('is labelled with its text, or the label given', () => {
       .accessibilityLabel,
   ).toBe('LABEL');
 });
+
+it('is no element of its own inside a row that carries the label', () => {
+  for (const mgr of [{fake: 'fontMgr'}, null]) {
+    mockFont.mgr = mgr;
+    const root = draw(
+      <ReadingText
+        text="READING"
+        rewayah="hafs"
+        fontSize={24}
+        maxWidth={300}
+        accessible={false}
+      />,
+    );
+    const view = root.findAll(n => (n.type as unknown) === View)[0];
+    expect(view.props.accessible).toBe(false);
+    expect(view.props.accessibilityLabel).toBeUndefined();
+    expect(view.props.accessibilityRole).toBeUndefined();
+    act(() => renderer?.unmount());
+  }
+});

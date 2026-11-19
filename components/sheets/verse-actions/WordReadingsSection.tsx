@@ -221,6 +221,7 @@ export function WordReadingsSection({
                 rewayah={current}
                 fontSize={readingSize}
                 maxWidth={textWidth}
+                accessible={false}
               />
               <View style={styles.metaRow}>
                 <Text style={styles.narrators}>
@@ -294,7 +295,10 @@ const GroupRow: React.FC<GroupRowProps> = ({
 
   let label: string;
   if (group.kind === 'notRead') {
-    label = t('wordReadings.notReadA11y', {narrators});
+    // The Current badge shows on this row too: say it.
+    label = isCurrent
+      ? t('wordReadings.notReadA11yCurrent', {narrators})
+      : t('wordReadings.notReadA11y', {narrators});
   } else if (isCurrent) {
     label = t('wordReadings.groupA11yCurrent', {text: group.text, narrators});
   } else {
@@ -315,6 +319,7 @@ const GroupRow: React.FC<GroupRowProps> = ({
               fontSize={readingSize}
               silahChars={sole?.silahChars}
               maxWidth={textWidth}
+              accessible={false}
             />
           )}
           <View style={styles.metaRow}>
@@ -364,6 +369,7 @@ const MemberLine: React.FC<{
         fontSize={memberSize}
         silahChars={member.silahChars}
         maxWidth={textWidth}
+        accessible={false}
       />
     </View>
   );
