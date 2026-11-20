@@ -3,6 +3,7 @@ import type {EngineMessage} from './recitationEngine';
 import {
   RECITATION_DOWNLOAD_MB,
   RECITATION_FOLLOWER_MB,
+  RECITATION_V1_DOWNLOAD_MB,
 } from '@/constants/recitation';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {
@@ -63,7 +64,17 @@ function messageOf(error: unknown): string {
  * Whether the models (~111 MB) still have to be downloaded before use. Only the
  * follower's count: nothing waits for the second look's.
  */
-export async function recitationModelNeedsDownload(): Promise<boolean> {
+export async function recitationModelNeedsDownload(
+  kind: EngineChoice = 'v0',
+): Promise<boolean> {
+  if (kind === 'v1') {
+    // Tilawa 1.0 shows nothing without the second model, so it counts too.
+    const [files, second] = await Promise.all([
+      getV1Assets(),
+      secondLookModelPath(),
+    ]);
+    return files === null || second === null;
+  }
   return (await getRecitationAssets()) === null;
 }
 
@@ -71,10 +82,18 @@ export async function recitationModelNeedsDownload(): Promise<boolean> {
  * Whether the model is on the phone, and the size to state for it: what is there, as
  * the second look's model may not have arrived, or the whole download if nothing is.
  */
-export async function recitationModelOnPhone(): Promise<{
+export async function recitationModelOnPhone(
+  kind: EngineChoice = 'v0',
+): Promise<{
   downloaded: boolean;
   sizeMb: number;
 }> {
+  if (kind === 'v1') {
+    return {
+      downloaded: !(await recitationModelNeedsDownload('v1')),
+      sizeMb: RECITATION_V1_DOWNLOAD_MB,
+    };
+  }
   const [needed, second] = await Promise.all([
     recitationModelNeedsDownload(),
     secondLookModelPath(),

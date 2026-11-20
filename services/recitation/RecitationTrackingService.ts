@@ -1105,7 +1105,7 @@ export async function startRecitationTracking(
     {
       purpose: 'follow',
       hint,
-      engine: useMushafSettingsStore.getState().recitationEngine ?? 'v0',
+      engine: useMushafSettingsStore.getState().recitationEngine ?? 'v1',
     },
     handlers,
   );

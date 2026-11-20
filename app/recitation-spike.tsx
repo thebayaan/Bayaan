@@ -270,7 +270,7 @@ function RecitationSpikeScreen(): React.JSX.Element {
     label: string,
     choice: EngineChoice,
   ): React.JSX.Element {
-    const on = (engineChoice ?? 'v0') === choice;
+    const on = (engineChoice ?? 'v1') === choice;
     return (
       <TouchableOpacity
         style={[
@@ -329,8 +329,8 @@ function RecitationSpikeScreen(): React.JSX.Element {
         The follower, from the next take in the mushaf (1.0 downloads about{' '}
         {V1_DOWNLOAD_MB} MB the first time):
       </Text>
-      {renderEngineChoice('Tilawa 0.4 (today)', 'v0')}
-      {renderEngineChoice('Tilawa 1.0 preview, every mark checked', 'v1')}
+      {renderEngineChoice('Tilawa 1.0, every mark checked (default)', 'v1')}
+      {renderEngineChoice('Tilawa 0.4 (before)', 'v0')}
 
       {phase === 'needs-download' &&
         renderButton(
