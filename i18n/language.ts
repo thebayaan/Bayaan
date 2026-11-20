@@ -72,8 +72,10 @@ export const currentLanguage: AppLanguage = resolveLanguage();
 export const currentLanguageConfig = getLanguageConfig(currentLanguage);
 
 /**
- * Initial reading-aid preference only. Persisted user choices take precedence
- * and remain available in every interface language.
+ * Whether the English reading aids start on in this session's language: off
+ * where readers understand Arabic. Each interface language keeps the reader's
+ * own choices apart (store/readingAidsByLanguage), so this applies until the
+ * reader makes one in this language.
  */
 export const defaultShowEnglishReadingAids =
   !currentLanguageConfig.understandsArabic;

@@ -32,14 +32,21 @@ jest.mock('@/components/sheets/AdaptiveActionSheet', () => {
   };
 });
 const mockHideSheet = jest.fn();
-jest.mock('react-native-actions-sheet', () => {
-  const {ScrollView: MockScrollView} = jest.requireActual('react-native');
+jest.mock('react-native-actions-sheet', () => ({
+  SheetManager: {
+    show: jest.fn(),
+    hide: (...args: unknown[]) => mockHideSheet(...args),
+  },
+}));
+jest.mock('@/components/sheets/SheetGestures', () => {
+  const {ScrollView: MockScrollView, View: MockView} =
+    jest.requireActual('react-native');
   return {
-    SheetManager: {
-      show: jest.fn(),
-      hide: (...args: unknown[]) => mockHideSheet(...args),
-    },
-    ScrollView: MockScrollView,
+    SheetScrollView: MockScrollView,
+    SheetNoDrag: MockView,
+    SheetFooter: (props: object) => (
+      <MockView {...props} testID="sheet-footer" />
+    ),
   };
 });
 jest.mock('react-native-reanimated', () => {
@@ -204,4 +211,20 @@ it('closed by Play: the range it applied stays, also when the start failed', asy
   // the page's first to last verse, kept for a retry with another reciter
   expect(st().rangeStart).toEqual({surah: 2, ayah: 30});
   expect(st().rangeEnd).toEqual({surah: 2, ayah: 32});
+});
+
+it('keeps the sheet drag off Play', async () => {
+  await open();
+  const play = renderer!.root
+    .findAll(
+      n =>
+        typeof n.props.onPress === 'function' &&
+        n.findAll(c => c.props.children === 'Play').length > 0,
+    )
+    .pop();
+  let footer: typeof play | null = play ?? null;
+  while (footer && footer.props.testID !== 'sheet-footer') {
+    footer = footer.parent;
+  }
+  expect(footer).toBeTruthy();
 });

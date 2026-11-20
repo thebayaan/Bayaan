@@ -27,8 +27,17 @@ jest.mock('react-native-actions-sheet', () => {
   return {
     __esModule: true,
     default: Container,
-    ScrollView: Container,
     SheetManager: {hideAll: jest.fn()},
+  };
+});
+jest.mock('@/components/sheets/SheetGestures', () => {
+  const ReactActual = jest.requireActual('react');
+  const {View} = jest.requireActual('react-native');
+  return {
+    SheetScrollView: (props: {children?: React.ReactNode}) =>
+      ReactActual.createElement(View, null, props.children),
+    SheetFooter: (props: {children?: React.ReactNode}) =>
+      ReactActual.createElement(View, {testID: 'sheet-footer'}, props.children),
   };
 });
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
@@ -449,3 +458,34 @@ describe('Save', () => {
   });
 });
 // @ai-end
+
+describe('Save and Delete', () => {
+  /** The button labelled `label`, and whether a SheetFooter holds it. */
+  function inSheetFooter(label: string): boolean {
+    if (!renderer) throw new Error('nothing rendered');
+    const button = renderer.root
+      .findAll(
+        n =>
+          typeof n.props.onPress === 'function' &&
+          n.findAll(c => c.props.children === label).length > 0,
+      )
+      .pop();
+    if (!button) throw new Error(`no ${label} button`);
+    for (let n: typeof button | null = button; n; n = n.parent) {
+      if (n.props.testID === 'sheet-footer') return true;
+    }
+    return false;
+  }
+
+  it('keep the sheet drag off them, so a tap that wobbles still presses', async () => {
+    mockNotes.set('n1', {content: 'a note', rewayahId: 'hafs'});
+    await openSheet({
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      noteId: 'n1',
+    });
+    expect(inSheetFooter('Update Note')).toBe(true);
+    expect(inSheetFooter('Delete Note')).toBe(true);
+  });
+});

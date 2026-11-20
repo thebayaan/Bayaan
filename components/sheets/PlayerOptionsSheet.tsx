@@ -4,10 +4,11 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {Feather, FontAwesome5, Ionicons} from '@expo/vector-icons';
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
@@ -362,10 +363,9 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
               {t('options.aboutSurah', {surah: getSurahDisplayName(surah!)})}
             </Text>
           </View>
-          <ScrollView
+          <SheetScrollView
             style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            bounces={true}>
+            showsVerticalScrollIndicator={false}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>
@@ -386,7 +386,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
                 />
               )}
             </View>
-          </ScrollView>
+          </SheetScrollView>
         </>
       ) : (
         <View style={styles.container}>

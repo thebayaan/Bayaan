@@ -26,6 +26,8 @@ const ROOT = path.join(__dirname, '../../../..');
 /** Whether the Hafs words are in memory, and who listens (setHafsInMemory). @ai */
 const mockHafs = {inMemory: true, listeners: new Set<() => void>()};
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('expo-sqlite', () => {
   const m = jest.requireActual('@/test-utils/mockExpoSqlite').expoSqliteModule;
   return {...m};

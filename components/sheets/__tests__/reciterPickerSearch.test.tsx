@@ -16,7 +16,9 @@ let mockAvailable: AvailableReciter[] = [];
 
 jest.mock('react-native-actions-sheet', () => ({
   SheetManager: {hide: jest.fn()},
-  FlatList: ({data}: {data: {name: string}[]}) => {
+}));
+jest.mock('@/components/sheets/SheetGestures', () => ({
+  SheetFlatList: ({data}: {data: {name: string}[]}) => {
     mockListed = data;
     return null;
   },

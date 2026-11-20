@@ -20,13 +20,12 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 jest.mock('@/services/analytics/AnalyticsService', () => ({
   analyticsService: {trackFavoriteToggled: jest.fn()},
 }));
-jest.mock('react-native-actions-sheet', () => {
-  const {View: MockView} = jest.requireActual('react-native');
-  return {
-    SheetManager: {show: jest.fn(), hide: jest.fn()},
-    ScrollView: MockView,
-  };
-});
+jest.mock('react-native-actions-sheet', () => ({
+  SheetManager: {show: jest.fn(), hide: jest.fn()},
+}));
+jest.mock('@/components/sheets/SheetGestures', () => ({
+  SheetScrollView: jest.requireActual('react-native').View,
+}));
 // What the real "Add to collection" sheet (SelectPlaylistSheet) renders with.
 jest.mock('@/components/sheets/AdaptiveActionSheet', () => {
   const {View: MockView} = jest.requireActual('react-native');

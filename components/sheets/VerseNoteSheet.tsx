@@ -9,8 +9,9 @@ import {View, Text, TextInput, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter, SheetScrollView} from './SheetGestures';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
@@ -274,7 +275,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <ScrollView
+      <SheetScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -315,35 +316,41 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
           autoFocus
         />
 
-        <Pressable
-          style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={!canSave}>
-          <Feather
-            name="save"
-            size={moderateScale(18)}
-            color={canSave ? theme.colors.text : theme.colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.saveButtonText,
-              !canSave && styles.saveButtonTextDisabled,
-            ]}>
-            {isEditMode ? t('note.update') : t('note.save')}
-          </Text>
-        </Pressable>
+        {/* Save and Delete sit in SheetFooters: a tap that wobbles never
+            turns into a drag of the sheet. */}
+        <SheetFooter>
+          <Pressable
+            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={!canSave}>
+            <Feather
+              name="save"
+              size={moderateScale(18)}
+              color={canSave ? theme.colors.text : theme.colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.saveButtonText,
+                !canSave && styles.saveButtonTextDisabled,
+              ]}>
+              {isEditMode ? t('note.update') : t('note.save')}
+            </Text>
+          </Pressable>
+        </SheetFooter>
 
         {isEditMode && noteId ? (
-          <Pressable style={styles.deleteButton} onPress={handleDelete}>
-            <Feather
-              name="minus-circle"
-              size={moderateScale(18)}
-              color="#ff4444"
-            />
-            <Text style={styles.deleteButtonText}>{t('note.delete')}</Text>
-          </Pressable>
+          <SheetFooter>
+            <Pressable style={styles.deleteButton} onPress={handleDelete}>
+              <Feather
+                name="minus-circle"
+                size={moderateScale(18)}
+                color="#ff4444"
+              />
+              <Text style={styles.deleteButtonText}>{t('note.delete')}</Text>
+            </Pressable>
+          </SheetFooter>
         ) : null}
-      </ScrollView>
+      </SheetScrollView>
     </ActionSheet>
   );
 };

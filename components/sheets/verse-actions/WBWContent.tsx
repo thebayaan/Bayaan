@@ -10,7 +10,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import Color from 'color';
-import {ScrollView} from 'react-native-actions-sheet';
+import {SheetScrollView} from './sheetGestures';
 import {WBWVerseView} from '@/components/player/v2/PlayerContent/QuranView/WBWVerseView';
 // @ai-start
 import {
@@ -168,7 +168,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   const noop = useCallback(() => undefined, []);
 
   return (
-    <ScrollView
+    <SheetScrollView
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}>
       {/* @ai-start */}
@@ -205,7 +205,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
         </React.Fragment>
       ))}
       {/* @ai-end */}
-    </ScrollView>
+    </SheetScrollView>
   );
 };
 // @ai-end

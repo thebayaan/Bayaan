@@ -3,8 +3,9 @@
  * The card of one word in Word Study (docs/plans/2026-11-14-word-study,
  * README decisions and 01 §3), top to bottom:
  *  - header: the mushaf's own word (WordHeaderText), its transliteration and
- *    English meaning (each when its Word by Word option is on, whatever
- *    the UI language: useWordGloss), Play, and its reference; for another
+ *    English meaning (each when its Word by Word option is on for the UI
+ *    language in use, off by default in Arabic: useWordGloss), Play, and
+ *    its reference; for another
  *    rewayah a Hafs chip and a note that the word's data is Hafs; @ai
  *  - Readings: how the 8 rewayat read the word (WordReadingsSection);
  *  - I'rab, then Morphology: the root (a chip when root search is wired),
@@ -133,9 +134,10 @@ export interface WordCardProps extends RefProps {
 /**
  * The word's word-by-word lines the reader wants: each only when its Word by
  * Word option is on, as the old word sheet did (some readers hide the
- * meaning while memorising). The options hold in every UI language, as in
- * Word by Word and the player; the language only sets their first value,
- * and the Arabic UI starts with both off (defaultShowEnglishReadingAids).
+ * meaning while memorising). They are the options of Word by Word and the
+ * player, which each UI language keeps apart: the Arabic UI starts with both
+ * off, and one the reader turns on there shows there
+ * (store/readingAidsByLanguage).
  * Trimmed: hundreds of meanings in the data end with a space ('Allah ' at
  * 2:255:1), which the quotes would show. Undefined when off or missing.
  */

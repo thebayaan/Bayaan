@@ -25,8 +25,8 @@ import {
   getDkFontFamily, // @ai
   useMushafSettingsStore,
 } from '@/store/mushafSettingsStore';
-import {ScrollView} from 'react-native-actions-sheet';
 import {SheetManager} from 'react-native-actions-sheet';
+import {SheetFooter, SheetScrollView} from './sheetGestures';
 import {loadPlainTranslations} from '@/services/translation/plainTranslations'; // @ai
 import {
   anchorShareUrl, // @ai
@@ -306,7 +306,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   if (!fontMgr) return null;
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} bounces={true}>
+    <SheetScrollView showsVerticalScrollIndicator={false}>
       {/* Visible preview */}
       <View style={styles.previewContent}>
         {/* @ai-start */}
@@ -402,7 +402,9 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         />
       </View>
 
-      <View style={styles.buttonsContainer}>
+      {/* The sheet never drags from the share buttons, so a tap on one is
+          always a tap. */}
+      <SheetFooter style={styles.buttonsContainer}>
         <Pressable
           style={({pressed}) => [
             styles.primaryButton,
@@ -458,8 +460,8 @@ export const ShareContent: React.FC<ShareContentProps> = ({
           />
           <Text style={styles.secondaryButtonText}>{t('share.link')}</Text>
         </Pressable>
-      </View>
-    </ScrollView>
+      </SheetFooter>
+    </SheetScrollView>
   );
 };
 // @ai-end
