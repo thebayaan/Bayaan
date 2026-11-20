@@ -135,7 +135,6 @@ beforeEach(() => {
         rewayatId="hafs"
         progress={0.1}
         duration={600}
-        index={0}
       />,
     );
   });
