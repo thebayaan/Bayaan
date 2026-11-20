@@ -8,6 +8,11 @@ import {
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
 import type {CancelMayCancel} from '@/services/recitation/secondLook/config';
+import {
+  perLanguageReadingAids,
+  type ReadingAidsByLanguage,
+  type WithPersistedReadingAids,
+} from '@/store/readingAidsByLanguage';
 
 // Re-exported for backward compat with existing imports across the app.
 // RewayahIdentity is the canonical source; do not redefine the union here.
@@ -102,8 +107,24 @@ export interface RecentRead {
   timestamp: number;
 }
 
+/**
+ * The English reading aids: the verse translation and transliteration of
+ * the player and the list view, and the word-by-word meanings and
+ * transliteration. Their fields hold this session's UI language's values;
+ * each language keeps its own (store/readingAidsByLanguage).
+ */
+const MUSHAF_READING_AIDS = [
+  'showTranslation',
+  'showTransliteration',
+  'wbwShowTranslation',
+  'wbwShowTransliteration',
+] as const;
+type MushafReadingAid = (typeof MUSHAF_READING_AIDS)[number];
+const readingAids = perLanguageReadingAids(MUSHAF_READING_AIDS);
+
 interface MushafSettingsState {
-  // Display settings
+  // Display settings (the translation and transliteration are reading aids:
+  // MUSHAF_READING_AIDS)
   showTranslation: boolean;
   showTransliteration: boolean;
   showTajweed: boolean;
@@ -126,10 +147,13 @@ interface MushafSettingsState {
    */
   recitationCancelMayCancel: CancelMayCancel | null;
 
-  // Word-by-word settings
+  // Word-by-word settings (the meanings and transliteration are reading
+  // aids: MUSHAF_READING_AIDS)
   showWBW: boolean;
   wbwShowTranslation: boolean;
   wbwShowTransliteration: boolean;
+  /** The reading aids the other UI languages saved. */
+  readingAidsInOtherLanguages: ReadingAidsByLanguage<MushafReadingAid>;
 
   // Mushaf page layout
   pageLayout: MushafPageLayout;
@@ -224,6 +248,12 @@ interface MushafSettingsState {
   // @ai-end
 }
 
+/** The saved settings: the reading aids under each UI language's code. */
+type PersistedMushafSettings = WithPersistedReadingAids<
+  Omit<MushafSettingsState, 'rewayahFallbackFrom'>,
+  MushafReadingAid
+>;
+
 export const useMushafSettingsStore = create<MushafSettingsState>()(
   persist(
     set => ({
@@ -240,6 +270,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showWBW: false,
       wbwShowTranslation: defaultShowEnglishReadingAids, // @ai
       wbwShowTransliteration: false,
+      readingAidsInOtherLanguages: {},
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
       translationFontSize: getActualFontSize(3),
       transliterationFontSize: getActualFontSize(3),
@@ -427,20 +458,26 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: persistStorage(), // @ai
-      version: 21, // @ai
+      version: 22,
       // @ai-start
       // A startup fallback lasts one session: persist the reader's saved
       // rewayah rather than the Hafs shown in its place, and never the
       // fallback marker itself.
-      partialize: state => {
-        const {rewayahFallbackFrom, ...persisted} = state;
+      partialize: (state): PersistedMushafSettings => {
+        const {rewayahFallbackFrom, ...rest} = state;
+        const persisted = readingAids.toPersisted(rest);
         return rewayahFallbackFrom
           ? {...persisted, rewayah: rewayahFallbackFrom}
           : persisted;
       },
       // @ai-end
+      // The reading aids load from what this session's UI language saved.
+      merge: (persisted, current) => readingAids.merge(persisted, current),
       migrate: (persistedState: unknown, version: number) => {
-        const state = persistedState as Record<string, unknown>;
+        const state: Record<string, unknown> =
+          typeof persistedState === 'object' && persistedState !== null
+            ? (persistedState as Record<string, unknown>)
+            : {};
         if (version === 0) {
           // Migrate 'QPC' -> 'Uthmani'
           if (state.arabicFontFamily === 'QPC') {
@@ -477,9 +514,9 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.viewMode = 'mushaf';
         }
         if (version < 8) {
+          // Word by Word's meanings and transliteration stay unsaved, so
+          // each UI language starts them from its own default (version 22).
           state.showWBW = false;
-          state.wbwShowTranslation = defaultShowEnglishReadingAids; // @ai
-          state.wbwShowTransliteration = false;
         }
         if (version < 9) {
           // Migrate viewMode: 'reading' → 'list', add scrollDirection
@@ -558,7 +595,15 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.showRewayahDiffs = true;
         }
         // @ai-end
-        return state as unknown as MushafSettingsState;
+        if (version < 22) {
+          // One value of each reading aid served every UI language, so an
+          // install that had them on in English showed English beside the
+          // Arabic text once it ran in Arabic. Each language keeps its own
+          // now: the saved values become English's, and in Arabic every
+          // English reading aid starts off.
+          readingAids.moveSingleValuesToEnglish(state);
+        }
+        return state as unknown as PersistedMushafSettings;
       },
     },
   ),
