@@ -14,7 +14,10 @@ jest.mock('@/services/player/store/playerStore', () => ({
     select({setSheetMode: jest.fn()}),
 }));
 
+import fs from 'fs';
+import path from 'path';
 import {
+  reciterBrowsePathname,
   reciterProfilePathname,
   reciterTabStack,
 } from '@/hooks/useTabReciterPath';
@@ -37,6 +40,34 @@ describe('reciterTabStack', () => {
     expect(reciterProfilePathname(['(tabs)', '(b.search)'])).toBe(
       '/(tabs)/(b.search)/reciter/[id]',
     );
+  });
+});
+
+describe('reciterBrowsePathname', () => {
+  const cases: [string[], string][] = [
+    [['(tabs)', '(a.home)', 'browse-all-surahs'], '(a.home)'],
+    [['(tabs)', '(b.search)', 'browse-all-surahs'], '(b.search)'],
+    [['(tabs)', '(b.surahs)'], '(b.surahs)'],
+    // Tabs without a browse screen, and routes outside the tabs.
+    [['(tabs)', '(c.collection)', 'collection', 'loved'], '(a.home)'],
+    [['(tabs)', '(d.settings)'], '(a.home)'],
+    [['mushaf'], '(a.home)'],
+    [[], '(a.home)'],
+  ];
+
+  it.each(cases)('%j -> %s', (segments, tab) => {
+    expect(reciterBrowsePathname(segments)).toBe(
+      `/(tabs)/${tab}/reciter/browse`,
+    );
+  });
+
+  // Pushing a route that no tab declares lands on the not-found screen.
+  it('only returns routes that exist', () => {
+    const appDir = path.join(__dirname, '..', '..', 'app');
+    for (const tab of ['(a.home)', '(b.surahs)', '(b.search)']) {
+      const pathname = reciterBrowsePathname(['(tabs)', tab]);
+      expect(fs.existsSync(path.join(appDir, `${pathname}.tsx`))).toBe(true);
+    }
   });
 });
 

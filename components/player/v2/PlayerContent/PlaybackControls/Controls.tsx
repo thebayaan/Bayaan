@@ -16,6 +16,8 @@ import {
 import {localizeDigits} from '@/i18n/format';
 import {forceLTR} from '@/utils/rtl';
 import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
+import {seekBy} from '@/components/player/v2/seekBy';
 // @ai-end
 
 const SEEK_INTERVAL = 15; // seconds
@@ -24,15 +26,23 @@ const SEEK_INTERVAL = 15; // seconds
 export const Controls = () => {
   const {theme} = useTheme();
   const a11y = usePlayerA11y(); // @ai
-  const {play, pause, skipToNext, skipToPrevious, seekTo} = usePlayerActions();
+  const {play, pause, skipToNext, skipToPrevious} = usePlayerActions();
   const playbackState = usePlayerStore(s => s.playback.state);
   const currentIndex = usePlayerStore(s => s.queue.currentIndex);
   const tracksLength = usePlayerStore(s => s.queue.tracks.length);
   const trackLoading = usePlayerStore(s => s.loading.trackLoading);
+  const repeatMode = usePlayerStore(s => s.settings.repeatMode);
+  // Next has nowhere to go from the last track, unless Repeat All takes it
+  // round to the first one, as the end of a track and Previous already do.
+  // It used to be greyed out on the last track with Repeat All on.
+  const nextDisabled =
+    trackLoading ||
+    (currentIndex === tracksLength - 1 && repeatMode !== 'queue');
 
-  // Optimistic state for play/pause
-  const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(
-    () => playbackState === 'playing',
+  // Optimistic state for play/pause. A stalled stream ('buffering') still
+  // counts as playing, so the button shows Pause and the first tap pauses.
+  const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(() =>
+    isActivelyPlaying(playbackState),
   );
 
   const handlePlayPause = useCallback(async () => {
@@ -58,7 +68,7 @@ export const Controls = () => {
 
   // Update optimistic state when actual state changes
   React.useEffect(() => {
-    setOptimisticIsPlaying(playbackState === 'playing');
+    setOptimisticIsPlaying(isActivelyPlaying(playbackState));
   }, [playbackState]);
 
   const handlePrevious = useCallback(async () => {
@@ -67,27 +77,24 @@ export const Controls = () => {
   }, [trackLoading, skipToPrevious]);
 
   const handleNext = useCallback(async () => {
-    if (trackLoading || currentIndex === tracksLength - 1) return;
+    if (nextDisabled) return;
     await skipToNext();
-  }, [trackLoading, currentIndex, tracksLength, skipToNext]);
+  }, [nextDisabled, skipToNext]);
 
   // @ai-start
-  // The position is read at the press, so the controls do not render on
-  // every position tick.
+  // seekBy() jumps from where the audio really is; the store's position can
+  // be two seconds old. The position is read at the press, so the controls
+  // do not render on every position tick.
   const handleSeekBackward = useCallback(async () => {
     if (trackLoading) return;
-    const {position} = usePlayerStore.getState().playback;
-    await seekTo(Math.max(0, position - SEEK_INTERVAL));
-  }, [trackLoading, seekTo]);
+    await seekBy(-SEEK_INTERVAL);
+  }, [trackLoading]);
 
   const handleSeekForward = useCallback(async () => {
     if (trackLoading) return;
-    const {position} = usePlayerStore.getState().playback;
-    await seekTo(position + SEEK_INTERVAL);
-  }, [trackLoading, seekTo]);
+    await seekBy(SEEK_INTERVAL);
+  }, [trackLoading]);
   // @ai-end
-
-  const isLastTrack = currentIndex === tracksLength - 1;
 
   return (
     <View style={[styles.container, forceLTR]}>
@@ -144,11 +151,13 @@ export const Controls = () => {
         </View>
         <Pressable
           onPress={handleNext}
-          {...a11y.next(isLastTrack || trackLoading)}
-          style={[styles.sideButton, isLastTrack && styles.disabledButton]}
-          disabled={isLastTrack || trackLoading}>
+          {...a11y.next(nextDisabled)}
+          style={[styles.sideButton, nextDisabled && styles.disabledButton]}
+          disabled={nextDisabled}>
           <NextIcon
-            color={isLastTrack ? theme.colors.textSecondary : theme.colors.text}
+            color={
+              nextDisabled ? theme.colors.textSecondary : theme.colors.text
+            }
             size={moderateScale(16)}
           />
         </Pressable>

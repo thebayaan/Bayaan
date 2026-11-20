@@ -18,7 +18,28 @@ export function resolveMushafAudioUrl(
   if (reciter) {
     const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
     if (rewayat) {
-      return audioFileUrl(rewayat, surahNumber);
+      // @ai-start
+      const remoteUrl = audioFileUrl(rewayat, surahNumber);
+      // A recording that was replaced on the CDN (its URL carries a
+      // version): a file downloaded before that is the old recording, which
+      // the verse timings no longer fit, and a download does not say which
+      // recording it holds. Verse-by-verse audio is streamed for those.
+      if (remoteUrl.includes('?v=')) return remoteUrl;
+      // Otherwise the downloaded file when there is one, as the main player
+      // does: the mushaf used to stream a downloaded surah again, and could
+      // not play it offline.
+      try {
+        // Required here, not imported: audioUtils loads the download store
+        // and with it the main player's modules, which must not be loaded
+        // (or form an import cycle) by importing the mushaf player store.
+        const {generateSmartAudioUrl} =
+          require('@/utils/audioUtils') as typeof import('@/utils/audioUtils');
+        return generateSmartAudioUrl(reciter, String(surahNumber), rewayatId);
+      } catch (error) {
+        console.warn('[MushafAudio] No download lookup, streaming:', error);
+        return remoteUrl;
+      }
+      // @ai-end
     }
   }
 

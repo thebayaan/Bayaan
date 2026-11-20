@@ -1,9 +1,12 @@
 /**
- * Builds assets/data/irab-v1.db: word-level i'rab for the whole Quran plus
- * two classical i'rab books per verse.
+ * Builds assets/data/irab-v2.db: word-level i'rab for the whole Quran plus
+ * two classical i'rab books per verse. The file name carries DB_VERSION:
+ * installed apps import a bundled database once per name, so a rebuild
+ * that changes the data ships under a new version (see IrabDataService).
  *
  *   npx tsx scripts/irab/build-irab-db.ts \
- *     --treebank <Quranic.csv> --books <dir> [--out assets/data/irab-v1.db]
+ *     --treebank <Quranic.csv> --masaq <MASAQ.tsv> --books <dir> \
+ *     [--out assets/data/irab-v2.db]
  *
  * --treebank  corpus/Quranic.csv extracted from corpus/Quranic.rar of
  *             github.com/NoorBayan/Quranic at TREEBANK_COMMIT (UTF-16 TSV).
@@ -17,10 +20,18 @@
  *  - every word of data/wbw/wbw-en.db (77,429 words, 6,236 verses) has
  *    treebank tokens whose letters match the word exactly, and vice versa;
  *  - every word has at least one i'rab entry;
- *  - no book passage contains markup, links or script after cleaning.
+ *  - no book passage contains markup, links, script or a control character
+ *    other than a line break after cleaning;
+ *  - no book passage keeps a modern editor's footnotes or note markers;
+ *  - a book's front matter (left out) sits where the dump is known to file
+ *    it.
  *
  * The app never shows treebank or book Quran spellings as Quran text: word
  * references are `{{s:a:w}}` placeholders the app fills from its own words.
+ *
+ * The treebank's licence and the Quranic Arabic Corpus notice (its
+ * morphology) are copied from licenses/ into the meta table, as both ask
+ * derived files to keep them.
  */
 import fs from 'fs';
 import path from 'path';
@@ -47,7 +58,15 @@ import {
 } from './masaq';
 
 export const TREEBANK_COMMIT = 'e791af79b8e4f853610da455b87442cedec49118';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
+
+/** The notices stored in meta, as published (see THIRD_PARTY_LICENSES.md). */
+export const NOTICE_FILES = {
+  // LICENSE of github.com/NoorBayan/Quranic at TREEBANK_COMMIT.
+  treebank_notice: 'licenses/NoorBayan-Quranic-MIT.txt',
+  // The header of the corpus's morphology file, from corpus.quran.com/download.
+  qac_notice: 'licenses/quranic-arabic-corpus-notice.txt',
+} as const;
 
 /** Entry kinds as stored (see services/irab/irabFormat.ts). */
 export const KIND_CODE: Record<IrabEntry['kind'], string> = {
@@ -59,14 +78,103 @@ export const KIND_CODE: Record<IrabEntry['kind'], string> = {
   alt: 'a',
 };
 
-const BOOKS = [
+/**
+ * The author's opening pages, which the dump files under another verse, and
+ * the verse they belong to.
+ */
+export interface Opening {
+  part: string;
+  /** The first page after the opening. */
+  before: number;
+  /** The verse the dump files these pages under. */
+  from: string;
+  /** The verse they open: al-Fatiha's first, the basmala. */
+  to: string;
+}
+
+/** Pages printed before the author's text, and where the dump files them. */
+interface FrontMatter {
+  part: string;
+  /** The page the author's text starts on. */
+  before: number;
+  /** The surah whose verses the dump puts these pages under. */
+  surah: number;
+}
+
+const BOOKS: {
+  id: number;
+  nameAr: string;
+  authorAr: string;
+  /** The dump prints a modern editor's footnotes on each page. */
+  editorNotes?: boolean;
+  frontMatter?: FrontMatter;
+  opening?: Opening;
+}[] = [
   {
     id: 309,
     nameAr: 'التبيان في إعراب القرآن',
     authorAr: 'أبو البقاء العكبري (ت ٦١٦هـ)',
+    // al-Ukbari's preface and his i'rab of the isti'adha and the basmala
+    // (pages 1/1-1/4) open the book, but the dump files them under 114:5,
+    // after his last surah. They go with 1:1, the basmala.
+    opening: {part: '1', before: 5, from: '114:5', to: '1:1'},
   },
-  {id: 318, nameAr: 'إعراب القرآن', authorAr: 'أبو جعفر النحاس (ت ٣٣٨هـ)'},
+  {
+    id: 318,
+    nameAr: 'إعراب القرآن',
+    authorAr: 'أبو جعفر النحاس (ت ٣٣٨هـ)',
+    // Dar al-Kutub al-Ilmiyya, 1st edition, 1421 AH.
+    editorNotes: true,
+    // The publisher's introduction ([كلام الناشر]: a life of al-Nahhas, a
+    // history of i'rab works, a glossary), filed under every verse of
+    // surah 114 ahead of al-Nahhas's own commentary on it.
+    frontMatter: {part: '1', before: 13, surah: 114},
+  },
 ];
+
+/**
+ * Whether a page is the book's front matter rather than the author's text.
+ * Throws when such a page is filed under a surah other than the expected
+ * one: a new dump that moved it needs a fresh look.
+ */
+export function isFrontMatter(
+  book: {id: number; frontMatter?: FrontMatter},
+  page: {part: string | number; page: string | number},
+  surah: number,
+): boolean {
+  const fm = book.frontMatter;
+  if (!fm || String(page.part) !== fm.part || Number(page.page) >= fm.before)
+    return false;
+  if (surah !== fm.surah) {
+    throw new Error(
+      `book ${book.id}: front matter page ${page.part}/${page.page} is filed under surah ${surah}, not ${fm.surah}`,
+    );
+  }
+  return true;
+}
+
+/**
+ * The verse a page is filed under: the book's opening pages go with the verse
+ * they open, every other page stays where the dump files it. Throws when an
+ * opening page is filed under a verse other than the expected one: a new dump
+ * that moved it needs a fresh look.
+ */
+export function pageVerse(
+  book: {id: number; opening?: Opening},
+  page: {part: string | number; page: string | number},
+  verseKey: string,
+): string {
+  const op = book.opening;
+  if (!op || String(page.part) !== op.part || Number(page.page) >= op.before)
+    return verseKey;
+  if (verseKey === op.to) return verseKey;
+  if (verseKey !== op.from) {
+    throw new Error(
+      `book ${book.id}: opening page ${page.part}/${page.page} is filed under ${verseKey}, not ${op.from}`,
+    );
+  }
+  return op.to;
+}
 
 function arg(name: string, fallback?: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -387,10 +495,16 @@ function readJson(dir: string, base: string): any {
   return JSON.parse(zlib.gunzipSync(fs.readFileSync(gz)).toString('utf8'));
 }
 
-/** Book HTML → plain paragraphs (the app renders text, never HTML). */
+/**
+ * Book HTML → plain paragraphs (the app renders text, never HTML). The dumps
+ * end lines with CR, and Android does not break a line at a CR, so every
+ * line end becomes a line feed.
+ */
 export function cleanBookHtml(html: string): string {
   const text = html
+    .replace(/\r\n?/g, '\n')
     .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*p\b[^>]*>/gi, '\n')
     .replace(/<\/\s*(p|div|tr|table|h\d)\s*>/gi, '\n')
     .replace(/<\/\s*td\s*>/gi, ' ')
     .replace(/<[^>]*>/g, '')
@@ -410,7 +524,93 @@ export function cleanBookHtml(html: string): string {
       `book passage still has markup or a link: ${text.slice(0, 120)}`,
     );
   }
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/.test(text)) {
+    throw new Error(
+      `book passage has a control character: ${JSON.stringify(text.slice(0, 120))}`,
+    );
+  }
   return text;
+}
+
+/** What stripEditorNotes took out of a page. */
+export interface EditorNotes {
+  /** Footnote blocks removed (a page has one at most). */
+  footnoteBlocks: number;
+  /** Note markers («١», «٢» ...) removed from the text. */
+  markers: number;
+}
+
+/**
+ * A printed edition's footnotes: one block that ends the page. Its own </div>
+ * can sit inside a poem table one of the notes opened, so the block runs to
+ * the end of the page; only closing tags may follow that </div>.
+ */
+const FOOTNOTE_BLOCK = /<div\b[^>]*\bclass\s*=\s*["']?foot-notes\b[^>]*>/i;
+/** A note's reference in the text: «١», with the spaces before it. */
+const NOTE_MARKER = /(?:[ \t\u00A0]|&nbsp;)*«[٠-٩0-9]+»/g;
+
+/**
+ * Removes a modern editor's footnotes and their «n» markers from one page
+ * of a book's HTML, so that only the author's text is shown under the
+ * author's name. Works on the HTML: the text alone cannot tell a footnote
+ * ("(١) انظر ...") from the author's line that starts with a verse number
+ * ("(١٣) فأمسكت ..."). Throws on a page this does not fit.
+ */
+export function stripEditorNotes(html: string): {html: string} & EditorNotes {
+  let page = html;
+  let footnoteBlocks = 0;
+  const start = page.search(FOOTNOTE_BLOCK);
+  if (start >= 0) {
+    const block = page.slice(start);
+    const close = /<\/\s*div\s*>/i.exec(block);
+    const after = close ? block.slice(close.index + close[0].length) : '';
+    if (!/^(?:\s|<\/\s*[a-z]+\s*>)*$/i.test(after)) {
+      throw new Error(
+        `page text after its footnotes: ${after.replace(/<[^>]*>/g, '').slice(0, 120)}`,
+      );
+    }
+    const notes = block.replace(/<[^>]*>/g, '').trim();
+    if (!/^\([٠-٩0-9]+\)/.test(notes)) {
+      throw new Error(
+        `a footnote block that does not start with a note: ${notes.slice(0, 120)}`,
+      );
+    }
+    page = page.slice(0, start);
+    footnoteBlocks = 1;
+  }
+  const markers = page.match(NOTE_MARKER)?.length ?? 0;
+  return {html: page.replace(NOTE_MARKER, ''), footnoteBlocks, markers};
+}
+
+/**
+ * One page of a book as the app shows it. `editorNotes`: the book's dump
+ * prints a modern editor's notes, which are removed. In every book, any
+ * footnote block or note marker left fails the build.
+ */
+export function bookPassage(
+  html: string,
+  editorNotes = false,
+): {text: string} & EditorNotes {
+  const page = editorNotes
+    ? stripEditorNotes(html)
+    : {html, footnoteBlocks: 0, markers: 0};
+  if (/foot-?notes/i.test(page.html)) {
+    throw new Error(
+      `book passage still has the editor's footnotes: ${page.html.slice(0, 120)}`,
+    );
+  }
+  const text = cleanBookHtml(page.html);
+  if (/«[٠-٩0-9]+»/.test(text)) {
+    throw new Error(
+      `book passage still has a note marker: ${text.slice(0, 120)}`,
+    );
+  }
+  return {
+    text,
+    footnoteBlocks: page.footnoteBlocks,
+    markers: page.markers,
+  };
 }
 
 function main(): void {
@@ -419,7 +619,13 @@ function main(): void {
   const booksDir = arg('books');
   const masaqFile = arg('masaq');
   const out = path.resolve(
-    arg('out', path.join(root, 'assets/data/irab-v1.db')),
+    arg('out', path.join(root, `assets/data/irab-v${DB_VERSION}.db`)),
+  );
+  const notices = Object.fromEntries(
+    Object.entries(NOTICE_FILES).map(([key, file]) => [
+      key,
+      fs.readFileSync(path.join(root, file), 'utf8'),
+    ]),
   );
   const wbwFile = path.join(root, 'data/wbw/wbw-en.db');
 
@@ -671,12 +877,17 @@ function main(): void {
   );
   meta.run(
     'treebank_license',
-    'MIT; morphology from the Quranic Arabic Corpus (GNU GPL), https://corpus.quran.com',
+    "MIT (treebank_notice) for NoorBayan's syntax; its morphology is the " +
+      "Quranic Arabic Corpus's, GNU General Public License with the " +
+      "corpus's terms of use (qac_notice), https://corpus.quran.com",
   );
+  for (const [key, notice] of Object.entries(notices)) meta.run(key, notice);
   meta.run('books_source', 'https://quranpedia.net/dumps');
   meta.run(
     'masaq',
-    `https://data.mendeley.com/datasets/9yvrzxktmr/5 (CC BY 4.0) sha256:${MASAQ_SHA256}`,
+    'https://data.mendeley.com/datasets/9yvrzxktmr/5 ' +
+      '(CC BY 4.0, https://creativecommons.org/licenses/by/4.0/) ' +
+      `sha256:${MASAQ_SHA256}`,
   );
   meta.run('relation_fixes', fixed.join(', '));
   meta.run('segmentation_fixes', segFixed.join(', '));
@@ -748,21 +959,33 @@ function main(): void {
       insBook.run(book.id, book.nameAr, book.authorAr);
       meta.run(`book_${book.id}_version`, String(json.license?.version ?? ''));
       const ids = new Map<string, number>();
-      let verses = 0;
+      const filled = new Set<string>();
+      const ords = new Map<string, number>();
+      const refiled = new Set<string>();
+      const removed: EditorNotes = {footnoteBlocks: 0, markers: 0};
+      const frontMatter = new Set<string>();
       for (const a of json.ayahs as {
         surah: number;
         ayah: number;
         content: {text: string; part: string; page: string}[];
       }[]) {
-        const vk = `${a.surah}:${a.ayah}`;
-        let ord = 0;
+        const filedAt = `${a.surah}:${a.ayah}`;
         for (const c of a.content) {
-          const text = cleanBookHtml(c.text);
+          if (isFrontMatter(book, c, a.surah)) {
+            frontMatter.add(`${c.part}/${c.page}`);
+            continue;
+          }
+          const vk = pageVerse(book, c, filedAt);
+          if (vk !== filedAt) refiled.add(`${c.part}/${c.page}`);
+          const page = bookPassage(c.text, book.editorNotes);
+          const text = page.text;
           if (!text) continue;
           let id = ids.get(text);
           if (id === undefined) {
             id = ++passageId;
             ids.set(text, id);
+            removed.footnoteBlocks += page.footnoteBlocks;
+            removed.markers += page.markers;
             insPassage.run(
               id,
               book.id,
@@ -771,11 +994,51 @@ function main(): void {
               text,
             );
           }
-          insVerse.run(book.id, vk, ord++, id);
+          const ord = ords.get(vk) ?? 0;
+          ords.set(vk, ord + 1);
+          insVerse.run(book.id, vk, ord, id);
+          filled.add(vk);
         }
-        if (ord) verses++;
       }
-      console.log(`book ${book.id}: ${verses} verses, ${ids.size} passages`);
+      const verses = filled.size;
+      if (book.opening) {
+        if (!refiled.size)
+          throw new Error(`book ${book.id}: no opening page found`);
+        meta.run(
+          `book_${book.id}_opening_refiled`,
+          `${[...refiled].join(', ')}: ${book.opening.from} → ${book.opening.to}`,
+        );
+      }
+      if (book.editorNotes) {
+        meta.run(
+          `book_${book.id}_footnotes_removed`,
+          String(removed.footnoteBlocks),
+        );
+        meta.run(
+          `book_${book.id}_note_markers_removed`,
+          String(removed.markers),
+        );
+      }
+      if (book.frontMatter) {
+        if (!frontMatter.size)
+          throw new Error(`book ${book.id}: no front matter found`);
+        meta.run(
+          `book_${book.id}_front_matter_removed`,
+          [...frontMatter].join(', '),
+        );
+      }
+      console.log(
+        `book ${book.id}: ${verses} verses, ${ids.size} passages` +
+          (book.editorNotes
+            ? `, the editor's notes removed from ${removed.footnoteBlocks} (${removed.markers} markers)`
+            : '') +
+          (frontMatter.size
+            ? `, front matter left out: ${frontMatter.size} pages`
+            : '') +
+          (refiled.size
+            ? `, opening pages moved to ${book.opening?.to}: ${refiled.size}`
+            : ''),
+      );
     }
   })();
   db.exec('VACUUM');

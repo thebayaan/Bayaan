@@ -50,8 +50,8 @@ export const MushafReciterPickerSheet = (
             {id: reciter.reciterId, name: reciter.reciterName},
             'ar',
           ),
-          reciter.rewayahName,
         ],
+        rewayahTerms: [reciter.rewayahName],
       })),
     [availableReciters],
   );

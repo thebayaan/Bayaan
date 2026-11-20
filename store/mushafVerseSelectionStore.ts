@@ -118,6 +118,33 @@ export const useMushafVerseSelectionStore = create<MushafVerseSelectionState>(
 );
 
 // @ai-start
+/** How long a verse the reader was taken to stays lit. */
+export const SELECTION_FLASH_MS = 3000;
+
+/**
+ * For a "flash": the short selection that shows the reader the verse they
+ * were taken to (a search result, a bookmark, a link, a similar verse).
+ * Call right after selecting it and run the returned function when the
+ * flash is over.
+ *
+ * It clears the selection only if it is still the flashed one. The timers
+ * used to clear whatever was selected by then: a verse the reader had
+ * long-pressed in the meantime lost its highlight under the open sheet, and
+ * on iOS a drag-select released after that moment did nothing, because
+ * there was no selection left to open the sheet for. Every select replaces
+ * `selectedUnits`, so the same array means nobody has selected since, also
+ * not the same verse again.
+ */
+export function flashedSelectionClearer(): () => void {
+  const flashed = useMushafVerseSelectionStore.getState().selectedUnits;
+  return () => {
+    const state = useMushafVerseSelectionStore.getState();
+    if (flashed.length > 0 && state.selectedUnits === flashed) {
+      state.clearSelection();
+    }
+  };
+}
+
 /**
  * The 'verse-actions' sheet payload for a mushaf selection (verse-units
  * contract 4.1): `rewayah` + `unitKeys` name the selected verses in the

@@ -8,6 +8,7 @@ import {useMushafData, type MushafDataState} from '@/hooks/useMushafData';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {isRewayahId} from '@/services/rewayah/RewayahIdentity';
 import {restoreSavedRewayah} from '@/services/verse-annotations/restoreSavedRewayah';
+import {parseFlashWords} from '@/utils/search/quranHitParams';
 
 /** The /mushaf params that say where it opens (see MushafScreenParams). */
 export type MushafOpenParams = {
@@ -16,6 +17,7 @@ export type MushafOpenParams = {
   ayah?: string;
   anchor?: string;
   rewayah?: string;
+  words?: string;
 };
 
 export type MushafOpenTarget = {
@@ -30,6 +32,11 @@ export type MushafOpenTarget = {
   verseKey?: string;
   /** A stored Hafs anchor to flash instead (MushafScreenParams.anchor). */
   anchor?: string;
+  /**
+   * Digital Khatt slots of `verseKey` to flash with it: the words a Quran
+   * search matched (MushafScreenParams.words).
+   */
+  words?: readonly number[];
 };
 
 export type MushafOpenState =
@@ -51,16 +58,28 @@ export type MushafOpenState =
 export function resolveTarget(params: MushafOpenParams): MushafOpenTarget {
   const {surah, page, ayah, anchor} = params;
   const verseKey = surah && ayah ? `${surah}:${ayah}` : undefined;
+  const flash = parseFlashWords(params.words);
+  const words = verseKey && flash.length ? flash : undefined;
   const p = page ? parseInt(page, 10) : NaN;
-  if (p >= 1 && p <= 604) return {page: p, verseKey, anchor};
+  if (p >= 1 && p <= 604) return {page: p, verseKey, anchor, words};
   const dk = digitalKhattDataService;
   const s = surah ? parseInt(surah, 10) : NaN;
   const surahStart = dk.getSurahStartPages()[s];
   const surahId = !page && surahStart ? s : undefined;
-  // A verse with no page: the page of the verse, in the restored rewayah.
-  const versePage =
-    surah && ayah ? dk.getPageForVerse(`${s}:${parseInt(ayah, 10)}`) : 0;
-  return {page: versePage || surahStart || 1, surahId, verseKey, anchor};
+  // A verse with no page: the page of the verse, in the restored rewayah. A
+  // search hit opens the page of its first matched word, which is the verse's
+  // page unless the verse runs onto the next one.
+  const key = surah && ayah ? `${s}:${parseInt(ayah, 10)}` : undefined;
+  const wordPage =
+    key && words ? dk.getPageForWord(key, Math.min(...words)) : 0;
+  const versePage = key ? dk.getPageForVerse(key) : 0;
+  return {
+    page: wordPage || versePage || surahStart || 1,
+    surahId,
+    verseKey,
+    anchor,
+    words,
+  };
 }
 
 export function useMushafOpenTarget(params: MushafOpenParams): MushafOpenState {

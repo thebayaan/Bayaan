@@ -1,5 +1,5 @@
 import React, {useState, useMemo, useCallback, useEffect} from 'react';
-import {View, Text, Pressable, ScrollView} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -11,9 +11,10 @@ import {useTranslationStore} from '@/store/translationStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 import {
   getTranslationText,
-  getTranslationName,
+  getTranslationDisplayName,
   isBundledTranslation,
 } from '@/utils/translationLookup';
+import {stripTranslationMarkup} from '@/utils/translationMarkup'; // @ai
 import {translationDbService} from '@/services/translation/TranslationDbService';
 import {
   BUNDLED_TRANSLATIONS,
@@ -24,6 +25,8 @@ import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
+import {currentLanguage} from '@/i18n/language';
+import {getLanguageConfig} from '@/i18n/languages';
 import {
   hafsPagerPage,
   joinPartTexts,
@@ -31,6 +34,7 @@ import {
   type UnitStart,
 } from './verseUnitScreens';
 // @ai-end
+import {SheetFooter, SheetScrollView} from './sheetGestures';
 
 // ─── Data loading (module scope, runs once) ───────────────────────────────
 const quranData = require('@/data/quran.json') as QuranData;
@@ -62,11 +66,17 @@ for (let i = 0; i < allVerses.length; i++) {
   verseKeyToIndex[allVerses[i].verseKey] = i;
 }
 
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
-}
-
 const bundledIds = Object.keys(BUNDLED_TRANSLATIONS) as BundledTranslationId[];
+
+/**
+ * Translation names are set in capitals in a Latin-script UI only. Arabic has
+ * no capitals, and an Arabic UI shows a downloaded translation's name as its
+ * catalogue gives it.
+ */
+const CAPITALIZE_NAMES = getLanguageConfig(currentLanguage).script === 'Latn';
+
+/** The footer buttons' minimum height: the 44pt tap target. */
+const NAV_BUTTON_MIN_HEIGHT = 44;
 
 // ─── Component ────────────────────────────────────────────────────────────
 
@@ -174,17 +184,19 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
     (id: string) =>
       joinPartTexts(
         page.hafsKeys.map(hafsKey =>
-          stripHtml(getTranslationText(hafsKey, id)),
+          stripTranslationMarkup(getTranslationText(hafsKey, id)),
         ),
       ),
     [page],
   );
   // @ai-end
 
-  const activeTranslationName = getTranslationName(selectedTranslationId);
+  const activeTranslationName = getTranslationDisplayName(
+    selectedTranslationId,
+  );
   const activeTranslationText = isBundledTranslation(selectedTranslationId)
     ? bundledText(selectedTranslationId) // @ai
-    : stripHtml(downloadedTexts[selectedTranslationId] ?? '');
+    : stripTranslationMarkup(downloadedTexts[selectedTranslationId] ?? ''); // @ai
 
   // Track translation viewed when the selected translation changes
   useEffect(() => {
@@ -230,12 +242,11 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
   return (
     <View style={styles.container}>
       {/* Scrollable verse content */}
-      <ScrollView
+      <SheetScrollView
         key={page.key} // @ai
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}
-        showsVerticalScrollIndicator={false}
-        bounces={true}>
+        showsVerticalScrollIndicator={false}>
         {/* Verse badge */}
         <View style={styles.verseBadge}>
           <Text style={styles.verseBadgeText}>
@@ -256,9 +267,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
         <View style={styles.divider} />
 
         {/* Active Translation */}
-        <Text style={styles.translationLabel}>
-          {activeTranslationName.toUpperCase()}
-        </Text>
+        <Text style={styles.translationLabel}>{activeTranslationName}</Text>
         {activeTranslationText ? (
           <Text style={styles.translationText}>{activeTranslationText}</Text>
         ) : (
@@ -277,10 +286,10 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
 
         {/* Other translations (bundled + downloaded) */}
         {otherTranslationIds.map(id => {
-          const name = getTranslationName(id);
+          const name = getTranslationDisplayName(id);
           const text = isBundledTranslation(id)
             ? bundledText(id) // @ai
-            : stripHtml(downloadedTexts[id] ?? '');
+            : stripTranslationMarkup(downloadedTexts[id] ?? ''); // @ai
           return (
             <React.Fragment key={id}>
               <View style={styles.divider} />
@@ -288,9 +297,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
                 onPress={() => handleSelectTranslation(id)}
                 style={({pressed}) => [pressed && {opacity: 0.7}]}>
                 <View style={styles.otherTranslationHeader}>
-                  <Text style={styles.translationLabel}>
-                    {name.toUpperCase()}
-                  </Text>
+                  <Text style={styles.translationLabel}>{name}</Text>
                   <View style={styles.switchPill}>
                     <Text style={styles.switchPillText}>
                       {t('translationContent.switch')}
@@ -308,10 +315,10 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
             </React.Fragment>
           );
         })}
-      </ScrollView>
+      </SheetScrollView>
 
-      {/* Footer — Prev / Next */}
-      <View style={[styles.footer, {paddingBottom: verticalScale(16)}]}>
+      {/* Footer — Prev / Next; the sheet never drags from it */}
+      <SheetFooter style={styles.footer}>
         <Pressable
           onPress={goToPrevious}
           disabled={isFirst}
@@ -322,7 +329,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
           ]}>
           <Feather
             name="chevron-left"
-            size={moderateScale(16)}
+            size={moderateScale(18)}
             color={
               isFirst
                 ? Color(theme.colors.text).alpha(0.2).toString()
@@ -358,7 +365,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
           </Text>
           <Feather
             name="chevron-right"
-            size={moderateScale(16)}
+            size={moderateScale(18)}
             color={
               isLast
                 ? Color(theme.colors.text).alpha(0.2).toString()
@@ -367,7 +374,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
             style={flipX}
           />
         </Pressable>
-      </View>
+      </SheetFooter>
     </View>
   );
 };
@@ -413,7 +420,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
+      textTransform: CAPITALIZE_NAMES ? 'uppercase' : 'none',
       marginBottom: verticalScale(6),
     },
     translationText: {
@@ -460,32 +467,37 @@ const createStyles = (theme: Theme) =>
       color: Color(theme.colors.text).alpha(0.6).toString(),
       letterSpacing: latinLetterSpacing(0.3),
     },
-    // Footer
+    // Footer: 44pt buttons with room above and below, inside the sheet's own
+    // bottom padding (and the safe-area inset the sheet adds under it).
     footer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: moderateScale(8),
       paddingHorizontal: moderateScale(16),
-      paddingTop: verticalScale(10),
+      paddingTop: verticalScale(12),
+      paddingBottom: verticalScale(18),
       borderTopWidth: 1,
       borderTopColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     navButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: verticalScale(7),
-      paddingHorizontal: moderateScale(12),
-      borderRadius: moderateScale(10),
+      justifyContent: 'center',
+      minHeight: NAV_BUTTON_MIN_HEIGHT,
+      minWidth: NAV_BUTTON_MIN_HEIGHT,
+      paddingHorizontal: moderateScale(14),
+      borderRadius: moderateScale(12),
       backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderWidth: 1,
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      gap: moderateScale(3),
+      gap: moderateScale(4),
     },
     navButtonDisabled: {
       opacity: 0.4,
     },
     navButtonText: {
-      fontSize: moderateScale(13),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
     },

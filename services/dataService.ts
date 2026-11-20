@@ -1,4 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  AppState,
+  type AppStateStatus,
+  type NativeEventSubscription,
+} from 'react-native';
 import {Surah, SURAHS} from '../data/surahData';
 import {
   Reciter,
@@ -50,6 +55,30 @@ const RECITERS_KEY = 'bayaan_reciters';
 const RECITER_SERVERS_KEY = 'bayaan_reciter_servers';
 const DATA_VERSION = '4'; // Increment: bust cache for R2 CDN URL migration
 
+// @ai-start
+// Time limits for one catalogue download, all pages together. Android sets no
+// network timeout of its own, so without a limit a connection that never
+// answers never fails either.
+// First launch: the splash is waiting, so give up quickly and show the bundled
+// list.
+const FIRST_LOAD_TIMEOUT_MS = 8000;
+// Background refresh: no screen waits for it, so a slow connection gets time
+// to bring in the whole catalogue (about 500 KB). That is how a first launch
+// that ran out of its 8 s still ends up with a cached catalogue. Only one
+// runs at a time, though, so one that never ended would block every later
+// refresh.
+const REFRESH_TIMEOUT_MS = 2 * 60 * 1000;
+// Coming back to the foreground downloads the catalogue again (asking the
+// killswitch first) once the last load or refresh started this long ago, or
+// sooner when that download failed. Without it an open app, which iOS can
+// keep for days, downloads only at launch and when the network comes back: a
+// killswitch change would not reach it, and a download that failed while the
+// network stayed up (an API outage) would leave it on the bundled list until
+// relaunch.
+const FOREGROUND_REFRESH_MS = 5 * 60 * 1000;
+const FOREGROUND_RETRY_MS = 60 * 1000;
+// @ai-end
+
 // ── Storage helpers ───────────────────────────────────────────────────────────
 
 interface StoredData<T> {
@@ -96,7 +125,16 @@ const API_BASE = BAYAAN_API_URL;
 const API_KEY = BAYAAN_API_KEY;
 
 // @ai-start
-async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
+// A signal that aborts after `ms`, and the call that stops the countdown.
+function abortAfter(ms: number): {signal: AbortSignal; cancel: () => void} {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return {signal: controller.signal, cancel: () => clearTimeout(timer)};
+}
+
+async function fetchAllRecitersFromApi(
+  signal: AbortSignal,
+): Promise<Reciter[]> {
   const PAGE_SIZE = 200;
   let page = 1;
   let allReciters: Reciter[] = [];
@@ -109,7 +147,7 @@ async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
 
     const res = await fetch(
       `${API_BASE}/v1/reciters?page=${page}&limit=${PAGE_SIZE}`,
-      {headers},
+      {headers, signal},
     );
     if (!res.ok) throw new Error(`Bayaan API error: ${res.status}`);
     const json = await res.json();
@@ -151,6 +189,43 @@ export function searchSurahs(query: string): Surah[] {
 
 // ── Reciter functions ─────────────────────────────────────────────────────────
 
+// @ai-start
+// One load and one refresh at a time. Screens look a reciter up once per list
+// row and the player once per track; if each lookup did its own storage read,
+// catalogue download and cache write, a 50-row list would do all three 50
+// times over.
+let catalogLoad: Promise<Reciter[]> | null = null;
+// Resolves false when the download failed.
+let catalogRefresh: Promise<boolean> | null = null;
+// When the last load or refresh started, and the listener that refreshes on
+// coming back to the foreground (see refreshOnForeground).
+let lastRefreshAt = 0;
+let foregroundListener: NativeEventSubscription | null = null;
+
+/**
+ * Returns the reciter catalogue.
+ *
+ * Once the catalogue is in memory this only copies the shared RECITERS array:
+ * no storage read and no network, so lookups built on it are cheap. Until
+ * then the first call loads it (see loadReciters) and every call made in the
+ * meantime waits for that same load.
+ *
+ * To download the catalogue again, call refreshReciters().
+ */
+export async function getAllReciters(): Promise<Reciter[]> {
+  if (RECITERS.length === 0) {
+    // Cleared when it settles, so a failed load can be tried again.
+    catalogLoad ??= loadReciters().finally(() => {
+      catalogLoad = null;
+    });
+    await catalogLoad;
+  }
+  // A copy, so a caller that sorts or trims its list cannot change the array
+  // the rest of the app reads.
+  return [...RECITERS];
+}
+// @ai-end
+
 /**
  * Returns reciters from AsyncStorage cache immediately (fast, works offline),
  * then refreshes from the API in the background.
@@ -158,7 +233,7 @@ export function searchSurahs(query: string): Surah[] {
  * Also populates the shared RECITERS array in-place so all sync importers
  * across the app see the live data after the first call.
  */
-export async function getAllReciters(): Promise<Reciter[]> {
+async function loadReciters(): Promise<Reciter[]> /* @ai */ {
   const {setDisrupted, setRetryFn, clearDisruption} =
     useApiHealthStore.getState();
 
@@ -170,10 +245,18 @@ export async function getAllReciters(): Promise<Reciter[]> {
     );
   }
 
-  const retry = async () => {
-    await getAllReciters();
-  };
-  setRetryFn(retry);
+  // @ai-start
+  // The retry runs when the network comes back and has to download again.
+  // getAllReciters would only hand back what is already in memory.
+  setRetryFn(refreshReciters);
+  lastRefreshAt = Date.now();
+  if (canFetchFromApi) {
+    foregroundListener ??= AppState.addEventListener(
+      'change',
+      refreshOnForeground,
+    );
+  }
+  // @ai-end
 
   // Killswitch check — if backend is disabled via CDN config, use bundled fallback
   if (canFetchFromApi) {
@@ -197,9 +280,17 @@ export async function getAllReciters(): Promise<Reciter[]> {
   }
 
   // First launch — fetch from API (blocking)
+  // @ai-start
+  // True when the download below ran out of time. That is a slow connection,
+  // not a dead one, so once the stale or bundled list is showing the download
+  // is finished in the background. Without that, a slow connection would wait
+  // out the limit on every launch and never get a cached catalogue.
+  let timedOut = false;
+  // @ai-end
   if (canFetchFromApi) {
+    const deadline = abortAfter(FIRST_LOAD_TIMEOUT_MS); // @ai
     try {
-      const apiReciters = await fetchAllRecitersFromApi();
+      const apiReciters = await fetchAllRecitersFromApi(deadline.signal); // @ai
       if (apiReciters.length > 0) {
         await setStoredData(RECITERS_KEY, apiReciters);
         const reciters = populateReciters(apiReciters); // @ai
@@ -208,6 +299,7 @@ export async function getAllReciters(): Promise<Reciter[]> {
       }
     } catch (err) {
       console.warn('[dataService] API fetch failed on first load:', err);
+      timedOut = deadline.signal.aborted; // @ai
       // Try stale cache before giving up
       const stale = await getStoredData<Reciter[]>(RECITERS_KEY, {
         allowStale: true,
@@ -215,9 +307,12 @@ export async function getAllReciters(): Promise<Reciter[]> {
       if (stale && stale.data.length > 0) {
         const reciters = populateReciters(stale.data); // @ai
         setDisrupted(true, {reason: 'unreachable', stale: true});
+        if (timedOut) refreshRecitersInBackground().catch(() => undefined); // @ai
         return reciters; // @ai
       }
       setDisrupted(true, {reason: 'unreachable', stale: false});
+    } finally {
+      deadline.cancel(); // @ai
     }
   }
 
@@ -225,30 +320,107 @@ export async function getAllReciters(): Promise<Reciter[]> {
   const fallback = fallbackReciters as Reciter[];
   if (fallback.length > 0) {
     console.log('[dataService] Using bundled fallback data');
-    return populateReciters(fallback); // @ai
+    // @ai-start
+    const reciters = populateReciters(fallback);
+    if (timedOut) refreshRecitersInBackground().catch(() => undefined);
+    return reciters;
+    // @ai-end
   }
 
   return [];
 }
 
-async function refreshRecitersInBackground(): Promise<void> {
+// @ai-start
+/**
+ * Downloads the catalogue again, saves it and swaps it in. One runs at a
+ * time: a call made while a refresh is in flight gets that same refresh.
+ *
+ * `recheckKillswitch` asks the killswitch first. The first load has only just
+ * asked it, so it skips the check; every later refresh asks again, so turning
+ * the backend off also stops apps that are already open from calling it.
+ */
+function refreshRecitersInBackground(
+  opts: {recheckKillswitch?: boolean} = {},
+): Promise<boolean> {
+  catalogRefresh ??= runRefresh(opts.recheckKillswitch === true).finally(() => {
+    catalogRefresh = null;
+  });
+  return catalogRefresh;
+}
+
+async function runRefresh(recheckKillswitch: boolean): Promise<boolean> {
+  lastRefreshAt = Date.now();
   const {setDisrupted, clearDisruption} = useApiHealthStore.getState();
+  if (recheckKillswitch && !(await isBackendEnabled())) {
+    console.log(
+      '[dataService] Killswitch active — using bundled fallback data',
+    );
+    populateReciters(fallbackReciters as Reciter[]);
+    return true;
+  }
+  const deadline = abortAfter(REFRESH_TIMEOUT_MS);
   try {
-    const apiReciters = await fetchAllRecitersFromApi();
+    const apiReciters = await fetchAllRecitersFromApi(deadline.signal);
     if (apiReciters.length > 0) {
       await setStoredData(RECITERS_KEY, apiReciters);
       populateReciters(apiReciters);
       clearDisruption();
     }
+    return true;
   } catch {
     setDisrupted(true, {reason: 'unreachable', stale: true});
+    return false;
+  } finally {
+    deadline.cancel();
   }
 }
 
+/**
+ * Downloads the catalogue again on request. Lookups never do this: it runs
+ * at launch (as part of the first load) and when something asks, such as the
+ * retry that fires when the network comes back, or the app coming back to
+ * the foreground (refreshOnForeground).
+ */
+export async function refreshReciters(): Promise<void> {
+  // Nothing in memory yet: the first load does the download, and is shared.
+  // If that load failed (its request may have gone out on the connection that
+  // has just been replaced), go on below: wait for the download it left
+  // running, or download again.
+  if (RECITERS.length === 0) {
+    await getAllReciters();
+    if (!useApiHealthStore.getState().isDisrupted) return;
+  }
+  if (!API_BASE || !API_KEY) return;
+  // A refresh already in flight may have gone out on the connection that has
+  // just been replaced. If it gets through, that is the refresh; if it fails,
+  // download again, or the retry would be used up by a request that was
+  // never going to succeed.
+  const running = catalogRefresh;
+  if (running && (await running)) return;
+  await refreshRecitersInBackground({recheckKillswitch: true});
+}
+
+// Refreshes on coming back to the foreground when the last load or refresh
+// started FOREGROUND_REFRESH_MS ago or more (FOREGROUND_RETRY_MS while the API
+// is marked unreachable).
+function refreshOnForeground(state: AppStateStatus): void {
+  if (state !== 'active') return;
+  const wait = useApiHealthStore.getState().isDisrupted
+    ? FOREGROUND_RETRY_MS
+    : FOREGROUND_REFRESH_MS;
+  if (Date.now() - lastRefreshAt < wait) return;
+  refreshReciters().catch(() => undefined);
+}
+// @ai-end
+
 export async function getReciterById(id: string): Promise<Reciter | undefined> {
-  const reciters = await getAllReciters();
-  const canonicalId = canonicalReciterId(id); // @ai
-  return reciters.find(reciter => reciter.id === canonicalId);
+  // @ai-start
+  // Waits only while the catalogue is still loading. After that it is the
+  // same in-memory lookup as getReciterByIdSync, which is what makes one call
+  // per list row affordable.
+  if (RECITERS.length === 0) await getAllReciters();
+  return getReciterByIdSync(id);
+  // @ai-end
 }
 
 // Sync version reads from the in-memory RECITERS array (populated after first load)
@@ -363,5 +535,5 @@ export async function clearStoredData(): Promise<void> {
 
 export async function refreshData(): Promise<void> {
   await clearStoredData();
-  await getAllReciters();
+  await refreshReciters(); // @ai
 }

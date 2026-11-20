@@ -15,6 +15,8 @@ import {Track} from '@/types/audio';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
 import {hasCarReplacedQueue} from '@/services/car/sessionGate';
+import {trackRestoreLoad, pendingRestoreLoad} from './restoreLoad'; // @ai
+import {resolveTrackUrl, registerTrackUrlResolver} from './trackUrl'; // @ai
 
 /**
  * Waits for playerStore to finish hydrating from AsyncStorage.
@@ -62,6 +64,8 @@ function waitForPlayerStoreHydration(timeoutMs = 3000): Promise<void> {
  */
 export async function restoreSession(): Promise<void> {
   try {
+    // @ai From here on the player chooses each track's url when it loads it.
+    registerTrackUrlResolver();
     // Wait for playerStore to hydrate from AsyncStorage so we can read
     // the persisted queue (important for upload tracks).
     await waitForPlayerStoreHydration();
@@ -73,33 +77,49 @@ export async function restoreSession(): Promise<void> {
     // A car request (CarPlay / Android Auto) already replaced the queue.
     if (hasCarReplacedQueue()) return;
 
-    // Upload tracks aren't tracked in recentlyPlayedStore, so restore from
-    // the persisted playerStore queue directly.
-    if (persistedTrack?.isUserUpload) {
-      const startPosition =
-        persistedState.playback.position > 0
-          ? persistedState.playback.position
-          : 0;
-
-      persistedState.updatePlaybackState({
-        state: 'paused',
-        position: startPosition,
-        duration: persistedState.playback.duration,
-      });
-
-      if (__DEV__) {
-        console.log(
-          '[RestoreSession] Restored upload track from persisted queue',
-          {
-            title: persistedTrack.title,
-            position: Math.round(startPosition),
-          },
+    // @ai-start
+    // The queue that was playing is saved with the player store: restore
+    // that. Rebuilding it from the last recent card (below) replaced a
+    // playlist, Loved or a hand-made queue with "this reciter's whole
+    // Quran", and restored a different track whenever the recent cards had
+    // fallen out of step with the player.
+    if (persistedTrack) {
+      const restored = restorePersistedQueue(
+        persistedState.queue.tracks,
+        persistedState.queue.currentIndex,
+      );
+      if (restored) {
+        const {position: startPosition, duration} = savedPlace(
+          restored.tracks[restored.index],
+          persistedState.playback,
         );
-      }
+        persistedState.updateQueueState({
+          tracks: restored.tracks,
+          currentIndex: restored.index,
+          total: restored.tracks.length,
+        });
+        persistedState.updatePlaybackState({
+          state: 'paused',
+          position: startPosition,
+          duration,
+        });
 
-      loadAudioInBackground(persistedTrack.url, startPosition);
-      return;
+        if (__DEV__) {
+          console.log('[RestoreSession] Restored the saved queue', {
+            title: restored.tracks[restored.index].title,
+            position: Math.round(startPosition),
+            queueSize: restored.tracks.length,
+          });
+        }
+
+        loadAudioInBackground(
+          restored.tracks[restored.index].url,
+          startPosition,
+        );
+        return;
+      }
     }
+    // @ai-end
 
     const recentTracks = useRecentlyPlayedStore.getState().recentTracks;
     if (recentTracks.length === 0) return;
@@ -214,13 +234,82 @@ export async function restoreSession(): Promise<void> {
   }
 }
 
-// The in-flight phase 2 load, if any.
-let restoreLoad: Promise<void> | null = null;
-
-/** Resolves once restoreSession's background load (if any) has settled. */
-export function pendingRestoreLoad(): Promise<void> {
-  return restoreLoad ?? Promise.resolve();
+// @ai-start
+/**
+ * The saved queue, made playable again: every url is chosen afresh (a local
+ * path saved before an iOS app update points into the old app container;
+ * downloads may have been added or removed), and uploads that were deleted
+ * are dropped. Returns null when the current track itself is gone, so the
+ * caller falls back to the recent cards.
+ *
+ * Only a list of uploads that loaded can say an upload was deleted. When the
+ * uploads database failed to open or read at launch, the list is empty and
+ * every upload is kept, with the url it was saved with.
+ */
+function restorePersistedQueue(
+  tracks: Track[],
+  currentIndex: number,
+): {tracks: Track[]; index: number} | null {
+  const {recitations: uploads, loading, error} = useUploadsStore.getState();
+  const uploadsLoaded = loading === false && !error;
+  const kept: Track[] = [];
+  let index = -1;
+  tracks.forEach((track, i) => {
+    if (
+      track.isUserUpload &&
+      uploadsLoaded &&
+      !uploads.some(r => r.id === track.userRecitationId)
+    ) {
+      return;
+    }
+    if (i === currentIndex) index = kept.length;
+    kept.push({...track, url: resolveTrackUrl(track)});
+  });
+  return index === -1 ? null : {tracks: kept, index};
 }
+
+/**
+ * Where the restored track starts: the position saved with the player store.
+ *
+ * Builds that restored from the recent card wrote the 0:00 status of their
+ * own load to the store and could drop the status of the seek that followed.
+ * When the app then closed without playing, the store said 0:00 while the
+ * card kept the real place, and the next launch of those builds resumed from
+ * the card. So when the store says 0:00 and the last recent card is this same
+ * recording, part-way through, the card's place is used. A card at 100% is
+ * not resumed: a queue that finished leaves its last track at 0:00.
+ */
+function savedPlace(
+  track: Track,
+  playback: {position: number; duration: number},
+): {position: number; duration: number} {
+  if (playback.position > 0) {
+    return {position: playback.position, duration: playback.duration};
+  }
+  const recent = useRecentlyPlayedStore.getState().recentTracks[0];
+  if (
+    recent &&
+    !track.isUserUpload &&
+    !recent.isUserUpload &&
+    recent.reciter?.id === track.reciterId &&
+    String(recent.surah?.id) === track.surahId &&
+    (recent.rewayatId || '') === (track.rewayatId || '') &&
+    recent.progress > 0 &&
+    recent.progress < 1 &&
+    recent.duration > 0
+  ) {
+    return {
+      position: recent.progress * recent.duration,
+      duration: recent.duration,
+    };
+  }
+  return {position: 0, duration: playback.duration};
+}
+// @ai-end
+
+// @ai The in-flight phase 2 load lives in ./restoreLoad (the player store
+// waits for it too). Re-exported for the callers that import it from here.
+export {pendingRestoreLoad};
 
 /**
  * Loads the audio source and seeks to position. Runs after store is populated.
@@ -236,7 +325,7 @@ export function loadAudioInBackground(
   const load = new Promise<void>(resolve => {
     settle = resolve;
   });
-  restoreLoad = load;
+  trackRestoreLoad(load); // @ai
   // Use setTimeout to defer off the critical startup path
   setTimeout(async () => {
     try {
@@ -248,6 +337,17 @@ export function loadAudioInBackground(
       if (currentPlayOpId() !== opId) return;
       if (startPosition > 0 && !hasCarReplacedQueue()) {
         await expoAudioService.seekTo(startPosition);
+        // @ai-start
+        // The player's first status after the load reports 0:00 and is
+        // written to the store. Put the restored position back, or the
+        // slider and the recent card show the start of the surah until
+        // playback begins, and tapping the card restarts it from there.
+        if (currentPlayOpId() === opId && !hasCarReplacedQueue()) {
+          usePlayerStore.getState().updatePlaybackState({
+            position: startPosition,
+          });
+        }
+        // @ai-end
       }
       if (__DEV__) {
         console.log('[RestoreSession] Phase 2: Audio loaded and seeked');
@@ -258,7 +358,6 @@ export function loadAudioInBackground(
         console.debug('[RestoreSession] Background audio load failed:', error);
       }
     } finally {
-      if (restoreLoad === load) restoreLoad = null;
       settle();
     }
   }, 100);

@@ -15,7 +15,8 @@
  *    anchor (Hafs-keyed, see the verse-units contract, section 3);
  *  - the unnumbered Fatiha basmala of the Madani / Basri counts (Warsh,
  *    Qalun, al-Duri, al-Susi) as a row without a number: it is recited and
- *    written, but it is no verse there, so nothing can select it;
+ *    written, but it is no verse there, so nothing can select it (its words
+ *    open Word Study alone, unnumberedWordStudyPayload());
  *  - the Hafs-aligned content of every Hafs verse the row holds (contract
  *    4.6, list rule): a Hafs verse's translation is shown once, under the
  *    first row holding it; a Hafs verse split between rows carries the
@@ -25,7 +26,8 @@
  *    reading, so it is never shown under another rewayah's verse.
  *
  * playbackBandUnits() is the follow-along band (contract 4.2) and
- * unitVerseActionsPayload() the verse-actions payload (contract 4.1).
+ * unitVerseActionsPayload() the verse-actions payload (contract 4.1);
+ * unnumberedWordStudyPayload() is a basmala word's (Word Study only).
  *
  * The player keeps Hafs rows for a Hafs track (Hafs output stays
  * byte-identical and never waits for the verse units); for Hafs these rows
@@ -428,6 +430,50 @@ export function unitVerseActionsPayload(
     unitKeys: [row.unit.key],
   };
 }
+
+// @ai-start
+/**
+ * verse-actions payload of a word of the unnumbered Fatiha basmala row (the
+ * row with no unit): Word Study only (`wordStudyOnly`) at that word, in the
+ * row's rewayah, over the Hafs verse(s) holding the row's words (Hafs 1:1).
+ * The basmala is no verse there, so the payload names no unit and the
+ * sheet selects nothing; the Hafs fields name the Hafs verse whose words
+ * are studied. Null for a verse row (unitVerseActionsPayload plus the word)
+ * and for a word of no Hafs verse the row holds.
+ */
+export interface UnnumberedWordStudyPayload {
+  verseKey: string;
+  surahNumber: number;
+  ayahNumber: number;
+  verseKeys?: string[];
+  source: 'player' | 'mushaf';
+  rewayah: RewayahId;
+  initialScreen: 'words';
+  word: {verseKey: string; position: number};
+  wordStudyOnly: true;
+}
+
+export function unnumberedWordStudyPayload(
+  row: VerseUnitRow,
+  word: {hafsKey: string; position: number},
+  source: 'player' | 'mushaf',
+): UnnumberedWordStudyPayload | null {
+  if (row.unit) return null;
+  const first = row.parts[0];
+  if (!first || !row.parts.some(p => p.hafsKey === word.hafsKey)) return null;
+  return {
+    verseKey: first.hafsKey,
+    surahNumber: first.hafsSurah,
+    ayahNumber: first.hafsAyah,
+    ...(row.parts.length > 1 ? {verseKeys: row.parts.map(p => p.hafsKey)} : {}),
+    source,
+    rewayah: row.rewayah,
+    initialScreen: 'words',
+    word: {verseKey: word.hafsKey, position: word.position},
+    wordStudyOnly: true,
+  };
+}
+// @ai-end
 
 /**
  * Disclosure over a row's word-by-word grid of one Hafs verse (word by word

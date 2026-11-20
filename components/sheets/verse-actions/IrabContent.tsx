@@ -1,48 +1,26 @@
 /**
- * I'rab (إعراب) of a verse: every word's grammatical analysis, and the
- * classical i'rab books' discussion of the verse.
+ * The i'rab (إعراب) drawing of Word Study (WordStudyContent): a word's
+ * grammatical analysis, its morphology, and the classical i'rab books'
+ * discussion of a verse.
  *
- * The Arabic words shown are always the app's own: the grid is the word-by-
- * word view (the mushaf's words), and a word referred to inside an i'rab
- * line is filled in from the app's word list. The i'rab data never supplies
- * Quran text. Like word by word, i'rab is aligned to Hafs verses.
+ * The Arabic words shown are always the app's own: a word referred to inside
+ * an i'rab line is filled in from the app's word list. The i'rab data never
+ * supplies Quran text. Like word by word, i'rab is aligned to Hafs verses.
+ *
+ * The building blocks (createIrabStyles, renderRefs, IrabEntryList,
+ * MorphTable, IrabBooksTab): a reference to a word renders as a tappable
+ * «word» only when the caller's canOpen allows it. The I'rab screen they
+ * were drawn for became Word Study. @ai
  */
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import {ScrollView} from 'react-native-actions-sheet';
+import React, {useState} from 'react';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTranslation} from 'react-i18next';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
-import {useTheme} from '@/hooks/useTheme';
-import {Theme} from '@/utils/themeUtils';
-import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
-import {WBWVerseView} from '@/components/player/v2/PlayerContent/QuranView/WBWVerseView';
+import {useHover} from '@/hooks/useHover';
+import {overBackground, readableAccent, Theme} from '@/utils/themeUtils';
 import {
-  getDkFontFamily,
-  useMushafSettingsStore,
-  type RewayahId,
-} from '@/store/mushafSettingsStore';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
-import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import {useTajweedStore} from '@/store/tajweedStore';
-import {wbwDataService} from '@/services/wbw/WBWDataService';
-import {irabDataService} from '@/services/irab/IrabDataService';
-import {
-  quotableWord,
   splitRefs,
   type IrabBookPassages,
   type IrabEntry,
@@ -51,25 +29,8 @@ import {
 } from '@/services/irab/irabFormat';
 import {localizeDigits} from '@/i18n/format';
 import {isRTL, latinLetterSpacing} from '@/utils/rtl';
-import {wbwParts, type UnitStart} from './verseUnitScreens';
-
-interface IrabContentProps {
-  surahNumber: number;
-  ayahNumber: number;
-  /** Rewayah of the verse the sheet was opened for (Hafs notice only). */
-  rewayah?: RewayahId;
-  /** Another rewayah's verse: one view per Hafs verse holding its words. */
-  unitStart?: UnitStart;
-  onBack: () => void;
-}
-
-type Tab = 'words' | 'books';
-
-interface VerseData {
-  words: WordIrab[];
-  /** The app's word text per position (for references), damaged ones out. */
-  wordText: Map<number, string>;
-}
+import {isolate} from './word-study/text'; // @ai
+import type {WordRef} from './wordStudy'; // @ai
 
 const ARABIC_FONT = 'ScheherazadeNew-Regular';
 const ARABIC_FONT_BOLD = 'ScheherazadeNew-SemiBold';
@@ -77,305 +38,82 @@ const ARABIC_FONT_BOLD = 'ScheherazadeNew-SemiBold';
 // The i'rab is Arabic in every app language, so it sits on the physical
 // right. In an RTL app React Native swaps left and right (textAlign, flex
 // rows, borders), so the physical side is named per direction.
-const RIGHT = isRTL ? 'left' : 'right';
-const ROW_FROM_RIGHT = isRTL ? 'row' : 'row-reverse';
+// @ai-start
+export const RIGHT = isRTL ? 'left' : 'right';
+export const ROW_FROM_RIGHT = isRTL ? 'row' : 'row-reverse';
+// @ai-end
 /** Keeps a Latin label's colon after it inside a right-to-left line. */
 const LRM = String.fromCharCode(0x200e);
 
-export const IrabContent: React.FC<IrabContentProps> = ({
-  surahNumber,
-  ayahNumber,
-  rewayah,
-  unitStart,
-}) => {
-  const {t} = useTranslation('sheets');
-  const {theme} = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const verseKey = `${surahNumber}:${ayahNumber}`;
-  const parts = useMemo(
-    () => wbwParts(verseKey, unitStart),
-    [verseKey, unitStart],
+// @ai-start
+export type IrabStyles = ReturnType<typeof buildIrabStyles>;
+/**
+ * The caller's `sheets` translations. The blocks name the namespace on each
+ * key ({ns: 'sheets'}) as well: their `t` comes from the caller, so the key
+ * extractor (npm run i18n:check) cannot see which namespace it is. @ai
+ */
+export type IrabT = ReturnType<typeof useTranslation<'sheets'>>['t'];
+
+/** What i'rab text needs to show the words it refers to. */
+export interface IrabRefContext {
+  /** The verse the text belongs to (`{{5}}` is its word 5). */
+  verseKey: string;
+  /** The app's text of a word, for quoting it; undefined when unknown. */
+  wordTextOf: (verseKey: string, position: number) => string | undefined;
+  /**
+   * Whether a referred word can be opened (Word Study: a word of the
+   * selection). Otherwise it is plain text with no onPress.
+   */
+  canOpen: (ref: WordRef) => boolean;
+  onRef: (ref: WordRef) => void;
+  styles: IrabStyles;
+  t: IrabT;
+  /**
+   * The name of a verse other than `verseKey` in a reference to one of its
+   * words, digits localized: "1:2", or "Hafs 1:2" beside another rewayah.
+   * Default: the verse key.
+   */
+  verseLabel?: (verseKey: string) => string;
+}
+
+/**
+ * A referred word as the text shows it: «word» (or "word 5" when the word's
+ * text is unknown); a word of another verse also names that verse,
+ * «word» (1:2), isolated so a Latin "word 5 (1:2)" keeps its order inside
+ * the right-to-left i'rab line.
+ */
+function refText(ref: WordRef, context: IrabRefContext): string {
+  const {verseKey, wordTextOf, t, verseLabel} = context;
+  const text = wordTextOf(ref.verseKey, ref.position);
+  const word = text
+    ? `«${text}»`
+    : localizeDigits(t('irab.wordN', {ns: 'sheets', n: ref.position}));
+  if (ref.verseKey === verseKey) return word;
+  const verse = verseLabel
+    ? verseLabel(ref.verseKey)
+    : localizeDigits(ref.verseKey);
+  return isolate(
+    localizeDigits(t('irab.otherVerseRef', {ns: 'sheets', word, verse})),
   );
+}
 
-  const [tab, setTab] = useState<Tab>('words');
-  const [showAll, setShowAll] = useState(false);
-  const [selected, setSelected] = useState<{
-    verseKey: string;
-    position: number;
-  }>({verseKey: parts[0].verseKey, position: 1});
-  const [data, setData] = useState<Map<string, VerseData> | null>(null);
-  const [books, setBooks] = useState<Map<string, IrabBookPassages[]> | null>(
-    null,
-  );
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setSelected({verseKey: parts[0].verseKey, position: 1});
-    setData(null);
-    setBooks(null);
-    setFailed(false);
-    let cancelled = false;
-    (async () => {
-      try {
-        const map = new Map<string, VerseData>();
-        const bookMap = new Map<string, IrabBookPassages[]>();
-        for (const part of parts) {
-          const [words, appWords, verseBooks] = await Promise.all([
-            irabDataService.getVerse(part.verseKey),
-            wbwDataService.getVerseWords(part.verseKey),
-            irabDataService.getBooks(part.verseKey),
-          ]);
-          const wordText = new Map<number, string>();
-          for (const w of appWords) {
-            if (w.textUthmani && !w.textUthmani.includes('�')) {
-              wordText.set(w.position, quotableWord(w.textUthmani));
-            }
-          }
-          map.set(part.verseKey, {words, wordText});
-          bookMap.set(part.verseKey, verseBooks);
-        }
-        if (!cancelled) {
-          setData(map);
-          setBooks(bookMap);
-        }
-      } catch (error) {
-        console.error('[IrabContent] load failed:', error);
-        if (!cancelled) setFailed(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [parts]);
-
-  // Word-by-word grid settings (same as the word by word screen).
-  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
-  const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
-  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
-  const showAllahNameHighlight = useMushafSettingsStore(
-    s => s.showAllahNameHighlight,
-  );
-  const allahNameHighlightColorSetting = useMushafSettingsStore(
-    s => s.allahNameHighlightColor,
-  );
-  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
-  const allahNameHighlightColor = useMemo(
-    () =>
-      getAllahNameHighlightColorHex(
-        allahNameHighlightColorSetting,
-        theme.isDarkMode,
-      ),
-    [allahNameHighlightColorSetting, theme.isDarkMode],
-  );
-  const dkFontFamily = getDkFontFamily(mushafRenderer, 'hafs');
-  const hafsWordsReady = useSyncExternalStore(
-    digitalKhattDataService.subscribeCacheChanges,
-    () => digitalKhattDataService.isRewayahReady('hafs'),
-  );
-  const isDK =
-    mushafPreloadService.initialized && digitalKhattDataService.initialized;
-  const subscribedFontMgr = useMushafFontMgr();
-  const fontMgr = isDK ? subscribedFontMgr : null;
-  const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
-
-  const wordPressHandlers = useMemo(
-    () =>
-      new Map(
-        parts.map(part => [
-          part.verseKey,
-          (position: number) => {
-            setSelected({verseKey: part.verseKey, position});
-            setShowAll(false);
-          },
-        ]),
-      ),
-    [parts],
-  );
-  const noop = useCallback(() => undefined, []);
-
-  const selectRef = useCallback(
-    (refVerseKey: string, position: number) => {
-      if (parts.some(p => p.verseKey === refVerseKey)) {
-        setSelected({verseKey: refVerseKey, position});
-        setShowAll(false);
-      }
-    },
-    [parts],
-  );
-
-  const renderWordCard = (partKey: string, word: WordIrab) => {
-    const verse = data?.get(partKey);
-    const total = verse?.words.length ?? 0;
-    const text = verse?.wordText.get(word.position);
-    return (
-      <View key={`${partKey}:${word.position}`} style={styles.card}>
-        <View style={styles.cardHeader}>
-          {text ? <Text style={styles.cardWord}>{text}</Text> : null}
-          <Text style={styles.cardCounter}>
-            {localizeDigits(t('irab.wordOf', {n: word.position, total}))}
-          </Text>
-        </View>
-        {word.entries.map((entry, i) => (
-          <EntryRow
-            key={i}
-            entry={entry}
-            verseKey={partKey}
-            wordTextOf={(vk, pos) => data?.get(vk)?.wordText.get(pos)}
-            onRef={selectRef}
-            styles={styles}
-            t={t}
-          />
-        ))}
-        {word.agreed ? (
-          <View style={styles.agreedRow}>
-            <Feather
-              name="check-circle"
-              size={moderateScale(12)}
-              color={theme.colors.primary}
-            />
-            <Text style={styles.agreedText}>{t('irab.agreed')}</Text>
-          </View>
-        ) : null}
-        {!showAll && word.morph.length > 0 ? (
-          <MorphTable
-            facts={word.morph}
-            verseKey={partKey}
-            wordTextOf={(vk, pos) => data?.get(vk)?.wordText.get(pos)}
-            onRef={selectRef}
-            styles={styles}
-            t={t}
-          />
-        ) : null}
-      </View>
-    );
-  };
-
-  return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}>
-      <View style={styles.tabs}>
-        {(['words', 'books'] as const).map(key => (
-          <Pressable
-            key={key}
-            accessibilityRole="tab"
-            accessibilityState={{selected: tab === key}}
-            onPress={() => setTab(key)}
-            style={[styles.tab, tab === key && styles.tabActive]}>
-            <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>
-              {t(key === 'words' ? 'irab.tabWords' : 'irab.tabBooks')}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {failed ? (
-        <Text style={styles.message}>{t('irab.loadFailed')}</Text>
-      ) : !data ? (
-        <ActivityIndicator style={styles.loading} color={theme.colors.text} />
-      ) : tab === 'words' ? (
-        <>
-          {parts.map(part => {
-            const verse = data.get(part.verseKey);
-            const shown = showAll
-              ? (verse?.words ?? [])
-              : (verse?.words ?? []).filter(
-                  w =>
-                    selected.verseKey === part.verseKey &&
-                    w.position === selected.position,
-                );
-            return (
-              <React.Fragment key={part.verseKey}>
-                {part.caption !== null && (
-                  <Text style={styles.partCaption}>
-                    {localizeDigits(
-                      t('irab.hafsVerse', {verse: part.verseKey}),
-                    )}
-                  </Text>
-                )}
-                <View style={styles.wbwWrapper}>
-                  <WBWVerseView
-                    key={`${part.verseKey}:${hafsWordsReady ? 'ready' : 'loading'}`}
-                    verseKey={part.verseKey}
-                    rewayah={rewayah}
-                    textColor={theme.colors.text}
-                    arabicFontSize={arabicFontSize}
-                    dkFontFamily={dkFontFamily}
-                    fontMgr={fontMgr}
-                    showTranslation={false}
-                    showTransliteration={false}
-                    onWordPress={wordPressHandlers.get(part.verseKey) ?? noop}
-                    selectedWordPosition={
-                      !showAll && selected.verseKey === part.verseKey
-                        ? selected.position
-                        : null
-                    }
-                    showTajweed={showTajweed}
-                    indexedTajweedData={indexedTajweedData}
-                    arabicTextWeight={arabicTextWeight}
-                    showAllahNameHighlight={showAllahNameHighlight}
-                    allahNameHighlightColor={allahNameHighlightColor}
-                    onTap={noop}
-                    selectOnTap
-                  />
-                </View>
-                {part === parts[0] && (
-                  <View style={styles.modeRow}>
-                    <Text style={styles.hint}>{t('irab.tapWord')}</Text>
-                    <Pressable
-                      onPress={() => setShowAll(v => !v)}
-                      hitSlop={8}
-                      style={styles.modeButton}>
-                      <Text style={styles.modeButtonText}>
-                        {t(showAll ? 'irab.showWord' : 'irab.showAll')}
-                      </Text>
-                    </Pressable>
-                  </View>
-                )}
-                {shown.map(word => renderWordCard(part.verseKey, word))}
-              </React.Fragment>
-            );
-          })}
-          <Text style={styles.sources}>{t('irab.sources')}</Text>
-        </>
-      ) : (
-        <BooksTab
-          parts={parts.map(p => ({
-            verseKey: p.verseKey,
-            caption: p.caption,
-            books: books?.get(p.verseKey) ?? [],
-          }))}
-          styles={styles}
-          t={t}
-        />
-      )}
-    </ScrollView>
-  );
-};
-
-type Styles = ReturnType<typeof createStyles>;
-type T = ReturnType<typeof useTranslation<'sheets'>>['t'];
-
-/** Text with its word placeholders filled in as tappable words. */
-function renderRefs(
+/**
+ * Text with its word placeholders filled in (refText), each tappable when
+ * canOpen allows it. The data's own digits follow the app language (a
+ * lemma's homonym number: «مَٰلِك2»).
+ */
+export function renderRefs(
   text: string,
-  verseKey: string,
-  wordTextOf: (verseKey: string, position: number) => string | undefined,
-  onRef: (verseKey: string, position: number) => void,
-  styles: Styles,
-  t: T,
+  context: IrabRefContext,
 ): React.ReactNode[] {
+  const {verseKey, canOpen, onRef, styles} = context;
   return splitRefs(text, verseKey).map((part, i) => {
-    if (part.type === 'text') return part.text;
-    const word = wordTextOf(part.verseKey, part.position);
-    const shown = word
-      ? `«${word}»`
-      : localizeDigits(t('irab.wordN', {n: part.position}));
+    if (part.type === 'text') return localizeDigits(part.text);
+    const ref: WordRef = {verseKey: part.verseKey, position: part.position};
+    const shown = refText(ref, context);
+    if (!canOpen(ref)) return shown;
     return (
-      <Text
-        key={i}
-        style={styles.ref}
-        onPress={() => onRef(part.verseKey, part.position)}>
+      <Text key={i} style={styles.ref} onPress={() => onRef(ref)}>
         {shown}
       </Text>
     );
@@ -383,37 +121,63 @@ function renderRefs(
 }
 
 /** The word's morphology (الصرف) as label / value rows. */
-const MorphTable: React.FC<{
-  facts: MorphFact[];
-  verseKey: string;
-  wordTextOf: (verseKey: string, position: number) => string | undefined;
-  onRef: (verseKey: string, position: number) => void;
-  styles: Styles;
-  t: T;
-}> = ({facts, verseKey, wordTextOf, onRef, styles, t}) => (
-  <View style={styles.morph}>
-    <Text style={styles.morphTitle}>{t('irab.morphology')}</Text>
-    {facts.map((fact, i) => (
-      <View key={i} style={[styles.morphRow, i > 0 && styles.morphRowBorder]}>
-        <Text style={styles.morphLabel}>{fact.label}</Text>
-        <Text style={styles.morphValue}>
-          {renderRefs(fact.value, verseKey, wordTextOf, onRef, styles, t)}
-        </Text>
-      </View>
-    ))}
-  </View>
-);
+export const MorphTable: React.FC<
+  IrabRefContext & {facts: readonly MorphFact[]}
+> = ({facts, ...context}) => {
+  const {styles, t} = context;
+  return (
+    <View style={styles.morph}>
+      <Text style={styles.morphTitle}>
+        {t('irab.morphology', {ns: 'sheets'})}
+      </Text>
+      {facts.map((fact, i) => (
+        <View key={i} style={[styles.morphRow, i > 0 && styles.morphRowBorder]}>
+          <Text style={styles.morphLabel}>{fact.label}</Text>
+          <Text style={styles.morphValue}>
+            {renderRefs(fact.value, context)}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+};
 
-const EntryRow: React.FC<{
-  entry: IrabEntry;
-  verseKey: string;
-  wordTextOf: (verseKey: string, position: number) => string | undefined;
-  onRef: (verseKey: string, position: number) => void;
-  styles: Styles;
-  t: T;
-}> = ({entry, verseKey, wordTextOf, onRef, styles, t}) => {
+/** A word's i'rab entries, then the mark that both analyses agree. */
+export const IrabEntryList: React.FC<
+  IrabRefContext & {word: Pick<WordIrab, 'entries' | 'agreed'>}
+> = ({word, ...context}) => {
+  const {styles, t} = context;
+  return (
+    <>
+      {word.entries.map((entry, i) => (
+        <EntryRow key={i} entry={entry} context={context} />
+      ))}
+      {word.agreed ? (
+        <View style={styles.agreedRow}>
+          <Feather
+            name="check-circle"
+            size={moderateScale(12)}
+            color={styles.agreedIcon.color}
+          />
+          <Text style={styles.agreedText}>
+            {t('irab.agreed', {ns: 'sheets'})}
+          </Text>
+        </View>
+      ) : null}
+    </>
+  );
+};
+
+const EntryRow: React.FC<{entry: IrabEntry; context: IrabRefContext}> = ({
+  entry,
+  context,
+}) => {
+  const {styles, t} = context;
+  // @ai-end
   const label =
-    entry.kind === 'implied' ? t('irab.implied') : entry.label || null;
+    entry.kind === 'implied'
+      ? t('irab.implied', {ns: 'sheets'}) // @ai
+      : entry.label || null;
   const rowStyle = [
     styles.entry,
     entry.kind === 'phrase' && styles.entryPhrase,
@@ -437,40 +201,51 @@ const EntryRow: React.FC<{
             {/[A-Za-z]/.test(label) ? `:${LRM} ` : ': '}
           </Text>
         ) : null}
-        {renderRefs(entry.text, verseKey, wordTextOf, onRef, styles, t)}
+        {renderRefs(entry.text, context) /* @ai */}
       </Text>
     </View>
   );
 };
 
-const BooksTab: React.FC<{
-  parts: {
+// @ai-start
+/**
+ * The classical i'rab books' passages on each verse, or on each run of
+ * verses a passage discusses together (mergeBookPassages). A part's caption
+ * is the label shown over its books ("Hafs 1:7", "2:3-5"), null for none.
+ */
+export const IrabBooksTab: React.FC<{
+  parts: readonly {
     verseKey: string;
     caption: string | null;
-    books: IrabBookPassages[];
+    books: readonly IrabBookPassages[];
   }[];
-  styles: Styles;
-  t: T;
+  styles: IrabStyles;
+  t: IrabT;
 }> = ({parts, styles, t}) => {
+  // @ai-end
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const anyBooks = parts.some(p => p.books.length > 0);
   return (
     <View>
-      <Text style={styles.hint}>{t('irab.booksNote')}</Text>
-      {!anyBooks && <Text style={styles.message}>{t('irab.noBooks')}</Text>}
+      <Text style={styles.hint}>
+        {t('irab.booksNote', {ns: 'sheets'}) /* @ai */}
+      </Text>
+      {!anyBooks && (
+        <Text style={styles.message}>
+          {t('irab.noBooks', {ns: 'sheets'}) /* @ai */}
+        </Text>
+      )}
       {parts.map(part => (
         <React.Fragment key={part.verseKey}>
           {part.caption !== null && part.books.length > 0 && (
-            <Text style={styles.partCaption}>
-              {localizeDigits(t('irab.hafsVerse', {verse: part.verseKey}))}
-            </Text>
+            <Text style={styles.partCaption}>{part.caption /* @ai */}</Text>
           )}
           {part.books.map(book => (
             <View key={book.bookId} style={styles.bookCard}>
               <Text style={styles.bookTitle}>{book.nameAr}</Text>
               <Text style={styles.bookAuthor}>{book.authorAr}</Text>
-              {book.passages.map((passage, i) => {
-                const key = `${part.verseKey}:${book.bookId}:${i}`;
+              {book.passages.map(passage => {
+                const key = `${part.verseKey}:${passage.id}`;
                 const open = expanded.has(key);
                 const long = passage.text.length > 700;
                 return (
@@ -478,6 +253,7 @@ const BooksTab: React.FC<{
                     <Text style={styles.passageMeta}>
                       {localizeDigits(
                         t('irab.passageRef', {
+                          ns: 'sheets', // @ai
                           part: passage.part,
                           page: passage.page,
                         }),
@@ -489,8 +265,8 @@ const BooksTab: React.FC<{
                         : passage.text}
                     </Text>
                     {long && (
-                      <Pressable
-                        hitSlop={8}
+                      <ReadMoreButton
+                        open={open}
                         onPress={() =>
                           setExpanded(prev => {
                             const next = new Set(prev);
@@ -498,11 +274,10 @@ const BooksTab: React.FC<{
                             else next.add(key);
                             return next;
                           })
-                        }>
-                        <Text style={styles.readMore}>
-                          {t(open ? 'irab.readLess' : 'irab.readMore')}
-                        </Text>
-                      </Pressable>
+                        }
+                        styles={styles}
+                        t={t}
+                      />
                     )}
                   </View>
                 );
@@ -511,77 +286,73 @@ const BooksTab: React.FC<{
           ))}
         </React.Fragment>
       ))}
-      <Text style={styles.sources}>{t('irab.booksSources')}</Text>
+      <Text style={styles.sources}>
+        {t('irab.booksSources', {ns: 'sheets'}) /* @ai */}
+      </Text>
     </View>
   );
 };
 
-const createStyles = (theme: Theme) => {
+/**
+ * Read more / Show less under a long passage: a button that says whether
+ * the passage is open, with a 44pt target (28pt plus its hit slop).
+ */
+const ReadMoreButton: React.FC<{
+  open: boolean;
+  onPress: () => void;
+  styles: IrabStyles;
+  t: IrabT;
+}> = ({open, onPress, styles, t}) => {
+  const {hovered, hoverProps} = useHover();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{expanded: open}}
+      hitSlop={{top: 8, bottom: 8}}
+      onPress={onPress}
+      {...hoverProps}
+      style={({pressed}) => [
+        styles.readMore,
+        (pressed || hovered) && styles.readMoreActive,
+      ]}>
+      <Text style={styles.readMoreText}>
+        {t(open ? 'irab.readLess' : 'irab.readMore', {ns: 'sheets'})}
+      </Text>
+    </Pressable>
+  );
+};
+
+// @ai-start
+/** The i'rab styles, shared by the I'rab screen and Word Study. */
+const buildIrabStyles = (theme: Theme) => {
   const subtle = Color(theme.colors.text).alpha(0.04).toString();
   const hairline = Color(theme.colors.text).alpha(0.08).toString();
-  const secondary = Color(theme.colors.textSecondary).alpha(0.75).toString();
+  // Secondary text: 0.8 alpha at least (ipad-standards.md §12).
+  const secondary = Color(theme.colors.textSecondary).alpha(0.8).toString();
+  // @ai-end
   const phraseRule = Color(theme.colors.primary).alpha(0.45).toString();
+  // Text in the accent (labels, «word» references, the agreed mark) at
+  // 4.5:1 or more on each surface it is drawn on: the sheet, the 4% fill
+  // of the morphology block, the 6% fill of a pressed or hovered word, an
+  // alternative entry's 7% accent tint, and that tint over the 6% fill (an
+  // alternative entry inside a pressed or hovered whole-verse word card).
+  const hovered = overBackground(theme, theme.colors.text, 0.06);
+  const accentText = readableAccent(theme, [
+    theme.colors.background,
+    overBackground(theme, theme.colors.text, 0.04),
+    hovered,
+    overBackground(theme, theme.colors.primary, 0.07),
+    Color(hovered).mix(Color(theme.colors.primary), 0.07).hex(),
+  ]);
   return StyleSheet.create({
-    container: {
-      paddingHorizontal: moderateScale(4),
-      paddingTop: moderateScale(8),
-      paddingBottom: moderateScale(32),
-    },
-    tabs: {
-      flexDirection: 'row',
-      backgroundColor: subtle,
-      borderRadius: moderateScale(10),
-      padding: moderateScale(3),
-      marginBottom: verticalScale(10),
-    },
-    tab: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: verticalScale(7),
-      borderRadius: moderateScale(8),
-    },
-    tabActive: {
-      backgroundColor: theme.colors.background,
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      shadowOffset: {width: 0, height: 1},
-      elevation: 1,
-    },
-    tabText: {
-      fontFamily: 'Manrope-Medium',
-      fontSize: moderateScale(13),
-      color: secondary,
-    },
-    tabTextActive: {
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-    },
     partCaption: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textTertiary,
+      color: secondary, // @ai: ipad-standards §12 (was 0.6)
       letterSpacing: latinLetterSpacing(0.3),
       marginTop: verticalScale(6),
       marginBottom: verticalScale(6),
       marginLeft: moderateScale(4),
-    },
-    wbwWrapper: {
-      backgroundColor: subtle,
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(14),
-      overflow: 'hidden',
-      paddingHorizontal: moderateScale(10),
-      paddingVertical: verticalScale(8),
-    },
-    modeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: verticalScale(8),
-      marginBottom: verticalScale(4),
-      paddingHorizontal: moderateScale(4),
     },
     hint: {
       flexShrink: 1,
@@ -589,42 +360,6 @@ const createStyles = (theme: Theme) => {
       fontSize: moderateScale(11.5),
       color: secondary,
       marginBottom: verticalScale(4),
-    },
-    modeButton: {
-      paddingHorizontal: moderateScale(10),
-      paddingVertical: verticalScale(4),
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.primary).alpha(0.12).toString(),
-    },
-    modeButtonText: {
-      fontFamily: 'Manrope-SemiBold',
-      fontSize: moderateScale(12),
-      color: theme.colors.primary,
-    },
-    card: {
-      marginTop: verticalScale(8),
-      borderRadius: moderateScale(14),
-      borderWidth: 1,
-      borderColor: hairline,
-      paddingHorizontal: moderateScale(14),
-      paddingVertical: verticalScale(10),
-    },
-    cardHeader: {
-      flexDirection: ROW_FROM_RIGHT,
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: verticalScale(4),
-    },
-    cardWord: {
-      fontFamily: ARABIC_FONT_BOLD,
-      fontSize: moderateScale(24),
-      color: theme.colors.text,
-      writingDirection: 'rtl',
-    },
-    cardCounter: {
-      fontFamily: 'Manrope-Medium',
-      fontSize: moderateScale(11),
-      color: secondary,
     },
     entry: {
       paddingVertical: verticalScale(3),
@@ -666,20 +401,23 @@ const createStyles = (theme: Theme) => {
     },
     entryLabel: {
       fontFamily: ARABIC_FONT_BOLD,
-      color: theme.colors.primary,
+      color: accentText,
     },
     entryLabelAlt: {
-      color: theme.colors.primary,
+      color: accentText,
     },
     ref: {
       fontFamily: ARABIC_FONT_BOLD,
-      color: theme.colors.primary,
+      color: accentText,
     },
     agreedRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: moderateScale(5),
       marginTop: verticalScale(6),
+    },
+    agreedIcon: {
+      color: accentText,
     },
     agreedText: {
       fontFamily: 'Manrope-Medium',
@@ -716,7 +454,7 @@ const createStyles = (theme: Theme) => {
       fontFamily: ARABIC_FONT_BOLD,
       fontSize: moderateScale(14),
       lineHeight: moderateScale(26),
-      color: theme.colors.primary,
+      color: accentText,
       textAlign: RIGHT,
       writingDirection: 'rtl',
     },
@@ -736,14 +474,11 @@ const createStyles = (theme: Theme) => {
       textAlign: 'center',
       marginTop: verticalScale(24),
     },
-    loading: {
-      marginTop: verticalScale(32),
-    },
     sources: {
       fontFamily: 'Manrope-Regular',
-      fontSize: moderateScale(10.5),
+      fontSize: moderateScale(11), // @ai: the caption size of the type ramp
       lineHeight: moderateScale(15),
-      color: theme.colors.textTertiary,
+      color: secondary, // @ai: ipad-standards §12 (was 0.55)
       marginTop: verticalScale(16),
       paddingHorizontal: moderateScale(4),
     },
@@ -791,10 +526,37 @@ const createStyles = (theme: Theme) => {
       writingDirection: 'rtl',
     },
     readMore: {
-      fontFamily: 'Manrope-SemiBold',
-      fontSize: moderateScale(12),
-      color: theme.colors.primary,
+      alignSelf: 'flex-start',
+      justifyContent: 'center',
+      minHeight: 28,
+      paddingHorizontal: moderateScale(8),
       marginTop: verticalScale(4),
+      borderRadius: moderateScale(8),
+    },
+    readMoreActive: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    // Chrome: the text colour, never the accent.
+    readMoreText: {
+      fontFamily: 'Manrope-SemiBold',
+      fontSize: moderateScale(13),
+      color: theme.colors.text,
     },
   });
+};
+
+const irabStylesByTheme = new WeakMap<Theme, IrabStyles>();
+
+/**
+ * The i'rab styles of a theme, built once per theme object (themeStore keeps
+ * one until the theme changes). The whole-verse list draws a card per word,
+ * up to 128 at 2:282, and each would otherwise work out the accent again.
+ */
+export const createIrabStyles = (theme: Theme): IrabStyles => {
+  let styles = irabStylesByTheme.get(theme);
+  if (!styles) {
+    styles = buildIrabStyles(theme);
+    irabStylesByTheme.set(theme, styles);
+  }
+  return styles;
 };

@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import {IRAB_DB_NAME} from '@/constants/bundledDatabases'; // @ai
 import {
   decodeEntries,
   decodeMorph,
@@ -9,10 +10,14 @@ import {
 /**
  * The bundled i'rab database. The file name carries its version: a new build
  * of the data ships as a new file, so installed apps never keep a stale
- * import (bundled databases are imported once).
+ * import (bundled databases are imported once). The name is IRAB_DB_NAME
+ * (constants/bundledDatabases.ts), which matches the build's DB_VERSION
+ * (scripts/irab/build-irab-db.ts); rename the require() below with it, and
+ * list the name it replaces in OLD_DB_NAMES: those copies are deleted on the
+ * first open of every session, before anything is imported.
  */
-const DB_NAME = 'irab-v1.db';
-const OLD_DB_NAMES: readonly string[] = [];
+const DB_NAME = IRAB_DB_NAME; // @ai
+const OLD_DB_NAMES: readonly string[] = ['irab-v1.db'];
 
 class IrabDataService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -33,6 +38,13 @@ class IrabDataService {
   }
 
   private async open(): Promise<void> {
+    // The copies older releases imported go first: a nearly full phone then
+    // has room for the import, and a copy an earlier session failed to
+    // delete (or was killed before deleting) goes on the next launch. Best
+    // effort: once a copy is gone, deleting it throws, and that is fine.
+    for (const old of OLD_DB_NAMES) {
+      await SQLite.deleteDatabaseAsync(old).catch(() => undefined);
+    }
     let db = await SQLite.openDatabaseAsync(DB_NAME);
     // Imported and complete (the morph column is part of this build).
     const ready = await db
@@ -44,12 +56,9 @@ class IrabDataService {
       await db.closeAsync();
       await SQLite.deleteDatabaseAsync(DB_NAME);
       await SQLite.importDatabaseFromAssetAsync(DB_NAME, {
-        assetId: require('../../assets/data/irab-v1.db'),
+        assetId: require('../../assets/data/irab-v2.db'),
       });
       db = await SQLite.openDatabaseAsync(DB_NAME);
-      for (const old of OLD_DB_NAMES) {
-        await SQLite.deleteDatabaseAsync(old).catch(() => undefined);
-      }
     }
     const rows = await db.getAllAsync<{id: number; text: string}>(
       'SELECT id, text FROM texts ORDER BY id',
@@ -84,18 +93,23 @@ class IrabDataService {
     return words;
   }
 
-  /** The classical i'rab books' passages that discuss a (Hafs) verse. */
+  /**
+   * The classical i'rab books' passages that discuss a (Hafs) verse, each
+   * with its id: a page discussing several verses has the same id in each.
+   */
   async getBooks(verseKey: string): Promise<IrabBookPassages[]> {
     await this.initialize();
     const rows = await this.db!.getAllAsync<{
       book_id: number;
       name_ar: string;
       author_ar: string;
+      passage_id: number;
       text: string;
       part: string;
       page: string;
     }>(
-      `SELECT b.id AS book_id, b.name_ar, b.author_ar, p.text, p.part, p.page
+      `SELECT b.id AS book_id, b.name_ar, b.author_ar,
+              p.id AS passage_id, p.text, p.part, p.page
          FROM verse_passages v
          JOIN books b ON b.id = v.book_id
          JOIN passages p ON p.id = v.passage_id
@@ -115,7 +129,12 @@ class IrabDataService {
         };
         books.set(row.book_id, book);
       }
-      book.passages.push({text: row.text, part: row.part, page: row.page});
+      book.passages.push({
+        id: row.passage_id,
+        text: row.text,
+        part: row.part,
+        page: row.page,
+      });
     }
     return [...books.values()];
   }

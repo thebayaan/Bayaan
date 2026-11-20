@@ -38,6 +38,7 @@ jest.mock('@/services/player/store/playerStore', () => ({
     select({
       sheetMode: mockSheetMode,
       queue: {tracks: [{id: 'a'}], currentIndex: 0},
+      settings: {repeatMode: 'none'}, // @ai read by the next-track shortcut
     }),
 }));
 jest.mock('@/services/keyboard/keyActions', () => ({

@@ -126,9 +126,18 @@ export function unregisterPlayerSheetController(
  * to 'full', so even if sheetMode was stale (stuck on 'full' from a missed
  * onChange), the player still opens. `origin` is the tapped mini player's
  * window rect; without it the player measures the mounted mini player.
+ * Does nothing while there is no current track. @ai
  */
 export function expandPlayerSheet(origin?: PlayerOrigin) {
-  usePlayerStore.getState().setSheetMode('full');
+  // @ai-start
+  // Without a track there is no player to open: it is not even mounted.
+  // Marking it open anyway (a widget's bayaan://player link with an empty
+  // queue) made it pop open by itself when the first track started, and
+  // made Android's back button do nothing once before that.
+  const {queue, setSheetMode} = usePlayerStore.getState();
+  if (!queue.tracks[queue.currentIndex]) return;
+  setSheetMode('full');
+  // @ai-end
   _controller?.expand(origin);
 }
 

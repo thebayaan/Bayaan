@@ -44,6 +44,7 @@ const DK_DB_ASSETS = {
   'dk_words_qaloon.db': require('../../data/mushaf/digitalkhatt/dk_words_qaloon.db'),
   'dk_words_doori.db': require('../../data/mushaf/digitalkhatt/dk_words_doori.db'),
   'dk_words_soosi.db': require('../../data/mushaf/digitalkhatt/dk_words_soosi.db'),
+  'dk_readings.db': require('../../data/mushaf/digitalkhatt/dk_readings.db'), // @ai
 } as const;
 
 type DkDbAssetFile = keyof typeof DK_DB_ASSETS;
@@ -129,6 +130,33 @@ function requireRewayahAssets(rewayah: RewayahId): RewayahAssetConfig {
 export function getRewayahFontFamily(rewayah: RewayahId): string | null {
   return REWAYAH_DATA[rewayah]?.fontFamily ?? null;
 }
+
+// @ai-start
+// ── Auxiliary DBs ───────────────────────────────────────────────────────────
+//
+// Bundled DBs that are neither a rewayah's words nor the layout. They are
+// delivered exactly like those (content-addressed copy, md5 check once per
+// session, delete and re-import once when unreadable, stale-copy sweeps,
+// resetDatabases) but are only ever read on demand through readAuxDb, never
+// into the main or side caches.
+export type DkAuxDbId = 'readings';
+
+interface AuxDbConfig {
+  dbName: string; // on-device name without the content hash
+  assetFile: DkDbAssetFile;
+  table: 'slots'; // a table every good copy has (checked before reading)
+}
+
+const AUX_DB_DATA: Readonly<Record<DkAuxDbId, AuxDbConfig>> = {
+  // How each of the 8 rewayat reads every Hafs word
+  // (scripts/rewayah/build_readings_index.py, services/mushaf/WordReadingsService.ts).
+  readings: {
+    dbName: 'dk_readings.db',
+    assetFile: 'dk_readings.db',
+    table: 'slots',
+  },
+};
+// @ai-end
 
 // @ai-start
 // The Hafs basmala (layout DB has NULL word IDs for basmallah lines). Other
@@ -319,8 +347,39 @@ export function getCurrentDbNamesByBase(): Map<string, string> {
     }
     byBase.set(base, name);
   }
+  // @ai-start
+  // The auxiliary DBs too, so stale-copy sweeps and resetDatabases cover
+  // their old copies. One without a manifest entry is left out instead of
+  // stopping the sweeps of every words copy; readAuxDb reports it.
+  for (const cfg of Object.values(AUX_DB_DATA)) {
+    const sha256 = REWAYAH_DATA_MANIFEST[cfg.assetFile];
+    if (!sha256) continue;
+    const base = dbBaseName(cfg.dbName);
+    const name = contentAddressedDbName(cfg.dbName, sha256);
+    const existing = byBase.get(base);
+    if (existing !== undefined && existing !== name) {
+      throw new Error(
+        `[DigitalKhatt] On-device DB base "${base}" maps to two assets`,
+      );
+    }
+    byBase.set(base, name);
+  }
+  // @ai-end
   return byBase;
 }
+
+// @ai-start
+/** First 8 hex chars of an auxiliary DB's sha256: its data version. */
+export function getAuxDbIdentity(id: DkAuxDbId): string {
+  return assetSha256(AUX_DB_DATA[id].assetFile).slice(0, SHA8_LENGTH);
+}
+
+/** sha256 of a bundled Digital Khatt DB asset (the generated manifest), or
+ *  null when the manifest has no such file. */
+export function getBundledAssetSha256(file: string): string | null {
+  return REWAYAH_DATA_MANIFEST[file] ?? null;
+}
+// @ai-end
 
 /**
  * getCurrentDbNamesByBase() plus each retired base with an empty current name,
@@ -338,11 +397,13 @@ interface BundledDbSpec {
   assetId: number;
   assetFile: DkDbAssetFile;
   sha8: string;
+  table: 'words' | 'slots'; // @ai: a table every good copy has
 }
 
 function bundledDbSpec(
   dbName: string,
   assetFile: DkDbAssetFile,
+  table: BundledDbSpec['table'] = 'words', // @ai
 ): BundledDbSpec {
   const sha256 = assetSha256(assetFile);
   return {
@@ -351,6 +412,7 @@ function bundledDbSpec(
     assetId: DK_DB_ASSETS[assetFile],
     assetFile,
     sha8: sha256.slice(0, SHA8_LENGTH),
+    table, // @ai
   };
 }
 
@@ -458,16 +520,23 @@ interface MainWaiter {
   reject: (error: unknown) => void;
 }
 
-async function hasWordsTable(db: SQLite.SQLiteDatabase): Promise<boolean> {
+// @ai-start
+// `table` is the spec's: words for the words DBs, slots for the readings
+// index (an auxiliary DB read through readAuxDb).
+async function hasTable(
+  db: SQLite.SQLiteDatabase,
+  table: BundledDbSpec['table'],
+): Promise<boolean> {
   // A damaged file throws here; treat that like a missing table so the asset
   // is re-imported.
   const row = await db
     .getFirstAsync<{
       name: string;
-    }>(`SELECT name FROM sqlite_master WHERE type='table' AND name='words';`)
+    }>(`SELECT name FROM sqlite_master WHERE type='table' AND name='${table}';`)
     .catch(() => null);
   return row != null;
 }
+// @ai-end
 
 // @ai-start
 /** The generated verse index, after the checks on a copy of a words table. */
@@ -1079,6 +1148,36 @@ export class DigitalKhattDataService {
     });
   }
 
+  // @ai-start
+  /**
+   * Runs `read` on the verified on-device copy of an auxiliary DB: the
+   * content-addressed copy is imported on first use, checked against the
+   * bundled asset's md5 once per session, and deleted and re-imported once
+   * when it cannot be read. The copy is opened for this call only, under the
+   * same per-file lock as the words DBs, and closed afterwards. Rejects when
+   * it stays unreadable (or `read` keeps throwing). Never touches the main
+   * cache, the side caches or the cache version.
+   */
+  readAuxDb<T>(
+    id: DkAuxDbId,
+    read: (db: SQLite.SQLiteDatabase) => Promise<T>,
+  ): Promise<T> {
+    const cfg = AUX_DB_DATA[id];
+    if (!cfg) {
+      return Promise.reject(
+        new Error(`[DigitalKhatt] Unknown auxiliary DB "${String(id)}"`),
+      );
+    }
+    let spec: BundledDbSpec;
+    try {
+      spec = bundledDbSpec(cfg.dbName, cfg.assetFile, cfg.table);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    return this.readBundledDb(spec, read);
+  }
+  // @ai-end
+
   private async readBundledDbLocked<T>(
     spec: BundledDbSpec,
     read: (db: SQLite.SQLiteDatabase) => Promise<T>,
@@ -1113,7 +1212,8 @@ export class DigitalKhattDataService {
     let db: SQLite.SQLiteDatabase | null = await this.openDb(spec.name);
     let imported = false; // @ai
     try {
-      if (!(await hasWordsTable(db))) {
+      if (!(await hasTable(db, spec.table))) {
+        // @ai: the spec's table (slots for the readings index), not always words.
         // First use of this data version (or a damaged copy): import the
         // bundled asset under its content-addressed name. Opening a missing
         // file created an empty one, which must go first: the import skips
@@ -1139,9 +1239,11 @@ export class DigitalKhattDataService {
         }
         // @ai-end
         db = await this.openDb(spec.name);
-        if (!(await hasWordsTable(db))) {
-          throw new Error('table "words" missing after import');
+        // @ai-start
+        if (!(await hasTable(db, spec.table))) {
+          throw new Error(`table "${spec.table}" missing after import`);
         }
+        // @ai-end
         imported = true; // @ai
       }
       await this.verifyCopy(spec, imported); // @ai
@@ -1599,6 +1701,39 @@ export class DigitalKhattDataService {
     // @ai: from the verse index and the layout: no word is read.
     return this.layout?.verseToPage.get(verseKey);
   }
+
+  // @ai-start
+  /**
+   * The page of one Hafs slot ('S:A' word `position`; every rewayah keeps
+   * Hafs slots). The slot itself is looked up, from the verse's first page
+   * on and at most 3 pages, so a layout where a verse runs onto the next
+   * page still gets the right one; undefined before the data has loaded or
+   * when the slot is not there. From the verse index and the layout, like
+   * getPageForVerse: no word is read. A verse is one id range, and its slot
+   * `position` is the id `first + position - 1` (wordStore.ts).
+   */
+  getPageForWord(verseKey: string, position: number): number | undefined {
+    const first = this.getPageForVerse(verseKey);
+    const index = this.words?.index;
+    const i = index?.byKey.get(verseKey);
+    if (first === undefined || !index || i === undefined) return undefined;
+    if (!Number.isInteger(position) || position < 1) return undefined;
+    const wordId = index.first[i] + position - 1;
+    if (wordId > index.last[i]) return undefined;
+    for (let page = first; page < first + 3; page++) {
+      for (const line of this.getPageLines(page)) {
+        if (
+          line.line_type === 'ayah' &&
+          line.first_word_id <= wordId &&
+          wordId <= line.last_word_id
+        ) {
+          return page;
+        }
+      }
+    }
+    return undefined;
+  }
+  // @ai-end
 }
 
 export const digitalKhattDataService = new DigitalKhattDataService();
