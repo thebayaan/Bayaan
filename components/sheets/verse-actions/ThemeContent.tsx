@@ -6,6 +6,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
+import {currentLanguageConfig} from '@/i18n/language';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
@@ -59,6 +60,13 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
     );
   }
 
+  // The Arabic title where the language shows Arabic content; the English one
+  // otherwise, and for a passage with no Arabic title.
+  const themeTitle =
+    currentLanguageConfig.bilingualContent === 'ar' && themeInfo.themeAr
+      ? themeInfo.themeAr
+      : themeInfo.theme;
+
   const surah = surahData.find(
     (s: {id: number; name: string; name_arabic: string}) =>
       s.id === themeInfo.surah,
@@ -95,7 +103,7 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
         showsVerticalScrollIndicator={false}
         bounces={true}>
         {/* Theme name */}
-        <Text style={styles.themeName}>{themeInfo.theme}</Text>
+        <Text style={styles.themeName}>{themeTitle}</Text>
 
         {/* Info card */}
         <View style={styles.card}>
