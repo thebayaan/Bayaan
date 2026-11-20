@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
@@ -10,6 +10,7 @@ import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {ProgressTrack} from '@/components/ProgressTrack'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {useAppForeground} from '@/hooks/useAppForeground'; // @ai
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {resumeRecent} from '@/services/player/utils/resumeRecent';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -78,6 +79,14 @@ export const RecentReciterCard = ({
   const {t} = useTranslation('home');
   const {updateQueue, play, pause} = usePlayerActions();
   const router = useRouter();
+  // @ai-start
+  // In the background the position and duration stay at the values already
+  // shown, so a position tick renders nothing: Android would queue each
+  // update for the first frame on return. On return the card shows the live
+  // values.
+  const foreground = useAppForeground();
+  const shownRef = useRef({position: 0, duration: 0});
+  // @ai-end
   // Single consolidated subscription with shallow equality
   const {playbackStatus, currentIndex, tracks, storePosition, storeDuration} =
     usePlayerStore(
@@ -85,11 +94,22 @@ export const RecentReciterCard = ({
         playbackStatus: state.playback.state,
         currentIndex: state.queue.currentIndex,
         tracks: state.queue.tracks,
-        storePosition: state.playback.position,
-        storeDuration: state.playback.duration,
+        // @ai-start
+        storePosition: foreground
+          ? state.playback.position
+          : shownRef.current.position,
+        storeDuration: foreground
+          ? state.playback.duration
+          : shownRef.current.duration,
+        // @ai-end
       }),
       shallow,
     );
+  // @ai-start
+  useEffect(() => {
+    shownRef.current = {position: storePosition, duration: storeDuration};
+  }, [storePosition, storeDuration]);
+  // @ai-end
 
   // Check if this specific card represents the currently active track in the player
   const isCurrentlyPlaying = useMemo(() => {
