@@ -142,15 +142,19 @@ const keyOf = (p: Place) => `${p.surah}:${p.ayah}:${p.word}`;
  * before it for a word that was left out. A mark Tilawa confirms late (at the end of
  * a take, say) is then still read on its own word's audio.
  */
-function markTime(mark: V1Mark, ctx: CheckContext): number {
+export function markTime(mark: V1Mark, ctx: CheckContext): number {
   const at: Place = {surah: mark.surah, ayah: mark.ayah, word: mark.word};
-  const own = ctx.timeline.words.get(keyOf(at))?.to;
+  const {words, path} = ctx.timeline;
+  const own = words.get(keyOf(at))?.to;
+  if (own !== undefined) return own;
   const prev = previousPlace(ctx, at);
-  const heardAt =
-    own ?? (prev ? ctx.timeline.words.get(keyOf(prev))?.to : undefined);
-  return heardAt === undefined
-    ? mark.audioTime
-    : Math.min(mark.audioTime, heardAt);
+  const before = prev ? words.get(keyOf(prev))?.to : undefined;
+  if (before !== undefined) return before;
+  // An ayah's first word with nothing heard before it: where the reader went on.
+  const later = path.find(
+    ([, p]) => p.surah === at.surah && p.ayah === at.ayah && p.word > at.word,
+  );
+  return later ? later[0] : mark.audioTime;
 }
 
 // What a reader may say before an ayah's first word, as the second model writes it:
@@ -169,15 +173,15 @@ function startsTheTake(timeline: V1Timeline, at: Place): boolean {
  * before the first word of the take, a reader may say the basmala, a'udhu billah or
  * both. None of that is a mistake, and none of it is an added word.
  */
-function mayOpenWithBasmala(ctx: CheckContext, at: Place): boolean {
+export function mayOpenWithBasmala(timeline: V1Timeline, at: Place): boolean {
   if (at.word !== 0) return false;
   const surahStart = at.ayah === 1 && at.surah !== 1 && at.surah !== 9;
-  return surahStart || startsTheTake(ctx.timeline, at);
+  return surahStart || startsTheTake(timeline, at);
 }
 
 /** The readings to try before a word: nothing, or the openings a reader may say. */
 function openingsBefore(ctx: CheckContext, at: Place): string[][] {
-  if (!mayOpenWithBasmala(ctx, at)) return [[]];
+  if (!mayOpenWithBasmala(ctx.timeline, at)) return [[]];
   const basmala = [...(ctx.letters(1, 1) ?? [])];
   return basmala.length
     ? [[], basmala, ISTIADHA, [...ISTIADHA, ...basmala]]
@@ -285,7 +289,7 @@ async function checkAddedMark(
   // Tilawa names the word after the extra one (on the bench, all 71 real ones), the
   // next ayah's first word for one after an ayah's last word: the gap is before it.
   const right: Place = {surah: mark.surah, ayah: mark.ayah, word: mark.word};
-  if (mayOpenWithBasmala(ctx, right)) {
+  if (mayOpenWithBasmala(ctx.timeline, right)) {
     return {
       outcome: 'cancelled',
       why: "before a first word the reader may say the basmala or a'udhu billah",

@@ -126,6 +126,7 @@ jest.mock('@/services/recitation/v1/engine', () => ({
 // The app's check, answered by the test.
 const mockAnswers = new Map<string, V1CheckAnswer>();
 jest.mock('@/services/recitation/v1/checkMark', () => ({
+  ...jest.requireActual('@/services/recitation/v1/checkMark'),
   checkV1Mark: async (mark: V1Mark) =>
     mockAnswers.get(mark.id) ?? {
       outcome: 'kept',

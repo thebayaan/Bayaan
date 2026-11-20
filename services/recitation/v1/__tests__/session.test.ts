@@ -7,6 +7,7 @@ import type {V1Mark} from '../types';
 
 const mockCheck = jest.fn<Promise<V1CheckAnswer>, [V1Mark, unknown]>();
 jest.mock('../checkMark', () => ({
+  ...jest.requireActual('../checkMark'),
   checkV1Mark: (mark: V1Mark, ctx: unknown) => mockCheck(mark, ctx),
 }));
 const mockModel = {current: {run: jest.fn()} as unknown};
@@ -29,9 +30,11 @@ let published: V1Shown[];
 let buzzes: number;
 let traces: string[];
 
+// The follower's places so far, which a test may extend.
+let mockPath: [number, {surah: number; ayah: number; word: number}][] = [];
 const engine = {
   wordCount: () => 4,
-  timeline: () => ({words: new Map(), ayahEntered: new Map(), path: []}),
+  timeline: () => ({words: new Map(), ayahEntered: new Map(), path: mockPath}),
 };
 
 const mark = (over: Partial<V1Mark>): V1Mark => ({
@@ -67,6 +70,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockModel.current = {run: jest.fn()};
   mockHeard.samples = 0;
+  mockPath = [];
   published = [];
   buzzes = 0;
   traces = [];
@@ -197,6 +201,36 @@ describe('v1 take', () => {
     await settled;
     expect(mockCheck).toHaveBeenCalledTimes(1);
     expect(session.endV1Take()?.marks).toEqual([]);
+  });
+
+  it("a surah's first word is checked only once the follower has gone past it", async () => {
+    mockCheck.mockResolvedValue(cancelled);
+    mockHeard.samples = Math.round(4 * 16000);
+    // Tilawa marks 2:1's first word while the reader is still saying the basmala.
+    mockPath = [[1, {surah: 1, ayah: 7, word: 8}]];
+    session.noteV1Message(mark({surah: 2, ayah: 1, word: 0, audioTime: 2}));
+    await settle(500);
+    expect(mockCheck).not.toHaveBeenCalled();
+    // The reader says the word and goes on: the check runs.
+    mockPath = [
+      ...mockPath,
+      [4.5, {surah: 2, ayah: 1, word: 0}],
+      [5, {surah: 2, ayah: 2, word: 0}],
+    ];
+    mockHeard.samples = Math.round(6 * 16000);
+    await settle(200);
+    expect(mockCheck).toHaveBeenCalledTimes(1);
+  });
+
+  it('it waits at most firstWord.waitSeconds for the follower', async () => {
+    mockCheck.mockResolvedValue(cancelled);
+    session.noteV1Message(mark({surah: 2, ayah: 1, word: 0, audioTime: 2}));
+    mockHeard.samples = Math.round(9 * 16000);
+    await settle(200);
+    expect(mockCheck).not.toHaveBeenCalled();
+    mockHeard.samples = Math.round(10.5 * 16000);
+    await settle(200);
+    expect(mockCheck).toHaveBeenCalledTimes(1);
   });
 
   it('a take that ends with a check pending shows that mark', async () => {

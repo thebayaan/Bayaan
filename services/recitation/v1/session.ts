@@ -1,12 +1,18 @@
 import followerConstants from '../followerConstants.npl.json';
-import v1Constants from './constants.json';
 import {alternativesOf} from '../secondLook/alternatives';
 import {recentAudio, RING_SECONDS} from '../secondLook/audioRing';
 import {ayahLetters} from '../secondLook/ayahLetters';
 import {secondLookModelNow} from '../secondLook/checkWord';
 import {CHECK_TIMEOUT_MS} from '../secondLook/config';
 import {fbankInSteps} from '../secondLook/fbank';
-import {checkV1Mark, type CheckContext, type V1CheckAnswer} from './checkMark';
+import {
+  checkV1Mark,
+  markTime,
+  mayOpenWithBasmala,
+  type CheckContext,
+  type V1CheckAnswer,
+} from './checkMark';
+import v1Constants from './constants.json';
 import type {V1Engine} from './engine';
 import {
   answerV1Check,
@@ -76,6 +82,39 @@ function heardBy(current: V1Take, seconds: number): Promise<void> {
         current.settling ||
         take !== current ||
         recentAudio.heard() >= need
+      ) {
+        resolve();
+        return;
+      }
+      setTimeout(poll, POLL_MS);
+    };
+    poll();
+  });
+}
+
+const after = (a: Place, b: Place) =>
+  a.surah - b.surah || a.ayah - b.ayah || a.word - b.word;
+
+/**
+ * Resolves once the follower has gone past `place`, or the take has heard `seconds`
+ * of audio, or is stopping.
+ */
+function passedBy(
+  current: V1Take,
+  place: Place,
+  seconds: number,
+): Promise<void> {
+  const need = Math.round(seconds * SAMPLE_RATE);
+  return new Promise(resolve => {
+    const poll = () => {
+      const path = current.host.engine()?.timeline().path ?? [];
+      const last = path[path.length - 1]?.[1];
+      if (
+        current.over ||
+        current.settling ||
+        take !== current ||
+        recentAudio.heard() >= need ||
+        (last && after(last, place) > 0)
       ) {
         resolve();
         return;
@@ -159,7 +198,31 @@ function publish(current: V1Take): void {
 
 async function runCheck(current: V1Take, entry: V1Entry): Promise<void> {
   const at = entry.confirmedAt ?? entry.since;
-  await heardBy(current, at + holdSeconds);
+  const mark = markOf(entry);
+  const timeline = () =>
+    current.host.engine()?.timeline() ?? {
+      words: new Map(),
+      ayahEntered: new Map(),
+      path: [],
+    };
+  // Tilawa marks a surah's first word while the reader is still saying the basmala:
+  // the word is checked once the follower has gone past it.
+  if (
+    entry.errorClass !== 'added_word' &&
+    mayOpenWithBasmala(timeline(), entry.place)
+  ) {
+    await passedBy(
+      current,
+      entry.place,
+      at + v1Constants.firstWord.waitSeconds,
+    );
+  }
+  // The slice ends a hold after the word was heard: wait for that much audio.
+  const engineNow = current.host.engine();
+  const heardAt = engineNow
+    ? markTime(mark, {...contextOf(engineNow), timeline: timeline()})
+    : at;
+  await heardBy(current, Math.max(at, heardAt) + holdSeconds);
   if (take !== current) return;
   const engine = current.host.engine();
   const model = await secondLookModelNow();
@@ -175,7 +238,7 @@ async function runCheck(current: V1Take, entry: V1Entry): Promise<void> {
     };
   } else {
     answer = await withTimeout(
-      checkV1Mark(markOf(entry), contextOf(engine)),
+      checkV1Mark(mark, contextOf(engine)),
       CHECK_TIMEOUT_MS,
     );
   }
