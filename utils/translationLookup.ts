@@ -1,3 +1,5 @@
+// Bare i18next singleton (initialised by '@/i18n' at app start).
+import i18n from 'i18next';
 import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
@@ -95,6 +97,23 @@ export function getTranslationName(translationId: string): string {
   }
   // Fallback: format the identifier nicely (e.g., "en.pickthall" → "en.pickthall")
   return translationId;
+}
+
+/** The bundled translations' names in the app language (static keys). */
+const BUNDLED_DISPLAY_NAMES: Record<BundledTranslationId, () => string> = {
+  saheeh: () => i18n.t('sheets:translationContent.names.saheeh'),
+  'clear-quran': () => i18n.t('sheets:translationContent.names.clearQuran'),
+};
+
+/**
+ * A translation's name as the app language shows it: a bundled one by its
+ * name in that language (in Arabic, "صحيح إنترناشونال (بالإنجليزية)"), a
+ * downloaded one as its catalogue names it (getTranslationName).
+ */
+export function getTranslationDisplayName(translationId: string): string {
+  return isBundledTranslation(translationId)
+    ? BUNDLED_DISPLAY_NAMES[translationId]()
+    : getTranslationName(translationId);
 }
 
 export function isBundledTranslation(id: string): id is BundledTranslationId {

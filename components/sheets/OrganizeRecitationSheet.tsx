@@ -9,8 +9,10 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
+import {useResponsive} from '@/hooks/useResponsive';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
@@ -52,6 +54,8 @@ import {
 type RecitationType = 'surah' | 'other';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+/** Space under the last field (Delete) at the end of the scroll. */
+const CONTENT_END_SPACE = moderateScale(40);
 
 // @ai-start
 const CATEGORY_OPTIONS: {
@@ -117,6 +121,12 @@ export const OrganizeRecitationSheet = (
   const {t} = useTranslation(['sheets', 'common']);
   const {updateTags, deleteRecitation, customReciters, createCustomReciter} =
     useUploadsStore();
+  // On phones the sheet runs to the screen's bottom edge (the sheet's own
+  // safe-area padding is off), so the scroll ends above the home indicator
+  // or the navigation bar by itself. The iPad card pads its own bottom.
+  const insets = useSafeAreaInsets();
+  const {isTablet} = useResponsive();
+  const contentEndPadding = CONTENT_END_SPACE + (isTablet ? 0 : insets.bottom);
 
   const payload = props.payload;
   const recitation = payload?.recitation;
@@ -517,6 +527,7 @@ export const OrganizeRecitationSheet = (
         onContentSizeChange={handleContentSizeChange}
         contentContainerStyle={[
           styles.contentContainer,
+          {paddingBottom: contentEndPadding},
           keyboardHeight > 0 && {paddingBottom: keyboardHeight},
         ]}>
         {/* File Info */}
@@ -1048,7 +1059,6 @@ const createStyles = (theme: Theme) =>
     },
     contentContainer: {
       paddingHorizontal: moderateScale(20),
-      paddingBottom: moderateScale(40),
     },
     fileInfoRow: {
       flexDirection: 'row',

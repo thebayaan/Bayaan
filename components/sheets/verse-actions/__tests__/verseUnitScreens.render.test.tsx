@@ -85,6 +85,7 @@ jest.mock('@/utils/translationLookup', () => ({
   getTranslationText: (key: string, id: string) => `<b>T</b>(${key},${id})`,
   getTranslationTextRaw: (key: string, id: string) => `T(${key},${id})`,
   getTranslationName: (id: string) => `Name-${id}`,
+  getTranslationDisplayName: (id: string) => `Name-${id}`,
   isBundledTranslation: () => true,
 }));
 jest.mock('@/services/translation/TranslationDbService', () => ({

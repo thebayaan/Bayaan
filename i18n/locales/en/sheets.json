@@ -273,7 +273,11 @@
   "translationContent": {
     "notAvailable": "Translation not available",
     "switch": "Switch",
-    "prev": "Prev"
+    "prev": "Prev",
+    "names": {
+      "saheeh": "Saheeh International",
+      "clearQuran": "The Clear Quran"
+    }
   },
   "repeat": {
     "title": "Repeat Settings",

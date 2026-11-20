@@ -72,6 +72,9 @@ for (let i = 0; i < allVerses.length; i++) {
   verseKeyToIndex[allVerses[i].verseKey] = i;
 }
 
+/** The footer buttons' minimum height: the 44pt tap target. */
+const NAV_BUTTON_MIN_HEIGHT = 44;
+
 // ─── Component ────────────────────────────────────────────────────────────
 
 interface TafseerContentProps {
@@ -364,7 +367,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
       </ScrollView>
 
       {/* Footer — Prev / Next */}
-      <View style={[styles.footer, {paddingBottom: verticalScale(16)}]}>
+      <View style={styles.footer}>
         <Pressable
           onPress={goToPrevious}
           disabled={isFirst}
@@ -375,7 +378,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
           ]}>
           <Feather
             name="chevron-left"
-            size={moderateScale(16)}
+            size={moderateScale(18)}
             color={
               isFirst
                 ? Color(theme.colors.text).alpha(0.2).toString()
@@ -411,7 +414,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
           </Text>
           <Feather
             name="chevron-right"
-            size={moderateScale(16)}
+            size={moderateScale(18)}
             color={
               isLast
                 ? Color(theme.colors.text).alpha(0.2).toString()
@@ -571,32 +574,37 @@ const createStyles = (theme: Theme) =>
       paddingVertical: verticalScale(20),
       alignItems: 'center',
     },
-    // Footer
+    // Footer: 44pt buttons with room above and below, inside the sheet's own
+    // bottom padding (and the safe-area inset the sheet adds under it).
     footer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: moderateScale(8),
       paddingHorizontal: moderateScale(16),
-      paddingTop: verticalScale(10),
+      paddingTop: verticalScale(12),
+      paddingBottom: verticalScale(18),
       borderTopWidth: 1,
       borderTopColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     navButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: verticalScale(7),
-      paddingHorizontal: moderateScale(12),
-      borderRadius: moderateScale(10),
+      justifyContent: 'center',
+      minHeight: NAV_BUTTON_MIN_HEIGHT,
+      minWidth: NAV_BUTTON_MIN_HEIGHT,
+      paddingHorizontal: moderateScale(14),
+      borderRadius: moderateScale(12),
       backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderWidth: 1,
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      gap: moderateScale(3),
+      gap: moderateScale(4),
     },
     navButtonDisabled: {
       opacity: 0.4,
     },
     navButtonText: {
-      fontSize: moderateScale(13),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
     },

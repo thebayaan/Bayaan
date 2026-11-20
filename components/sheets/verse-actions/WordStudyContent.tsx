@@ -116,6 +116,13 @@ export interface WordStudyContentProps {
 type Tab = 'words' | 'books';
 
 const NO_WORDS: readonly StudyWord[] = [];
+/**
+ * The sources notice's font size and line height. The Arabic UI font (IBM
+ * Plex Sans Arabic) needs 1.5x for its ascent and descent and about 1.62x for
+ * stacked marks; at 17 for 12 a line was cut at its top and bottom edges.
+ */
+const SOURCES_FONT_SIZE = 12;
+const SOURCES_LINE_HEIGHT = 20;
 /** Space kept above the card when a step scrolls back to it. */
 const CARD_SCROLL_MARGIN = 8;
 /** A step waits this long for the card's new place before scrolling to it. */
@@ -911,19 +918,22 @@ function createStyles(theme: Theme, isTablet: boolean) {
     },
     sources: {
       fontFamily: 'Manrope-Regular',
-      fontSize: moderateScale(12),
-      lineHeight: moderateScale(17),
+      fontSize: moderateScale(SOURCES_FONT_SIZE),
+      lineHeight: moderateScale(SOURCES_LINE_HEIGHT),
       color: secondary,
       marginTop: moderateScale(16),
       paddingHorizontal: moderateScale(4),
       textAlign: 'left',
     },
+    // Its own space above and below the 44pt buttons; the sheet's bottom
+    // padding and safe-area inset follow it.
     stepBar: {
       flexDirection: ROW_FROM_RIGHT,
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 8,
       paddingTop: moderateScale(8),
+      paddingBottom: moderateScale(8),
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: Color(theme.colors.text).alpha(0.08).toString(),
       backgroundColor: theme.colors.background,
