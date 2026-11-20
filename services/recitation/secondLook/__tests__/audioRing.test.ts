@@ -68,12 +68,12 @@ describe('audio ring', () => {
     }
   });
 
-  it('holds about 30 s by default', () => {
+  it('holds a minute by default', () => {
     const ring = createAudioRing();
-    for (let s = 0; s < 40; s++) ring.push(counted(s * SR, SR));
+    for (let s = 0; s < 70; s++) ring.push(counted(s * SR, SR));
     expect(ring.slice(9, 10.5).length).toBe(SR / 2);
     expect(ring.slice(9, 10.5)[0]).toBe(10 * SR);
-    expect(ring.slice(38, 40)[0]).toBe(38 * SR);
+    expect(ring.slice(68, 70)[0]).toBe(68 * SR);
   });
 
   it('takes a chunk longer than the whole ring', () => {

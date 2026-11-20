@@ -1,7 +1,7 @@
 import followerConstants from '../followerConstants.npl.json';
 import v1Constants from './constants.json';
 import {alternativesOf} from '../secondLook/alternatives';
-import {recentAudio} from '../secondLook/audioRing';
+import {recentAudio, RING_SECONDS} from '../secondLook/audioRing';
 import {ayahLetters} from '../secondLook/ayahLetters';
 import {secondLookModelNow} from '../secondLook/checkWord';
 import {CHECK_TIMEOUT_MS} from '../secondLook/config';
@@ -35,7 +35,7 @@ import type {V1Mark} from './types';
 const SAMPLE_RATE = 16000;
 const {holdSeconds} = followerConstants.secondJudge;
 /** The ring keeps this much audio; an older slice cannot be cut. */
-const KEPT_SECONDS = 30;
+const KEPT_SECONDS = RING_SECONDS;
 const POLL_MS = 40;
 
 export interface V1TakeHost {
@@ -54,6 +54,8 @@ interface V1Take {
   pending: Set<Promise<void>>;
   /** Marks the reader dismissed this take, by place. */
   dismissed: Set<string>;
+  /** The take is stopping: no more audio will come, so no check waits for any. */
+  settling: boolean;
   over: boolean;
 }
 
@@ -69,7 +71,12 @@ function heardBy(current: V1Take, seconds: number): Promise<void> {
   const need = Math.round(seconds * SAMPLE_RATE);
   return new Promise(resolve => {
     const poll = () => {
-      if (current.over || take !== current || recentAudio.heard() >= need) {
+      if (
+        current.over ||
+        current.settling ||
+        take !== current ||
+        recentAudio.heard() >= need
+      ) {
         resolve();
         return;
       }
@@ -196,6 +203,7 @@ export function startV1Take(host: V1TakeHost): void {
     book: emptyV1Book(),
     pending: new Set(),
     dismissed: new Set(),
+    settling: false,
     over: false,
   };
 }
@@ -242,10 +250,15 @@ export function noteV1Cursor(at: Place): void {
   publish(current);
 }
 
-/** Waits for the checks under way, at most `ms`. */
+/**
+ * The take is stopping and hears no more audio: the checks under way run on what
+ * was heard, rather than wait for audio that will not come. Waits for them, at most
+ * `ms`.
+ */
 export async function settleV1Checks(ms: number): Promise<void> {
   const current = take;
   if (!current) return;
+  current.settling = true;
   const deadline = Date.now() + ms;
   while (current.pending.size > 0 && Date.now() < deadline) {
     let timer: ReturnType<typeof setTimeout> | null = null;

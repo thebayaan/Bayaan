@@ -4,7 +4,9 @@ import {SAMPLE_RATE} from './fbank';
 // from the same start as the engine and is pushed the same chunks, so a time in
 // seconds means the same moment on both.
 
-const RING_SECONDS = 30;
+// Tilawa 1.0 can confirm a skip some 15 s after the reader went on, and its check
+// reads from the word before the skip, so a minute is kept (3.8 MB).
+export const RING_SECONDS = 60;
 
 export interface AudioRing {
   /** Adds a chunk of 16 kHz mono audio. */

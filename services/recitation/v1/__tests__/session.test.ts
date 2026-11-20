@@ -184,6 +184,21 @@ describe('v1 take', () => {
     expect(last().marks).toHaveLength(1);
   });
 
+  it('a mark Tilawa decides as the take stops is checked on what was heard', async () => {
+    mockCheck.mockResolvedValue(cancelled);
+    // The take heard up to 9.9 s and hears no more: a mark at 10 s must not
+    // wait for audio that will not come.
+    mockHeard.samples = Math.round(9.9 * 16000);
+    session.noteV1Message(mark({audioTime: 10}));
+    await settle(10);
+    expect(mockCheck).not.toHaveBeenCalled();
+    const settled = session.settleV1Checks(1500);
+    await settle(100);
+    await settled;
+    expect(mockCheck).toHaveBeenCalledTimes(1);
+    expect(session.endV1Take()?.marks).toEqual([]);
+  });
+
   it('a take that ends with a check pending shows that mark', async () => {
     mockCheck.mockReturnValue(new Promise(() => undefined));
     mockHeard.samples = 16000 * 10;
