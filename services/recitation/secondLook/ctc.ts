@@ -44,7 +44,7 @@ export function relativeTo(logp: Float32Array, frames: number): Float32Array {
  * that lies wholly before the slice as finished at the start.
  * step and first read the frames forwards (1, 0) or backwards (-1, frames - 1).
  */
-function stretch(
+export function stretch(
   rel: Float32Array,
   frames: number,
   tokens: readonly number[],
@@ -87,7 +87,7 @@ function stretch(
 }
 
 /** Sum of blanks over frames first, first+step, ... for i frames, for all i. */
-function blanksFromEdge(
+export function blanksFromEdge(
   rel: Float32Array,
   frames: number,
   step: number,

@@ -157,6 +157,15 @@ describe('v1 marks', () => {
     ]);
   });
 
+  it('a skip over more whole ayat than a reader skips by mistake shows nothing', () => {
+    const book = through(
+      emptyV1Book(),
+      {errorClass: 'skipped_passage', word: 0},
+      {...kept, resumedAt: {surah: 1, ayah: 6, word: 0}} as V1CheckAnswer,
+    );
+    expect(shownV1(book, counts)).toEqual({marks: [], skippedAyat: []});
+  });
+
   it('a skip marks the words it left out and flags whole ayat', () => {
     const book = through(
       emptyV1Book(),

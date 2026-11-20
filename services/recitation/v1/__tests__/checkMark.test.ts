@@ -181,6 +181,54 @@ describe('checkV1Mark: added words', () => {
   });
 });
 
+describe('checkV1Mark: where an added word and a late mark are read', () => {
+  it('reads only the gap before the word Tilawa names, and marks that word', async () => {
+    const before = await checkV1Mark(
+      mark({errorClass: 'added_word', word: 2}),
+      context([said(['بتث', 'جحخ', 'هوي', 'دذر', 'زسش'])]),
+    );
+    expect(before).toMatchObject({
+      outcome: 'kept',
+      gapRight: {surah: 1, ayah: 1, word: 2},
+    });
+    // An extra word after the named one is no part of this mark.
+    const after = await checkV1Mark(
+      mark({errorClass: 'added_word', word: 2}),
+      context([said(['بتث', 'جحخ', 'دذر', 'هوي', 'زسش'])]),
+    );
+    expect(after).toMatchObject({
+      outcome: 'cancelled',
+      why: 'nothing extra was said',
+    });
+  });
+
+  it('a mark confirmed late is read where its word was heard', async () => {
+    const timeline: V1Timeline = {
+      words: new Map([['1:1:1', {from: 4, to: 5}]]),
+      ayahEntered: new Map([['1:1', 3]]),
+      path: [[4, {surah: 1, ayah: 1, word: 1}]],
+    };
+    const answer = await checkV1Mark(
+      mark({word: 1, audioTime: 30}),
+      context([said(['بتث', 'جحخ', 'دذر'])], {timeline}),
+    );
+    expect(answer.detail.slice?.[1]).toBeCloseTo(5.48, 2);
+  });
+
+  it('a left-out word confirmed late is read where the word before it was heard', async () => {
+    const timeline: V1Timeline = {
+      words: new Map([['1:1:0', {from: 6, to: 7}]]),
+      ayahEntered: new Map([['1:1', 6]]),
+      path: [[6, {surah: 1, ayah: 1, word: 0}]],
+    };
+    const answer = await checkV1Mark(
+      mark({word: 1, errorClass: 'omitted_word', audioTime: 40}),
+      context([said(['بتث', 'دذر'])], {timeline}),
+    );
+    expect(answer.detail.slice?.[1]).toBeCloseTo(7.48, 2);
+  });
+});
+
 describe('checkV1Mark: skipped passages', () => {
   // The reader read 1:1 to its second word, then went on at 1:2's first word.
   const skipTimeline: V1Timeline = {
@@ -212,6 +260,28 @@ describe('checkV1Mark: skipped passages', () => {
     expect(answer.detail.skipGain).toBeGreaterThan(6);
   });
 
+  it('finds where the reader went on even when the follower walked into the skipped words first', async () => {
+    const walked: V1Timeline = {
+      ...skipTimeline,
+      path: [
+        [0.5, {surah: 1, ayah: 1, word: 0}],
+        [1, {surah: 1, ayah: 1, word: 1}],
+        [2, {surah: 1, ayah: 1, word: 2}],
+        [2.5, {surah: 1, ayah: 1, word: 3}],
+      ],
+    };
+    const answer = await checkV1Mark(
+      mark({errorClass: 'skipped_passage', word: 2, audioTime: 20}),
+      context([said(['بتث', 'جحخ', 'صضط', 'ظعغ'])], {timeline: walked}),
+    );
+    expect(answer).toMatchObject({
+      outcome: 'kept',
+      resumedAt: {surah: 1, ayah: 2, word: 0},
+    });
+    // Read from just before the last word read, not at the late confirmation.
+    expect(answer.detail.slice).toEqual([0, 6]);
+  });
+
   it('cancels it when the words were said after all', async () => {
     const answer = await checkV1Mark(
       mark({errorClass: 'skipped_passage', word: 2, audioTime: 3}),
@@ -223,14 +293,14 @@ describe('checkV1Mark: skipped passages', () => {
     });
   });
 
-  it('fails open when nothing says where the reader went on', async () => {
+  it('fails open when the words before the skip were never heard', async () => {
     const answer = await checkV1Mark(
       mark({errorClass: 'skipped_passage', word: 2, audioTime: 3}),
       context([said(['بتث'])]),
     );
     expect(answer).toMatchObject({
       outcome: 'failed',
-      reason: 'no place the reader went on with',
+      reason: 'the words before the skip were not heard',
     });
   });
 });

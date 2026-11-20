@@ -18,7 +18,6 @@ import {
   withSilence,
   type SlicePlaces,
 } from '../secondLook/slice';
-import followerConstants from '../followerConstants.npl.json';
 import v1Constants from './constants.json';
 import {insertionScore, skipGain} from './insertSkip';
 import type {V1Mark, V1Timeline} from './types';
@@ -38,7 +37,6 @@ import type {V1Mark, V1Timeline} from './types';
 // Any failure keeps the mark: a check that cannot answer must never hide one.
 
 const SAMPLE_RATE = 16000;
-const {holdSeconds} = followerConstants.secondJudge;
 const LEAST_LETTERS = 3;
 
 export interface CheckContext {
@@ -137,6 +135,24 @@ function previousPlace(ctx: CheckContext, at: Place): Place | null {
     : null;
 }
 
+const keyOf = (p: Place) => `${p.surah}:${p.ayah}:${p.word}`;
+
+/**
+ * Where in the take to look at a mark: when the cursor left its word, or the word
+ * before it for a word that was left out. A mark Tilawa confirms late (at the end of
+ * a take, say) is then still read on its own word's audio.
+ */
+function markTime(mark: V1Mark, ctx: CheckContext): number {
+  const at: Place = {surah: mark.surah, ayah: mark.ayah, word: mark.word};
+  const own = ctx.timeline.words.get(keyOf(at))?.to;
+  const prev = previousPlace(ctx, at);
+  const heardAt =
+    own ?? (prev ? ctx.timeline.words.get(keyOf(prev))?.to : undefined);
+  return heardAt === undefined
+    ? mark.audioTime
+    : Math.min(mark.audioTime, heardAt);
+}
+
 async function modelOn(
   ctx: CheckContext,
   start: number,
@@ -162,7 +178,7 @@ async function checkWordMark(
 ): Promise<{outcome: 'kept' | 'cancelled'; why: string}> {
   const letters = ctx.letters(mark.surah, mark.ayah);
   if (!letters?.[mark.word]) throw new CheckFailure('no letters for this word');
-  const t = mark.audioTime;
+  const t = markTime(mark, ctx);
   const {start, end} = judgeSlice(
     ctx.places,
     mark.surah,
@@ -227,58 +243,72 @@ async function checkAddedMark(
   const {keepGain, repeatSlack, contextWords} = v1Constants.added;
   const letters = ctx.letters(mark.surah, mark.ayah);
   if (!letters?.[mark.word]) throw new CheckFailure('no letters for this word');
+  // Tilawa names the word after the extra one (on the bench, all 71 real ones), the
+  // next ayah's first word for one after an ayah's last word: the gap is before it.
+  const right: Place = {surah: mark.surah, ayah: mark.ayah, word: mark.word};
+  const leftEnd = previousPlace(ctx, right);
+  if (!leftEnd) throw new CheckFailure('no word before the gap');
+  const left = wordsAround(ctx, leftEnd, contextWords, 'back');
+  const after = wordsAround(ctx, right, contextWords, 'ahead');
+  if (left.length === 0 || after.length === 0) {
+    throw new CheckFailure('no words around the gap');
+  }
   const {start, end} = judgeSlice(
     ctx.places,
     mark.surah,
     mark.ayah,
-    mark.audioTime,
+    markTime(mark, ctx),
     ctx.heard(),
   );
   detail.slice = [start / SAMPLE_RATE, end / SAMPLE_RATE];
   const out = await modelOn(ctx, start, end);
-  // The gap before the word Tilawa names, and the one after it.
-  let best: {gain: number; repeat: number; right: Place} | null = null;
-  for (const right of [
-    {surah: mark.surah, ayah: mark.ayah, word: mark.word},
-    {surah: mark.surah, ayah: mark.ayah, word: mark.word + 1},
-  ]) {
-    const leftEnd = previousPlace(ctx, right);
-    if (!leftEnd) continue;
-    const left = wordsAround(ctx, leftEnd, contextWords, 'back');
-    const after = wordsAround(ctx, right, contextWords, 'ahead');
-    if (left.length === 0 || after.length === 0) continue;
-    const score = insertionScore(out.logp, out.frames, left, after);
-    if (!best || score.gain > best.gain) best = {...score, right};
-  }
-  if (!best) throw new CheckFailure('no words around the gap');
-  detail.insertionGain = best.gain;
-  detail.repeat = best.repeat;
-  if (best.gain < keepGain) {
+  const score = insertionScore(out.logp, out.frames, left, after);
+  detail.insertionGain = score.gain;
+  detail.repeat = score.repeat;
+  if (score.gain < keepGain) {
     return {outcome: 'cancelled', why: 'nothing extra was said'};
   }
-  if (best.repeat >= -repeatSlack) {
+  if (score.repeat >= -repeatSlack) {
     return {outcome: 'cancelled', why: 'a repeat, not an added word'};
   }
-  return {outcome: 'kept', why: 'an extra word was said', gapRight: best.right};
+  return {outcome: 'kept', why: 'an extra word was said', gapRight: right};
 }
 
-/** The place the reader went on with after skipping from before `at`. */
-function resumePlace(
-  timeline: V1Timeline,
-  at: Place,
-  until: number,
-): {place: Place; time: number; leftTime: number} | null {
+/** Where the follower landed after skipping from before `at`, if it jumped at all. */
+function landing(timeline: V1Timeline, at: Place): Place | null {
   const path = timeline.path;
-  let found: {place: Place; time: number; leftTime: number} | null = null;
   for (let i = 1; i < path.length; i++) {
-    const [time, place] = path[i];
-    if (time > until) break;
-    const [leftTime, prev] = path[i - 1];
-    if (before(prev, at) && before(at, place)) {
-      found = {place, time, leftTime};
-    }
+    const prev = path[i - 1][1];
+    const place = path[i][1];
+    if (before(prev, at) && before(at, place)) return place;
   }
-  return found;
+  return null;
+}
+
+/**
+ * Where the reader may have gone on after skipping from just before `at`: a few
+ * words further in the ayah, the start of one of the next few ayat, and where the
+ * follower landed. Tilawa often walks a few words of the skipped ayah before it
+ * lands, and confirms a skip late, so the check does not rely on its landing.
+ */
+function wentOnCandidates(ctx: CheckContext, at: Place): Place[] {
+  const {wordsAhead, maxAyat} = v1Constants.skipped;
+  const out: Place[] = [];
+  const letters = ctx.letters(at.surah, at.ayah);
+  for (
+    let k = 1;
+    k <= wordsAhead && letters && at.word + k < letters.length;
+    k++
+  ) {
+    out.push({...at, word: at.word + k});
+  }
+  for (let k = 1; k <= maxAyat; k++) {
+    if (!ctx.letters(at.surah, at.ayah + k)) break;
+    out.push({surah: at.surah, ayah: at.ayah + k, word: 0});
+  }
+  const landed = landing(ctx.timeline, at);
+  if (landed && !out.some(p => keyOf(p) === keyOf(landed))) out.push(landed);
+  return out;
 }
 
 async function checkSkippedMark(
@@ -290,42 +320,46 @@ async function checkSkippedMark(
   why: string;
   resumedAt?: Place;
 }> {
-  const {keepGain, beforeSeconds, contextWords} = v1Constants.skipped;
+  const {keepGain, beforeSeconds, afterSeconds, contextWords} =
+    v1Constants.skipped;
   const at: Place = {surah: mark.surah, ayah: mark.ayah, word: mark.word};
-  const resumed = resumePlace(ctx.timeline, at, mark.audioTime + holdSeconds);
-  if (!resumed) throw new CheckFailure('no place the reader went on with');
   const leftEnd = previousPlace(ctx, at);
   if (!leftEnd) throw new CheckFailure('nothing read before the skip');
+  const leftTime = ctx.timeline.words.get(keyOf(leftEnd));
+  if (!leftTime)
+    throw new CheckFailure('the words before the skip were not heard');
   const left = wordsAround(ctx, leftEnd, contextWords, 'back');
   const said = wordsAround(ctx, at, contextWords, 'ahead');
-  const went = wordsAround(ctx, resumed.place, contextWords, 'ahead');
-  if (!left.length || !said.length || !went.length) {
+  const candidates = wentOnCandidates(ctx, at);
+  if (!left.length || !said.length || candidates.length === 0) {
     throw new CheckFailure('no letters around the skip');
   }
-  const resumedTo =
-    ctx.timeline.words.get(
-      `${resumed.place.surah}:${resumed.place.ayah}:${resumed.place.word}`,
-    )?.to ?? resumed.time;
+  // From just before the last word read to a few seconds after the reader left it.
   const end = Math.min(
     ctx.heard(),
-    Math.round(
-      (Math.max(resumedTo, mark.audioTime) + holdSeconds) * SAMPLE_RATE,
-    ),
+    Math.round((leftTime.to + afterSeconds) * SAMPLE_RATE),
   );
   const start = Math.max(
     0,
-    Math.round((resumed.leftTime - beforeSeconds) * SAMPLE_RATE),
+    Math.round((leftTime.from - beforeSeconds) * SAMPLE_RATE),
     end - Math.round(JUDGE.sliceSeconds * SAMPLE_RATE),
   );
   detail.slice = [start / SAMPLE_RATE, end / SAMPLE_RATE];
   const out = await modelOn(ctx, start, end);
-  const gain = skipGain(out.logp, out.frames, left, said, went);
-  detail.skipGain = gain;
-  return gain >= keepGain
+  let best: {gain: number; place: Place} | null = null;
+  for (const place of candidates) {
+    const went = wordsAround(ctx, place, contextWords, 'ahead');
+    if (went.length === 0) continue;
+    const gain = skipGain(out.logp, out.frames, left, said, went);
+    if (!best || gain > best.gain) best = {gain, place};
+  }
+  if (!best) throw new CheckFailure('no letters where the reader went on');
+  detail.skipGain = best.gain;
+  return best.gain >= keepGain
     ? {
         outcome: 'kept',
         why: 'the reader went straight on',
-        resumedAt: resumed.place,
+        resumedAt: best.place,
       }
     : {outcome: 'cancelled', why: 'the skipped words were said'};
 }

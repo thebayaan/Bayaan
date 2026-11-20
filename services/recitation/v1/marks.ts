@@ -1,5 +1,6 @@
 import type {WordMark} from '../wordMarks';
 import type {V1CheckAnswer} from './checkMark';
+import v1Constants from './constants.json';
 import type {V1Mark, V1MarkClass} from './types';
 
 // Tilawa 1.0's possible mistakes, from first suspicion to what the page shows. Pure,
@@ -195,6 +196,13 @@ const KIND: Record<V1MarkClass, WordMark['kind']> = {
   skipped_passage: 'missed',
 };
 
+/** Whole ayat between a skip's first left-out word and where the reader went on. */
+function wholeAyatSkipped(from: Place, to: Place): number {
+  if (from.surah !== to.surah) return Infinity;
+  const firstWhole = from.word === 0 ? from.ayah : from.ayah + 1;
+  return Math.max(0, to.ayah - firstWhole);
+}
+
 /** At most this many words of one skipped passage are marked one by one. */
 const MAX_SKIPPED_WORDS = 20;
 
@@ -238,7 +246,11 @@ export function shownV1(
       put(e.place, e.totalWords, e);
       continue;
     }
-    // A skip: each word left out, or whole ayat as ayat.
+    // A skip: each word left out, or whole ayat as ayat. One over more whole ayat
+    // than a reader skips by mistake is the reader moving elsewhere: nothing shows.
+    if (wholeAyatSkipped(e.place, e.resumedAt) > v1Constants.skipped.maxAyat) {
+      continue;
+    }
     let at: Place = {...e.place};
     let marked = 0;
     while (order(at, e.resumedAt) < 0 && marked < MAX_SKIPPED_WORDS) {

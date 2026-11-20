@@ -16,9 +16,11 @@
 // computation: never shown, logged as text or stored.
 import {
   BLANK,
+  blanksFromEdge,
   prepare,
   relativeTo,
   scoreNothing,
+  stretch,
   WORD,
 } from '../secondLook/ctc';
 import {tokensOf} from '../secondLook/judge';
@@ -61,8 +63,63 @@ export interface InsertionScore {
 }
 
 /**
+ * Exits of the right context read backwards from the slice's end: the first word of
+ * `right` must be heard whole; what follows it may be cut by the slice's end, or be
+ * blanks only (the reader stopped), as at any edge of the text.
+ * @returns With the word separator before the first word, and without it
+ */
+function rightExits(
+  rel: Float32Array,
+  frames: number,
+  right: readonly string[],
+): {withSeparator: Float64Array; without: Float64Array} {
+  const rest = rightTokens(right.slice(1));
+  const restTokens = rest.length ? rest : [WORD];
+  const restExit = stretch(
+    rel,
+    frames,
+    [...restTokens].reverse(),
+    null,
+    true,
+    -1,
+    frames - 1,
+  );
+  const blanks = blanksFromEdge(rel, frames, -1, frames - 1);
+  for (let i = 0; i <= frames; i++) {
+    if (blanks[i] > restExit[i]) restExit[i] = blanks[i];
+  }
+  const first = [...tokensOf(right[0])].reverse();
+  return {
+    withSeparator: stretch(
+      rel,
+      frames,
+      [...first, WORD],
+      restExit,
+      false,
+      -1,
+      frames - 1,
+    ),
+    without: stretch(rel, frames, first, restExit, false, -1, frames - 1),
+  };
+}
+
+/** Best score of `left` (each word with its ▁) read straight into the right context. */
+function straightInto(
+  exitL: Float64Array,
+  without: Float64Array,
+  frames: number,
+): number {
+  let best = NONE;
+  for (let i = 0; i <= frames; i++) {
+    const v = exitL[i] + without[frames - i];
+    if (v > best) best = v;
+  }
+  return best;
+}
+
+/**
  * @param left - The words before the place, as letters (one or two)
- * @param right - The words after it
+ * @param right - The words after it: the first must be heard whole
  */
 export function insertionScore(
   logp: Float32Array,
@@ -71,15 +128,16 @@ export function insertionScore(
   right: readonly string[],
 ): InsertionScore {
   const rel = relativeTo(logp, frames);
-  const p = prepare(rel, frames, leftTokens(left), rightTokens(right));
-  const none = scoreNothing(p);
+  const {exitL} = prepare(rel, frames, leftTokens(left), []);
+  const {withSeparator, without} = rightExits(rel, frames, right);
+  const none = straightInto(exitL, without, frames);
   // left ▁ [blanks, letters and ▁, with at least one letter] ▁ right
   let blanksOnly = NONE;
   let withLetter = NONE;
   let extra = NONE;
   for (let k = 0; k < frames; k++) {
     const row = k * VOCAB;
-    const open = Math.max(p.exitL[k], blanksOnly);
+    const open = Math.max(exitL[k], blanksOnly);
     let bestLetter = NONE;
     let bestAny = rel[row + BLANK];
     for (let c = 1; c < VOCAB; c++) {
@@ -93,15 +151,21 @@ export function insertionScore(
     );
     blanksOnly = open <= NONE ? NONE : open + rel[row + BLANK];
     withLetter = nextLetter;
-    const after = p.exitR[frames - k - 1];
+    const after = withSeparator[frames - k - 1];
     if (withLetter > NONE && withLetter + after > extra) {
       extra = withLetter + after;
     }
   }
   let repeat = NONE;
   for (let r = 1; r <= left.length; r++) {
-    const again = straightOn(rel, frames, left, [...left.slice(-r), ...right]);
-    if (again > repeat) repeat = again;
+    const again = prepare(
+      rel,
+      frames,
+      leftTokens([...left, ...left.slice(-r)]),
+      [],
+    );
+    const v = straightInto(again.exitL, without, frames);
+    if (v > repeat) repeat = v;
   }
   return {gain: extra - none, repeat: repeat - extra};
 }
