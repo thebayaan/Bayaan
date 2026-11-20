@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 562" width="760" height="562" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" role="img" aria-labelledby="title desc">
+  <title id="title">RFC-024: the unified search on a phone</title>
+  <desc id="desc">Two states of the Search tab with sample Bayaan data. Left: the text "kahf 10" gives a Go to row for 18:10 and the surah Al-Kahf. Right: the chips "Surah: Al-Kahf" and "Rewaya: Warsh" give recitation rows; the kinds that the chips cannot narrow are dimmed, and one line says why.</desc>
+  <style>
+    .bg { fill: #ffffff; }
+    .phone { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; }
+    .card { fill: #ffffff; stroke: #d0d7de; }
+    .field { fill: #eaeef2; }
+    .t1 { fill: #1f2328; }
+    .t2 { fill: #57606a; }
+    .t3 { fill: #6e7781; }
+    .ln { stroke: #8c959f; fill: none; }
+    .chip { fill: #ffffff; stroke: #d0d7de; }
+    .chipOn { fill: #0969da; }
+    .tOn { fill: #ffffff; }
+    .fchip { fill: #ddf4ff; stroke: #54aeff; }
+    .tF { fill: #0550ae; }
+    .add { fill: #ffffff; stroke: #0969da; stroke-dasharray: 3 2; }
+    .accent { fill: #0969da; }
+    .arrow { stroke: #0969da; fill: none; stroke-width: 1.5; }
+    .dim { opacity: 0.4; }
+    .sec { fill: #57606a; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d1117; }
+      .phone { fill: #161b22; stroke: #30363d; }
+      .card { fill: #0d1117; stroke: #30363d; }
+      .field { fill: #21262d; }
+      .t1 { fill: #e6edf3; }
+      .t2 { fill: #9198a1; }
+      .t3 { fill: #848d97; }
+      .ln { stroke: #848d97; }
+      .chip { fill: #0d1117; stroke: #30363d; }
+      .chipOn { fill: #1f6feb; }
+      .fchip { fill: #0c2d6b; stroke: #1f6feb; }
+      .tF { fill: #79c0ff; }
+      .add { fill: #0d1117; stroke: #4493f8; }
+      .accent { fill: #4493f8; }
+      .arrow { stroke: #4493f8; }
+      .sec { fill: #9198a1; }
+    }
+  </style>
+  <defs>
+    <clipPath id="clipA"><rect x="36" y="64" width="308" height="478"/></clipPath>
+    <clipPath id="clipB"><rect x="416" y="64" width="308" height="478"/></clipPath>
+    <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" class="accent"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="760" height="562"/>
+  <text class="t1" x="20" y="28" font-size="15" font-weight="600">The unified search on a phone (sample Bayaan data)</text>
+  <text class="t2" x="20" y="47">One Query: the text, the scope chips and the filter chips. Each source adds its own section.</text>
+
+  <!-- ===================== Panel A: a text ===================== -->
+  <rect class="phone" x="20" y="64" width="340" height="482" rx="24"/>
+  <g clip-path="url(#clipA)">
+    <text class="t2" x="40" y="92" font-size="11" font-weight="600">1 · A text</text>
+    <text class="t1" x="40" y="116" font-size="18" font-weight="700">Search</text>
+
+    <!-- search field -->
+    <rect class="field" x="36" y="128" width="250" height="32" rx="10"/>
+    <circle class="ln" cx="53" cy="143" r="5" stroke-width="1.5"/>
+    <line class="ln" x1="57" y1="147" x2="61" y2="151" stroke-width="1.5"/>
+    <text class="t1" x="68" y="149" font-size="13">kahf 10</text>
+    <text class="accent" x="298" y="149" font-size="13">Cancel</text>
+
+    <!-- scope chips (they scroll) -->
+    <rect class="chipOn" x="36" y="172" width="40" height="28" rx="14"/>
+    <text class="tOn" x="56" y="190" text-anchor="middle" font-weight="600">All</text>
+    <rect class="chip" x="82" y="172" width="62" height="28" rx="14"/>
+    <text class="t1" x="113" y="190" text-anchor="middle">Surahs</text>
+    <rect class="chip" x="150" y="172" width="68" height="28" rx="14"/>
+    <text class="t1" x="184" y="190" text-anchor="middle">Reciters</text>
+    <rect class="chip" x="224" y="172" width="84" height="28" rx="14"/>
+    <text class="t1" x="266" y="190" text-anchor="middle">Recitations</text>
+    <rect class="chip" x="314" y="172" width="58" height="28" rx="14"/>
+    <text class="t1" x="343" y="190" text-anchor="middle">Ayahs</text>
+
+    <!-- filter chips -->
+    <rect class="add" x="36" y="208" width="70" height="28" rx="14"/>
+    <text class="accent" x="71" y="226" text-anchor="middle" font-weight="600">+ Filter</text>
+
+    <!-- Go to -->
+    <text class="sec" x="40" y="262">GO TO</text>
+    <rect class="card" x="36" y="270" width="308" height="48" rx="10"/>
+    <text class="t1" x="52" y="290" font-size="13" font-weight="600">Al-Kahf 18:10</text>
+    <text class="t2" x="52" y="307" font-size="11">Open in the reader · page 294</text>
+    <path class="ln" d="M322 288 L328 294 L322 300" stroke-width="1.5"/>
+
+    <!-- Surahs and reciters -->
+    <text class="sec" x="40" y="342">SURAHS AND RECITERS</text>
+    <rect class="card" x="36" y="350" width="308" height="52" rx="10"/>
+    <circle class="field" cx="60" cy="376" r="14"/>
+    <text class="t1" x="60" y="380" text-anchor="middle" font-size="11" font-weight="600">18</text>
+    <text class="t1" x="84" y="372" font-size="13" font-weight="600">Al-Kahf</text>
+    <text class="t2" x="84" y="389" font-size="11">The Cave · 110 ayahs · Meccan</text>
+    <circle class="fchip" cx="322" cy="376" r="13"/>
+    <text class="tF" x="322" y="381" text-anchor="middle" font-size="16" font-weight="600">+</text>
+
+    <!-- notes -->
+    <text class="t3" x="40" y="436" font-size="11">A source returns a section. A section with no row</text>
+    <text class="t3" x="40" y="451" font-size="11">does not show. Ayahs run for an Arabic text.</text>
+    <text class="t3" x="40" y="476" font-size="11">Order: Filters, Go to, Surahs and reciters,</text>
+    <text class="t3" x="40" y="491" font-size="11">Recitations, Ayahs, Themes, Collections.</text>
+    <text class="t3" x="40" y="516" font-size="11">The + on a row adds it as a chip.</text>
+  </g>
+
+  <!-- arrow from the + to panel B -->
+  <path class="arrow" d="M336 376 C 370 376, 366 222, 395 222" marker-end="url(#head)"/>
+
+  <!-- ===================== Panel B: two chips ===================== -->
+  <rect class="phone" x="400" y="64" width="340" height="482" rx="24"/>
+  <g clip-path="url(#clipB)">
+    <text class="t2" x="420" y="92" font-size="11" font-weight="600">2 · Two chips</text>
+    <text class="t1" x="420" y="116" font-size="18" font-weight="700">Search</text>
+
+    <!-- search field, empty -->
+    <rect class="field" x="416" y="128" width="250" height="32" rx="10"/>
+    <circle class="ln" cx="433" cy="143" r="5" stroke-width="1.5"/>
+    <line class="ln" x1="437" y1="147" x2="441" y2="151" stroke-width="1.5"/>
+    <text class="t3" x="448" y="149" font-size="13">Surahs, reciters, ayahs</text>
+    <text class="accent" x="678" y="149" font-size="13">Cancel</text>
+
+    <!-- scope chips: the kinds that the chips hide are dim -->
+    <rect class="chipOn" x="416" y="172" width="40" height="28" rx="14"/>
+    <text class="tOn" x="436" y="190" text-anchor="middle" font-weight="600">All</text>
+    <g class="dim">
+      <rect class="chip" x="462" y="172" width="62" height="28" rx="14"/>
+      <text class="t1" x="493" y="190" text-anchor="middle">Surahs</text>
+      <rect class="chip" x="530" y="172" width="68" height="28" rx="14"/>
+      <text class="t1" x="564" y="190" text-anchor="middle">Reciters</text>
+    </g>
+    <rect class="chip" x="604" y="172" width="84" height="28" rx="14"/>
+    <text class="t1" x="646" y="190" text-anchor="middle">Recitations</text>
+    <g class="dim">
+      <rect class="chip" x="694" y="172" width="58" height="28" rx="14"/>
+      <text class="t1" x="723" y="190" text-anchor="middle">Ayahs</text>
+    </g>
+
+    <!-- filter chips -->
+    <rect class="fchip" x="416" y="208" width="114" height="28" rx="14"/>
+    <text class="tF" x="430" y="226" font-weight="600">Surah: Al-Kahf</text>
+    <text class="tF" x="518" y="227" text-anchor="middle" font-size="13">×</text>
+    <rect class="fchip" x="536" y="208" width="120" height="28" rx="14"/>
+    <text class="tF" x="550" y="226" font-weight="600">Rewaya: Warsh</text>
+    <text class="tF" x="644" y="227" text-anchor="middle" font-size="13">×</text>
+    <rect class="add" x="662" y="208" width="62" height="28" rx="14"/>
+    <text class="accent" x="693" y="226" text-anchor="middle" font-weight="600">+ Filter</text>
+
+    <!-- the reason line -->
+    <text class="t2" x="420" y="256" font-size="11">Reciters, surahs, ayahs and collections are hidden</text>
+    <text class="t2" x="420" y="271" font-size="11">by the filter "Surah".</text>
+
+    <!-- Recitations -->
+    <text class="sec" x="420" y="298">RECITATIONS</text>
+    <text class="t3" x="720" y="298" text-anchor="end" font-size="11">15</text>
+
+    <rect class="card" x="416" y="306" width="308" height="48" rx="10"/>
+    <circle class="chipOn" cx="440" cy="330" r="13"/>
+    <path class="tOn" d="M436 323 L446 330 L436 337 z"/>
+    <text class="t1" x="462" y="326" font-size="13" font-weight="600">Abdelaziz Sheim</text>
+    <text class="t2" x="462" y="343" font-size="11">Al-Kahf · Warsh · Murattal</text>
+
+    <rect class="card" x="416" y="360" width="308" height="48" rx="10"/>
+    <circle class="chipOn" cx="440" cy="384" r="13"/>
+    <path class="tOn" d="M436 377 L446 384 L436 391 z"/>
+    <text class="t1" x="462" y="380" font-size="13" font-weight="600">Abdulbasit Abdulsamad</text>
+    <text class="t2" x="462" y="397" font-size="11">Al-Kahf · Warsh · Murattal</text>
+
+    <rect class="card" x="416" y="414" width="308" height="48" rx="10"/>
+    <circle class="chipOn" cx="440" cy="438" r="13"/>
+    <path class="tOn" d="M436 431 L446 438 L436 445 z"/>
+    <text class="t1" x="462" y="434" font-size="13" font-weight="600">Ahmad Deban</text>
+    <text class="t2" x="462" y="451" font-size="11">Al-Kahf · Warsh · Murattal</text>
+
+    <text class="accent" x="420" y="486" font-size="12" font-weight="600">Show more</text>
+
+    <!-- notes -->
+    <text class="t3" x="420" y="516" font-size="11">A row is one rewaya entry plus one surah. It plays.</text>
+    <text class="t3" x="420" y="531" font-size="11">Remove a chip to widen the list.</text>
+  </g>
+</svg>
