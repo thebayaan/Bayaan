@@ -1,6 +1,5 @@
 import React, {useMemo} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {ScrollView} from 'react-native-actions-sheet';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -12,6 +11,7 @@ import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {rewayahThemePassage, type UnitStart} from './verseUnitScreens';
 // @ai-end
+import {SheetScrollView} from './sheetGestures';
 
 const surahData = require('@/data/surahData.json');
 
@@ -49,13 +49,12 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
   if (!themeInfo) {
     return (
       <View style={styles.container}>
-        <ScrollView
+        <SheetScrollView
           style={styles.scrollContent}
           contentContainerStyle={styles.scrollInner}
-          showsVerticalScrollIndicator={false}
-          bounces={true}>
+          showsVerticalScrollIndicator={false}>
           <Text style={styles.emptyText}>{t('themeContent.empty')}</Text>
-        </ScrollView>
+        </SheetScrollView>
       </View>
     );
   }
@@ -97,11 +96,10 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <SheetScrollView
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}
-        showsVerticalScrollIndicator={false}
-        bounces={true}>
+        showsVerticalScrollIndicator={false}>
         {/* Theme name */}
         <Text style={styles.themeName}>{themeTitle}</Text>
 
@@ -129,7 +127,7 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
             <Text style={styles.infoValue}>{localizeDigits(verseCount)}</Text>
           </View>
         </View>
-      </ScrollView>
+      </SheetScrollView>
     </View>
   );
 };

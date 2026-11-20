@@ -16,6 +16,8 @@ import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 import {TextInput} from 'react-native';
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('@/components/share/SkiaVersePreview', () => ({
   __esModule: true,
   default: () => null,
@@ -74,6 +76,7 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
 
 import {HighlightContent} from '../HighlightContent';
 import {NoteContent} from '../NoteContent';
+import {SheetFooter} from '../sheetGestures';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {HIGHLIGHT_COLORS, type HighlightColor} from '@/types/verse-annotations';
 import {setStoredRows} from '../__fixtures__/storedRows';
@@ -171,6 +174,24 @@ async function pressNode(node: TestRenderer.ReactTestInstance) {
   });
 }
 
+/**
+ * The screen's buttons outside every sheet footer: the sheet's drag, which
+ * starts after 5pt and cancels the press, can turn a tap on them into a drag.
+ */
+function pressablesOutsideFooters(): TestRenderer.ReactTestInstance[] {
+  const root = renderer!.root;
+  const inFooters = new Set(
+    root
+      .findAllByType(SheetFooter)
+      .flatMap(footer =>
+        footer.findAll(n => typeof n.props.onPress === 'function'),
+      ),
+  );
+  return root.findAll(
+    n => typeof n.props.onPress === 'function' && !inFooters.has(n),
+  );
+}
+
 async function pressText(text: string) {
   const target = renderer!.root
     .findAll(
@@ -265,6 +286,23 @@ describe('Highlight screen', () => {
       ['2:255', 2, 255, 'purple', 'hafs'],
     ]);
   });
+
+  it('keeps the sheet drag off the colours and Remove', async () => {
+    setStoredRows([], {'2:255': 'blue'}, 'hafs');
+    await render(
+      <HighlightContent selection={hafsSelection('2:255')} onDone={onDone} />,
+    );
+    const footers = renderer!.root.findAllByType(SheetFooter);
+    expect(footers).toHaveLength(1);
+    for (const color of Object.keys(HIGHLIGHT_COLORS) as HighlightColor[]) {
+      const node = swatch(color);
+      expect(footers[0].findAll(n => n === node)).toHaveLength(1);
+    }
+    expect(
+      footers[0].findAll(n => n.props.children === 'Remove Highlight').length,
+    ).toBeGreaterThan(0);
+    expect(pressablesOutsideFooters()).toEqual([]);
+  });
 });
 
 describe('Add Note screen', () => {
@@ -340,5 +378,21 @@ describe('Add Note screen', () => {
     expect(service.addNote.mock.calls).toEqual([
       ['2:255', 2, 255, 'my note', undefined, 'hafs'],
     ]);
+  });
+
+  // The note field is a native view: a footer would keep the touch from it.
+  it('keeps the sheet drag off Save, not off the note field', async () => {
+    await render(
+      <NoteContent selection={hafsSelection('2:255')} onDone={onDone} />,
+    );
+    const footers = renderer!.root.findAllByType(SheetFooter);
+    expect(footers).toHaveLength(1);
+    expect(
+      footers[0].findAll(n => n.props.children === 'Save Note').length,
+    ).toBeGreaterThan(0);
+    expect(footers[0].findAll(n => (n.type as unknown) === TextInput)).toEqual(
+      [],
+    );
+    expect(pressablesOutsideFooters()).toEqual([]);
   });
 });

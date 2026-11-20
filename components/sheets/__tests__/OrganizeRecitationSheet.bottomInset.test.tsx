@@ -31,7 +31,10 @@ jest.mock('@/components/sheets/AdaptiveActionSheet', () => {
 });
 jest.mock('react-native-actions-sheet', () => ({
   SheetManager: {hide: jest.fn()},
-  ScrollView: jest.requireActual('react-native').ScrollView,
+}));
+jest.mock('@/components/sheets/SheetGestures', () => ({
+  SheetScrollView: jest.requireActual('react-native').ScrollView,
+  SheetFooter: jest.requireActual('react-native').View,
 }));
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 jest.mock('@/hooks/useTheme', () => ({

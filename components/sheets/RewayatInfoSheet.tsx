@@ -2,8 +2,9 @@ import React, {useState} from 'react';
 import {View, Text, Pressable, Dimensions, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {RewayatIcon} from '@/components/Icons';
@@ -54,10 +55,9 @@ export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('rewayatInfo.title')}</Text>
       </View>
-      <ScrollView
+      <SheetScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        bounces={true}
         scrollEventThrottle={16}>
         <View style={styles.content}>
           <View style={styles.iconContainer}>
@@ -104,7 +104,7 @@ export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
             ))}
           </View>
         </View>
-      </ScrollView>
+      </SheetScrollView>
     </ActionSheet>
   );
 };

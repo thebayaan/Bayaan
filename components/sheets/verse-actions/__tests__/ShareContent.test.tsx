@@ -20,6 +20,8 @@ import TestRenderer from 'react-test-renderer';
 import {Share} from 'react-native';
 import type {RewayahId} from '@/store/mushafSettingsStore';
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('@shopify/react-native-skia', () => ({
   useCanvasRef: () => ({current: null}),
 }));
@@ -169,6 +171,7 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
 // @ai-end
 
 import {ShareContent} from '../ShareContent';
+import {SheetFooter} from '../sheetGestures';
 import {shareUrl} from '@/utils/shareUtils';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -360,5 +363,30 @@ describe('Share as Text', () => {
     expect(sharedMessage()).toBe(
       'WARSH-255a WARSH-255b ۝٢٥٥\n\n\n\n-- Quran Al-Baqarah 2:255 · Warsh',
     );
+  });
+});
+
+describe('in the sheet', () => {
+  // The sheet's drag starts after 5pt and cancels the press: the buttons
+  // sit in a sheet footer, so a tap on one that wobbles is still a tap. The
+  // switches are native views, which a footer would keep the touch from.
+  it('keeps the sheet drag off the share buttons, not off the switches', () => {
+    open(['2:255'], 'hafs');
+    if (!renderer) throw new Error('nothing rendered');
+    const footers = renderer.root.findAllByType(SheetFooter);
+    expect(footers).toHaveLength(1);
+    for (const label of ['Share as Image', 'Share as Text', 'Share Link']) {
+      expect(
+        footers[0].findAll(
+          n =>
+            typeof n.props.onPress === 'function' &&
+            n.findAll(c => c.props.children === label).length > 0,
+        ).length,
+      ).toBeGreaterThan(0);
+    }
+    const isSwitch = (n: TestRenderer.ReactTestInstance) =>
+      typeof n.props.onValueChange === 'function';
+    expect(renderer.root.findAll(isSwitch).length).toBeGreaterThan(0);
+    expect(footers[0].findAll(isSwitch)).toEqual([]);
   });
 });

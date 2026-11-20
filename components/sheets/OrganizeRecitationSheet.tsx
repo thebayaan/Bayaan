@@ -8,14 +8,16 @@ import {
   Keyboard,
   Platform,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useResponsive} from '@/hooks/useResponsive';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter, SheetScrollView} from './SheetGestures';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -519,7 +521,7 @@ export const OrganizeRecitationSheet = (
         </Pressable>
       </View>
 
-      <ScrollView
+      <SheetScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -991,16 +993,18 @@ export const OrganizeRecitationSheet = (
           </View>
         )}
 
-        {/* Delete Button */}
-        <Pressable style={styles.deleteButton} onPress={handleDelete}>
-          <Feather
-            name="minus-circle"
-            size={moderateScale(16)}
-            color="#EF4444"
-          />
-          <Text style={styles.deleteText}>{t('uploads.deleteTitle')}</Text>
-        </Pressable>
-      </ScrollView>
+        {/* Delete Button. A tap that wobbles never drags the sheet. */}
+        <SheetFooter>
+          <Pressable style={styles.deleteButton} onPress={handleDelete}>
+            <Feather
+              name="minus-circle"
+              size={moderateScale(16)}
+              color="#EF4444"
+            />
+            <Text style={styles.deleteText}>{t('uploads.deleteTitle')}</Text>
+          </Pressable>
+        </SheetFooter>
+      </SheetScrollView>
     </ActionSheet>
   );
 };

@@ -23,6 +23,8 @@ function mockRecord(name: string, props: Record<string, unknown>) {
   mockLog.push([name, props]);
   return null;
 }
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('@/components/share/SkiaVersePreview', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => mockRecord('preview', props),

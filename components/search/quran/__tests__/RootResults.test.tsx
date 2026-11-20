@@ -8,19 +8,23 @@ import React from 'react';
 import {Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {RootResults} from '../RootResults';
+import {SheetScrollView} from '@/components/sheets/verse-actions/sheetGestures';
 import type {QuranRootSearchState} from '@/hooks/useQuranSearch';
 import type {RootSearchResult} from '@/services/search/QuranSearchDataService';
 import {verseKeyAt} from '@/utils/search/quranIndexFormat';
 import type {QuranVerseHit} from '@/utils/search/quranSearch';
 
+/** The props of each FlashList render. */
+const mockListProps: Array<Record<string, unknown>> = [];
 jest.mock('@shopify/flash-list', () => {
   const ReactActual = jest.requireActual('react');
   return {
     FlashList: (props: {
       data: {key: string}[];
       renderItem: (info: {item: unknown; index: number}) => unknown;
-    }) =>
-      ReactActual.createElement(
+    }) => {
+      mockListProps.push(props);
+      return ReactActual.createElement(
         ReactActual.Fragment,
         null,
         props.data.map((item, index) =>
@@ -30,10 +34,12 @@ jest.mock('@shopify/flash-list', () => {
             props.renderItem({item, index}),
           ),
         ),
-      ),
+      );
+    },
   };
 });
-jest.mock('react-native-actions-sheet', () => ({ScrollView: () => null}));
+// The verse sheet's list as a plain view: no sheet here.
+jest.mock('@/components/sheets/verse-actions/sheetGestures');
 jest.mock('../VerseHitRow', () => {
   const {Text: MockText} = jest.requireActual('react-native');
   return {
@@ -192,5 +198,17 @@ describe('RootResults', () => {
   it('says when the search failed', () => {
     mockState = {status: 'error', result: null};
     expect(texts(render())).toContain("Couldn't search the Quran text.");
+  });
+
+  // The library's ScrollView competes with the sheet's drag for every touch
+  // and turns the library's own drag tracking back on while it is open.
+  it("lists the ayahs on the verse sheet's list", () => {
+    mockState = {status: 'done', result};
+    mockListProps.length = 0;
+    render();
+    expect(mockListProps.length).toBeGreaterThan(0);
+    for (const props of mockListProps) {
+      expect(props.renderScrollComponent).toBe(SheetScrollView);
+    }
   });
 });

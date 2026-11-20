@@ -14,6 +14,8 @@ import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 
 const mockDk = {words: new Map<string, DKWordInfo[]>()};
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('expo-localization', () => ({
   getLocales: () => [{languageCode: 'ar'}],
 }));

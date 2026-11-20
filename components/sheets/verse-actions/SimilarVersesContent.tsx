@@ -11,7 +11,7 @@ import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
-import {ScrollView} from 'react-native-actions-sheet'; // @ai
+import {SheetScrollView} from './sheetGestures';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {qulDataService} from '@/services/mushaf/QulDataService';
@@ -209,10 +209,9 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
   }
 
   return (
-    <ScrollView
+    <SheetScrollView
       style={styles.scrollContent}
       showsVerticalScrollIndicator={false}
-      bounces={true}
       onLayout={handleContentLayout}>
       {/* @ai-start */}
       {!textReady && (
@@ -439,7 +438,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
       {mutashabihat.length === 0 && similarAyahs.length === 0 && (
         <Text style={styles.emptyText}>{t('similar.empty')}</Text>
       )}
-    </ScrollView>
+    </SheetScrollView>
   );
 };
 // @ai-end

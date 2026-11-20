@@ -11,8 +11,9 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, HeartIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {showCreatePlaylistSheet} from '@/components/collection/showCreatePlaylistSheet'; // @ai
 import {useLoved} from '@/hooks/useLoved';
@@ -187,7 +188,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
             ) : null}
           </View>
 
-          <ScrollView
+          <SheetScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}>
@@ -274,7 +275,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
                 </Text>
               </View>
             )}
-          </ScrollView>
+          </SheetScrollView>
         </View>
       </ActionSheet>
     </>

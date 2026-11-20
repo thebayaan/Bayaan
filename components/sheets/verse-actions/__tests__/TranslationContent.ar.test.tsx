@@ -10,6 +10,8 @@ import TestRenderer from 'react-test-renderer';
 import {StyleSheet, Text, type ViewStyle} from 'react-native';
 import i18n from 'i18next';
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('expo-localization', () => ({
   getLocales: () => [{languageCode: 'ar'}],
 }));

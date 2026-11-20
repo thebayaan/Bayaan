@@ -20,6 +20,8 @@ function mockRecord(name: string, props: Record<string, unknown>) {
   (mockScreens[name] ??= []).push(props);
   return null;
 }
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../verse-actions/sheetGestures');
 jest.mock('../verse-actions/HighlightContent', () => ({
   HighlightContent: (props: Record<string, unknown>) =>
     mockRecord('highlight', props),

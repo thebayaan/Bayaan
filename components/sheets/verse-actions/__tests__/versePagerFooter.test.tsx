@@ -3,12 +3,16 @@
  * Previous / Next row under the page has 44pt buttons with their content
  * centered and space of its own above and below them (the sheet's bottom
  * padding and safe-area inset come under it), and the translation names stay
- * as before: the bundled names, set in capitals.
+ * as before: the bundled names, set in capitals. The page scrolls in the
+ * sheet's list and the row is a sheet footer, so the sheet never drags from
+ * it (sheetGestures.tsx).
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
-import {StyleSheet, Text, type ViewStyle} from 'react-native';
+import {ScrollView, StyleSheet, Text, type ViewStyle} from 'react-native';
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('@/components/share/SkiaVersePreview', () => ({
   __esModule: true,
   default: () => null,
@@ -77,6 +81,8 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
 
 import {TranslationContent} from '../TranslationContent';
 import {TafseerContent} from '../TafseerContent';
+import {SheetFooter, SheetScrollView} from '../sheetGestures';
+import {verticalScale} from '@/utils/scale';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTafseerStore} from '@/store/tafseerStore';
 
@@ -211,4 +217,49 @@ describe('translation names in English', () => {
       expect(style.textTransform).toBe('uppercase');
     }
   });
+});
+
+describe('in the sheet', () => {
+  const pages = [
+    ['Translation', TranslationContent],
+    ['Tafsir', TafseerContent],
+  ] as const;
+
+  it.each(pages)(
+    '%s: scrolls in the sheet list; Previous / Next is a sheet footer',
+    async (_name, Page) => {
+      await render(
+        <Page
+          surahNumber={1}
+          ayahNumber={7}
+          rewayah="hafs"
+          onBack={() => undefined}
+        />,
+      );
+      // One list, the sheet's: no scroll view of its own that the sheet
+      // could not tell from a drag.
+      const lists = root().findAllByType(SheetScrollView);
+      expect(lists).toHaveLength(1);
+      const scrollViews = root().findAll(
+        n => (n.type as unknown) === ScrollView,
+      );
+      expect(scrollViews.length).toBeGreaterThan(0);
+      for (const scroll of scrollViews) {
+        expect(scroll.parent?.type).toBe(SheetScrollView);
+      }
+      // The row with Previous and Next is the footer, spaced as the Word
+      // Study step bar is.
+      const footerRow = root().findByType(SheetFooter);
+      for (const label of ['Prev', 'Next']) {
+        expect(
+          footerRow.findAll(
+            n => (n.type as unknown) === Text && n.props.children === label,
+          ),
+        ).toHaveLength(1);
+      }
+      const style = StyleSheet.flatten(footerRow.props.style) as ViewStyle;
+      expect(style.paddingTop).toBe(verticalScale(12));
+      expect(style.paddingBottom).toBe(verticalScale(18));
+    },
+  );
 });

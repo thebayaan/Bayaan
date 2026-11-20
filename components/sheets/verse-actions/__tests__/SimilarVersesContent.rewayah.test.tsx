@@ -35,11 +35,11 @@ jest.mock(
   }),
 );
 
-jest.mock('react-native-actions-sheet', () => {
+jest.mock('../sheetGestures', () => {
   const ReactActual = jest.requireActual('react');
   const {View} = jest.requireActual('react-native');
   return {
-    ScrollView: (props: {
+    SheetScrollView: (props: {
       children?: React.ReactNode;
       onLayout?: (e: unknown) => void;
     }) =>
@@ -48,9 +48,11 @@ jest.mock('react-native-actions-sheet', () => {
         {onLayout: props.onLayout, testID: 'similar-scroll'},
         props.children,
       ),
-    SheetManager: {hideAll: jest.fn()},
   };
 });
+jest.mock('react-native-actions-sheet', () => ({
+  SheetManager: {hideAll: jest.fn()},
+}));
 
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 

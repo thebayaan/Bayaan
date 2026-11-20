@@ -23,8 +23,9 @@ import Animated, {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter, SheetNoDrag, SheetScrollView} from './SheetGestures';
 import {
   useMushafPlayerStore,
   AvailableReciter,
@@ -115,16 +116,20 @@ const AnimatedChevron: React.FC<{expanded: boolean; color: string}> = ({
 // ---------------------------------------------------------------------------
 const ACCORDION_MAX_HEIGHT = ms(240);
 
+// A list that scrolls inside the sheet's own scroll view. Its touches never
+// drag the sheet, so it scrolls in either direction.
 const AccordionScrollList: React.FC<{children: React.ReactNode}> = ({
   children,
 }) => (
-  <RNScrollView
-    style={{maxHeight: ACCORDION_MAX_HEIGHT}}
-    nestedScrollEnabled
-    showsVerticalScrollIndicator={false}
-    bounces={false}>
-    {children}
-  </RNScrollView>
+  <SheetNoDrag>
+    <RNScrollView
+      style={{maxHeight: ACCORDION_MAX_HEIGHT}}
+      nestedScrollEnabled
+      showsVerticalScrollIndicator={false}
+      bounces={false}>
+      {children}
+    </RNScrollView>
+  </SheetNoDrag>
 );
 
 // ---------------------------------------------------------------------------
@@ -483,11 +488,10 @@ export const MushafPlayerOptionsSheet = (
       // is expanded so the user can still swipe the sheet away.
       gestureEnabled={expandedSection === null}
       onBeforeClose={handleBeforeClose /* @ai */}>
-      <ScrollView
+      <SheetScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        bounces={true}>
+        showsVerticalScrollIndicator={false}>
         {/* Title */}
         <Text style={styles.title}>{t('mushafPlayer.title')}</Text>
 
@@ -686,10 +690,11 @@ export const MushafPlayerOptionsSheet = (
             })}
           </View>
         </View>
-      </ScrollView>
+      </SheetScrollView>
 
-      {/* Sticky Play Audio CTA — pinned outside scroll */}
-      <View
+      {/* Sticky Play Audio CTA — pinned outside scroll. A tap on it never
+          drags the sheet. */}
+      <SheetFooter
         style={[styles.stickyFooter, {paddingBottom: insets.bottom + ms(4)}]}>
         <Pressable
           style={[styles.playButton, !canPlay && styles.playButtonDisabled]}
@@ -712,7 +717,7 @@ export const MushafPlayerOptionsSheet = (
             {t('mushafPlayer.play')}
           </Text>
         </Pressable>
-      </View>
+      </SheetFooter>
     </ActionSheet>
   );
 };

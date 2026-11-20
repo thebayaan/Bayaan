@@ -11,6 +11,8 @@ import TestRenderer from 'react-test-renderer';
 
 const mockSimilarProps: Array<Record<string, unknown>> = [];
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../verse-actions/sheetGestures');
 jest.mock('../verse-actions/SimilarVersesContent', () => ({
   SimilarVersesContent: (props: Record<string, unknown>) => {
     mockSimilarProps.push(props);

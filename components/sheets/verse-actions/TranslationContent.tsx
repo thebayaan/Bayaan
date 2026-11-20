@@ -1,5 +1,5 @@
 import React, {useState, useMemo, useCallback, useEffect} from 'react';
-import {View, Text, Pressable, ScrollView} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -34,6 +34,7 @@ import {
   type UnitStart,
 } from './verseUnitScreens';
 // @ai-end
+import {SheetFooter, SheetScrollView} from './sheetGestures';
 
 // ─── Data loading (module scope, runs once) ───────────────────────────────
 const quranData = require('@/data/quran.json') as QuranData;
@@ -241,12 +242,11 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
   return (
     <View style={styles.container}>
       {/* Scrollable verse content */}
-      <ScrollView
+      <SheetScrollView
         key={page.key} // @ai
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}
-        showsVerticalScrollIndicator={false}
-        bounces={true}>
+        showsVerticalScrollIndicator={false}>
         {/* Verse badge */}
         <View style={styles.verseBadge}>
           <Text style={styles.verseBadgeText}>
@@ -315,10 +315,10 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
             </React.Fragment>
           );
         })}
-      </ScrollView>
+      </SheetScrollView>
 
-      {/* Footer — Prev / Next */}
-      <View style={styles.footer}>
+      {/* Footer — Prev / Next; the sheet never drags from it */}
+      <SheetFooter style={styles.footer}>
         <Pressable
           onPress={goToPrevious}
           disabled={isFirst}
@@ -374,7 +374,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
             style={flipX}
           />
         </Pressable>
-      </View>
+      </SheetFooter>
     </View>
   );
 };

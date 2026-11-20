@@ -15,7 +15,7 @@ import {
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet, {
   type AdaptiveActionSheetProps, // @ai
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -123,6 +123,7 @@ import {
   type KeyId,
 } from '@/services/keyboard/keyCommands';
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
+import {SheetScrollView} from './verse-actions/sheetGestures';
 
 const surahData = require('@/data/surahData.json');
 
@@ -1179,9 +1180,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             {/* @ai-end */}
           </>
         ) : wordStudyOnly ? null /* @ai — never the verse menu */ : (
-          <ScrollView
+          <SheetScrollView
             showsVerticalScrollIndicator={false}
-            bounces={false}
             contentContainerStyle={{paddingBottom: moderateScale(10)}}>
             {/* LISTEN */}
             <View style={styles.card}>
@@ -1502,7 +1502,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 </Text>
               </Pressable>
             </View>
-          </ScrollView>
+          </SheetScrollView>
         )}
       </View>
     </ActionSheet>

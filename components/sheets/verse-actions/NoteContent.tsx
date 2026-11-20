@@ -1,6 +1,6 @@
 import React, {useState, useMemo, useCallback, useRef} from 'react'; // @ai
 import {View, TextInput, Pressable, Text} from 'react-native';
-import {ScrollView} from 'react-native-actions-sheet';
+import {SheetFooter, SheetScrollView} from './sheetGestures';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -73,7 +73,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({
   const canSave = noteText.trim().length > 0 && !saving; // @ai
 
   return (
-    <ScrollView
+    <SheetScrollView
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}>
       <View style={styles.previewCard}>
@@ -98,22 +98,25 @@ export const NoteContent: React.FC<NoteContentProps> = ({
         autoFocus
       />
 
-      <Pressable
-        style={({pressed}) => [
-          styles.saveButton,
-          !canSave && styles.saveButtonDisabled,
-          pressed && canSave && {opacity: 0.85},
-        ]}
-        onPress={handleSave}
-        disabled={!canSave}>
-        <Feather
-          name="save"
-          size={moderateScale(16)}
-          color={theme.colors.text}
-        />
-        <Text style={styles.saveButtonText}>{t('note.save')}</Text>
-      </Pressable>
-    </ScrollView>
+      {/* The sheet never drags from Save, so a tap on it is always a tap. */}
+      <SheetFooter>
+        <Pressable
+          style={({pressed}) => [
+            styles.saveButton,
+            !canSave && styles.saveButtonDisabled,
+            pressed && canSave && {opacity: 0.85},
+          ]}
+          onPress={handleSave}
+          disabled={!canSave}>
+          <Feather
+            name="save"
+            size={moderateScale(16)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.saveButtonText}>{t('note.save')}</Text>
+        </Pressable>
+      </SheetFooter>
+    </SheetScrollView>
   );
 };
 // @ai-end
