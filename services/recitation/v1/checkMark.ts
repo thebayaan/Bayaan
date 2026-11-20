@@ -153,6 +153,37 @@ function markTime(mark: V1Mark, ctx: CheckContext): number {
     : Math.min(mark.audioTime, heardAt);
 }
 
+// What a reader may say before an ayah's first word, as the second model writes it:
+// a lookup key for scoring, never shown. A'udhu billah; the basmala comes from the
+// app's own text (1:1).
+const ISTIADHA = ['اعوذ', 'بالله', 'من', 'الشيطان', 'الرجيم'];
+
+/** The take began at this ayah: the reader may have opened with a'udhu billah or the basmala. */
+function startsTheTake(timeline: V1Timeline, at: Place): boolean {
+  const first = timeline.path[0]?.[1];
+  return !!first && first.surah === at.surah && first.ayah === at.ayah;
+}
+
+/**
+ * Before a surah's first word (any surah but 9, and 1:1 is the basmala itself), and
+ * before the first word of the take, a reader may say the basmala, a'udhu billah or
+ * both. None of that is a mistake, and none of it is an added word.
+ */
+function mayOpenWithBasmala(ctx: CheckContext, at: Place): boolean {
+  if (at.word !== 0) return false;
+  const surahStart = at.ayah === 1 && at.surah !== 1 && at.surah !== 9;
+  return surahStart || startsTheTake(ctx.timeline, at);
+}
+
+/** The readings to try before a word: nothing, or the openings a reader may say. */
+function openingsBefore(ctx: CheckContext, at: Place): string[][] {
+  if (!mayOpenWithBasmala(ctx, at)) return [[]];
+  const basmala = [...(ctx.letters(1, 1) ?? [])];
+  return basmala.length
+    ? [[], basmala, ISTIADHA, [...ISTIADHA, ...basmala]]
+    : [[], ISTIADHA];
+}
+
 async function modelOn(
   ctx: CheckContext,
   start: number,
@@ -188,13 +219,21 @@ async function checkWordMark(
   );
   detail.slice = [start / SAMPLE_RATE, end / SAMPLE_RATE];
   const out = await modelOn(ctx, start, end);
-  const judged = judgeWord(
-    out.logp,
-    out.frames,
-    letters,
-    mark.word,
-    ctx.alternatives(mark.surah, mark.ayah, mark.word),
-  );
+  // Before a first word the reader may have said the basmala: the slice is read with
+  // each opening before the ayah, and the reading where the word fits best counts.
+  const alternatives = ctx.alternatives(mark.surah, mark.ayah, mark.word);
+  let judged: ReturnType<typeof judgeWord> | null = null;
+  for (const opening of openingsBefore(ctx, mark)) {
+    const reading = judgeWord(
+      out.logp,
+      out.frames,
+      [...opening, ...letters],
+      opening.length + mark.word,
+      alternatives,
+    );
+    if (!judged || reading.exact > judged.exact) judged = reading;
+  }
+  if (!judged) throw new CheckFailure('no reading of the slice');
   const say = judgeAnswer(judged);
   detail.say = say;
   detail.perLetter = judged.perLetter;
@@ -246,6 +285,12 @@ async function checkAddedMark(
   // Tilawa names the word after the extra one (on the bench, all 71 real ones), the
   // next ayah's first word for one after an ayah's last word: the gap is before it.
   const right: Place = {surah: mark.surah, ayah: mark.ayah, word: mark.word};
+  if (mayOpenWithBasmala(ctx, right)) {
+    return {
+      outcome: 'cancelled',
+      why: "before a first word the reader may say the basmala or a'udhu billah",
+    };
+  }
   const leftEnd = previousPlace(ctx, right);
   if (!leftEnd) throw new CheckFailure('no word before the gap');
   const left = wordsAround(ctx, leftEnd, contextWords, 'back');

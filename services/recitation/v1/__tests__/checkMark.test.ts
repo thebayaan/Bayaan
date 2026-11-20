@@ -229,6 +229,78 @@ describe('checkV1Mark: where an added word and a late mark are read', () => {
   });
 });
 
+describe('checkV1Mark: the basmala before a first word', () => {
+  // The app text's basmala (1:1) and two first ayat, in the second model's letters.
+  const OPENINGS: Record<string, string[]> = {
+    '1:1': ['بسم', 'الله', 'الرحمن', 'الرحيم'],
+    '2:1': ['الم'],
+    '9:1': ['الم'],
+    '2:5': ['اولءك', 'علي', 'هدي'],
+  };
+  const withOpenings = (
+    runs: {logp: Float32Array; frames: number}[],
+    timeline: V1Timeline = emptyTimeline,
+  ) =>
+    context(runs, {
+      letters: (s, a) => OPENINGS[`${s}:${a}`] ?? null,
+      timeline,
+    });
+  const basmalaThen = (words: string[]) =>
+    said(['بسم', 'الله', 'الرحمن', 'الرحيم', ...words]);
+
+  it("a surah's first word said after the basmala is read with it, and fits", async () => {
+    const answer = await checkV1Mark(
+      mark({surah: 2, ayah: 1, word: 0, totalWords: 1}),
+      withOpenings([basmalaThen(['الم']), said(['الم'])]),
+    );
+    expect(answer).toMatchObject({outcome: 'cancelled'});
+  });
+
+  it('At-Tawbah has no basmala: the same audio is not read with one', async () => {
+    const answer = await checkV1Mark(
+      mark({surah: 9, ayah: 1, word: 0, totalWords: 1}),
+      withOpenings([basmalaThen(['الم']), said(['الم'])]),
+    );
+    expect(answer.outcome).not.toBe('cancelled');
+  });
+
+  it("no added word before a surah's first word", async () => {
+    const answer = await checkV1Mark(
+      mark({
+        errorClass: 'added_word',
+        surah: 2,
+        ayah: 1,
+        word: 0,
+        totalWords: 1,
+      }),
+      withOpenings([basmalaThen(['الم'])]),
+    );
+    expect(answer).toMatchObject({
+      outcome: 'cancelled',
+      why: "before a first word the reader may say the basmala or a'udhu billah",
+    });
+    expect(answer.detail.slice).toBeUndefined();
+  });
+
+  it("no added word before the take's first word, mid-surah", async () => {
+    const answer = await checkV1Mark(
+      mark({
+        errorClass: 'added_word',
+        surah: 2,
+        ayah: 5,
+        word: 0,
+        totalWords: 3,
+      }),
+      withOpenings([basmalaThen(['اولءك', 'علي'])], {
+        words: new Map([['2:5:0', {from: 4, to: 5}]]),
+        ayahEntered: new Map([['2:5', 4]]),
+        path: [[4, {surah: 2, ayah: 5, word: 0}]],
+      }),
+    );
+    expect(answer).toMatchObject({outcome: 'cancelled'});
+  });
+});
+
 describe('checkV1Mark: skipped passages', () => {
   // The reader read 1:1 to its second word, then went on at 1:2's first word.
   const skipTimeline: V1Timeline = {
