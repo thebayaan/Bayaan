@@ -150,9 +150,13 @@ export function markTime(mark: V1Mark, ctx: CheckContext): number {
   const prev = previousPlace(ctx, at);
   const before = prev ? words.get(keyOf(prev))?.to : undefined;
   if (before !== undefined) return before;
-  // An ayah's first word with nothing heard before it: where the reader went on.
+  // An ayah's first word with nothing heard before it: where the reader went on,
+  // later in the ayah or in an ayah after it (a one-word first ayah the follower
+  // never landed on, 69:1 say, was said just before 69:2).
   const later = path.find(
-    ([, p]) => p.surah === at.surah && p.ayah === at.ayah && p.word > at.word,
+    ([, p]) =>
+      p.surah === at.surah &&
+      (p.ayah > at.ayah || (p.ayah === at.ayah && p.word > at.word)),
   );
   return later ? later[0] : mark.audioTime;
 }

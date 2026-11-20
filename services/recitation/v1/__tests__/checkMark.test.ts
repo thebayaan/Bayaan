@@ -228,6 +228,19 @@ describe('checkV1Mark: where an added word and a late mark are read', () => {
     expect(answer.detail.slice?.[1]).toBeCloseTo(6.48, 2);
   });
 
+  it('a first word the follower never landed on is read where the reader went on', async () => {
+    const timeline: V1Timeline = {
+      words: new Map([['1:2:0', {from: 7, to: 8}]]),
+      ayahEntered: new Map([['1:2', 7]]),
+      path: [[7, {surah: 1, ayah: 2, word: 0}]],
+    };
+    const answer = await checkV1Mark(
+      mark({word: 0, audioTime: 2}),
+      context([said(['بتث', 'جحخ'])], {timeline}),
+    );
+    expect(answer.detail.slice?.[1]).toBeCloseTo(7.48, 2);
+  });
+
   it('a left-out word confirmed late is read where the word before it was heard', async () => {
     const timeline: V1Timeline = {
       words: new Map([['1:1:0', {from: 6, to: 7}]]),
