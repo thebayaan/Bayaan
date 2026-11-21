@@ -52,6 +52,19 @@ export const useIsDownloadedWithRewayat = (
     state.isDownloadedWithRewayat(reciterId, surahId, rewayatId),
   );
 
+/**
+ * True when playing this recitation uses a downloaded file (the store's
+ * isDownloadedForPlayback), so a row's badge and menu agree with playback.
+ */
+export const useIsDownloadedForPlayback = (
+  reciterId: string,
+  surahId: string,
+  rewayatId?: string,
+) =>
+  useDownloadStore(state =>
+    state.isDownloadedForPlayback(reciterId, surahId, rewayatId),
+  );
+
 export const usePlaylistDownloadProgress = (playlistId: string) =>
   useDownloadStore(state => state.playlistDownloads[playlistId] ?? null);
 
@@ -81,6 +94,7 @@ export const useDownloadQueries = () =>
     state => ({
       isDownloaded: state.isDownloaded,
       isDownloadedWithRewayat: state.isDownloadedWithRewayat,
+      isDownloadedForPlayback: state.isDownloadedForPlayback,
       isDownloading: state.isDownloading,
       isDownloadingWithRewayat: state.isDownloadingWithRewayat,
       getDownload: state.getDownload,

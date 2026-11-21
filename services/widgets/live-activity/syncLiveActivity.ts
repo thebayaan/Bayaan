@@ -184,6 +184,10 @@ export function startLiveActivitySync(): () => void {
   const appState = AppState.addEventListener('change', state => {
     if (state === 'active') reconcileLiveActivity().catch(logError);
   });
+  // The Mushaf data loads after the splash: an ayah can show before its text.
+  const stopData = digitalKhattDataService.subscribeCacheChanges(() =>
+    ticker?.tick(),
+  );
   return () => {
     enabled = false;
     snapshot = null;
@@ -191,5 +195,6 @@ export function startLiveActivitySync(): () => void {
     ticker?.stop();
     ticker = null;
     appState.remove();
+    stopData();
   };
 }

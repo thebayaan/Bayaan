@@ -5,10 +5,11 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {Feather} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import Color from 'color';
@@ -183,10 +184,9 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
               {t('options.aboutSurah', {surah: surahName})}
             </Text>
           </View>
-          <ScrollView
+          <SheetScrollView
             style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            bounces={true}>
+            showsVerticalScrollIndicator={false}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>{surahName}</Text>
@@ -205,7 +205,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                 />
               )}
             </View>
-          </ScrollView>
+          </SheetScrollView>
         </>
       ) : (
         <View style={styles.container}>
@@ -375,7 +375,7 @@ const createStyles = (theme: Theme) =>
     surahTranslation: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
     },
     card: {

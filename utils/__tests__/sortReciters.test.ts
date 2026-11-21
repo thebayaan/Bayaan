@@ -38,3 +38,26 @@ describe('sortRecitersByName', () => {
     expect(input.map(r => r.id)).toEqual(['b', 'a']);
   });
 });
+
+// @ai-start
+describe('sortRecitersByName in Arabic', () => {
+  it('sorts by the Arabic name that is shown, not by the English one', () => {
+    jest.isolateModules(() => {
+      jest.doMock('@/i18n/format', () => ({
+        getReciterDisplayName: (r: {name: string; name_arabic?: string}) =>
+          r.name_arabic ?? r.name,
+      }));
+      const {sortRecitersByName: sortShown} =
+        require('../sortReciters') as typeof import('../sortReciters');
+      const sorted = sortShown([
+        {id: '1', name: 'Omar Al-Qazabri', name_arabic: 'عمر القزابري'},
+        {id: '2', name: 'Ahmad Al-Ajmi', name_arabic: 'أحمد العجمي'},
+        {id: '3', name: 'Ibrahim Al-Akhdar', name_arabic: 'إبراهيم الأخضر'},
+        {id: '4', name: 'Abdulbasit', name_arabic: 'عبد الباسط'},
+      ]);
+      // أ and إ sort with ا, before ع; English order would be 4, 2, 3, 1.
+      expect(sorted.map(r => r.id)).toEqual(['3', '2', '4', '1']);
+    });
+  });
+});
+// @ai-end

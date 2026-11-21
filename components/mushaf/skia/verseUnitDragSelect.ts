@@ -33,6 +33,7 @@ import {
   verseActionsPayloadForUnits,
 } from '@/store/mushafVerseSelectionStore';
 import {showToast} from '@/utils/toastUtils';
+import i18n from '@/i18n';
 
 /** Where a touch lands in a page's line text. */
 export interface LineCharHit {
@@ -98,7 +99,11 @@ export function useVerseUnitDragSelect(
       startKeyRef.current = key;
       if (!key) {
         if (charAt(x, y) && mushafVerseMapService.isShownVerseUnitsPending()) {
-          showToast('Preparing verses', 'Try again in a moment.', 'none');
+          showToast(
+            i18n.t('reader:verseUnits.preparing'),
+            i18n.t('reader:verseUnits.tryAgainShortly'),
+            'none',
+          );
         }
         return;
       }

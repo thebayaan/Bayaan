@@ -28,6 +28,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {
   formatPlaybackInfo, // @ai
   getPlayerBarNotice, // @ai
+  isRetryablePlaybackError, // @ai
   useMushafPlayerStore,
 } from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
@@ -39,6 +40,13 @@ import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {forceLTR} from '@/utils/rtl';
 import {showToast} from '@/utils/toastUtils'; // @ai
+import {
+  peekOnPage,
+  RecitationMicButton,
+  useRecitationStatusText,
+} from './RecitationMicButton';
+import {stopRecitationTracking} from '@/services/recitation/RecitationTrackingService';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // @ai-start
 const surahNameOf = (surah: number): string =>
@@ -64,6 +72,11 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   const numberingMode = useMushafPlayerStore(s => s.numberingMode); // @ai
   const verseTrackingUnavailable = numberingMode === 'disabled'; // @ai
   const timestampError = useMushafPlayerStore(s => s.timestampError);
+  const recitationText = useRecitationStatusText();
+  const hideText = useMushafSettingsStore(s => s.recitationHideText);
+  const toggleHideText = useMushafSettingsStore(
+    s => s.toggleRecitationHideText,
+  );
   const isIdle = playbackState === 'idle';
   const isLoading = playbackState === 'loading';
   const isPlaying = playbackState === 'playing';
@@ -76,7 +89,8 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   // @ai-start
   // Refusals and "Verse tracking unavailable" are shown inline below; a
   // requested start verse that was skipped (the surah plays from its
-  // beginning without verse tracking) needs a notice.
+  // beginning without verse tracking) needs a notice, and so does an error
+  // that playing again may clear.
   useEffect(
     () =>
       useMushafPlayerStore.subscribe((state, prev) => {
@@ -94,6 +108,14 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 
   const handlePlayPress = useCallback(() => {
     const store = useMushafPlayerStore.getState();
+    // @ai-start
+    // Play means the page on screen. A range left by a start that failed, or
+    // a start verse left by a play options sheet that was closed, used to
+    // win over the page: playback began at that old verse and the reader was
+    // turned back to it.
+    store.clearRange();
+    store.setPendingStart(null);
+    // @ai-end
     if (store.rewayatId) {
       // Reset repeat settings so previous loop mode doesn't carry over
       store.setVerseRepeatCount(1);
@@ -123,11 +145,11 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   }, []);
 
   const handlePrevAyah = useCallback(() => {
-    mushafAudioService.seekToPreviousAyah();
+    useMushafPlayerStore.getState().previousVerse(); // @ai
   }, []);
 
   const handleNextAyah = useCallback(() => {
-    mushafAudioService.seekToNextAyah();
+    useMushafPlayerStore.getState().nextVerse(); // @ai
   }, []);
 
   const handleOptions = useCallback(() => {
@@ -144,8 +166,91 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     });
   }, [currentPage]);
 
+  // Hide and reveal: show the next hidden word or ayah.
+  // Icons point left: the next word or ayah in Arabic is to the left.
+  function renderPeekButton(
+    label: string,
+    kind: 'word' | 'ayah',
+  ): React.JSX.Element {
+    return (
+      <Pressable
+        style={[
+          styles.micButtonRect,
+          {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()},
+        ]}
+        onPress={() => peekOnPage(kind, currentPage)}
+        accessibilityRole="button"
+        accessibilityLabel={label}>
+        <Feather
+          name={kind === 'word' ? 'chevron-left' : 'chevrons-left'}
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    );
+  }
+
+  // ── Reciting: [Stop], peek icons when hiding, live mic, [eye] ──
+  if (recitationText !== null) {
+    return (
+      <View style={styles.activeContainer}>
+        <View style={styles.activeRow}>
+          <Pressable
+            style={styles.edgeButton}
+            onPress={() => void stopRecitationTracking()}
+            accessibilityRole="button"
+            accessibilityLabel={t('recitation.stopFollowing')}>
+            <Ionicons
+              name="stop"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <View style={styles.controlsCenter}>
+            {hideText && renderPeekButton(t('recitation.nextAyah'), 'ayah')}
+            {hideText && renderPeekButton(t('recitation.nextWord'), 'word')}
+            <RecitationMicButton
+              currentPage={currentPage}
+              style={[
+                styles.micButtonRect,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.1)
+                    .toString(),
+                },
+              ]}
+            />
+          </View>
+          <Pressable
+            style={styles.edgeButton}
+            onPress={toggleHideText}
+            accessibilityRole="button"
+            accessibilityLabel={
+              hideText
+                ? t('recitation.showTheText')
+                : t('recitation.hideTheText')
+            }
+            accessibilityState={{selected: hideText}}>
+            <Feather
+              name={hideText ? 'eye-off' : 'eye'}
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </View>
+        <Text
+          style={[styles.verseInfo, {color: theme.colors.textSecondary}]}
+          numberOfLines={1}>
+          {recitationText}
+        </Text>
+      </View>
+    );
+  }
+
   // ── Error state: show message + change reciter button ────
-  if (isIdle && timestampError) {
+  // @ai Not for an error that playing again may clear (no connection): that
+  // one is a notice, and the bar below keeps its Play button to retry with.
+  if (isIdle && timestampError && !isRetryablePlaybackError(timestampError)) {
     return (
       <View style={styles.errorContainer}>
         <Text
@@ -199,6 +304,13 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             accessibilityLabel={t('common:actions.play')}>
             <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
           </Pressable>
+          <RecitationMicButton
+            currentPage={currentPage}
+            style={[
+              styles.micButtonRect,
+              {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()},
+            ]}
+          />
         </View>
 
         <Pressable
@@ -357,6 +469,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: moderateScale(12),
     paddingLeft: moderateScale(3),
+  },
+  micButtonRect: {
+    width: moderateScale(42),
+    height: moderateScale(42),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: moderateScale(12),
   },
   edgeButton: {
     width: moderateScale(36),

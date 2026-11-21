@@ -1,7 +1,11 @@
 import React from 'react';
 import {act, create, ReactTestRenderer} from 'react-test-renderer';
 
-const mockPlayer = {id: 'shared-player'};
+// @ai The provider listens to the player for track ends.
+const mockPlayer = {
+  id: 'shared-player',
+  addListener: jest.fn(() => ({remove: jest.fn()})),
+};
 const mockCreateAudioPlayer = jest.fn(() => mockPlayer);
 const mockSetPlayer = jest.fn();
 const mockStartSync = jest.fn(() => Promise.resolve());
@@ -70,6 +74,9 @@ jest.mock('@/store/mushafPlayerStore', () => ({
 }));
 jest.mock('@/services/appBoot', () => ({
   bootApp: () => mockBootApp(),
+}));
+jest.mock('@/services/mushaf/MushafPreloadService', () => ({
+  mushafPreloadService: {startIfIdle: jest.fn()},
 }));
 jest.mock('@/services/widgets/syncWidgets', () => ({
   markPlayerReadyForWidgets: jest.fn(),

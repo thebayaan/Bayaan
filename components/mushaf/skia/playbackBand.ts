@@ -17,6 +17,10 @@ import {
   type MushafPlayerStoreState,
 } from '@/store/mushafPlayerStore';
 import {parseVerseKeyListId, verseKeyListId} from '@/utils/timestampNumbering';
+import {
+  isTakeActive,
+  useRecitationTrackingStore,
+} from '@/store/recitationTrackingStore';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {NO_PLAYBACK_BAND, type PlaybackBand} from './verseHighlightLayers';
 
@@ -65,8 +69,21 @@ export function parsePlaybackBandId(id: string): PlaybackBand {
   };
 }
 
-/** The band; re-renders only when it changes. */
+/**
+ * The band; re-renders only when it changes. While the reader's own
+ * recitation is being followed, the band is the ayah they are reciting
+ * (Tilawa reports Hafs keys) instead of the player's.
+ */
 export function usePlaybackBand(): PlaybackBand {
   const id = useMushafPlayerStore(selectPlaybackBandId);
-  return useMemo(() => parsePlaybackBandId(id), [id]);
+  const recitedKey = useRecitationTrackingStore(s =>
+    isTakeActive(s.status) ? s.verseKey : null,
+  );
+  return useMemo(
+    () =>
+      recitedKey
+        ? {...NO_PLAYBACK_BAND, hafsKeys: [recitedKey]}
+        : parsePlaybackBandId(id),
+    [id, recitedKey],
+  );
 }

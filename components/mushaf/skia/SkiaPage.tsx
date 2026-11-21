@@ -64,6 +64,13 @@ import {
   computeUnitPageHighlightLayers,
 } from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
+import {useRecitationLineHighlights} from './useRecitationLineHighlights';
+import {useWordFlashHighlights} from './useWordFlashHighlights'; // @ai
+import {useRecitationHiddenText} from './useRecitationHiddenText';
+import {useRecitationMarkColors} from './useRecitationMarkColors';
+import {markAtChar} from './recitationTap';
+import {SheetManager} from 'react-native-actions-sheet';
+import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
@@ -149,6 +156,8 @@ interface SkiaPageProps {
   baseLineHeight?: number;
   paddingHorizontal?: number;
   paddingTop?: number;
+  /** @ai `centerShortPages` of the layout metrics from `getMushafLayout`. */
+  centerShortPages?: boolean;
 }
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
@@ -165,6 +174,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   baseLineHeight: propBaseLineHeight,
   paddingHorizontal: propPaddingHorizontal,
   paddingTop: propPaddingTop,
+  centerShortPages = true, // @ai
 }) => {
   const SCREEN_WIDTH = propScreenWidth ?? DEFAULT_SCREEN_WIDTH;
   const SCREEN_HEIGHT = propScreenHeight ?? DEFAULT_SCREEN_HEIGHT;
@@ -394,8 +404,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         pageNumber,
         CONTENT_HEIGHT,
         BASE_LINE_HEIGHT,
+        centerShortPages, // @ai
       ),
-    [pageLines, pageNumber, CONTENT_HEIGHT, BASE_LINE_HEIGHT],
+    [pageLines, pageNumber, CONTENT_HEIGHT, BASE_LINE_HEIGHT, centerShortPages],
   );
 
   // Tajweed char-to-rule maps per line (Hafs text only; see pageOverlays).
@@ -551,7 +562,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       }
       return -1;
     },
-    [lineYPositions],
+    [lineYPositions, CONTENT_HEIGHT], // @ai
   );
 
   // @ai — the line and character under a touch point (this renderer's
@@ -589,7 +600,21 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
       return {lineIndex, charIndex};
     },
-    [pageLines, lineYPositions, findLineAtY, contentMarginLeft],
+    // @ai-start
+    // The page box is part of the hit test: without these, a resize that
+    // leaves the lines alone (iPad split view, a changed top padding) kept
+    // testing touches against the old box and picked the wrong verse.
+    [
+      pageLines,
+      lineYPositions,
+      findLineAtY,
+      contentMarginLeft,
+      CONTENT_WIDTH,
+      CONTENT_HEIGHT,
+      PAGE_PADDING_HORIZONTAL,
+      PAGE_PADDING_TOP,
+    ],
+    // @ai-end
   );
 
   // @ai-start
@@ -636,13 +661,33 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [handleDragStart, handleDragUpdate, handleDragEnd],
   );
 
+  // A tap on a word marked while reciting opens it; any other tap is the
+  // page's own.
+  const handleTap = useCallback(
+    (x: number, y: number) => {
+      const {marks} = useRecitationTrackingStore.getState();
+      if (marks.length > 0) {
+        const hit = charAtPoint(x, y);
+        const line = hit ? pageLines[hit.lineIndex] : undefined;
+        const mark =
+          hit && line ? markAtChar(line, hit.charIndex, marks) : null;
+        if (mark) {
+          void SheetManager.show('recitation-mistake', {payload: {mark}});
+          return;
+        }
+      }
+      onTap?.();
+    },
+    [charAtPoint, pageLines, onTap],
+  );
+
   const tapGesture = useMemo(
     () =>
-      Gesture.Tap().onEnd(() => {
+      Gesture.Tap().onEnd(event => {
         'worklet';
-        if (onTap) runOnJS(onTap)();
+        runOnJS(handleTap)(event.x, event.y);
       }),
-    [onTap],
+    [handleTap],
   );
 
   const composedGesture = useMemo(
@@ -749,6 +794,33 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     verseUnitsVersion, // @ai
   ]);
 
+  // Memorisation: words not yet recited are ghosted while hiding is on.
+  // Live mistakes are drawn in the mistake colour, hidden or not.
+  const lineCharColors = useRecitationMarkColors(
+    pageLines,
+    useRecitationHiddenText(pageLines, lineAllahNameColorMaps),
+    isDarkMode,
+  );
+
+  // Recitation follow-along: recited ayat and the word being recited.
+  const recitationHighlights = useRecitationLineHighlights(
+    pageNumber,
+    pageLines,
+    lineBackgroundHighlightsMap,
+    textColor,
+    isDarkMode,
+  );
+  // @ai-start
+  // The words a Quran search matched, flashed when the reader opens there.
+  const lineHighlights = useWordFlashHighlights(
+    pageNumber,
+    pageLines,
+    recitationHighlights,
+    textColor,
+    isDarkMode,
+  );
+  // @ai-end
+
   const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
 
   if (!fontMgr || !justResults) {
@@ -812,13 +884,13 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               yPos={yPos}
               textColor={textColor}
               charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
-              charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
+              charToColor={lineCharColors?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
               arabicTextWeight={arabicTextWeight}
               textIdentity={textIdentity} // @ai
               onParagraphReady={handleParagraphReady}
               onParagraphDisposed={handleParagraphDisposed}
-              backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
+              backgroundHighlights={lineHighlights.get(lineIndex)}
               lineHeight={
                 lineIndex < lineYPositions.length - 1
                   ? lineYPositions[lineIndex + 1] - lineYPositions[lineIndex]

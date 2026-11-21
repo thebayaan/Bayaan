@@ -166,7 +166,14 @@
     },
     "items": {
       "qul": "Advanced Quranic data and word-level information by Tarteel",
+      "quranicTreebank": "Word-by-word i'rab (syntax) of the whole Quran, by NoorBayan (MIT). Its morphology is from the Quranic Arabic Corpus (GNU GPL)",
+      "quranicCorpus": "Morphology behind the i'rab and the Quran word and root search (part of speech, root, lemma, case and mood), by Dr. Kais Dukes, University of Leeds (GNU GPL, with the corpus's terms of use)",
+      "masaq": "Independent i'rab annotation used to cross-check every word, by Sawalha et al., University of Jordan (CC BY 4.0)",
+      "quranpedia": "Classical i'rab books of al-Ukbari and al-Nahhas, and Ibn al-Ha'im's al-Tibyan for the Arabic meanings of words",
+      "tanzilText": "Standard (imla'i) spelling of the Quran, Simple version 1.1, compared letter by letter with the mushaf to show the rasm of each word (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/)",
       "quranFoundation": "Comprehensive Quran API services by Quran.com",
+      "kfgqpcTitle": "King Fahd Glorious Qur'an Printing Complex",
+      "kfgqpc": "Official texts of the riwayat of Warsh, Qalun, al-Bazzi, Qunbul, al-Duri, al-Susi and Shu'bah shown in the mushaf and in Word Study's Readings",
       "mp3quran": "Comprehensive reciter collection",
       "alafasyTitle": "Mishary Rashid Alafasy",
       "alafasy": "Morning and evening adhkar, Quranic duas and more Hisn al-Muslim adhkar",
@@ -182,7 +189,7 @@
       "manropeTitle": "Manrope Font",
       "manrope": "Modern geometric sans-serif font family",
       "uthmaniTitle": "Uthmani Font",
-      "uthmani": "Beautiful Quranic font from Arabic Fonts",
+      "uthmani": "Uthmanic Hafs Quran font by the King Fahd Glorious Qur'an Printing Complex",
       "quranComTitle": "Quran.com Resources",
       "quranCom": "Surah name SVGs and icons",
       "reactNative": "Core framework",
@@ -211,7 +218,9 @@
     "browseAll": "Browse All Reciters",
     "browseAllDescription": "Search through our complete collection of reciters",
     "useDefault": "Use Default Reciter",
-    "useDefaultDescription": "Always use your selected default reciter"
+    "useDefaultDescription": "Always use your selected default reciter",
+    "random": "Random Reciter",
+    "randomDescription": "Play each surah with a reciter picked at random"
   },
   "storage": {
     "loading": "Loading storage information...",
@@ -227,8 +236,8 @@
     "removeDownloadsSuccess": "All downloads have been removed.",
     "removeDownloadsError": "Failed to remove downloads.",
     "clearCacheTitle": "Clear cache",
-    "clearCacheDescription": "You can free up storage by clearing your cache. Your downloads won't be removed.",
-    "clearCacheConfirm": "This will clear your cache. Your downloads won't be removed.",
+    "clearCacheDescription": "Free up storage by clearing temporary files. This also resets the player and Continue Listening. Your downloads won't be removed.",
+    "clearCacheConfirm": "This clears temporary files and resets the player: playback stops, and your queue, Continue Listening and playback settings (speed, repeat, sleep timer) are cleared. Your downloads won't be removed.",
     "clearCacheSuccess": "Cache has been cleared.",
     "clearCacheError": "Failed to clear cache.",
     "success": "Success",
@@ -281,6 +290,7 @@
     "system": "System",
     "wordByWordHeader": "Word by Word",
     "wordByWord": "Word by Word",
+    "englishMeanings": "English Meanings",
     "translation": "Translation",
     "transliteration": "Transliteration",
     "arabicFontSize": "Arabic Font Size",
@@ -294,12 +304,8 @@
     "thematicHelper": "Alternating highlights by thematic passage",
     "fontHeader": "Font",
     "tajweedColoring": "Tajweed Coloring",
-    "tajweedPreview": "Preview colored tajweed",
     "tajweedDescription": "Highlight rules with colors",
     "rewayahHeader": "Rewayah",
-    "rewayahDisabled": "Rewayah switching is disabled in Mushaf 1440 beta.",
-    "qcfBetaTitle": "Mushaf 1440 Beta",
-    "qcfBetaMessage": "Mushaf 1440 is {{appName}}’s most modern mushaf pipeline, but it is still in beta. Tajweed coloring is available as a preview. Rewayah switching is still disabled.",
     "nowReading": "Now reading",
     "currentlyReading": "Currently reading",
     "rewayahExpandLabel": "Rewayah: {{name}}. Expand to change.",
@@ -323,7 +329,7 @@
       },
       "qcfV2": {
         "label": "Mushaf 1440",
-        "description": "Modern Madinah printed pipeline"
+        "description": "The 1441H Madinah print, glyph for glyph"
       }
     },
     "weights": {
@@ -405,8 +411,33 @@
       "keepLabel": "Keep reading Hafs",
       "keep": "Keep Hafs"
     },
+    "rewayahNotice": {
+      "nowReading": "Now reading",
+      "stillShowing": "Still showing {{rewayah}}.",
+      "showingInstead": "Showing {{rewayah}} instead.",
+      "tryAgain": "Please try again."
+    },
     "communityReflections": "Community Reflections",
     "communityReflectionsHelper": "Show community reflections under each ayah in list view",
-    "indopakHafsOnly": "IndoPak shows Hafs only. Choosing another rewayah switches the font to {{font}}."
+    "indopakHafsOnly": "IndoPak shows Hafs only. Choosing another rewayah switches the font to {{font}}.",
+    "qcfOtherRewayat": "Mushaf 1440’s printed glyphs are Hafs. Other rewayat are shown in {{font}}.",
+    "recitation": {
+      "checkLabel": "Check my recitation",
+      "checkHelper": "Marks a word in red when you may have missed it or said a different word. Tajweed and harakat are not checked.",
+      "hapticsLabel": "Vibrate on mistakes",
+      "historyLabel": "Recitation history",
+      "historyHelper": "Which ayat you recited, kept on this phone only. Audio is never saved.",
+      "historyConfirmTitle": "Clear recitation history?",
+      "historyConfirmMessage": "Deletes the ayat, peeks and pauses saved from your recitations on this phone.",
+      "modelLabel": "Recognition model",
+      "modelHelper": "Used by the mic in the mushaf bar to follow your recitation. Runs on your device; audio never leaves your phone. Hafs only.",
+      "modelDownloading": "Downloading {{percent}}%",
+      "modelDownloaded": "Downloaded, {{size}} MB",
+      "modelNotDownloaded": "Not downloaded, {{size}} MB",
+      "removeModel": "Remove recognition model",
+      "removeTitle": "Remove recognition model?",
+      "removeMessage": "Frees {{size}} MB. It downloads again the next time you tap the mic."
+    },
+    "recitationHeader": "Recitation"
   }
 }

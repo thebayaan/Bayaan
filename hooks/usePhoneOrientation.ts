@@ -1,5 +1,6 @@
 // @ai-generated
 import {useEffect} from 'react';
+import {Platform} from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {useResponsive} from '@/hooks/useResponsive';
 
@@ -14,7 +15,15 @@ import {useResponsive} from '@/hooks/useResponsive';
 export function usePhoneOrientation(mode: 'portrait' | 'free'): void {
   const {isTablet} = useResponsive();
   useEffect(() => {
-    if (isTablet) return;
+    if (isTablet) {
+      // The Android manifest pins the activity to portrait, so "never
+      // locked" has to be said out loud there: without this an Android
+      // tablet (and a foldable once unfolded, which a phone lock may still
+      // hold) could not turn at all, not even in the Mushaf. iPad takes its
+      // orientations from the app's settings and needs nothing.
+      if (Platform.OS === 'android') ScreenOrientation.unlockAsync();
+      return;
+    }
     if (mode === 'free') {
       ScreenOrientation.unlockAsync();
       return () => {

@@ -94,6 +94,12 @@ interface SkiaVerseTextProps {
   /** Paragraph alignment; omitted keeps the RTL default (right edge). */
   textAlign?: SkiaVerseTextAlign;
   // @ai-end
+  // @ai-start
+  /** Inclusive character ranges of the rendered text to tint (the words a
+   *  search matched), drawn under the text like the rewayah-diff tint. */
+  highlightRanges?: readonly {start: number; end: number}[];
+  highlightColor?: string;
+  // @ai-end
 }
 
 const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
@@ -113,6 +119,8 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   renderPlaceholder, // @ai
   words: givenWords, // @ai
   textAlign, // @ai
+  highlightRanges, // @ai
+  highlightColor, // @ai
 }) => {
   // When no explicit prop, follow the mushaf setting. This is the mushaf
   // list-mode / preview case; the player passes an explicit prop.
@@ -328,12 +336,56 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     overlayWords,
   ]);
 
+  // @ai-start
+  // Search-hit tint: the given character ranges, under the text.
+  const highlightRects = useMemo(() => {
+    if (!paragraph || !highlightColor || !highlightRanges?.length) return null;
+    const rects: {x: number; y: number; width: number; height: number}[] = [];
+    for (const range of highlightRanges) {
+      try {
+        // getRectsForRange uses a half-open range [start, end).
+        for (const rect of paragraph.getRectsForRange(
+          range.start,
+          range.end + 1,
+        )) {
+          rects.push({
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          });
+        }
+      } catch {
+        // One bad range must not hide the others.
+      }
+    }
+    return rects.length > 0 ? rects : null;
+  }, [paragraph, highlightRanges, highlightColor]);
+  // @ai-end
+
   if (!paragraph || width <= 0) {
     return renderPlaceholder ? <>{renderPlaceholder(status)}</> : null; // @ai
   }
 
   return (
     <Canvas pointerEvents="none" style={{width, height, direction: 'rtl'}}>
+      {/* @ai-start */}
+      {highlightRects && highlightColor && (
+        <Group>
+          {highlightRects.map((rect, i) => (
+            <RoundedRect
+              key={i}
+              x={rect.x}
+              y={rect.y + yOffset}
+              width={rect.width}
+              height={rect.height}
+              r={DIFF_BG_RADIUS}
+              color={highlightColor}
+            />
+          ))}
+        </Group>
+      )}
+      {/* @ai-end */}
       {diffBgRects && (
         <Group>
           {diffBgRects.map((rect, i) => (

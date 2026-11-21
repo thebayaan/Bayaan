@@ -35,6 +35,10 @@ build or CI on any difference.
 | `validate.py` | round-trip self-test of the convention map against the DK Hafs DB |
 | `compare_outputs.py` | a fresh build must equal the committed files (CI drift check) |
 | `requirements-ci.txt` | pinned `uharfbuzz` / `fonttools` for the glyph gate |
+| `build_readings_index.py` | the per-word readings index `data/mushaf/digitalkhatt/dk_readings.db` (how each of the 8 rewayat reads every Hafs word) and its review list; `--check` (CI) rebuilds, runs the gates and compares, `--report` prints the review list |
+| `reading_groups_cases.json` | reviewed groupings of the readings index (gate G6), one group per rule, plus the open questions (`toConfirm`) |
+| `reading_upstream_issues.json` | the suspected KFGQPC misprints, to report upstream; the readings index shows them as written (gate G7 keeps the list current) |
+| `reading_review.md` | the grouping review list for a qualified reader, written by `build_readings_index.py` (never by hand) |
 
 ## Rebuild
 
@@ -43,7 +47,15 @@ python3 scripts/rewayah/vendor_sources.py --check        # sources match the loc
 python3 scripts/rewayah/build_sibling_rewayah.py         # all 7 (or: ... warsh bazzi)
 python3 scripts/rewayah/validate_rewayah_db.py --glyphs  # needs: pip install -r scripts/rewayah/requirements-ci.txt
 python3 scripts/rewayah/validate.py
+python3 -B scripts/rewayah/build_readings_index.py       # the per-word readings index, from the files above
+node scripts/rewayah/gen-mushaf-tables.mjs               # the generated Mushaf tables (Node >= 22.13)
+node scripts/rewayah/gen-manifest.mjs                    # the app's asset manifest (content-addressed copies)
 ```
+
+Order: builder → `build_readings_index.py` and `node scripts/rewayah/gen-mushaf-tables.mjs` → `node scripts/rewayah/gen-manifest.mjs`.
+The readings index records the sha256 of every words DB and highlight map it
+was built from, and the app refuses an index whose words DBs are not the
+bundled ones, so rebuild it whenever a words DB or diff changes.
 
 The builder writes into a temporary directory (under `scripts/rewayah/.build/`,
 git-ignored), runs the validator on the result (and the sibling gate for every
@@ -55,9 +67,11 @@ deterministic: two runs give byte-identical files (`--out-dir DIR` builds
 elsewhere). A words DB whose schema and rows equal the existing file is not
 replaced, because another SQLite version writes other bytes for the same rows
 and the app names its DB copies by sha256 (the committed DBs were written by
-SQLite 3.53.3). When the data does change, regenerate the asset manifest
-(`node scripts/rewayah/gen-manifest.mjs`, owned by the runtime) so installed
-apps re-import the new DBs.
+SQLite 3.53.3). When the data does change, regenerate the Mushaf tables and
+then the asset manifest (`node scripts/rewayah/gen-mushaf-tables.mjs`, then
+`node scripts/rewayah/gen-manifest.mjs`, owned by the runtime) so installed
+apps re-import the new DBs. The manifest script fails while the tables are
+stale.
 
 To update a source: put the new official zip in a directory, add its entry
 (URL, capture, SHA-256, published MD5 / SHA-1, member, SHA-256) to
@@ -265,6 +279,32 @@ other three, their verse 1, the same text.
   dotted-circle glyph, so broken clusters are checked on the text (slot gate).
 
 CI runs all of them (`.github/workflows/quran-data.yml`).
+
+## Per-word readings (`dk_readings.db`)
+
+`build_readings_index.py` groups, for every Hafs word slot, the 8 rewayat by
+how they read it, from the committed words DBs and highlight maps only:
+Hafs's group holds Hafs and every rewayah the diff JSON leaves untinted (the
+reviewed highlight decision); the tinted rewayat are grouped among themselves
+with `highlights.reads_alike` (a doubt splits, it never merges); a P2 blank is
+"not read". Two Hafs slots that a rewayah writes as one word (P3) form one
+span. Every text is the official one, as written: the four suspected KFGQPC
+misprints of `reading_upstream_issues.json` (kept to report them upstream)
+are each their rewayah's own reading. Only words with something to show get
+a row (9,499 spans in 9,505 rows); the format is documented in the module
+docstring and decoded and checked by `services/mushaf/wordReadingsFormat.ts`.
+
+Gates G1-G8 (row identity, partition, exact texts, silah, completeness, the
+reviewed cases, the misprint entries, determinism) fail the build; `--check`
+also runs G1-G6 on the committed rows and compares them, and the review list,
+with a fresh build. The build writes `reading_review.md`, the list a qualified
+reader signs off before release: the misprints, the open questions, the joins
+where a general rule of one rewayah excused a difference, every word with
+three or more readings, and the words where one rewayah's tinted text is
+stored, untinted, by another (the same text on both sides of the Hafs line;
+G2 fails on a new one until `reading_groups_cases.json` lists it). A decision
+becomes a group in `reading_groups_cases.json`; never edit a group to make a
+build pass.
 
 ## Render review
 

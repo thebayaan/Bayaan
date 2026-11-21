@@ -1,7 +1,10 @@
+// Bare i18next singleton (initialised by '@/i18n' at app start).
+import i18n from 'i18next';
 import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
+import {stripTranslationMarkup} from '@/utils/translationMarkup'; // @ai
 
 interface SaheehEntry {
   t: string;
@@ -36,10 +39,6 @@ for (const verse of Object.values(quranData)) {
   verseKeyToGlobalId[verse.verse_key] = verse.id;
 }
 
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
-}
-
 export function getBundledTranslation(
   verseKey: string,
   translationId: BundledTranslationId,
@@ -50,7 +49,9 @@ export function getBundledTranslation(
   const globalId = verseKeyToGlobalId[verseKey];
   if (globalId == null) return '';
   const entry = clearQuranData.translations[globalId - 1];
-  return entry ? stripHtml(entry.text) : '';
+  // Clear Quran has no footnote texts to open, so its footnote markers go,
+  // number included: the rows showed "Alif-Lãm-Mĩm.1". @ai
+  return entry ? stripTranslationMarkup(entry.text) : ''; // @ai
 }
 
 export function getBundledTranslationRaw(
@@ -96,6 +97,23 @@ export function getTranslationName(translationId: string): string {
   }
   // Fallback: format the identifier nicely (e.g., "en.pickthall" → "en.pickthall")
   return translationId;
+}
+
+/** The bundled translations' names in the app language (static keys). */
+const BUNDLED_DISPLAY_NAMES: Record<BundledTranslationId, () => string> = {
+  saheeh: () => i18n.t('sheets:translationContent.names.saheeh'),
+  'clear-quran': () => i18n.t('sheets:translationContent.names.clearQuran'),
+};
+
+/**
+ * A translation's name as the app language shows it: a bundled one by its
+ * name in that language (in Arabic, "صحيح إنترناشونال (بالإنجليزية)"), a
+ * downloaded one as its catalogue names it (getTranslationName).
+ */
+export function getTranslationDisplayName(translationId: string): string {
+  return isBundledTranslation(translationId)
+    ? BUNDLED_DISPLAY_NAMES[translationId]()
+    : getTranslationName(translationId);
 }
 
 export function isBundledTranslation(id: string): id is BundledTranslationId {

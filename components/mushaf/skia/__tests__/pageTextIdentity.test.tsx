@@ -12,6 +12,10 @@
  * The same holds for a font change: a line is never built with the layout of
  * another font.
  *
+ * Both renderers also band the words a Quran search matched (the word flash,
+ * chained after the recitation highlights in SkiaPage and in
+ * MushafPageContent, the page of ContinuousMushafView).
+ *
  * DigitalKhattDataService is the fixture-backed stand-in (real slot texts of
  * the bundled words DBs) with a data identity and cache listeners added.
  * JustService is a stand-in whose layouts mark the line text and font they
@@ -21,6 +25,7 @@
 
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
+import Color from 'color';
 import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import type {FixtureDb} from '@/services/mushaf/__fixtures__/rewayahOverlayFixture';
@@ -34,9 +39,15 @@ interface MockStyle {
   fontFamilies?: string[];
   fontFeatures?: {name: string; value: number}[];
 }
-interface MockFlashListProps {
+interface MockFlatListProps {
   data: number[];
   renderItem: (info: {item: number; index: number}) => React.ReactNode;
+  initialScrollIndex?: number;
+  getItemLayout?: (
+    data: unknown,
+    index: number,
+  ) => {length: number; offset: number; index: number};
+  contentContainerStyle?: {paddingTop?: number};
 }
 
 interface MockParagraph {
@@ -334,10 +345,13 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 
-// Renders the item of page 4 only (the fixture page under test).
-jest.mock('@shopify/flash-list', () => {
+// Renders the item of page 4 only (the fixture page under test), and keeps
+// the list's props.
+const mockList: {props: MockFlatListProps | null} = {props: null};
+jest.mock('react-native/Libraries/Lists/FlatList', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const FlashList = ReactActual.forwardRef((props: MockFlashListProps, ref) => {
+  const FlatList = ReactActual.forwardRef((props: MockFlatListProps, ref) => {
+    mockList.props = props;
     ReactActual.useImperativeHandle(ref, () => ({
       scrollToIndex: () => undefined,
     }));
@@ -355,7 +369,7 @@ jest.mock('@shopify/flash-list', () => {
         ),
     );
   });
-  return {FlashList};
+  return {__esModule: true, default: FlatList};
 });
 
 jest.mock('@/store/mushafPlayerStore', () => {
@@ -412,6 +426,8 @@ import {getMushafLayout} from '../../constants';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {quranTextService} from '@/services/mushaf/QuranTextService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore';
+import type {LineHighlight} from '../verseHighlightLayers';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -606,5 +622,73 @@ describe.each([
     expect(mockSkia.paragraphs.slice(-after.length).map(p => p.text)).toEqual(
       after,
     );
+  });
+});
+
+describe.each([
+  ['SkiaPage', skiaPage],
+  ['ContinuousMushafView', continuousView],
+])('%s and the Quran search word flash', (_name, view) => {
+  afterEach(() => {
+    act(() => useMushafWordFlashStore.getState().clear());
+  });
+
+  it('bands the matched word on its line until the flash ends', () => {
+    // The page's first word, banded in the colour of the word being recited.
+    const lines = digitalKhattDataService.getPageLines(PAGE);
+    const lineIndex = lines.findIndex(line => line.line_type === 'ayah');
+    const word = digitalKhattDataService.getWordInfo(
+      lines[lineIndex].first_word_id,
+    );
+    if (!word) throw new Error('the page has words');
+    const flash = Color('#111111').alpha(0.25).toString();
+    const flashedLines = () =>
+      renderers[0].root
+        .findAll(node =>
+          ((node.props.backgroundHighlights ?? []) as LineHighlight[]).some(
+            h => h.color === flash && h.style === 'band',
+          ),
+        )
+        .map(node => node.props.lineIndex);
+
+    mount(view());
+    expect(flashedLines()).toEqual([]);
+    act(() =>
+      useMushafWordFlashStore
+        .getState()
+        .show(word.verseKey, [word.wordPositionInVerse]),
+    );
+    expect(flashedLines()).toEqual([lineIndex]);
+    act(() => useMushafWordFlashStore.getState().clear());
+    expect(flashedLines()).toEqual([]);
+  });
+});
+
+describe('ContinuousMushafView list', () => {
+  it('opens on its page, and is told where each page is: page 4 starts after pages 1 to 3', () => {
+    mount(continuousView());
+    const props = mockList.props;
+    expect(props?.initialScrollIndex).toBe(PAGE - 1);
+    const getItemLayout = props?.getItemLayout;
+    if (!getItemLayout) throw new Error('the list estimates its pages');
+    const layoutOf = (index: number) => getItemLayout(null, index);
+    const lines = (page: number) =>
+      digitalKhattDataService.getPageLines(page).length;
+    // The line height the view draws with (a page is its lines times it).
+    const lineHeight = layoutOf(PAGE - 1).length / lines(PAGE);
+    expect(lineHeight).toBeGreaterThan(0);
+
+    let pagesAbove = 0;
+    for (let page = 1; page < PAGE; page++) pagesAbove += lines(page);
+    expect(pagesAbove).toBeGreaterThan(0);
+    expect(layoutOf(0).offset).toBe(props?.contentContainerStyle?.paddingTop);
+    expect(layoutOf(PAGE - 1).offset).toBeCloseTo(
+      layoutOf(0).offset + pagesAbove * lineHeight,
+      6,
+    );
+    // The page drawn is exactly as tall as its layout entry: a taller page
+    // would move every page below it off its offset.
+    const drawn = renderers[0].toJSON() as TestRenderer.ReactTestRendererJSON;
+    expect(drawn.props.style.height).toBe(layoutOf(PAGE - 1).length);
   });
 });

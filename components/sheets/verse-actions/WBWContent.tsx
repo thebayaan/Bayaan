@@ -10,7 +10,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import Color from 'color';
-import {ScrollView} from 'react-native-actions-sheet';
+import {SheetScrollView} from './sheetGestures';
 import {WBWVerseView} from '@/components/player/v2/PlayerContent/QuranView/WBWVerseView';
 // @ai-start
 import {
@@ -23,7 +23,15 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {wbwParts, type UnitStart} from './verseUnitScreens'; // @ai
+import {
+  selectionWordParts,
+  wbwParts,
+  type UnitStart,
+  type WordStudyPart,
+} from './verseUnitScreens'; // @ai
+import {unitSelection} from '@/components/share/rewayahVerseSelection'; // @ai
+import {dkPositionsForWbwWord} from '@/services/mushaf/wordReadingsFormat'; // @ai
+import type {WordRef} from './wordStudy'; // @ai
 
 interface WBWContentProps {
   surahNumber: number;
@@ -35,6 +43,9 @@ interface WBWContentProps {
   /** Another rewayah's verse: one view per Hafs verse holding its words.
    *  Absent for Hafs (unchanged). */
   unitStart?: UnitStart;
+  /** A long-press on a word studies it (Word Study, at its Hafs verse and
+   *  word-by-word position). Absent: it lifts the word, as before. */
+  onOpenWord?: (word: WordRef) => void;
   // @ai-end
   onBack: () => void;
 }
@@ -45,6 +56,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   ayahNumber,
   rewayah, // @ai
   unitStart, // @ai
+  onOpenWord, // @ai
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -108,20 +120,47 @@ export const WBWContent: React.FC<WBWContentProps> = ({
     position: number;
   } | null>(null);
 
+  // Another rewayah's verse holds only some words of a Hafs verse, while
+  // the grid draws the whole Hafs verse: only the verse's own words open
+  // Word Study (its selection is cut to them); the others are lifted.
+  const studyRanges = useMemo(() => {
+    if (!unitStart) return null;
+    const studyParts = selectionWordParts(
+      unitSelection(unitStart.model, [unitStart.unit]),
+    );
+    return new Map<string, WordStudyPart['wordRange']>(
+      studyParts.map(p => [p.verseKey, p.wordRange]),
+    );
+  }, [unitStart]);
+
   const wordPressHandlers = useMemo(
     () =>
       new Map(
-        parts.map(part => [
-          part.verseKey,
-          (position: number) =>
-            setSelectedWord(prev =>
-              prev?.verseKey === part.verseKey && prev.position === position
-                ? null
-                : {verseKey: part.verseKey, position},
-            ),
-        ]),
+        parts.map(part => {
+          const inStudy = (position: number) => {
+            if (!studyRanges) return true;
+            if (!studyRanges.has(part.verseKey)) return false;
+            const range = studyRanges.get(part.verseKey);
+            if (!range) return true;
+            return dkPositionsForWbwWord(part.verseKey, position).some(
+              p => p >= range.first && p <= range.last,
+            );
+          };
+          return [
+            part.verseKey,
+            (position: number) =>
+              onOpenWord && inStudy(position)
+                ? onOpenWord({verseKey: part.verseKey, position})
+                : setSelectedWord(prev =>
+                    prev?.verseKey === part.verseKey &&
+                    prev.position === position
+                      ? null
+                      : {verseKey: part.verseKey, position},
+                  ),
+          ] as const;
+        }),
       ),
-    [parts],
+    [parts, onOpenWord, studyRanges],
   );
   // @ai-end
 
@@ -129,7 +168,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   const noop = useCallback(() => undefined, []);
 
   return (
-    <ScrollView
+    <SheetScrollView
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}>
       {/* @ai-start */}
@@ -166,7 +205,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
         </React.Fragment>
       ))}
       {/* @ai-end */}
-    </ScrollView>
+    </SheetScrollView>
   );
 };
 // @ai-end
@@ -182,7 +221,7 @@ const createStyles = (theme: Theme) =>
     partCaption: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.6).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: 0.3,
       marginTop: verticalScale(6),
       marginBottom: verticalScale(6),

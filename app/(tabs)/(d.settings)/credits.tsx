@@ -44,6 +44,39 @@ function getCredits(
           description: t('credits.items.quranFoundation'),
           link: 'https://api-docs.quran.foundation',
         },
+        {
+          title: t('credits.items.kfgqpcTitle'),
+          description: t('credits.items.kfgqpc'),
+          link: 'https://qurancomplex.gov.sa',
+        },
+        {
+          title: 'The Quranic Treebank',
+          description: t('credits.items.quranicTreebank'),
+          link: 'https://github.com/NoorBayan/Quranic',
+        },
+        {
+          title: 'Quranic Arabic Corpus',
+          description: t('credits.items.quranicCorpus'),
+          link: 'https://corpus.quran.com',
+        },
+        {
+          title: 'MASAQ',
+          // No digit post-processing: the licence name stays "CC BY 4.0"
+          // in Arabic, not "CC BY ٤.٠".
+          description: t('credits.items.masaq', {postProcess: []}),
+          link: 'https://data.mendeley.com/datasets/9yvrzxktmr/5',
+        },
+        {
+          title: 'Quranpedia',
+          description: t('credits.items.quranpedia'),
+          link: 'https://quranpedia.net',
+        },
+        {
+          title: 'Tanzil Quran Text',
+          // The licence version and its URI keep Latin digits in Arabic.
+          description: t('credits.items.tanzilText', {postProcess: []}),
+          link: 'https://tanzil.net',
+        },
       ],
     },
     {
@@ -116,7 +149,7 @@ function getCredits(
         {
           title: t('credits.items.uthmaniTitle'),
           description: t('credits.items.uthmani'),
-          link: 'https://arabicfonts.net',
+          link: 'https://qurancomplex.gov.sa',
         },
         {
           title: t('credits.items.quranComTitle'),
@@ -260,7 +293,7 @@ const createStyles = (theme: Theme) =>
     introText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       lineHeight: moderateScale(20),
       marginBottom: moderateScale(28),
       textAlign: 'center',
@@ -271,7 +304,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: moderateScale(6),
@@ -308,13 +341,13 @@ const createStyles = (theme: Theme) =>
     creditDescription: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
     },
     footerText: {
       textAlign: 'center',
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: moderateScale(24),
     },
   });

@@ -36,8 +36,9 @@ import {
   CollectionOptionsMenu,
   type CollectionOptionsPayload,
 } from '@/components/sheets/options/collectionOptions';
-import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse'; // @ai
+import {savedVerseRouteParams} from '@/services/verse-annotations/unitAnnotations'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
 // @ai-end
 
 interface NoteData {
@@ -51,12 +52,17 @@ const NotesScreen = () => {
   const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The iPad sidebar opens this as the first screen of the Collection stack.
+  // Back then has nothing to pop and used to switch to the Home tab, so the
+  // arrow is left out there, as the system header does on iPadOS 26. @ai
+  const isStackRoot = useIsStackRoot(); // @ai
   const {t} = useTranslation(['collection', 'common']);
   const nativeMenus = useNativeOptionsMenu(); // @ai
 
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+  const openingRef = useRef(false); // @ai
 
   useCollectionNativeHeader({
     title: t('collectionScreen.notes'),
@@ -66,7 +72,9 @@ const NotesScreen = () => {
 
   const loadNotes = useCallback(async () => {
     try {
-      setLoading(true);
+      // @ai `loading` starts true and is not raised again: a refresh (coming
+      // back to the screen, closing the note sheet) keeps the list and its
+      // scroll position instead of blanking to "Loading…".
       const allNotes = await verseAnnotationService.getAllNotes();
       const enriched = allNotes.map(note => {
         const surah = getSurahById(note.surahNumber);
@@ -87,6 +95,7 @@ const NotesScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      openingRef.current = false; // @ai: ignores taps after one opened the reader
       loadNotes();
     }, [loadNotes]),
   );
@@ -102,37 +111,42 @@ const NotesScreen = () => {
     setNotes(prev => prev.filter(n => n.note.id !== note.id));
   }, []);
 
-  const handleNotePress = useCallback((item: NoteData) => {
-    SheetManager.show('verse-note', {
-      payload: {
-        verseKey: item.note.verseKey,
-        surahNumber: item.note.surahNumber,
-        ayahNumber: item.note.ayahNumber,
-        verseKeys: item.note.verseKeys, // @ai a range note keeps its range title
-        noteId: item.note.id,
-        // The note's own rewayah names its verses (decision 3): the sheet
-        // labels them at once instead of after loading the note. A legacy
-        // note without one is a Hafs note (verse-units contract section 3),
-        // labelled from the first render as before Release 1. @ai
-        rewayah: item.note.rewayahId ?? 'hafs',
-      },
-    });
-  }, []);
+  // @ai-start
+  const handleNotePress = useCallback(
+    async (item: NoteData) => {
+      // show() resolves when the sheet has closed. The sheet saves or deletes
+      // straight in the database and a sheet does not change screen focus, so
+      // without this reload the row kept its old text, and a deleted note
+      // stayed listed and reopened as an empty "Add note" form.
+      await SheetManager.show('verse-note', {
+        payload: {
+          verseKey: item.note.verseKey,
+          surahNumber: item.note.surahNumber,
+          ayahNumber: item.note.ayahNumber,
+          verseKeys: item.note.verseKeys, // a range note keeps its range title
+          noteId: item.note.id,
+          // The note's own rewayah names its verses (decision 3): the sheet
+          // labels them at once instead of after loading the note. A legacy
+          // note without one is a Hafs note (verse-units contract section 3),
+          // labelled from the first render as before Release 1.
+          rewayah: item.note.rewayahId ?? 'hafs',
+        },
+      });
+      await loadNotes();
+    },
+    [loadNotes],
+  );
+  // @ai-end
 
   // @ai-start
-  const openingRef = useRef(false);
   const handleOpenVerse = useCallback(
-    async (note: VerseNote) => {
+    (note: VerseNote) => {
       if (openingRef.current) return;
       openingRef.current = true;
-      try {
-        router.push({
-          pathname: '/mushaf',
-          params: await savedVerseOpenParams(note),
-        });
-      } finally {
-        openingRef.current = false;
-      }
+      router.push({
+        pathname: '/mushaf',
+        params: savedVerseRouteParams(note),
+      });
     },
     [router],
   );
@@ -242,17 +256,23 @@ const NotesScreen = () => {
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
               {t('collectionScreen.notes')}
             </Text>
@@ -275,17 +295,23 @@ const NotesScreen = () => {
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
               {t('collectionScreen.notes')}
             </Text>
@@ -317,7 +343,8 @@ const NotesScreen = () => {
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <StatusBar barStyle="default" />
 
-      {!USE_GLASS && (
+      {/* Not at the stack root: nothing to go back to. @ai */}
+      {!USE_GLASS && !isStackRoot && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,

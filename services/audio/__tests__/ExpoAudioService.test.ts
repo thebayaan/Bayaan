@@ -223,6 +223,79 @@ describe('ExpoAudioService — Group A characterization', () => {
     expect(player.setPlaybackRate).toHaveBeenLastCalledWith(2.0, 'high');
   });
 
+  // @ai-start
+  // The chosen rate is restored from storage on launch, when the native
+  // player is new and at 1x. It has to reach the player whichever of the two
+  // arrives first, and stay applied across a load and a play.
+  it('applies a rate that was set before the player existed', () => {
+    const service = ExpoAudioService.getInstance();
+    service.reset();
+    service.setRate(2);
+
+    const player = new FakeAudioPlayer();
+    service.setPlayer(
+      player as unknown as Parameters<typeof service.setPlayer>[0],
+    );
+
+    expect(player.setPlaybackRate).toHaveBeenCalledWith(2, 'high');
+    expect(player.playbackRate).toBe(2);
+  });
+
+  it('play() puts the chosen rate back when the native player lost it', async () => {
+    const {service, player} = makeService();
+    service.setRate(1.5);
+    // The OS (or a new native player) is back at 1x.
+    player.playbackRate = 1;
+    player.setPlaybackRate.mockClear();
+
+    await service.play();
+
+    expect(player.setPlaybackRate).toHaveBeenCalledWith(1.5, 'high');
+    expect(player.playbackRate).toBe(1.5);
+  });
+
+  it('loadTrack() puts the chosen rate back when the native player lost it', async () => {
+    const {service, player} = makeService();
+    service.setRate(1.75);
+    player.playbackRate = 1;
+    player.replace.mockImplementationOnce(async () => {
+      player.simulateLoaded(60);
+    });
+
+    await service.loadTrack('https://example.test/x.mp3');
+
+    expect(player.playbackRate).toBe(1.75);
+  });
+
+  it('does not touch the rate when the player already has it', async () => {
+    const {service, player} = makeService();
+    service.setRate(2);
+    player.setPlaybackRate.mockClear();
+
+    await service.play();
+
+    expect(player.setPlaybackRate).not.toHaveBeenCalled();
+  });
+
+  it('cleanup() returns the kept player to 1x', () => {
+    const {service, player} = makeService();
+    service.setRate(2);
+
+    service.cleanup();
+
+    expect(player.playbackRate).toBe(1);
+  });
+
+  it('a rate that is not a number falls back to 1x', () => {
+    const {service, player} = makeService();
+    service.setRate(2);
+
+    service.setRate(Number.NaN);
+
+    expect(player.setPlaybackRate).toHaveBeenLastCalledWith(1, 'high');
+  });
+  // @ai-end
+
   // ---------------------------------------------------------------- A8 ---
   it('A8: state listeners receive correct state objects on each transition', async () => {
     const {service, player} = makeService();

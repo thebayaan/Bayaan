@@ -11,8 +11,7 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {
   useDownloadProgress,
-  useIsDownloaded,
-  useIsDownloadedWithRewayat,
+  useIsDownloadedForPlayback,
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {CircularProgress} from '@/components/CircularProgress';
@@ -25,6 +24,7 @@ import {currentLanguageConfig} from '@/i18n/language'; // @ai
 // @ai-start
 import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {listRowContextMenusEnabled} from '@/components/native/nativeMenus'; // @ai
 // @ai-end
 import {
   getReciterDisplayName,
@@ -114,16 +114,14 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       [reciterId, surahId, rewayatId],
     );
 
-    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided
-    const isDownloadedBase = useIsDownloaded(reciterId, surahId);
-    const isDownloadedRewayat = useIsDownloadedWithRewayat(
+    // Downloaded when playing the row uses a downloaded file. A row in the
+    // reciter's first rewayah also plays one an older version recorded
+    // without a rewayah (Loved surahs saved without one).
+    const isDownloadedState = useIsDownloadedForPlayback(
       reciterId,
       surahId,
-      rewayatId || '',
+      rewayatId,
     );
-    const isDownloadedState = rewayatId
-      ? isDownloadedRewayat
-      : isDownloadedBase;
 
     // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
     const isCurrentlyDownloading = useIsDownloading(downloadId);
@@ -135,16 +133,22 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const isCurrentTrack = useMemo(() => {
       if (!currentTrack) return false;
 
-      // For upload tracks, match by userRecitationId
-      if (userRecitationId && currentTrack.userRecitationId) {
+      // For upload tracks, match by userRecitationId. An upload's row is
+      // that upload only, never the reciter's own recording of the surah.
+      if (userRecitationId) {
         return userRecitationId === currentTrack.userRecitationId;
       }
 
       if (!reciterId || !surahId) return false;
 
+      // A row saved without a rewayah (older Loved and Downloads entries)
+      // plays the reciter's first one, so that is the one to compare. The
+      // playing track always names its rewayah, so such a row was never
+      // shown as playing.
+      const rowRewayatId = rewayatId || reciter?.rewayat?.[0]?.id;
       const rewayatMatches =
-        rewayatId && currentTrack.rewayatId
-          ? rewayatId === currentTrack.rewayatId
+        rowRewayatId && currentTrack.rewayatId
+          ? rowRewayatId === currentTrack.rewayatId
           : !rewayatId && !currentTrack.rewayatId;
 
       return (
@@ -152,12 +156,20 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         currentTrack.surahId === surahId &&
         rewayatMatches
       );
-    }, [reciterId, surahId, rewayatId, userRecitationId, currentTrack]);
+    }, [
+      reciterId,
+      surahId,
+      rewayatId,
+      userRecitationId,
+      currentTrack,
+      reciter,
+    ]);
 
     // @ai-start
     const options = useSurahOptionsContext();
     const tapMenuAvailable = useNativeOptionsMenu('tap');
-    const rowMenuAvailable = useNativeOptionsMenu('longPress');
+    const rowMenuAvailable =
+      useNativeOptionsMenu('longPress') && listRowContextMenusEnabled;
     // @ai-end
 
     const surah = getSurahById(parseInt(surahId, 10));

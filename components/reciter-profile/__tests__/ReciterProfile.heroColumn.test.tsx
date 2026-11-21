@@ -158,6 +158,7 @@ jest.mock('@/utils/shareUtils', () => ({
   shareUrl: jest.fn(),
 }));
 jest.mock('@/utils/track', () => ({createTracksForReciter: jest.fn()}));
+jest.mock('@/utils/toastUtils', () => ({showToast: jest.fn()}));
 jest.mock('@/utils/audioUtils', () => ({generateSmartAudioUrl: jest.fn()}));
 jest.mock('@/utils/artworkUtils', () => ({getReciterArtwork: jest.fn()}));
 

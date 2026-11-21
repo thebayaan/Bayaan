@@ -35,6 +35,8 @@ interface PlaylistsState {
     userRecitationId?: string,
   ) => Promise<void>;
   removeFromPlaylist: (itemId: string) => Promise<void>;
+  /** Removes deleted uploads from every playlist. @ai */
+  removeUploads: (userRecitationIds: readonly string[]) => Promise<void>; // @ai
   reorderPlaylistItems: (
     playlistId: string,
     itemIds: string[],
@@ -220,6 +222,16 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
       throw err;
     }
   },
+
+  // @ai-start
+  // A deleted upload used to stay in its playlists as a row that could not
+  // be played. Refreshing the list updates the item counts, which also
+  // reloads a playlist screen that is open.
+  removeUploads: async (userRecitationIds: readonly string[]) => {
+    const removed = await playlistService.removeUploads(userRecitationIds);
+    if (removed > 0) await get().loadPlaylists();
+  },
+  // @ai-end
 
   // Reorder playlist items
   reorderPlaylistItems: async (playlistId: string, itemIds: string[]) => {

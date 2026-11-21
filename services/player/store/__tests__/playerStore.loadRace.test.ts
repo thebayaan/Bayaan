@@ -55,7 +55,7 @@ jest.mock('@/services/audio/AudioCoordinator', () => ({
 
 jest.mock('@/services/analytics/AnalyticsService', () => ({
   analyticsService: {
-    trackPlaybackSkipped: jest.fn(),
+    listenSession: {end: jest.fn()}, // @ai
     trackPlaybackSeeked: jest.fn(),
     trackRateChanged: jest.fn(),
   },
@@ -139,7 +139,7 @@ describe('playerStore in-flight load race', () => {
     expect(mockedAudio.loadTrack).toHaveBeenCalledTimes(1);
     expect(mockedAudio.play).toHaveBeenCalledTimes(1);
     const state = usePlayerStore.getState();
-    expect(state.playback.state).toBe('ready');
+    expect(state.playback.state).toBe('playing');
     expect(state.queue.tracks).toHaveLength(1);
     expect(state.queue.currentIndex).toBe(0);
     expect(state.loading.trackLoading).toBe(false);
@@ -170,7 +170,7 @@ describe('playerStore in-flight load race', () => {
     expect(mockedAudio.play).toHaveBeenCalledTimes(1);
 
     const state = usePlayerStore.getState();
-    expect(state.playback.state).toBe('ready');
+    expect(state.playback.state).toBe('playing');
     expect(state.queue.tracks[0]?.id).toBe('two');
   });
 });

@@ -232,6 +232,27 @@ describe('AudioCoordinator - adhkar', () => {
     expect(c.getActiveSource()).toBe('main');
   });
 
+  it('wordWillPlay() after adhkarWillPlay() pauses the adhkar session', () => {
+    const {useAdhkarSessionStore} = require('@/store/adhkarSessionStore');
+    useAdhkarSessionStore.getState().dispatch({
+      type: 'pressPlayAll',
+      source: {
+        listId: 'morning-adhkar',
+        listTitle: 'Morning',
+        items: [
+          {dhikrId: 'a', audioFile: 'a.mp3', playable: true, preview: 'a'},
+        ],
+      },
+    });
+    const token = useAdhkarSessionStore.getState().session.trackToken;
+    useAdhkarSessionStore.getState().dispatch({type: 'playStarted', token});
+
+    const c = freshCoordinator();
+    c.adhkarWillPlay();
+    c.wordWillPlay();
+    expect(useAdhkarSessionStore.getState().session.status).toBe('paused');
+  });
+
   it('notifies subscribers after the active source changes', () => {
     const c = freshCoordinator();
     const seen: string[] = [];
@@ -242,5 +263,40 @@ describe('AudioCoordinator - adhkar', () => {
     unsubscribe();
     c.mushafWillPlay();
     expect(seen).toEqual(['main', 'none']);
+  });
+});
+
+describe('AudioCoordinator - a word of Word Study', () => {
+  beforeEach(() => {
+    mockMainPause.mockClear();
+    mockMushafSetPlaybackState.mockClear();
+    mockMushafServicePause.mockClear();
+    mockMushafServiceGetIsPlaying.mockReturnValue(true);
+    (usePlayerStore.getState as jest.Mock).mockReturnValue({
+      playback: {state: 'playing'},
+      pause: mockMainPause,
+    });
+  });
+
+  it('wordWillPlay() pauses the main player and the mushaf recitation that play, whatever the active source', () => {
+    const c = freshCoordinator();
+    c.wordWillPlay();
+    expect(mockMainPause).toHaveBeenCalledTimes(1);
+    expect(mockMushafServicePause).toHaveBeenCalledTimes(1);
+    expect(mockMushafSetPlaybackState).toHaveBeenCalledWith('paused');
+  });
+
+  it('wordWillPlay() pauses nothing that is not playing, and keeps the active source', () => {
+    mockMushafServiceGetIsPlaying.mockReturnValue(false);
+    const c = freshCoordinator();
+    c.mainWillPlay();
+    (usePlayerStore.getState as jest.Mock).mockReturnValue({
+      playback: {state: 'paused'},
+      pause: mockMainPause,
+    });
+    c.wordWillPlay();
+    expect(mockMainPause).not.toHaveBeenCalled();
+    expect(mockMushafServicePause).not.toHaveBeenCalled();
+    expect(c.getActiveSource()).toBe('main');
   });
 });

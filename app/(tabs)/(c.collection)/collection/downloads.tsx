@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import React, {useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
   useDownloadActions,
   useDownloads,
 } from '@/services/player/store/downloadSelectors';
-import {getReciterById, getSurahById} from '@/services/dataService';
+import {getReciterByIdSync, getSurahById} from '@/services/dataService'; // @ai
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -39,6 +39,7 @@ import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName} from '@/i18n/format';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
 // @ai-start
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
@@ -71,6 +72,10 @@ export default function DownloadsScreen() {
   const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The iPad sidebar opens this as the first screen of the Collection stack.
+  // Back then has nothing to pop and used to switch to the Home tab, so the
+  // arrow is left out there, as the system header does on iPadOS 26. @ai
+  const isStackRoot = useIsStackRoot(); // @ai
   const {t} = useTranslation(['collection', 'common']);
   const downloads = useDownloads();
   const {removeDownload, clearAllDownloads} = useDownloadActions();
@@ -78,7 +83,21 @@ export default function DownloadsScreen() {
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
-  const [downloadData, setDownloadData] = useState<DownloadDataItem[]>([]);
+  // @ai-start
+  // Each download with its reciter and surah, read from the catalogue in
+  // memory. This was an async lookup per row with no cancellation: every
+  // row reloaded the whole catalogue, and an older run could finish last
+  // and put a removed row back.
+  const downloadData = useMemo<DownloadDataItem[]>(
+    () =>
+      downloads.map(download => ({
+        download,
+        reciter: getReciterByIdSync(download.reciterId) ?? null,
+        surah: getSurahById(parseInt(download.surahId, 10)) ?? null,
+      })),
+    [downloads],
+  );
+  // @ai-end
   const nativeMenus = useNativeOptionsMenu(); // @ai
 
   // @ai-start
@@ -285,31 +304,6 @@ export default function DownloadsScreen() {
       }),
     [theme, insets.top],
   );
-
-  useEffect(() => {
-    const loadDownloadData = async () => {
-      const data = await Promise.all(
-        downloads.map(async download => {
-          const [reciter, surah] = await Promise.all([
-            getReciterById(download.reciterId),
-            getSurahById(parseInt(download.surahId, 10)),
-          ]);
-          return {
-            download,
-            reciter: reciter || null,
-            surah: surah || null,
-          };
-        }),
-      );
-      setDownloadData(data);
-    };
-
-    if (downloads.length > 0) {
-      loadDownloadData();
-    } else {
-      setDownloadData([]);
-    }
-  }, [downloads]);
 
   const groupedItems = useMemo(() => {
     const byReciter: Record<string, DownloadDataItem[]> = {};
@@ -546,17 +540,23 @@ export default function DownloadsScreen() {
       <View style={styles.container}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={styles.emptyHeaderTitle}>
               {t('common:terms.downloads')}
             </Text>
@@ -705,7 +705,8 @@ export default function DownloadsScreen() {
 
   return (
     <View style={styles.container}>
-      {!USE_GLASS && (
+      {/* Not at the stack root: nothing to go back to. @ai */}
+      {!USE_GLASS && !isStackRoot && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,

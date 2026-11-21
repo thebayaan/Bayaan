@@ -4,8 +4,9 @@ import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {
@@ -148,7 +149,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <ScrollView
+      <SheetScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
@@ -234,7 +235,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
             </View>
           </>
         </View>
-      </ScrollView>
+      </SheetScrollView>
     </ActionSheet>
   );
 };
@@ -278,7 +279,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(4),
       letterSpacing: latinLetterSpacing(1.2),

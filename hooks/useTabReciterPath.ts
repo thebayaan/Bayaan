@@ -25,6 +25,27 @@ export function reciterProfilePathname(
   return `/(tabs)/${reciterTabStack(segments)}/reciter/[id]`;
 }
 
+export type ReciterBrowsePathname =
+  | '/(tabs)/(a.home)/reciter/browse'
+  | '/(tabs)/(b.surahs)/reciter/browse'
+  | '/(tabs)/(b.search)/reciter/browse';
+
+/**
+ * "Browse reciters" route in the tab the user is on, so choosing a reciter
+ * for a surah from Search or Surahs stays in that tab. Only tabs that
+ * declare a `reciter/browse` screen are listed; the others fall back to
+ * Home.
+ */
+export function reciterBrowsePathname(
+  segments: readonly string[],
+): ReciterBrowsePathname {
+  const tab = segments[0] === '(tabs)' ? segments[1] : undefined;
+  if (tab === '(b.search)' || tab === '(b.surahs)') {
+    return `/(tabs)/${tab}/reciter/browse`;
+  }
+  return '/(tabs)/(a.home)/reciter/browse';
+}
+
 /**
  * Reciter profile route in the tab the user is on, so opening a reciter
  * from Search or Library pushes onto that tab instead of jumping to Home.

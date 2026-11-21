@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef} from 'react';
+import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {
 import {Feather} from '@expo/vector-icons';
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
+import {ReciteToSearchRow} from '@/components/search/ReciteToSearchRow';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from '@/utils/scale';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
@@ -48,23 +49,98 @@ import {SurahOptionsProvider} from '@/components/sheets/options/surahOptions';
 import type {SurahOptionsBuilder} from '@/components/sheets/options/SurahOptionsContext';
 // @ai-end
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+import {useOpenQuranHit} from '@/hooks/useOpenQuranHit';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+// @ai-end
+// @ai-start
+import {
+  isQuranQuery,
+  mayBeRootQuery,
+  prefetchQuranSearch,
+  useQuranSearch,
+} from '@/hooks/useQuranSearch';
+import {
+  isRootOutcome,
+  QURAN_PAGE_SIZE,
+  quranResultRows,
+  showsOwnRows,
+  type QuranResultRow,
+} from '@/components/search/quran/quranResultRows';
+import {
+  QuranResultRowView,
+  type QuranResultRowViewProps,
+} from '@/components/search/quran/QuranResultRowView';
+import {RecentVerseRow} from '@/components/search/quran/RecentVerseRow';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {swapKeyboardLayout} from '@/utils/search/keyboardLayout';
+import {matchedPositions} from '@/utils/search/quranSearch';
+import {rootQuery} from '@/utils/search/quranText';
 // @ai-end
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
 const SEARCH_DEBOUNCE_MS = 300;
 
-interface RecentSearchItem {
-  type: 'surah' | 'reciter';
-  item: Surah | Reciter;
-  timestamp: number;
+// @ai-start
+// A surah or reciter opened from the results, or an ayah opened from the
+// Quran search (its Hafs key and the matched Digital Khatt slots).
+type RecentSearchItem =
+  | {type: 'surah' | 'reciter'; item: Surah | Reciter; timestamp: number}
+  | {type: 'verse'; verseKey: string; positions: number[]; timestamp: number};
+
+/** Drops verse items a later format could store differently. */
+function isUsableRecent(item: RecentSearchItem): boolean {
+  return (
+    item.type !== 'verse' ||
+    (typeof item.verseKey === 'string' && Array.isArray(item.positions))
+  );
+}
+
+function recentId(item: RecentSearchItem): string | number {
+  if (item.type === 'verse') return item.verseKey;
+  return item.type === 'surah'
+    ? (item.item as Surah).id
+    : (item.item as Reciter).id;
+}
+// @ai-end
+
+/**
+ * The recent searches stored on the device. The old format (plain query
+ * strings) is cleared.
+ */
+async function readStoredRecents(): Promise<RecentSearchItem[]> {
+  const stored = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
+  if (!stored) return [];
+  const parsed: unknown = JSON.parse(stored);
+  if (!Array.isArray(parsed)) return [];
+  if (parsed.length > 0 && typeof parsed[0] === 'string') {
+    await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
+    return [];
+  }
+  return (parsed as RecentSearchItem[]).filter(isUsableRecent);
 }
 
 // @ai-start
 type SearchResult = CatalogSearchResult;
+// Catalogue rows, then the Quran results ("Ayahs") section.
+type SearchListItem = SearchResult | QuranResultRow;
+const NO_CATALOGUE_RESULTS: SearchResult[] = [];
+
+function isCatalogResult(item: SearchListItem): item is SearchResult {
+  return item.type === 'surah' || item.type === 'reciter';
+}
+
+/**
+ * The Quran query of a Latin query the catalogue cannot match: the same
+ * keys on the Arabic layout, when they read as Arabic words ('' if not).
+ */
+function swappedQuranQuery(query: string, catalogueHits: number): string {
+  if (catalogueHits > 0 || isQuranQuery(query)) return '';
+  const swapped = swapKeyboardLayout(query);
+  return swapped && isQuranQuery(swapped) ? swapped : '';
+}
 // @ai-end
 
 interface SearchViewProps {
@@ -76,6 +152,17 @@ interface SearchViewProps {
   isSearchActive: boolean;
   /** Skip the built-in safe-area top padding (when the parent already handles it) */
   skipTopInset?: boolean;
+  // @ai-start
+  /**
+   * Dismisses the keyboard of a field this view does not own: the native
+   * search bar on iOS 26, which Keyboard.dismiss() cannot reach.
+   */
+  onDismissKeyboard?: () => void;
+  // @ai-end
+  // @ai-start
+  /** Replaces the query (a root suggestion opens `root:ر ح م`). */
+  onQueryChange?: (query: string) => void;
+  // @ai-end
 }
 
 // @ai-start
@@ -85,13 +172,25 @@ export function SearchView({
   query,
   isSearchActive,
   skipTopInset,
+  onDismissKeyboard, // @ai
+  onQueryChange,
 }: SearchViewProps) {
   const bottomInset = useBottomInset();
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [, setLoading] = useState(true);
+  // The query `searchResults` were computed for.
+  const [searchedQuery, setSearchedQuery] = useState('');
+  const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
+  // False until the stored list has been read (or failed to be): an empty
+  // list before then is not "none".
+  const [recentsLoaded, setRecentsLoaded] = useState(false);
+  // The list as last set, for the writes below, and the read of the stored
+  // list, which every write waits for: a search remembered before the list
+  // was read joins it instead of replacing it.
+  const recentsRef = useRef<RecentSearchItem[]>([]);
+  const recentsRead = useRef<Promise<void> | null>(null);
   const router = useRouter();
   const [catalogSearch, setCatalogSearch] = useState<ReturnType<
     typeof createCatalogSearch
@@ -102,7 +201,7 @@ export function SearchView({
   const searchOpacity = useRef(new RNAnimated.Value(0)).current;
 
   const {theme} = useTheme();
-  const {t} = useTranslation(['home', 'common']);
+  const {t} = useTranslation(['home', 'common', 'reader']);
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const {playWithReciter, playWithRandomReciter} = useReciterSelection();
@@ -189,11 +288,107 @@ export function SearchView({
     return () => clearTimeout(handler);
   }, [query]);
 
+  // The Quran text search runs beside the catalogue on the same debounced
+  // query; a Latin query the catalogue cannot match runs on the Arabic
+  // layout's letters. What a Quran query is comes from the search's outcome
+  // (the data service parses it once, with its root list): a root query
+  // ('root:ر ح م', or ر ح م) lists the root's words without the catalogue.
+  const typedQuranQuery = isQuranQuery(debouncedQuery);
+  // Set by the catalogue search, for the query it searched.
+  const [swapped, setSwapped] = useState({from: '', query: ''});
+  let quranQuery = debouncedQuery;
+  if (!typedQuranQuery) {
+    quranQuery = swapped.from === debouncedQuery ? swapped.query : '';
+  }
+  const quranState = useQuranSearch(quranQuery, {
+    enabled: visible && quranQuery.length > 0,
+  });
+  // The rows on screen (the last outcome's while the next search runs) are
+  // a root's: on iPad they keep the list.
+  const rootRows = isRootOutcome(quranState);
+  // The catalogue shows at once, except for a query whose answer may be a
+  // root (ر ح م), which waits for it; a root answer hides it.
+  const catalogueShown = showsOwnRows(
+    quranState,
+    mayBeRootQuery(debouncedQuery),
+  );
+  // Rows shown and the lemma chosen, both reset when the query changes.
+  const [quranPaging, setQuranPaging] = useState({
+    query: '',
+    shown: QURAN_PAGE_SIZE,
+    lemma: null as number | null,
+  });
+  const paging =
+    quranPaging.query === quranQuery
+      ? quranPaging
+      : {query: quranQuery, shown: QURAN_PAGE_SIZE, lemma: null};
+  const hafsNote = useMushafSettingsStore(s => s.rewayah) !== 'hafs';
+  const quranRows = useMemo(
+    () =>
+      quranResultRows(quranState, {
+        shown: paging.shown,
+        selectedLemma: paging.lemma,
+        hafsNote,
+        query: quranQuery,
+        includeEmpty: false,
+      }),
+    [quranState, paging.shown, paging.lemma, hafsNote, quranQuery],
+  );
+  const listData = useMemo<SearchListItem[]>(
+    () => [...searchResults, ...quranRows],
+    [searchResults, quranRows],
+  );
+  // A new query starts its results at the top, where the best matches are,
+  // not at the offset the last query was scrolled to.
+  const resultsListRef = useRef<FlatList<SearchListItem>>(null);
+  useEffect(() => {
+    resultsListRef.current?.scrollToOffset({offset: 0, animated: false});
+  }, [debouncedQuery]);
+
+  // The stored recent searches, read once. Not after the catalogue: its
+  // reciters can wait seconds on the network, and the Ayahs rows can be
+  // tapped before they arrive.
+  const readRecents = useCallback(() => {
+    recentsRead.current ??= readStoredRecents().then(
+      stored => {
+        recentsRef.current = stored;
+        setRecentSearches(stored);
+        setRecentsLoaded(true);
+      },
+      error => {
+        console.error('Error loading recent searches:', error);
+        setRecentsLoaded(true);
+      },
+    );
+    return recentsRead.current;
+  }, []);
+
+  // Puts `item` first in the recent searches, once (an older entry for the
+  // same surah, reciter or ayah goes), on top of the stored list.
+  const rememberSearch = useCallback(
+    async (item: RecentSearchItem) => {
+      await readRecents();
+      const id = recentId(item);
+      const updated = [
+        item,
+        ...recentsRef.current.filter(
+          search => search.type !== item.type || recentId(search) !== id,
+        ),
+      ].slice(0, MAX_RECENT_SEARCHES);
+      recentsRef.current = updated;
+      setRecentSearches(updated);
+      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    },
+    [readRecents],
+  );
+
   // Lazy-init Fuse.js when user first activates search
   const fuseInitialized = useRef(false);
   useEffect(() => {
     if (!visible || !isSearchMode || fuseInitialized.current) return;
     fuseInitialized.current = true;
+    prefetchQuranSearch(); // The first Arabic query skips the DB import.
+    readRecents();
 
     const fetchData = async () => {
       try {
@@ -204,21 +399,6 @@ export function SearchView({
 
         setCatalogSearch(createCatalogSearch(reciterData, surahData)); // @ai
 
-        const storedSearches = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
-        if (storedSearches) {
-          const parsed = JSON.parse(storedSearches);
-          if (
-            Array.isArray(parsed) &&
-            parsed.length > 0 &&
-            typeof parsed[0] === 'string'
-          ) {
-            await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
-            setRecentSearches([]);
-          } else {
-            setRecentSearches(parsed);
-          }
-        }
-
         setLoading(false);
       } catch (error) {
         console.error('Error initializing search:', error);
@@ -226,12 +406,13 @@ export function SearchView({
       }
     };
     fetchData();
-  }, [visible, isSearchMode]);
+  }, [visible, isSearchMode, readRecents]);
 
   const performSearch = useCallback(() => {
     if (!catalogSearch || !debouncedQuery.trim()) {
       setSearchResults([]);
       setSearching(false);
+      if (catalogSearch) setSearchedQuery(debouncedQuery);
       return;
     }
 
@@ -241,6 +422,10 @@ export function SearchView({
       const combinedResults = catalogSearch.search(debouncedQuery);
 
       setSearchResults(combinedResults);
+      setSwapped({
+        from: debouncedQuery,
+        query: swappedQuranQuery(debouncedQuery, combinedResults.length),
+      });
 
       // Fire analytics after search completes (already debounced via debouncedQuery)
       if (debouncedQuery.trim().length > 0) {
@@ -254,47 +439,57 @@ export function SearchView({
       setSearchResults([]);
     }
 
+    setSearchedQuery(debouncedQuery);
     setSearching(false);
   }, [debouncedQuery, catalogSearch]);
 
   useEffect(() => {
-    performSearch();
-  }, [performSearch]);
+    if (catalogueShown) {
+      performSearch();
+    } else {
+      // A root lists its words only, and while the answer is pending no
+      // rows of the last query stay under this one. The cleared list is no
+      // query's answer: typing the last query again is pending, not
+      // "No results", until it is searched again.
+      setSearchResults(NO_CATALOGUE_RESULTS);
+      setSearchedQuery('');
+      setSearching(false);
+    }
+  }, [performSearch, catalogueShown]);
+
+  // Until the results are for what is typed (the query is debounced), and
+  // while the index is still being built on first use, an empty list means
+  // "not searched yet", not "nothing found". The first keystroke used to
+  // show "No results" until the results came in. If the index failed to
+  // load there is nothing to wait for. While the catalogue sits a query out
+  // (a root lists its words only) it searches nothing, so only the debounce
+  // is pending for it; the Ayahs are pending while the Quran search runs.
+  let cataloguePending = query !== debouncedQuery;
+  if (catalogueShown) {
+    cataloguePending = catalogSearch ? query !== searchedQuery : loading;
+  }
+  const resultsPending = cataloguePending || quranState.status === 'searching';
 
   const addToRecentSearches = useCallback(
-    async (result: SearchResult) => {
-      const newItem: RecentSearchItem = {
+    (result: SearchResult) =>
+      rememberSearch({
         type: result.type,
         item: result.item,
         timestamp: Date.now(),
-      };
-
-      const filteredSearches = recentSearches.filter(search => {
-        if (search.type !== result.type) return true;
-        if (search.type === 'surah') {
-          return (search.item as Surah).id !== (result.item as Surah).id;
-        } else {
-          return (search.item as Reciter).id !== (result.item as Reciter).id;
-        }
-      });
-
-      const updatedSearches = [newItem, ...filteredSearches].slice(
-        0,
-        MAX_RECENT_SEARCHES,
-      );
-
-      setRecentSearches(updatedSearches);
-      await AsyncStorage.setItem(
-        RECENT_SEARCHES_KEY,
-        JSON.stringify(updatedSearches),
-      );
-    },
-    [recentSearches],
+      }),
+    [rememberSearch],
   );
+
+  // @ai-start
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+    onDismissKeyboard?.();
+  }, [onDismissKeyboard]);
+  // @ai-end
 
   const handleResultPress = useCallback(
     async (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard(); // @ai
       await addToRecentSearches(result);
 
       if (result.type === 'reciter') {
@@ -311,12 +506,51 @@ export function SearchView({
         });
       }
     },
-    [router, addToRecentSearches],
+    [router, addToRecentSearches, dismissKeyboard], // @ai
+  );
+
+  // An ayah from the Quran search opens in the Mushaf on the page of its
+  // first matched word, with the matched words flashed, and is remembered.
+  const openQuranHit = useOpenQuranHit();
+  const openVerse = useCallback(
+    (verseKey: string, positions: readonly number[]) => {
+      dismissKeyboard();
+      rememberSearch({
+        type: 'verse',
+        verseKey,
+        positions: [...positions],
+        timestamp: Date.now(),
+      }).catch(error => {
+        console.error('Error saving recent searches:', error);
+      });
+      openQuranHit(verseKey, positions);
+    },
+    [dismissKeyboard, openQuranHit, rememberSearch],
+  );
+
+  const quranRowAction = useMemo<Omit<QuranResultRowViewProps, 'row'>>(
+    () => ({
+      onVersePress: hit => openVerse(hit.verseKey, matchedPositions(hit)),
+      onRootPress: root => {
+        onQueryChange?.(
+          rootQuery(root.root, t('reader:quranSearch.rootKeyword')),
+        );
+      },
+      onLemmaPress: lemma =>
+        setQuranPaging({query: quranQuery, shown: QURAN_PAGE_SIZE, lemma}),
+      onShowMore: () =>
+        setQuranPaging({
+          query: quranQuery,
+          shown: paging.shown + QURAN_PAGE_SIZE,
+          lemma: paging.lemma,
+        }),
+    }),
+    [openVerse, onQueryChange, t, quranQuery, paging.shown, paging.lemma],
   );
 
   const handleSurahLongPress = useCallback(
     async (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard(); // @ai
       await addToRecentSearches(result);
 
       const surah = result.item as Surah;
@@ -352,9 +586,7 @@ export function SearchView({
           });
           break;
         default:
-          SheetManager.show('select-reciter', {
-            payload: {surahId, source: 'search'},
-          });
+          SheetManager.show('select-reciter', {payload: {surahId}});
       }
       // @ai-end
     },
@@ -366,6 +598,7 @@ export function SearchView({
       defaultReciter,
       playWithReciter,
       playWithRandomReciter,
+      dismissKeyboard, // @ai
     ],
   );
 
@@ -397,16 +630,16 @@ export function SearchView({
 
   const handleSurahOptions = useCallback(
     (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard();
       const payload = buildSurahOptions(result.item as Surah);
       if (payload) SheetManager.show('surah-options', {payload});
     },
-    [buildSurahOptions],
+    [buildSurahOptions, dismissKeyboard],
   );
   // @ai-end
 
   const renderSearchResult = useCallback(
-    ({item}: ListRenderItemInfo<SearchResult>) => {
+    ({item}: {item: SearchResult}) => {
       if (item.type === 'surah') {
         return (
           <SurahItem
@@ -428,8 +661,27 @@ export function SearchView({
     [handleResultPress, handleSurahLongPress],
   );
 
+  const renderListItem = useCallback(
+    ({item}: ListRenderItemInfo<SearchListItem>) =>
+      isCatalogResult(item) ? (
+        renderSearchResult({item})
+      ) : (
+        <QuranResultRowView row={item} {...quranRowAction} />
+      ),
+    [renderSearchResult, quranRowAction],
+  );
+
   const renderRecentSearch = useCallback(
     ({item: recentItem}: ListRenderItemInfo<RecentSearchItem>) => {
+      if (recentItem.type === 'verse') {
+        return (
+          <RecentVerseRow
+            verseKey={recentItem.verseKey}
+            positions={recentItem.positions}
+            onPress={() => openVerse(recentItem.verseKey, recentItem.positions)}
+          />
+        );
+      }
       const handlePress = () => {
         handleResultPress({
           type: recentItem.type,
@@ -455,13 +707,15 @@ export function SearchView({
         );
       }
     },
-    [handleResultPress],
+    [handleResultPress, openVerse],
   );
 
   const clearRecentSearches = useCallback(async () => {
+    await readRecents();
+    recentsRef.current = [];
     setRecentSearches([]);
     await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
-  }, []);
+  }, [readRecents]);
 
   if (!visible) return null;
 
@@ -496,6 +750,7 @@ export function SearchView({
               {paddingBottom: Math.max(keyboardHeight, bottomInset)},
             ]}
             keyboardShouldPersistTaps="handled">
+            {!Platform.isTV && <ReciteToSearchRow />}
             {recentSearches.length > 0 ? (
               <View>
                 <View style={styles.sectionHeader}>
@@ -528,18 +783,14 @@ export function SearchView({
                   data={recentSearches}
                   renderItem={renderRecentSearch}
                   keyExtractor={(item, index) =>
-                    `${item.type}-${
-                      item.type === 'surah'
-                        ? (item.item as Surah).id
-                        : (item.item as Reciter).id
-                    }-${index}`
+                    `${item.type}-${recentId(item)}-${index}`
                   }
                   scrollEnabled={false}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 />
               </View>
-            ) : (
+            ) : !recentsLoaded ? null : ( // not "none" while they are being read
               <View style={styles.emptyState}>
                 <Feather
                   name="search"
@@ -573,36 +824,49 @@ export function SearchView({
               </View>
             )}
           </ScrollView>
-        ) : isTablet && !searching && searchResults.length > 0 ? (
+        ) : isTablet &&
+          !searching &&
+          !rootRows &&
+          catalogueShown &&
+          (searchResults.length > 0 || quranRows.length > 0) ? (
           <SurahOptionsProvider build={buildSurahOptions}>
             <TabletSearchResults
+              query={debouncedQuery}
               results={searchResults}
               onResultPress={handleResultPress}
               onSurahPlay={handleSurahLongPress}
               onSurahOptions={handleSurahOptions}
+              onScrollBeginDrag={dismissKeyboard} // @ai
+              quranRows={quranRows}
+              onQuranRowAction={quranRowAction}
               bottomPadding={Math.max(keyboardHeight, bottomInset)}
               style={styles.tabletFullWidth}
             />
           </SurahOptionsProvider>
         ) : (
-          <FlatList
+          <FlatList<SearchListItem>
+            ref={resultsListRef}
             style={listStyle}
-            data={searchResults}
-            renderItem={renderSearchResult}
-            keyExtractor={(item, index) => `${item.type}-${index}`}
+            data={listData}
+            renderItem={renderListItem}
+            keyExtractor={(item, index) =>
+              isCatalogResult(item) ? `${item.type}-${index}` : item.key
+            }
             contentContainerStyle={[
               styles.resultsContent,
               {paddingBottom: Math.max(keyboardHeight, bottomInset)},
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={() => Keyboard.dismiss()}
+            onScrollBeginDrag={dismissKeyboard} // @ai
             ListHeaderComponent={
-              searching ? (
+              resultsPending &&
+              searchResults.length === 0 &&
+              quranRows.length === 0 ? (
                 <View style={styles.loadingContainer}>
                   <LoadingIndicator size={24} />
                 </View>
-              ) : searchResults.length === 0 ? (
+              ) : searchResults.length === 0 && quranRows.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Feather
                     name="search"
@@ -631,7 +895,9 @@ export function SearchView({
                           .toString(),
                       },
                     ]}>
-                    {t('search.noResultsHint')}
+                    {typedQuranQuery
+                      ? t('reader:quranSearch.noAyahsHint')
+                      : t('search.noResultsHint')}
                   </Text>
                 </View>
               ) : undefined
