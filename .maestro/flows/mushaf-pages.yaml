@@ -1,0 +1,20 @@
+# Fresh install: opens a few Hafs pages that have caught layout bugs before.
+appId: com.bayaan.app
+---
+- runFlow: ../common/launch.yaml
+- takeScreenshot: home
+- runFlow:
+    file: ../common/open-page.yaml
+    env:
+      PAGE: 1
+- takeScreenshot: page-001
+- runFlow:
+    file: ../common/open-page.yaml
+    env:
+      PAGE: 3
+- takeScreenshot: page-003
+- runFlow:
+    file: ../common/open-page.yaml
+    env:
+      PAGE: 600
+- takeScreenshot: page-600
