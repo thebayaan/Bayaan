@@ -2,7 +2,7 @@
 
 | Field     | Value                                                                                                    |
 | --------- | -------------------------------------------------------------------------------------------------------- |
-| Status    | Proposed (doc-only; stacked code PRs follow after the shape is agreed)                                   |
+| Status    | Proposed (the design is doc-only; stacked code PRs follow after the shape is agreed). This PR also has one separate fix: the Home animations that run while Home is hidden (see "A fix in this PR"). |
 | Date      | 2026-11-20                                                                                               |
 | Author    | Omar Zarka (Qariah)                                                                                      |
 | Builds on | RFC-012 and RFC-020 (the `branding.searchFilters` seam and the chip flow); the Quran word search of #521 |
@@ -275,7 +275,7 @@ The long-press on a surah keeps the "Reciter choice" setting of today.
 
 - **With the switch off, each screen is the screen of today.** Each mount point has one gate: `app/(tabs)/(b.search)/index.tsx`, the two `reciter/browse` routes, `ReciterProfile.tsx`, `MushafSearchView.tsx`, and the collection rows of `RecitersView.tsx`.
 - The ranking (`utils/search/catalog.ts`) and the #521 service, hook and rows.
-- The browse grids, the sort and view modes, the reciter pickers, car and Siri search, and the iPad layout.
+- The browse grids, the sort and view modes, the reciter pickers, car and Siri search, and the iPad layout. On an iPad with the switch on, the Search tab and choose a reciter show the new screens in the iPad layout; the iPad profile search and Mushaf search stay as today.
 - The recent searches. The new list writes the `recentSearches` store of the Search tab, and the Mushaf keeps its own.
 
 ### Delivery
@@ -287,9 +287,18 @@ Stacked code PRs, each with its tests, each behind the switch:
 3. **The shared UI and the Search tab**: the hook, the chips, the filter sheet, the list and the rows; the Settings switch; the `reciter/browse` routes take their first Query from the link.
 4. **The reciter profile search**, choose a reciter, and "See all" on the collection rows of Home.
 5. **The Mushaf search host.**
-6. **After use:** the switch is on by default. Then the old code retires: the bespoke filters of `BrowseReciters` and the second history. The iPad host and the pickers follow.
+6. **After use:** the switch is on by default. Then the old code retires: the bespoke filters of `BrowseReciters` and the second history. The iPad profile and Mushaf searches and the pickers follow.
 
 **Evidence from the prototype** (on `develop` with #521): the whole Jest suite passes (506 suites). The go-to source is a copy of the Mushaf parser, and a differential test compares the two on 1,541 inputs in 3 states. A release build passed 22 of 22 device checks on a mid-range Android phone.
+
+### A fix in this PR: the Home animations run while Home is hidden
+
+The timing of the prototype found a fault in `develop` that slows each Android screen, with the switch on or off. The fix is one separate commit in this PR, so it can merge without the RFC, or move to its own PR.
+
+- **Impact.** On a 2 GB Android phone (Galaxy A10s), the main thread is at about 99% of one core on the Search and Settings tabs, with nothing on the screen in motion. Each JS read that waits for the main thread then waits long: on Android, expo-audio serves `playing` and `currentTime` on the main thread. A search there took up to 0.5 s more, and more while a track played.
+- **Cause.** `RecitersHero` mounts endless Reanimated animations: the 20 tile columns of `BrowseAllHero` (`components/hero/BrowseAllHero.tsx:153`, `withRepeat(..., -1)`) and the shimmer of the random-recitation background (`components/hero/random-recitation/backgrounds.tsx:36`). The Home tab stays mounted behind the other tabs, and the Home list stays mounted (and frozen) under a pushed screen. The animations stop only on unmount. A system trace of the Search tab shows 58 frames a second, each in the animation phase, and no draw.
+- **Fix.** A hook, `hooks/useScreenFocusEffect.ts`, runs an effect while its screen has focus, and runs the cleanup on blur. It listens to the focus and blur events, so it also works in a screen that `freezeOnBlur` froze, where an effect on a focus state does not run. Outside a screen it runs like `useEffect`. The tile columns (each resumes where it stopped), the shimmer and the bars of `NowPlayingIndicator` use it.
+- **Result.** The main thread on the Search and Settings tabs went from 99% to 7%. On a visible Home the animations run as before. The hook has 4 tests, and the hero, sheet and player suites pass with no change.
 
 ## Alternatives considered
 
@@ -323,7 +332,7 @@ Stacked code PRs, each with its tests, each behind the switch:
 - The Search tab answers `2:255`, `page 50`, `juz 30`, `kahf 10`, `kahf`, an Arabic word (`الصبر`) and a root (`root:صبر`). The go-to rows equal the rows of the Mushaf search (the differential test).
 - "Surah: Al-Fatihah + Rewaya: Al-Duri" lists only the reciters that have that recitation, and each row plays that entry.
 - Each entry point opens with its chips. A chip removal widens the result. A link with `view=favorites` lists the favourite reciters.
-- On a 2 GB Android phone, with a release build, the time from a keystroke to the first rows is not longer than on the Search tab of today, for a catalog query and for an Arabic query. Each code PR brings its numbers.
+- On a 2 GB Android phone, with a release build, the time from a keystroke to the first rows is not longer than on the Search tab of today, for a catalog query and for an Arabic query. Each code PR brings its numbers. Time from the keystroke, not from the first frame that shows the letter: with a busy main thread the field shows typed letters late.
 
 ## Open questions
 
