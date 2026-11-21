@@ -120,9 +120,10 @@ Both come from branding, never from a literal. `itms-apps://` opens the App Stor
 
 `components/UpdateAvailableCard.tsx` renders above the RFC-008 top region in `components/RecitersView.tsx:865`, inside the scroll view. It renders `null` unless the check reports an update, so the Listen tab is byte-identical when the field is absent.
 
-- Title and body from `home:updateCard.*` (English and Arabic in this PR). The body names `branding.appName`.
+- An icon, a title ("Update available"), one line ("A new version of {appName} is ready."), a close button, and a filled "Update" button at the trailing edge. Strings in `home:updateCard.*` (English and Arabic in this PR).
 - "Update" → `openStoreForUpdate()`. The card stays, so a person who comes back without an update still sees it.
-- Close → the card hides at once, and `@<appSlug>:updateCardSnoozedUntil` in AsyncStorage keeps it hidden for 7 days.
+- Close ("Hide for a week") → the card hides at once, and `@<appSlug>:updateCardSnoozedUntil` in AsyncStorage keeps it hidden for 7 days.
+- Accessibility: the container is not one accessibility element, so screen readers reach both buttons; the close button is 44 × 44 pt; "Update" has the label "Update {appName} in the store". Padding uses start/end, so the layout mirrors in right-to-left languages.
 - `hooks/useUpdateCheck.ts` runs the check once on mount, and again on `AppState 'active'` when the last check is more than 6 hours old. A release changes the answer at most a few times a week, so a tighter loop only adds requests.
 
 ### New dependency
