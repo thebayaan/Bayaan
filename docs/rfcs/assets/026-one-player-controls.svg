@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" font-family="Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="900" height="480" rx="10" fill="#f7f6f2"/>
+
+  <!-- shared shapes -->
+  <defs>
+    <!-- play triangle, 12 wide -->
+    <path id="play" d="M0 0 L11 7 L0 14 Z" fill="#2a2a2a"/>
+    <!-- pause -->
+    <g id="pause"><rect x="0" y="0" width="4" height="14" fill="#2a2a2a"/><rect x="7" y="0" width="4" height="14" fill="#2a2a2a"/></g>
+    <!-- step back / forward (double chevron) -->
+    <path id="stepb" d="M8 0 L1 7 L8 14 M15 0 L8 7 L15 14" fill="none" stroke="#2a2a2a" stroke-width="2"/>
+    <path id="stepf" d="M1 0 L8 7 L1 14 M8 0 L15 7 L8 14" fill="none" stroke="#2a2a2a" stroke-width="2"/>
+    <!-- previous / next surah -->
+    <g id="prev"><rect x="0" y="0" width="2.5" height="12" fill="#2a2a2a"/><path d="M12 0 L3 6 L12 12 Z" fill="#2a2a2a"/></g>
+    <g id="next"><path d="M0 0 L9 6 L0 12 Z" fill="#2a2a2a"/><rect x="9.5" y="0" width="2.5" height="12" fill="#2a2a2a"/></g>
+    <!-- Follow along (target) -->
+    <g id="follow" fill="none" stroke="#2a2a2a" stroke-width="1.6"><circle cx="8" cy="8" r="4.5"/><path d="M8 0 V3 M8 13 V16 M0 8 H3 M13 8 H16"/></g>
+    <!-- Mushaf (open book) -->
+    <path id="book" d="M1 2 H7 Q9 2 9 4 V14 Q9 12.5 7 12.5 H1 Z M17 2 H11 Q9 2 9 4 V14 Q9 12.5 11 12.5 H17 Z" fill="none" stroke="#2a2a2a" stroke-width="1.5"/>
+    <!-- a page of text lines, 150 wide -->
+    <g id="lines" stroke="#c9c7bf" stroke-width="5" stroke-linecap="round">
+      <line x1="0" y1="0" x2="150" y2="0"/><line x1="0" y1="18" x2="150" y2="18"/>
+      <line x1="0" y1="36" x2="150" y2="36"/><line x1="0" y1="54" x2="150" y2="54"/>
+      <line x1="0" y1="72" x2="150" y2="72"/><line x1="0" y1="90" x2="150" y2="90"/>
+    </g>
+    <!-- the full controls card, 170 wide, 150 high, origin at its top left -->
+    <g id="card">
+      <rect x="0" y="0" width="170" height="150" rx="14" fill="#ffffff" stroke="#d8d6cf" stroke-width="1.5"/>
+      <path d="M12 12 L18 18 L24 12" fill="none" stroke="#2a2a2a" stroke-width="1.8"/>
+      <text x="62" y="20" font-size="9.5" fill="#8a887f" font-weight="700">2:255</text>
+      <circle cx="132" cy="16" r="1.4" fill="#2a2a2a"/><circle cx="138" cy="16" r="1.4" fill="#2a2a2a"/><circle cx="144" cy="16" r="1.4" fill="#2a2a2a"/>
+      <rect x="12" y="32" width="24" height="24" rx="12" fill="#e4e2da"/>
+      <text x="44" y="42" font-size="10" font-weight="700" fill="#2a2a2a">Al-Baqarah</text>
+      <text x="44" y="54" font-size="8.5" fill="#8a887f">Reciter · Hafs</text>
+      <line x1="12" y1="70" x2="158" y2="70" stroke="#e4e2da" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="70" x2="62" y2="70" stroke="#2a2a2a" stroke-width="3" stroke-linecap="round"/>
+      <use href="#stepb" x="14" y="86"/>
+      <use href="#prev" x="52" y="87"/>
+      <use href="#pause" x="80" y="86"/>
+      <use href="#next" x="106" y="87"/>
+      <use href="#stepf" x="141" y="86"/>
+      <!-- tools: speed, repeat, timer, follow, queue -->
+      <rect x="10" y="114" width="26" height="24" rx="8" fill="#f0efe9"/><text x="23" y="130" font-size="8.5" font-weight="700" fill="#2a2a2a" text-anchor="middle">1x</text>
+      <rect x="41" y="114" width="26" height="24" rx="8" fill="#f0efe9"/><path d="M48 123 H58 V129 H50 M52 127 L50 129 L52 131" fill="none" stroke="#2a2a2a" stroke-width="1.4"/>
+      <rect x="72" y="114" width="26" height="24" rx="8" fill="#f0efe9"/><circle cx="85" cy="126" r="5.5" fill="none" stroke="#2a2a2a" stroke-width="1.4"/><path d="M85 122.5 V126 H88" fill="none" stroke="#2a2a2a" stroke-width="1.4"/>
+      <rect x="103" y="114" width="26" height="24" rx="8" fill="#dedcd3"/><use href="#follow" x="108" y="118"/>
+      <rect x="134" y="114" width="26" height="24" rx="8" fill="#f0efe9"/><path d="M141 122 H153 M141 126 H153 M141 130 H153" stroke="#2a2a2a" stroke-width="1.4"/>
+    </g>
+  </defs>
+
+  <!-- ============ A — off the Mushaf, compact: the mini player ============ -->
+  <rect x="20" y="24" width="200" height="380" rx="26" fill="#ffffff" stroke="#d8d6cf" stroke-width="2"/>
+  <text x="40" y="58" font-size="14" font-weight="700" fill="#2a2a2a">Home</text>
+  <rect x="40" y="72" width="160" height="56" rx="10" fill="#f0efe9"/>
+  <rect x="40" y="138" width="76" height="76" rx="10" fill="#f0efe9"/>
+  <rect x="124" y="138" width="76" height="76" rx="10" fill="#f0efe9"/>
+  <rect x="40" y="224" width="160" height="56" rx="10" fill="#f0efe9"/>
+  <!-- mini player -->
+  <rect x="32" y="306" width="176" height="42" rx="21" fill="#ffffff" stroke="#bdbab0" stroke-width="1.5"/>
+  <rect x="40" y="315" width="24" height="24" rx="12" fill="#e4e2da"/>
+  <text x="72" y="324" font-size="10" font-weight="700" fill="#2a2a2a">Al-Baqarah</text>
+  <text x="72" y="337" font-size="8.5" fill="#8a887f">Reciter</text>
+  <use href="#book" x="150" y="319"/>
+  <use href="#pause" x="182" y="320"/>
+  <!-- tab bar -->
+  <rect x="32" y="356" width="176" height="34" rx="17" fill="#f0efe9"/>
+  <circle cx="62" cy="373" r="4" fill="#2a2a2a"/><circle cx="101" cy="373" r="4" fill="#bdbab0"/><circle cx="140" cy="373" r="4" fill="#bdbab0"/><circle cx="179" cy="373" r="4" fill="#bdbab0"/>
+  <text x="120" y="428" font-size="12" font-weight="700" fill="#2a2a2a" text-anchor="middle">A. Any screen, compact</text>
+  <text x="120" y="445" font-size="10.5" fill="#6f6d65" text-anchor="middle">Tap the row: full controls (B)</text>
+  <text x="120" y="460" font-size="10.5" fill="#6f6d65" text-anchor="middle">Book button: the Mushaf (C)</text>
+
+  <!-- ============ B — off the Mushaf, full: the card over the screen ============ -->
+  <rect x="240" y="24" width="200" height="380" rx="26" fill="#ffffff" stroke="#d8d6cf" stroke-width="2"/>
+  <text x="260" y="58" font-size="14" font-weight="700" fill="#b5b3aa">Home</text>
+  <rect x="260" y="72" width="160" height="56" rx="10" fill="#f5f4ef"/>
+  <rect x="260" y="138" width="76" height="76" rx="10" fill="#f5f4ef"/>
+  <rect x="344" y="138" width="76" height="76" rx="10" fill="#f5f4ef"/>
+  <use href="#card" x="255" y="240"/>
+  <use href="#book" x="356" y="248"/>
+  <text x="340" y="428" font-size="12" font-weight="700" fill="#2a2a2a" text-anchor="middle">B. Any screen, full</text>
+  <text x="340" y="445" font-size="10.5" fill="#6f6d65" text-anchor="middle">Outer buttons: one verse,</text>
+  <text x="340" y="460" font-size="10.5" fill="#6f6d65" text-anchor="middle">or 15 s with no verse layer</text>
+
+  <!-- ============ C — on the Mushaf, compact: one row ============ -->
+  <rect x="460" y="24" width="200" height="380" rx="26" fill="#ffffff" stroke="#d8d6cf" stroke-width="2"/>
+  <path d="M478 52 L472 58 L478 64" fill="none" stroke="#2a2a2a" stroke-width="2"/>
+  <rect x="520" y="44" width="80" height="26" rx="9" fill="#f0efe9"/>
+  <text x="560" y="61" font-size="10" font-weight="700" fill="#2a2a2a" text-anchor="middle">Al-Baqarah</text>
+  <use href="#lines" x="485" y="100"/>
+  <rect x="480" y="146" width="160" height="16" rx="5" fill="#dedcd3"/>
+  <line x1="485" y1="154" x2="635" y2="154" stroke="#8a887f" stroke-width="5" stroke-linecap="round"/>
+  <use href="#lines" x="485" y="208"/>
+  <!-- compact row -->
+  <line x1="462" y1="330" x2="658" y2="330" stroke="#e4e2da" stroke-width="1.5"/>
+  <circle cx="486" cy="352" r="13" fill="#dedcd3"/><use href="#follow" x="478" y="344"/>
+  <use href="#stepb" x="520" y="345"/>
+  <use href="#pause" x="555" y="345"/>
+  <use href="#stepf" x="584" y="345"/>
+  <path d="M628 356 L634 350 L640 356" fill="none" stroke="#2a2a2a" stroke-width="1.8"/>
+  <text x="560" y="384" font-size="9" fill="#6f6d65" text-anchor="middle">Al-Baqarah 2:255 · Reciter</text>
+  <text x="560" y="428" font-size="12" font-weight="700" fill="#2a2a2a" text-anchor="middle">C. The Mushaf, compact</text>
+  <text x="560" y="445" font-size="10.5" fill="#6f6d65" text-anchor="middle">Follow along, step, play, step,</text>
+  <text x="560" y="460" font-size="10.5" fill="#6f6d65" text-anchor="middle">expand (D). Back: A</text>
+
+  <!-- ============ D — on the Mushaf, full: the same card ============ -->
+  <rect x="680" y="24" width="200" height="380" rx="26" fill="#ffffff" stroke="#d8d6cf" stroke-width="2"/>
+  <path d="M698 52 L692 58 L698 64" fill="none" stroke="#2a2a2a" stroke-width="2"/>
+  <rect x="740" y="44" width="80" height="26" rx="9" fill="#f0efe9"/>
+  <text x="780" y="61" font-size="10" font-weight="700" fill="#2a2a2a" text-anchor="middle">Al-Baqarah</text>
+  <use href="#lines" x="705" y="100"/>
+  <rect x="700" y="146" width="160" height="16" rx="5" fill="#dedcd3"/>
+  <line x1="705" y1="154" x2="855" y2="154" stroke="#8a887f" stroke-width="5" stroke-linecap="round"/>
+  <use href="#card" x="695" y="240"/>
+  <text x="780" y="428" font-size="12" font-weight="700" fill="#2a2a2a" text-anchor="middle">D. The Mushaf, full</text>
+  <text x="780" y="445" font-size="10.5" fill="#6f6d65" text-anchor="middle">The same card as B,</text>
+  <text x="780" y="460" font-size="10.5" fill="#6f6d65" text-anchor="middle">with no book button</text>
+</svg>
