@@ -176,6 +176,13 @@
     "showingCached": "Showing cached data",
     "backendUnreachable": "Backend unreachable"
   },
+  "updateCard": {
+    "title": "Update available",
+    "body": "A new version of {{appName}} is ready.",
+    "update": "Update",
+    "updateA11y": "Update {{appName}} in the store",
+    "dismiss": "Hide for a week"
+  },
   "errorBoundary": {
     "message": "{{appName}} hit an unexpected error on this screen. Your downloads and saved items are safe.",
     "repeat": "{{appName}} keeps hitting errors. Please close the app fully and open it again."

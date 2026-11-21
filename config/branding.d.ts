@@ -4,6 +4,7 @@ import type {TranslationProvider} from '@/types/TranslationProvider';
 import type {TafsirProvider} from '@/types/TafsirProvider';
 import type {CommunityReflectionsProvider} from '@/types/CommunityReflection';
 import type {AyahTimestamp} from '@/types/timestamps';
+import type {UpdateSource} from '@/services/updateCheck';
 
 /** Catalog source config for the active branding. */
 export interface BrandingCatalogConfig {
@@ -369,6 +370,27 @@ export interface Branding {
    * `config/branding.js`.
    */
   githubUrl?: string;
+  /**
+   * RFC-025 — optional source for the "update available" card on the Listen
+   * tab. It resolves the newest build number that the tenant recommends for
+   * each platform (`{ios?: {recommended}, android?: {recommended}}`). When it
+   * is higher than the installed build, the card shows, with a link to the
+   * store page (`appStoreId` on iOS, `bundleId.android` on Android).
+   *
+   * Field absent → no check, no request, no card. Bayaan ships this unset.
+   * A rejected or slow source (over 3 s) counts as "no update".
+   *
+   * See docs/rfcs/025-update-available-check.md.
+   */
+  updateSource?: UpdateSource;
+  /**
+   * RFC-025 — optional handler for the card's "Update" button, for a tenant
+   * that starts the update itself (for example the Play in-app update
+   * sheet). It gets the store link of this platform. Resolve true when it
+   * handled the update. False, a rejection, or an absent field opens the
+   * store link instead. Bayaan ships this unset.
+   */
+  openUpdate?: (storeUrl: string) => Promise<boolean>;
   // @ai-end
 }
 

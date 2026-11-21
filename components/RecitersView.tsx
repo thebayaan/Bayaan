@@ -26,6 +26,7 @@ import {PlaylistCard} from '@/components/cards/PlaylistCard';
 import {UserPlaylist} from '@/services/playlist/PlaylistService';
 import {Theme} from '@/utils/themeUtils';
 import {RecitersHero} from '@/components/hero/RecitersHero';
+import {UpdateAvailableCard} from '@/components/UpdateAvailableCard';
 import {
   getTajweedReciters,
   getMemorizationReciters,
@@ -862,6 +863,9 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       {/* RFC-008 — Listen-tab top region. Default is the unified
        * `RecitersHero`; forks may substitute their own via
        * `branding.listenTabTopComponent`. */}
+      {/* RFC-025 — renders nothing unless `branding.updateSource` reports a
+       * newer build. */}
+      <UpdateAvailableCard />
       {ListenTabTopComponent ? <ListenTabTopComponent /> : <RecitersHero />}
 
       {homeRowConfig
