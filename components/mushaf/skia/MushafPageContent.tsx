@@ -2,23 +2,14 @@
 // One DigitalKhatt page of the vertical scroll (ContinuousMushafView): its
 // lines, overlays, highlights and gestures.
 // @ai-end
-import React, {
-  useMemo,
-  useCallback,
-  useRef,
-  useEffect,
-  useSyncExternalStore,
-} from 'react';
-import {View, Platform} from 'react-native';
+import React, {useMemo, useSyncExternalStore} from 'react';
+import {View} from 'react-native';
 import {
   Canvas,
   type SkFont,
-  type SkParagraph,
   type SkTypefaceFontProvider,
 } from '@shopify/react-native-skia';
-import {Gesture, GestureDetector} from 'react-native-gesture-handler';
-import {runOnJS} from 'react-native-worklets';
-import Color from 'color';
+import {GestureDetector} from 'react-native-gesture-handler';
 import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
@@ -51,22 +42,15 @@ import {
 } from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
-import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
+import {usePageTextGestures, type PageTextLayout} from './usePageTextGestures';
+import {usePageHighlightColors} from './usePageHighlightColors';
 // @ai-end
 import {canvasBottomOverflow} from '../constants'; // @ai
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
 import {useWordFlashHighlights} from './useWordFlashHighlights'; // @ai
 import {useRecitationHiddenText} from './useRecitationHiddenText';
 import {useRecitationMarkColors} from './useRecitationMarkColors';
-import {SheetManager} from 'react-native-actions-sheet';
-import {markAtChar} from './recitationTap';
-import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 import type {RenderConstants} from './continuousRenderConstants'; // @ai
-
-interface ParagraphInfo {
-  paragraph: SkParagraph;
-  xPos: number;
-}
 
 interface MushafPageContentProps {
   pageNumber: number;
@@ -261,20 +245,6 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
 
     const canvasHeight = pageHeight; // @ai
 
-    // ── Paragraph refs for hit testing ─────────────────────
-    const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
-
-    useEffect(() => {
-      paragraphMapRef.current.clear();
-    }, [pageNumber]);
-
-    const handleParagraphReady = useCallback(
-      (lineIndex: number, paragraph: SkParagraph, xPos: number) => {
-        paragraphMapRef.current.set(lineIndex, {paragraph, xPos});
-      },
-      [],
-    );
-
     // ── Verse selection store ──────────────────────────────
     // @ai-start
     // Verse units of the shown text, in its rewayah's own numbering, with
@@ -308,139 +278,31 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     // first verse): its basmallah line is painted as a recited verse is.
     const basmalaSurah = usePlaybackBasmalaSurah();
 
-    // ── Hit testing ────────────────────────────────────────
-    // @ai — the line and character under a touch point (this renderer's
-    // paragraph metrics); which verse unit that is: useVerseUnitDragSelect.
-    const charAtPoint = useCallback(
-      (eventX: number, eventY: number): LineCharHit | null => {
-        const canvasX = eventX - canvasMarginX;
-        const canvasY = eventY;
-
-        if (
-          canvasX < 0 ||
-          canvasX > contentWidth ||
-          canvasY < 0 ||
-          canvasY > canvasHeight
-        ) {
-          return null;
-        }
-
-        const lineIndex = Math.floor(canvasY / baseLineHeight);
-        if (lineIndex < 0 || lineIndex >= pageLines.length) return null;
-
-        const line = pageLines[lineIndex];
-        if (!line || line.line_type === 'surah_name') return null;
-
-        const paragraphInfo = paragraphMapRef.current.get(lineIndex);
-        if (!paragraphInfo) return null;
-
-        const paragraphX = canvasX - paragraphInfo.xPos;
-        const paragraphY = canvasY - lineIndex * baseLineHeight;
-
-        const charIndex = paragraphInfo.paragraph.getGlyphPositionAtCoordinate(
-          paragraphX,
-          paragraphY,
-        );
-
-        return {lineIndex, charIndex};
-      },
-      [pageLines, canvasHeight, canvasMarginX, contentWidth, baseLineHeight],
-    );
-
-    // ── Drag gesture handlers ──────────────────────────────
+    // ── Touch: hit test, gestures, tap ─────────────────────
     // @ai-start
-    // Long-press / iOS drag-select in verse units of the shown text, and the
-    // verse actions on release (shared with SkiaPage).
-    const {
-      onDragStart: handleDragStart,
-      onDragUpdate: handleDragUpdate,
-      onDragEnd: handleDragEnd,
-    } = useVerseUnitDragSelect(pageNumber, charAtPoint);
-    // @ai-end
-
-    // ── Gestures ───────────────────────────────────────────
-    const longPressDragGesture = useMemo(
-      () =>
-        Platform.OS === 'android'
-          ? Gesture.LongPress()
-              .minDuration(400)
-              .maxDistance(20)
-              .onStart(event => {
-                'worklet';
-                runOnJS(handleDragStart)(event.x, event.y);
-              })
-              .onEnd(() => {
-                'worklet';
-                runOnJS(handleDragEnd)();
-              })
-          : Gesture.Pan()
-              .activateAfterLongPress(400)
-              .minDistance(0)
-              .onStart(event => {
-                'worklet';
-                runOnJS(handleDragStart)(event.x, event.y);
-              })
-              .onUpdate(event => {
-                'worklet';
-                runOnJS(handleDragUpdate)(event.x, event.y);
-              })
-              .onEnd(() => {
-                'worklet';
-                runOnJS(handleDragEnd)();
-              }),
-      [handleDragStart, handleDragUpdate, handleDragEnd],
+    // The text canvas starts canvasMarginX from the page's left and at its
+    // top, and its lines are baseLineHeight apart. The hit test, the
+    // long-press / drag-select and the tap are shared with SkiaPage.
+    const textLayout = useMemo<PageTextLayout>(
+      () => ({
+        originX: canvasMarginX,
+        originY: 0,
+        width: contentWidth,
+        height: canvasHeight,
+        lineAt: canvasY => Math.floor(canvasY / baseLineHeight),
+        lineTop: lineIndex => lineIndex * baseLineHeight,
+      }),
+      [canvasMarginX, contentWidth, canvasHeight, baseLineHeight],
     );
-
-    // A tap on a word marked while reciting opens it; any other tap is the
-    // page's own.
-    const handleTap = useCallback(
-      (x: number, y: number) => {
-        const {marks} = useRecitationTrackingStore.getState();
-        if (marks.length > 0) {
-          const hit = charAtPoint(x, y);
-          const line = hit ? pageLines[hit.lineIndex] : undefined;
-          const mark =
-            hit && line ? markAtChar(line, hit.charIndex, marks) : null;
-          if (mark) {
-            void SheetManager.show('recitation-mistake', {payload: {mark}});
-            return;
-          }
-        }
-        onTap?.();
-      },
-      [charAtPoint, pageLines, onTap],
-    );
-
-    const tapGesture = useMemo(
-      () =>
-        Gesture.Tap().onEnd(event => {
-          'worklet';
-          runOnJS(handleTap)(event.x, event.y);
-        }),
-      [handleTap],
-    );
-
-    const composedGesture = useMemo(
-      () => Gesture.Exclusive(longPressDragGesture, tapGesture),
-      [longPressDragGesture, tapGesture],
-    );
+    const {gesture, handleParagraphReady, handleParagraphDisposed} =
+      usePageTextGestures(pageNumber, pageLines, textLayout, onTap);
 
     // ── Background highlights ──────────────────────────────
-    const playbackBgColor = useMemo(
-      () =>
-        Color(textColor)
-          .alpha(isDarkMode ? 0.1 : 0.12)
-          .toString(),
-      [textColor, isDarkMode],
+    const {playbackBgColor, selectionBgColor} = usePageHighlightColors(
+      textColor,
+      isDarkMode,
     );
-
-    const selectionBgColor = useMemo(
-      () =>
-        Color(textColor)
-          .alpha(isDarkMode ? 0.15 : 0.18)
-          .toString(),
-      [textColor, isDarkMode],
-    );
+    // @ai-end
 
     const lineBackgroundHighlightsMap = useMemo<
       Map<number, Array<{start: number; end: number; color: string}>>
@@ -605,6 +467,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 textIdentity={textIdentity} // @ai
                 lineHeight={baseLineHeight}
                 onParagraphReady={handleParagraphReady}
+                onParagraphDisposed={handleParagraphDisposed} // @ai
                 backgroundHighlights={lineHighlights.get(lineIndex)}
               />
             );
@@ -613,9 +476,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       </View>
     );
 
-    return (
-      <GestureDetector gesture={composedGesture}>{content}</GestureDetector>
-    );
+    return <GestureDetector gesture={gesture}>{content}</GestureDetector>;
   },
 );
 MushafPageContent.displayName = 'MushafPageContent';
