@@ -16,8 +16,9 @@ import {
 
 /**
  * A link to the open Mushaf reader gives its route new params but mounts no
- * new reader: a warm bayaan://mushaf?page=N navigates to the route on top,
- * and a link route pops back to it (components/mushaf/ReaderLinkRedirect.tsx).
+ * new reader: a link route pops back to it
+ * (components/mushaf/ReaderLinkRedirect.tsx), and app/+native-intent.tsx
+ * sends a warm bayaan://mushaf?page=N through a link route too.
  * MushafViewer reads its page only when it mounts, and the screen flashes
  * only the verse it opened on, so send the viewer the page of each later
  * link, with the link's verse: the viewer selects it and clears it after
@@ -58,9 +59,11 @@ export function useReaderLinkPage(
     if (!ready) return;
     const {page, surahId, verseKey, anchor, words} = resolveTarget(params);
     const unitSelection = anchor ? selectionForAnchor(anchor) : null;
-    useMushafNavigationStore
-      .getState()
-      .navigateToPage(page, surahId, unitSelection ? undefined : verseKey);
+    useMushafNavigationStore.getState().navigateTo({
+      page,
+      surahId,
+      verseKey: unitSelection ? undefined : verseKey,
+    });
     if (unitSelection) {
       useMushafVerseSelectionStore
         .getState()

@@ -48,18 +48,18 @@ describe('whether a reader is open', () => {
 describe('a navigation request', () => {
   it('names the verse and its page, and gets a new id each time', () => {
     const before = store().requestId;
-    store().navigateToVerse('2:255', 42);
+    store().navigateTo({page: 42, verseKey: '2:255'});
     expect(store()).toMatchObject({
       targetVerseKey: '2:255',
       targetPage: 42,
       requestId: before + 1,
     });
-    store().navigateToVerse('2:255', 42);
+    store().navigateTo({page: 42, verseKey: '2:255'});
     expect(store().requestId).toBe(before + 2);
   });
 
   it('is cleared once carried out, keeping its id', () => {
-    store().navigateToVerse('2:255', 42);
+    store().navigateTo({page: 42, verseKey: '2:255'});
     const id = store().requestId;
     store().clear();
     expect(store()).toMatchObject({

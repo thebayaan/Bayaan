@@ -308,7 +308,7 @@ function renderViewer(props: React.ComponentProps<typeof MushafViewer>): void {
 /** A link to the open reader asks it for `page`. */
 function jumpTo(page: number): void {
   act(() => {
-    useMushafNavigationStore.getState().navigateToPage(page);
+    useMushafNavigationStore.getState().navigateTo({page});
   });
 }
 
