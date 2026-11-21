@@ -5,10 +5,11 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon, ProfileIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
@@ -149,7 +150,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
 
   const isLovedState =
     hasSurah && hasReciter
-      ? isLovedWithRewayat(reciterId!, surahId, '')
+      ? isLovedWithRewayat(reciterId!, surahId, '', recitation?.id) // @ai
       : false;
 
   const tagsStyles = useMemo(
@@ -417,10 +418,9 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
               })}
             </Text>
           </View>
-          <ScrollView
+          <SheetScrollView
             style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            bounces={true}>
+            showsVerticalScrollIndicator={false}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>
@@ -441,7 +441,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
                 />
               )}
             </View>
-          </ScrollView>
+          </SheetScrollView>
         </>
       ) : (
         <View style={styles.container}>

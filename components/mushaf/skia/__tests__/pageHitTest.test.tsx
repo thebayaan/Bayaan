@@ -215,7 +215,11 @@ jest.mock('@/services/mushaf/MushafLayoutCacheService', () => ({
   mushafLayoutCacheService: {setPageLayout: () => undefined},
 }));
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
-  mushafVerseMapService: {getShownVerseUnits: () => null},
+  mushafVerseMapService: {
+    getShownVerseUnits: () => null,
+    // The word flash of a search hit (useWordFlashHighlights).
+    getOrderedVerseKeysForPage: () => [],
+  },
 }));
 jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => ({
   rewayahVerseUnitsService: {

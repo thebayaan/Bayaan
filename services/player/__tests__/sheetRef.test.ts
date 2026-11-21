@@ -1,8 +1,11 @@
 // @ai-generated
 const mockSetSheetMode = jest.fn();
+let mockQueue = {tracks: [{id: 'r1-2'}], currentIndex: 0};
 
 jest.mock('../store/playerStore', () => ({
-  usePlayerStore: {getState: () => ({setSheetMode: mockSetSheetMode})},
+  usePlayerStore: {
+    getState: () => ({setSheetMode: mockSetSheetMode, queue: mockQueue}),
+  },
 }));
 
 import {
@@ -18,7 +21,10 @@ import {
 
 const origin: PlayerOrigin = {x: 8, y: 700, width: 360, height: 56, radius: 28};
 
-beforeEach(() => mockSetSheetMode.mockClear());
+beforeEach(() => {
+  mockSetSheetMode.mockClear();
+  mockQueue = {tracks: [{id: 'r1-2'}], currentIndex: 0};
+});
 
 it('sets sheetMode and drives the registered controller', () => {
   const controller = {
@@ -37,6 +43,26 @@ it('sets sheetMode and drives the registered controller', () => {
   expect(controller.close).toHaveBeenCalled();
 
   unregisterPlayerSheetController(controller);
+});
+
+// A widget's bayaan://player link can arrive with an empty queue. Marking
+// the player open then made it pop open by itself with the first track.
+it('does not mark the player open when there is no track', () => {
+  mockQueue = {tracks: [], currentIndex: 0};
+  expandPlayerSheet();
+  expect(mockSetSheetMode).not.toHaveBeenCalled();
+
+  // The index can point past the end of a queue that was cleared.
+  mockQueue = {tracks: [{id: 'r1-2'}], currentIndex: 3};
+  expandPlayerSheet(origin);
+  expect(mockSetSheetMode).not.toHaveBeenCalled();
+});
+
+// On a cold start the link can run before the player has mounted: the mode
+// is kept, and the player opens as it mounts.
+it('marks the player open for a track whose player has not mounted yet', () => {
+  expandPlayerSheet();
+  expect(mockSetSheetMode).toHaveBeenLastCalledWith('full');
 });
 
 it('keeps a newer controller when a stale one unregisters', () => {

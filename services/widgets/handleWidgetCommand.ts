@@ -291,7 +291,11 @@ export async function handleWidgetCommand(
         if (queued !== null && recent) {
           // Keep the queue but resume at the saved position.
           await deps.playQueueIndex(queued, recent.startPosition);
-          deps.resumeChain(recent.recentIndex);
+          // Find the entry again: a progress tick of the track that just
+          // started can already have moved it to the front, and the place
+          // it had before the load then belongs to another card.
+          const resumed = deps.findRecent(key);
+          if (resumed) deps.resumeChain(resumed.recentIndex);
           return;
         }
         if (queued !== null) {

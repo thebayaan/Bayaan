@@ -10,6 +10,7 @@ import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {usePlaylists} from '@/hooks/usePlaylists';
+import {showCreatePlaylistSheet} from '@/components/collection/showCreatePlaylistSheet'; // @ai
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -44,11 +45,11 @@ export const AddToCollectionSheet = (
   const handleNewPlaylist = useCallback(async () => {
     handleClose();
     setTimeout(async () => {
-      const result = await SheetManager.show('create-playlist', {
-        payload: {
-          existingColors: existingPlaylistColors,
-        },
+      // @ai-start
+      const result = await showCreatePlaylistSheet({
+        existingColors: existingPlaylistColors,
       });
+      // @ai-end
 
       if (result?.name && result?.color) {
         try {

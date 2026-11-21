@@ -268,11 +268,12 @@ Shortcuts shipped in #447 through a local Expo module, `modules/bayaan-keyboard`
 | ⌘ L | Toggle Follow Along | Full player | Shipped |
 | Space / ⇧Space, ← / → | Next / previous page or spread; the arrows follow the Mushaf's direction, so ← is the next page | Reader (Mushaf menu) | Shipped |
 | ⌥ Space | Play / pause the recitation; opens playback options when nothing is loaded | Reader | Shipped |
+| ← / → | Next / previous word, in the Mushaf's direction; greyed out outside one-word mode | Word Study (Mushaf menu) | Shipped |
 | ⌘D, ⌘,, ⌘+ / ⌘−, ⌘G, ⌘C, ⌘⌥1 / ⌘⌥2 | Bookmark, settings, text size, go to page, copy verse, reader view modes | Reader | Not built |
 
 - **MUST** keep text inputs working with a hardware keyboard: Return submits search, Tab moves focus.
 - **MUST** refuse keys without ⌘ (Space, arrows) while a text field is being edited, so typing a space in Search types a space. `services/keyboard/keyCommands.ts` does this for every binding.
-- **MUST** register shortcuts through the layers in `services/keyboard/keyCommands.ts`. The layer added last wins a key and gives it back when it unmounts; the app-wide layer always sits underneath. The reader and the full player override the app-wide keys this way, the full player beats the reader when it is open over it, and the sidebar's Go keys are off while the reader or another full-screen page is on top.
+- **MUST** register shortcuts through the layers in `services/keyboard/keyCommands.ts`. The layer added last wins a key and gives it back when it unmounts; the app-wide layer always sits underneath. The reader and the full player override the app-wide keys this way, the full player beats the reader when it is open over it, and the sidebar's Go keys are off while the reader or another full-screen page is on top. A layer can also cover keys without binding them (`covers`): the verse actions sheet covers Space, ⇧Space and ← / → while it shows, so they never turn the page or seek the recitation behind it. A cover takes a key only from the screens under it, never from the app-wide table, so over the full player Space still plays and pauses under the sheet.
 - **MUST** give every shortcut a menu title, so it shows in the iPadOS menu bar, and make the menu item do exactly what the key does.
 - **MUST** gate new keyboard UI on `keyCommandsSupported()` (iPad only). Phones and Android register nothing.
 - **MUST** keep the committed `AppDelegate.swift` equal to the output of `plugins/withBayaanKeyboard.js`, so a prebuild keeps the shortcuts; a test checks this.

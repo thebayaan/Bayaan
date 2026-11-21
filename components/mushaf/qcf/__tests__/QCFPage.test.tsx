@@ -7,14 +7,16 @@
  * Skia is a recorder: the test reads what the page asks it to draw. Checks
  * the features the page shares with the DigitalKhatt pages: the selection
  * band, a mistake in red with its underline, hidden words while memorising,
- * and the mistake sheet on a tap of a marked word. Also when the page reports
- * its first content (RFC-023 step 5): its lines, or its error state with a
- * retry when the page font cannot load (offline).
+ * the mistake sheet on a tap of a marked word, and the words a Quran search
+ * matched, flashed in the paged and the vertical mushaf. Also when the page
+ * reports its first content (RFC-023 step 5): its lines, or its error state
+ * with a retry when the page font cannot load (offline).
  */
 import * as path from 'path';
 import React, {act} from 'react';
 import {ActivityIndicator, Text} from 'react-native';
 import TestRenderer from 'react-test-renderer';
+import Color from 'color';
 import {readTtfMetrics} from '@/services/mushaf/__fixtures__/ttfMetrics';
 import {hasNodeSqlite} from '@/services/mushaf/__fixtures__/bundledDkSqlite';
 
@@ -237,11 +239,14 @@ import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import {qcfDataService} from '@/services/mushaf/QCFDataService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore';
 import {
   RECITATION_TRACKING_IDLE,
   useRecitationTrackingStore,
 } from '@/store/recitationTrackingStore';
 import type {WordMark} from '@/services/recitation/wordMarks';
+import ContinuousQCFPage from '@/components/mushaf/skia/ContinuousQCFPage';
+import type {RenderConstants} from '@/components/mushaf/skia/continuousRenderConstants';
 import QCFPage, {type QCFPageFrame} from '../QCFPage';
 
 const FRAME: QCFPageFrame = {
@@ -254,13 +259,30 @@ const FRAME: QCFPageFrame = {
   lineHeight: 622 / 15,
   centerOpeningPages: true,
 };
+// The vertical scroll's render constants for the same text block, the ones
+// ContinuousQCFPage reads (its lines are a tenth of the content width).
+const RENDER = {
+  screenWidth: FRAME.width,
+  contentWidth: FRAME.contentWidth,
+  canvasMarginX: FRAME.contentLeft,
+  baseLineHeight: FRAME.contentWidth * 0.1,
+} as RenderConstants;
 const TEXT = '#1a1a1a';
 const MISTAKE = '#D32F2F';
 
 interface DrawnGlyphs {
   color: string;
+  font: {size: number};
   glyphs: Array<{id: number; pos: {x: number; y: number}}>;
   style?: string;
+}
+
+interface DrawnBand {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
 }
 
 const run = hasNodeSqlite() ? describe : describe.skip;
@@ -333,17 +355,19 @@ run('Mushaf 1440 page', () => {
     mounted = null;
   });
 
-  async function draw(): Promise<TestRenderer.ReactTestRenderer> {
+  async function draw(
+    page: React.JSX.Element = (
+      <QCFPage
+        pageNumber={PAGE}
+        textColor={TEXT}
+        dividerColor="#888"
+        frame={FRAME}
+      />
+    ),
+  ): Promise<TestRenderer.ReactTestRenderer> {
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      tree = TestRenderer.create(
-        <QCFPage
-          pageNumber={PAGE}
-          textColor={TEXT}
-          dividerColor="#888"
-          frame={FRAME}
-        />,
-      );
+      tree = TestRenderer.create(page);
     });
     mounted = tree;
     // The font resolves, then the plain variant if a word needs it.
@@ -509,6 +533,101 @@ run('Mushaf 1440 page', () => {
     await draw();
     expect(mockLoader.ensure).toHaveBeenCalledWith(PAGE, 'v4');
     expect(mockLoader.ensure).toHaveBeenCalledWith(PAGE, 'v4-mono');
+  });
+
+  // The paged mushaf and the iPad spreads draw QCFPage itself; the vertical
+  // scroll draws it through ContinuousQCFPage.
+  describe.each([
+    [
+      'the paged mushaf',
+      () => (
+        <QCFPage
+          pageNumber={PAGE}
+          textColor={TEXT}
+          dividerColor="#888"
+          frame={FRAME}
+        />
+      ),
+    ],
+    [
+      'the vertical scroll',
+      () => (
+        <ContinuousQCFPage
+          pageNumber={PAGE}
+          textColor={TEXT}
+          dividerColor="#888"
+          render={RENDER}
+          pageHeight={15 * RENDER.baseLineHeight}
+        />
+      ),
+    ],
+  ])('the words a Quran search matched, in %s', (_name, view) => {
+    // The flash bands words in the colour of the word being recited.
+    const FLASH = Color(TEXT).alpha(0.25).toString();
+    const flashBands = (tree: TestRenderer.ReactTestRenderer) =>
+      (drawn(tree, 'RoundedRect') as DrawnBand[]).filter(
+        band => band.color === FLASH,
+      );
+    /**
+     * Whether a flash band covers the middle of each glyph of a word. Bands
+     * reach a little past their words' ends, over the edge of the next word.
+     */
+    const flashed = (
+      tree: TestRenderer.ReactTestRenderer,
+      location: string,
+    ) => {
+      const bands = flashBands(tree);
+      const ids = new Set(glyphIdsOf(location));
+      return glyphRuns(tree).flatMap(glyphRun =>
+        glyphRun.glyphs
+          .filter(g => ids.has(g.id))
+          .map(g => {
+            const advance =
+              (mockMetrics.advance(g.id) / mockMetrics.unitsPerEm) *
+              glyphRun.font.size;
+            const middle = g.pos.x + advance / 2;
+            return bands.some(
+              b =>
+                middle >= b.x &&
+                middle <= b.x + b.width &&
+                g.pos.y >= b.y &&
+                g.pos.y <= b.y + b.height,
+            );
+          }),
+      );
+    };
+    // On page 50, 3:3 words 1-3 end the print's third line and words 4-12
+    // open the fourth (one glyph each): words 2-4 are on both lines.
+    const expectWordsTwoToFourFlashed = (
+      tree: TestRenderer.ReactTestRenderer,
+    ) => {
+      expect(flashed(tree, '3:3:1')).toEqual([false]);
+      expect(flashed(tree, '3:3:2')).toEqual([true]);
+      expect(flashed(tree, '3:3:3')).toEqual([true]);
+      expect(flashed(tree, '3:3:4')).toEqual([true]);
+      expect(flashed(tree, '3:3:5')).toEqual([false]);
+    };
+
+    afterEach(() => {
+      act(() => useMushafWordFlashStore.getState().clear());
+    });
+
+    it('bands them on their lines until the flash ends', async () => {
+      const tree = await draw(view());
+      expect(flashBands(tree)).toEqual([]);
+
+      act(() => useMushafWordFlashStore.getState().show('3:3', [2, 3, 4]));
+      expectWordsTwoToFourFlashed(tree);
+
+      act(() => useMushafWordFlashStore.getState().clear());
+      expect(flashBands(tree)).toEqual([]);
+    });
+
+    it('bands them on a page that opens during the flash', async () => {
+      act(() => useMushafWordFlashStore.getState().show('3:3', [2, 3, 4]));
+      const tree = await draw(view());
+      expectWordsTwoToFourFlashed(tree);
+    });
   });
 
   describe('its first content', () => {

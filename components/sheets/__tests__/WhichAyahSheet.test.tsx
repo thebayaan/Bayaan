@@ -85,14 +85,20 @@ jest.mock('expo-router', () => ({
   router: {push: (route: unknown) => mockRouter.push(route)},
 }));
 const mockSheets = {show: jest.fn()};
-jest.mock('react-native-actions-sheet', () => {
-  const {ScrollView} = jest.requireActual('react-native');
+jest.mock('react-native-actions-sheet', () => ({
+  SheetManager: {
+    hide: jest.fn(async () => undefined),
+    show: (id: string, options: unknown) => mockSheets.show(id, options),
+  },
+}));
+jest.mock('@/components/sheets/SheetGestures', () => {
+  const {ScrollView: MockScrollView, View: MockView} =
+    jest.requireActual('react-native');
   return {
-    ScrollView,
-    SheetManager: {
-      hide: jest.fn(async () => undefined),
-      show: (id: string, options: unknown) => mockSheets.show(id, options),
-    },
+    SheetScrollView: MockScrollView,
+    SheetFooter: (props: object) => (
+      <MockView {...props} testID="sheet-footer" />
+    ),
   };
 });
 
@@ -141,6 +147,20 @@ function showFound(): void {
     current: {surah: 55, ayah: 13},
     twins: ['55:16', '55:18', '55:21', '55:23', '55:25'],
   });
+}
+
+/**
+ * Whether a SheetFooter holds the button `node` (found by `button`, which
+ * can be the sheet's PrimaryButton itself), keeping the sheet's drag off it.
+ */
+function inSheetFooter(node: TestRenderer.ReactTestInstance): boolean {
+  const isFooter = (n: TestRenderer.ReactTestInstance) =>
+    n.props.testID === 'sheet-footer';
+  if (node.findAll(isFooter).length > 0) return true;
+  for (let n: TestRenderer.ReactTestInstance | null = node; n; n = n.parent) {
+    if (isFooter(n)) return true;
+  }
+  return false;
 }
 
 beforeEach(() => {
@@ -258,5 +278,22 @@ describe('WhichAyahSheet', () => {
     expect(node).toBeTruthy();
     const style = StyleSheet.flatten(node?.props.style);
     expect(style.maxHeight).toBeGreaterThan(0);
+  });
+
+  it('keeps the sheet drag off its buttons', async () => {
+    showFound();
+    const r = await render();
+    expect(inSheetFooter(button(r, 'Open in mushaf'))).toBe(true);
+    expect(inSheetFooter(button(r, 'Play from Here'))).toBe(true);
+
+    mockModel.needsDownload = true;
+    const intro = await render();
+    expect(inSheetFooter(button(intro, 'Allow microphone and download'))).toBe(
+      true,
+    );
+    act(() => {
+      r.unmount();
+      intro.unmount();
+    });
   });
 });

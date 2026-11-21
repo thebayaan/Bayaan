@@ -28,3 +28,34 @@ export function getSurahForPage(page: number): Surah | undefined {
     return page >= start && page <= end;
   });
 }
+
+// @ai-start
+/**
+ * The surah "Continue reading" names for the last-read page.
+ *
+ * `savedSurahId` is the surah the reader's header showed there (saved with
+ * the page). Installs from before it was saved have a page alone: for those
+ * `pageToSurah`, the reader's own page → surah map, gives the surah its
+ * header shows for the page (the last one to start on or before it). While
+ * that map is still loading (the mushaf data loads in the background at
+ * launch) the bundled surah list gives the same answer.
+ *
+ * It used to be the first surah on the page: the surah before, for the 58
+ * surahs that start mid-page (Ya-Sin's first page was called Fatir).
+ */
+export function getLastReadSurah(
+  page: number,
+  savedSurahId: number | null,
+  pageToSurah: Readonly<Record<number, number>>,
+): Surah | undefined {
+  const byId = (id: number | null | undefined): Surah | undefined =>
+    id ? SURAHS[id - 1] : undefined;
+  const named = byId(savedSurahId) ?? byId(pageToSurah[page]);
+  if (named) return named;
+  let lastStarted: Surah | undefined;
+  for (const surah of SURAHS) {
+    if (Number(surah.pages.split('-')[0]) <= page) lastStarted = surah;
+  }
+  return lastStarted;
+}
+// @ai-end

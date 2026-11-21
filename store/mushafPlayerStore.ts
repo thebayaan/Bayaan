@@ -2,7 +2,8 @@
  * Mushaf Player Store
  *
  * Zustand store for mushaf ayah-by-ayah audio player state.
- * Persists reciter preference, playback rate, and repeat counts across sessions.
+ * Persists reciter preference, playback rate, and the repeat counts chosen in
+ * the play options across sessions. @ai
  *
  * Verse numbering: a timing set may be numbered by the reciter's rewayah
  * (e.g. Warsh 2:4 is Hafs 2:5, Warsh 2:1 is Hafs 2:1 + 2:2). Everything the UI
@@ -46,6 +47,7 @@ import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {parseVerseKey} from '@/services/mushaf/RewayahVerseMapService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useReciterStore} from '@/store/reciterStore'; // @ai
 import {resolveMushafAudioUrl} from '@/utils/mushafAudioUtils';
 import {
   parseVerseKeyListId, // @ai
@@ -102,6 +104,42 @@ export interface UnitRange {
 
 export const TIMESTAMPS_UNAVAILABLE_ERROR =
   'Timestamps unavailable for this reciter on this surah. Try a different reciter.';
+
+// @ai-start
+/**
+ * Shown when the reciter has verse timings for the surah but they could not
+ * be loaded (no connection): playing again may work, another reciter is not
+ * the answer.
+ */
+export const TIMESTAMPS_LOAD_FAILED_ERROR =
+  "Couldn't load the verse timings. Check your internet connection and try again.";
+
+/** Shown when the surah's audio could not be loaded or broke mid-way. */
+export const AUDIO_LOAD_FAILED_ERROR =
+  "Couldn't play the audio for this surah. Check your internet connection and try again.";
+
+/**
+ * Errors that playing again may clear. The player bar keeps its Play button
+ * for these (they are shown as a notice) instead of the row that only offers
+ * another reciter.
+ */
+export function isRetryablePlaybackError(message: string | null): boolean {
+  return (
+    message === TIMESTAMPS_LOAD_FAILED_ERROR ||
+    message === AUDIO_LOAD_FAILED_ERROR
+  );
+}
+
+/**
+ * Why `surah` has no timings to play: the reciter has none for it, or they
+ * could not be fetched (as store/timestampStore.ts tells the two apart).
+ */
+function timingsErrorFor(rewayatId: string, surah: number): string {
+  return timestampFetchService.hasSurah(rewayatId, surah)
+    ? TIMESTAMPS_LOAD_FAILED_ERROR
+    : TIMESTAMPS_UNAVAILABLE_ERROR;
+}
+// @ai-end
 
 /** Shown when a repeat / loop is requested on a surah without verse timing. */
 export const VERSE_TIMING_UNAVAILABLE_ERROR =
@@ -172,6 +210,13 @@ export interface MushafPlayerStoreState {
   // @ai-end
   /** Numbering of the loaded surah ('disabled' = no follow-along / seeking). */
   numberingMode: TimingNumberingMode | null;
+  // @ai-start
+  /**
+   * The mushaf page on screen, mirrored by the viewer whether or not
+   * something plays (null until a mushaf has been opened). Not the page of
+   * the verse being recited.
+   */
+  // @ai-end
   currentPage: number | null;
   timestamps: AyahTimestamp[] | null;
   rangeStart: RangeEndpoint | null;
@@ -217,6 +262,25 @@ export interface MushafPlayerStoreState {
   rewayatId: string | null;
   reciterName: string | null;
   rate: number;
+  // @ai-start
+  /**
+   * The repeat counts last chosen in the play options sheet, which opens on
+   * them again (1: once, 0: loop). Written only by that sheet
+   * (saveRepeatCounts). The playback's own counts below used to be what was
+   * saved, so a one-off Repeat left "Loop" chosen in the sheet for every
+   * later Play, also after a restart, and a plain Play wiped a saved "each
+   * verse 3x".
+   */
+  savedVerseRepeatCount: number;
+  savedRangeRepeatCount: number;
+
+  /**
+   * How often the playback being started or playing repeats each verse and
+   * its range (1: once, 0: loop). They belong to that playback and are not
+   * saved: every start sets them, a verse's one-off Play or Repeat as well
+   * as the play options.
+   */
+  // @ai-end
   verseRepeatCount: number;
   rangeRepeatCount: number;
 
@@ -228,6 +292,16 @@ export interface MushafPlayerStoreState {
   setRate: (rate: number) => void;
   setVerseRepeatCount: (count: number) => void;
   setRangeRepeatCount: (count: number) => void;
+  // @ai-start
+  /**
+   * Remember the repeat counts chosen in the play options sheet for the
+   * next time it opens. Does not change the playback's own counts.
+   */
+  saveRepeatCounts: (
+    verseRepeatCount: number,
+    rangeRepeatCount: number,
+  ) => void;
+  // @ai-end
   /** Range endpoints are Hafs verses. */
   setRange: (start: RangeEndpoint, end: RangeEndpoint) => void;
   // @ai-start
@@ -256,6 +330,17 @@ export interface MushafPlayerStoreState {
     page: number,
     startAt?: string | AudioUnitInput,
   ) => Promise<void>;
+  // @ai-start
+  /**
+   * The reader's Next / Previous verse buttons. They go through the store,
+   * never straight to MushafAudioService: with "play each verse 2x / Loop"
+   * on, a seek the store did not know about was taken for the reciter
+   * reaching the next verse and answered with a jump back, so the buttons
+   * did nothing.
+   */
+  nextVerse: () => void;
+  previousVerse: () => void;
+  // @ai-end
   stop: () => void;
   computeAvailableReciters: () => Promise<void>;
 }
@@ -652,6 +737,15 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       ...CLEARED_VERSE,
       basmalaIntroSurah: null, // @ai
       playbackState: 'idle',
+      // @ai-start
+      // The range belonged to the playback that just ended. Left behind, the
+      // next Play started at its first verse again (and the page turned back
+      // to it) instead of at the page on screen, and the play options opened
+      // on the verses played before.
+      rangeStart: null,
+      rangeEnd: null,
+      rangeUnits: null,
+      // @ai-end
       _versePlayCount: 1,
       _rangePlayCount: 1,
     });
@@ -724,6 +818,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     surah: number,
     hafsAyah: number | null,
     unit: AudioUnitTarget | null = null, // @ai
+    keepPaused = false, // @ai Load and cue it, but do not start the audio.
   ) => {
     const session = playbackSession;
     const {rewayatId} = get();
@@ -735,6 +830,11 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       if (session !== playbackSession) return;
       if (!prepared) {
         finishPlayback();
+        // @ai-start
+        // Say why it stopped (no timings for this surah, or no connection)
+        // instead of going quiet at the end of the surah before.
+        set({timestampError: timingsErrorFor(rewayatId, surah)});
+        // @ai-end
         return;
       }
       const {timestamps, numbering} = prepared;
@@ -763,6 +863,10 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
         set({timestampError: RANGE_UNPLAYABLE_ERROR});
         return;
       }
+      if (keepPaused) {
+        set({playbackState: 'paused'});
+        return;
+      }
       // @ai-end
       mushafAudioService.play();
       set({playbackState: 'playing'});
@@ -773,13 +877,24 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   };
 
   /** Jump back to the range start (reloading its surah if needed). */
-  const loopToRangeStart = (surah: number, resume: boolean) => {
+  const loopToRangeStart = (
+    surah: number,
+    resume: boolean,
+    keepPaused = false, // @ai See playSurahFrom.
+  ) => {
     const state = get();
     const start = state.rangeStart!;
     if (start.surah !== surah) {
       // A range of verse units restarts at its first unit (@ai).
       const units = activeRangeUnits(state);
-      void playSurahFrom(start.surah, start.ayah, units ? units.first : null);
+      // @ai-start
+      void playSurahFrom(
+        start.surah,
+        start.ayah,
+        units ? units.first : null,
+        keepPaused,
+      );
+      // @ai-end
       return;
     }
     const entry = rangeStartEntry(state, state._numbering, surah);
@@ -835,9 +950,13 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     // Range boundary check
     if (state.rangeEnd && state.rangeStart) {
       if (entryAyah > rangeEndEntry(state, numbering, surah)) {
+        // While paused only a seek passes the end (Next on the range's last
+        // verse): a range that starts in another surah is then cued there
+        // and stays paused, as one that starts in this surah does.
+        const keepPaused = state.playbackState === 'paused';
         if (state.rangeRepeatCount === 0) {
           set({_versePlayCount: 1});
-          loopToRangeStart(surah, false);
+          loopToRangeStart(surah, false, keepPaused);
           return;
         }
         if (state._rangePlayCount < state.rangeRepeatCount) {
@@ -845,7 +964,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
             _rangePlayCount: state._rangePlayCount + 1,
             _versePlayCount: 1,
           });
-          loopToRangeStart(surah, false);
+          loopToRangeStart(surah, false, keepPaused);
           return;
         }
         // Range exhausted — stop playback
@@ -884,6 +1003,12 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     const numbering = state._numbering;
     const surah = state.currentSurah;
     const versesKnown = !numbering || numbering.mode !== 'disabled';
+    // @ai-start
+    // Next on the last verse while paused: go where it leads (the range
+    // start, the next surah) and stay paused there, as Next does on any
+    // other verse, instead of starting the audio.
+    const keepPaused = reason === 'skipped' && state.playbackState === 'paused';
+    // @ai-end
 
     // Verse repeat of the surah's last verse (its end is the audio's end)
     if (
@@ -914,7 +1039,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     if (state.rangeEnd && state.rangeStart && state.rangeEnd.surah <= surah) {
       if (state.rangeRepeatCount === 0) {
         set({_versePlayCount: 1});
-        loopToRangeStart(surah, true);
+        loopToRangeStart(surah, !keepPaused, keepPaused); // @ai
         return;
       }
       if (state._rangePlayCount < state.rangeRepeatCount) {
@@ -922,7 +1047,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
           _rangePlayCount: state._rangePlayCount + 1,
           _versePlayCount: 1,
         });
-        loopToRangeStart(surah, true);
+        loopToRangeStart(surah, !keepPaused, keepPaused); // @ai
         return;
       }
       // Range exhausted
@@ -937,13 +1062,72 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
       return;
     }
     set({_versePlayCount: 1});
-    void playSurahFrom(nextSurah, null);
+    void playSurahFrom(nextSurah, null, null, keepPaused); // @ai
   };
+
+  // @ai-start
+  /**
+   * Next / previous verse asked by the reader. As in jumpToEntry,
+   * `_entryAyah` is cleared first so the entry change the service dispatches
+   * for the seek is not mistaken for the reciter moving on (verse repeat
+   * would jump straight back), and the verse reached starts its own repeat
+   * count. When nothing moved (the first verse, no verse tracking) the verse
+   * playing keeps its place and its count.
+   */
+  const skipVerse = (forward: boolean) => {
+    // @ai-start
+    // While a surah loads, the service still holds the previous surah's
+    // paused player on its last verse: a second Next there ended that surah
+    // again and started the next one a second time (heard more than once).
+    if (get().playbackState === 'loading') return;
+    // @ai-end
+    const {_entryAyah, _versePlayCount} = get();
+    set({_entryAyah: 0, _versePlayCount: 1});
+    const moved = forward
+      ? mushafAudioService.seekToNextAyah()
+      : mushafAudioService.seekToPreviousAyah();
+    if (!moved) set({_entryAyah, _versePlayCount});
+  };
+  // @ai-end
+
+  // @ai-start
+  /**
+   * The audio was paused or started from outside the app's own buttons
+   * (headphones unplugged, a call, another app, the lock screen): the bar
+   * follows it instead of showing Pause over silence. Only between
+   * 'playing' and 'paused': a surah that is loading keeps its spinner.
+   */
+  const handlePlayingChange = (playing: boolean) => {
+    if (audioSession !== playbackSession) return;
+    const {playbackState} = get();
+    if (playing && playbackState === 'paused') {
+      set({playbackState: 'playing'});
+    } else if (!playing && playbackState === 'playing') {
+      set({playbackState: 'paused'});
+    }
+  };
+  // @ai-end
+
+  // @ai-start
+  /**
+   * The surah's audio could not be loaded or broke mid-way: stop and say so,
+   * instead of a bar that shows the verse as playing over silence.
+   */
+  const handleAudioError = () => {
+    if (get().playbackState === 'idle') return;
+    // The audio of a playback a new start is replacing: it goes anyway.
+    if (audioSession !== playbackSession) return;
+    finishPlayback();
+    set({timestampError: AUDIO_LOAD_FAILED_ERROR});
+  };
+  // @ai-end
 
   const registerCallbacks = () => {
     mushafAudioService.setOnAyahChange(handleEntryChange);
     mushafAudioService.setOnSurahEnd(handleSurahEnd);
     mushafAudioService.setOnIntroChange(handleIntroChange); // @ai
+    mushafAudioService.setOnPlayingChange(handlePlayingChange); // @ai
+    mushafAudioService.setOnAudioError(handleAudioError); // @ai
   };
 
   return {
@@ -951,8 +1135,49 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     loadSurahAudio,
     prepareSurah,
     registerCallbacks,
+    skipVerse, // @ai
   };
 }
+
+// @ai-start
+/** What is saved across launches. */
+type SavedPreferences = Pick<
+  MushafPlayerStoreState,
+  | 'rewayatId'
+  | 'reciterName'
+  | 'rate'
+  | 'savedVerseRepeatCount'
+  | 'savedRangeRepeatCount'
+>;
+
+/**
+ * Saved state from before the play options' repeat choice was kept apart
+ * from the playback's own counts. The two counts it holds were written
+ * together by whatever played last. "Range: Loop" with each verse once or
+ * looping is what a verse's one-off Repeat wrote, so that pair may be its
+ * leftover and starts over at once / once; any other pair was chosen in the
+ * play options and is kept as the saved choice. The old counts are dropped
+ * either way: they must not come back as the counts of the next playback.
+ */
+function migrateSavedRepeatCounts(persisted: unknown): unknown {
+  if (typeof persisted !== 'object' || persisted === null) return persisted;
+  const {verseRepeatCount, rangeRepeatCount, ...kept} = persisted as Record<
+    string,
+    unknown
+  >;
+  const isCount = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0;
+  const chosenInOptions =
+    isCount(verseRepeatCount) &&
+    isCount(rangeRepeatCount) &&
+    !(rangeRepeatCount === 0 && verseRepeatCount <= 1);
+  return {
+    ...kept,
+    savedVerseRepeatCount: chosenInOptions ? verseRepeatCount : 1,
+    savedRangeRepeatCount: chosenInOptions ? rangeRepeatCount : 1,
+  };
+}
+// @ai-end
 
 export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
   persist(
@@ -993,6 +1218,9 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         rewayatId: null,
         reciterName: null,
         rate: 1.0,
+        savedVerseRepeatCount: 1, // @ai
+        savedRangeRepeatCount: 1, // @ai
+        // The playback's own repeat counts (not persisted). @ai
         verseRepeatCount: 1,
         rangeRepeatCount: 1,
 
@@ -1021,6 +1249,18 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
         setRangeRepeatCount: (count: number) => {
           set({rangeRepeatCount: count});
         },
+
+        // @ai-start
+        saveRepeatCounts: (
+          verseRepeatCount: number,
+          rangeRepeatCount: number,
+        ) => {
+          set({
+            savedVerseRepeatCount: verseRepeatCount,
+            savedRangeRepeatCount: rangeRepeatCount,
+          });
+        },
+        // @ai-end
 
         setRange: (start: RangeEndpoint, end: RangeEndpoint) => {
           set({rangeStart: start, rangeEnd: end, rangeUnits: null}); // @ai
@@ -1114,7 +1354,8 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
               );
               set({
                 playbackState: 'idle',
-                timestampError: TIMESTAMPS_UNAVAILABLE_ERROR,
+                // @ai Not covered, or a fetch that failed (no connection).
+                timestampError: timingsErrorFor(rewayatId, surahNumber),
               });
               return;
             }
@@ -1174,6 +1415,11 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
           }
         },
 
+        // @ai-start
+        nextVerse: () => engine.skipVerse(true),
+        previousVerse: () => engine.skipVerse(false),
+        // @ai-end
+
         stop: () => {
           playbackSession++;
           mushafAudioService.stop();
@@ -1184,7 +1430,9 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             currentSurah: 0,
             numberingMode: null,
             _numbering: null,
-            currentPage: null,
+            // @ai currentPage stays: it is the page on screen, which the
+            // iOS 26 toolbar reads for the next Play (it opened for page 1
+            // after Stop when this was reset here).
             timestamps: null,
             rangeUnits: null, // @ai
             rangeStart: null,
@@ -1225,13 +1473,22 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
     {
       name: STORAGE_KEY,
       storage: persistStorage(), // @ai
-      partialize: state => ({
+      // @ai-start
+      // v0 saved verseRepeatCount / rangeRepeatCount, the playback's own
+      // counts; v1 saves the play options' choice instead.
+      version: 1,
+      migrate: (persisted, version) =>
+        (version === 0
+          ? migrateSavedRepeatCounts(persisted)
+          : persisted) as SavedPreferences,
+      partialize: (state): SavedPreferences => ({
         rewayatId: state.rewayatId,
         reciterName: state.reciterName,
         rate: state.rate,
-        verseRepeatCount: state.verseRepeatCount,
-        rangeRepeatCount: state.rangeRepeatCount,
+        savedVerseRepeatCount: state.savedVerseRepeatCount,
+        savedRangeRepeatCount: state.savedRangeRepeatCount,
       }),
+      // @ai-end
     },
   ),
 );
@@ -1266,6 +1523,18 @@ if (typeof useMushafSettingsStore?.subscribe === 'function') {
   console.warn(
     "[MushafPlayerStore] mushafSettingsStore is not defined yet (an import cycle?): the verse label will not follow the mushaf's rewayah",
   );
+}
+
+// The reciter list of the play options is worked out once from the
+// catalogue. When the catalogue is refilled (the refresh after launch),
+// work it out again, so reciters whose timings were added since are
+// offered now instead of on the next launch. Guarded as above.
+if (typeof useReciterStore?.subscribe === 'function') {
+  useReciterStore.subscribe(() => {
+    const {availableReciters, computeAvailableReciters} =
+      useMushafPlayerStore.getState();
+    if (availableReciters.length > 0) void computeAvailableReciters();
+  });
 }
 
 let stopFollowingVerseUnits: (() => void) | null = null;
@@ -1492,7 +1761,9 @@ export function getPlaybackNotice(
 /**
  * The notices the player bar shows as toasts: it shows refusals and
  * "Verse tracking unavailable" inline, but not that a requested start verse
- * was skipped because the surah plays from its beginning.
+ * was skipped because the surah plays from its beginning. An error that
+ * playing again may clear (the timings or the audio could not be loaded) is
+ * a notice too, so the bar keeps its Play button to try again with.
  */
 export function getPlayerBarNotice(
   prev: NoticeState,
@@ -1500,6 +1771,12 @@ export function getPlayerBarNotice(
   surahName: (surah: number) => string,
   text?: PlaybackNoticeText,
 ): PlaybackNotice | null {
+  if (
+    next.timestampError !== prev.timestampError &&
+    isRetryablePlaybackError(next.timestampError)
+  ) {
+    return getPlaybackNotice(prev, next, surahName, text);
+  }
   if (!next.ignoredStartVerseKey) return null;
   return untrackedSurahNotice(prev, next, surahName, text);
 }

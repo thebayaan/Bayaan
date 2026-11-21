@@ -39,6 +39,9 @@ The image renders the real page fonts and the bundled layout through CanvasKit
 5. Repeat 4 with tajweed on: mistakes still show in red.
 6. Text weight Medium and Bold; Allah's name highlight with and without
    tajweed.
+7. Search الصلاة in the Search tab and open an ayah, then open one from the
+   mushaf search: the verse is selected and its matched words are banded for
+   3 seconds. Repeat in the vertical scroll and on an iPad spread.
 
 ## Rewayat
 

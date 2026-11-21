@@ -1,5 +1,10 @@
-import {Reciter} from '@/data/reciterData';
-import {useDownloadStore} from '@/services/player/store/downloadStore';
+import {Reciter, RECITERS} from '@/data/reciterData'; // @ai
+// @ai-start
+import {
+  useDownloadStore,
+  type DownloadedSurah,
+} from '@/services/player/store/downloadStore';
+// @ai-end
 import {resolveFilePath} from '@/services/downloadService';
 import {audioFileUrl} from '@/utils/audioFileUrl';
 
@@ -20,6 +25,50 @@ export function generateAudioUrl(
   return audioFileUrl(rewayat, surahId);
 }
 
+// @ai-start
+/**
+ * The rewayah held by a download that was recorded without one (''). Such a
+ * download fetches the reciter's first rewayah in catalogue order (see
+ * fetchAudioUrl). It is read from the catalogue, never from a `reciter`
+ * object handed in: the reciter screens pass copies whose rewayat are
+ * re-sorted Hafs-first, and matching against those would play one rewayah's
+ * file as another.
+ */
+function rewayahOfUnkeyedDownloads(reciterId: string): string | undefined {
+  return RECITERS.find(r => r.id === reciterId)?.rewayat[0]?.id;
+}
+
+/**
+ * The completed download to play for a recitation, or undefined when it has
+ * to be streamed.
+ */
+export function findDownloadForPlayback(
+  reciterId: string,
+  surahId: string,
+  rewayatId?: string,
+): DownloadedSurah | undefined {
+  const store = useDownloadStore.getState();
+  const unkeyed = () => {
+    const download = store.getDownload(reciterId, surahId);
+    return download?.status === 'completed' ? download : undefined;
+  };
+
+  if (!rewayatId) return unkeyed();
+
+  const exact = store.getDownloadWithRewayat(reciterId, surahId, rewayatId);
+  if (exact) return exact;
+
+  // A download made without a rewayah (Loved "Download all" on older loved
+  // surahs, playlists and menus with no rewayah) is recorded under ''.
+  // Playing it asks for the reciter's first rewayah by id, which never
+  // matched: the row showed the downloaded badge but streamed, and failed
+  // offline. Only the first rewayah may use that file; any other streams.
+  return rewayatId === rewayahOfUnkeyedDownloads(reciterId)
+    ? unkeyed()
+    : undefined;
+}
+// @ai-end
+
 /**
  * Generates an audio URL that prefers local downloaded files over remote URLs
  * @param reciter - Reciter object
@@ -32,32 +81,18 @@ export function generateSmartAudioUrl(
   surahId: string,
   rewayatId?: string,
 ): string {
-  const downloadStore = useDownloadStore.getState();
-
-  // Check if downloaded with specific rewayat
-  if (rewayatId) {
-    const download = downloadStore.getDownloadWithRewayat(
-      reciter.id,
-      surahId,
-      rewayatId,
+  // @ai-start
+  const download = findDownloadForPlayback(reciter.id, surahId, rewayatId);
+  if (download) {
+    const absolutePath = resolveFilePath(download.filePath);
+    console.log(
+      `Using local file for ${reciter.name} - Surah ${surahId}${
+        rewayatId ? ` (Rewayat: ${rewayatId})` : ''
+      }: ${absolutePath}`,
     );
-    if (download) {
-      const absolutePath = resolveFilePath(download.filePath);
-      console.log(
-        `Using local file for ${reciter.name} - Surah ${surahId} (Rewayat: ${rewayatId}): ${absolutePath}`,
-      );
-      return absolutePath;
-    }
-  } else {
-    const download = downloadStore.getDownload(reciter.id, surahId);
-    if (download && download.status === 'completed') {
-      const absolutePath = resolveFilePath(download.filePath);
-      console.log(
-        `Using local file for ${reciter.name} - Surah ${surahId}: ${absolutePath}`,
-      );
-      return absolutePath;
-    }
+    return absolutePath;
   }
+  // @ai-end
 
   console.log(
     `Using remote URL for ${reciter.name} - Surah ${surahId}${

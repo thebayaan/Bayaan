@@ -30,6 +30,11 @@ function mockUpload(id: string): UploadedRecitation {
 
 const mockEvents: string[] = [];
 let mockContext: CarResolveContext | null = null;
+// @ai-start
+let mockCurrent: Track | null = null;
+let mockPosition = 0;
+let mockLiveRecents: RecentlyPlayedTrack[] | null = null;
+// @ai-end
 
 jest.mock('@/modules/bayaan-car', () => ({BayaanCar: {isAvailable: false}}));
 jest.mock('@/services/audio/ExpoAudioService', () => ({
@@ -65,6 +70,12 @@ const mockUpdateQueue = jest.fn(
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: {
     getState: () => ({
+      // @ai-start
+      // What the player holds now: a resume starts from it when it is the
+      // same recitation.
+      queue: {tracks: mockCurrent ? [mockCurrent] : [], currentIndex: 0},
+      playback: {position: mockPosition},
+      // @ai-end
       updateQueue: mockUpdateQueue,
       play: async () => {
         mockEvents.push('play');
@@ -79,6 +90,8 @@ const mockResumeChain = jest.fn((index: number) =>
 jest.mock('@/services/player/store/recentlyPlayedStore', () => ({
   useRecentlyPlayedStore: {
     getState: () => ({
+      // @ai The recent cards as they are now (the snapshot's can be older).
+      recentTracks: mockLiveRecents ?? mockContext?.recentTracks ?? [],
       startNewChain: mockStartNewChain,
       resumeChain: mockResumeChain,
     }),
@@ -113,6 +126,11 @@ function context(
 
 beforeEach(() => {
   mockEvents.length = 0;
+  // @ai-start
+  mockCurrent = null;
+  mockPosition = 0;
+  mockLiveRecents = null;
+  // @ai-end
   mockUpdateQueue.mockClear();
   mockStartNewChain.mockClear();
   mockResumeChain.mockClear();
@@ -130,33 +148,35 @@ describe('car upload playback', () => {
     expect(mockStartNewChain).not.toHaveBeenCalled();
   });
 
+  // @ai Hoisted so the resume tests below share it.
+  const recent: RecentlyPlayedTrack = {
+    reciter: {
+      id: '__uploads__',
+      name: 'x',
+      date: null,
+      image_url: null,
+      rewayat: [],
+    },
+    surah: {
+      id: 0,
+      name: 'Upload',
+      revelation_place: 'Makkah',
+      revelation_order: 0,
+      bismillah_pre: false,
+      name_arabic: '',
+      verses_count: 0,
+      pages: '',
+      translated_name_english: '',
+    },
+    rewayatId: '',
+    progress: 0.25,
+    duration: 80,
+    timestamp: 1,
+    isUserUpload: true,
+    userRecitationId: 'b',
+  };
+
   it('resumes a recent upload alone at its saved position', async () => {
-    const recent: RecentlyPlayedTrack = {
-      reciter: {
-        id: '__uploads__',
-        name: 'x',
-        date: null,
-        image_url: null,
-        rewayat: [],
-      },
-      surah: {
-        id: 0,
-        name: 'Upload',
-        revelation_place: 'Makkah',
-        revelation_order: 0,
-        bismillah_pre: false,
-        name_arabic: '',
-        verses_count: 0,
-        pages: '',
-        translated_name_english: '',
-      },
-      rewayatId: '',
-      progress: 0.25,
-      duration: 80,
-      timestamp: 1,
-      isUserUpload: true,
-      userRecitationId: 'b',
-    };
     mockContext = context([mockUpload('a'), mockUpload('b')], [recent]);
     await executeCarRequest({kind: 'resume', recitationId: 'b'});
     const [tracks, index, position] = mockUpdateQueue.mock.calls[0];
@@ -166,4 +186,49 @@ describe('car upload playback', () => {
     expect(mockEvents).toEqual(['resume:0', 'queue', 'play']);
     expect(mockStartNewChain).not.toHaveBeenCalled();
   });
+
+  // @ai-start
+  // The snapshot the car shows is only rebuilt when progress moves a tenth
+  // of the recitation, so its position can be minutes behind.
+  it('resumes at the recent card as it is now, not as the snapshot saw it', async () => {
+    mockContext = context([mockUpload('a'), mockUpload('b')], [recent]);
+    mockLiveRecents = [{...recent, progress: 0.3}];
+    await executeCarRequest({kind: 'resume', recitationId: 'b'});
+    expect(mockUpdateQueue.mock.calls[0][2]).toBe(24);
+  });
+
+  it('resumes at the player position when it already holds that upload', async () => {
+    mockContext = context([mockUpload('a'), mockUpload('b')], [recent]);
+    mockCurrent = {
+      id: 'upload-b',
+      url: 'b.mp3',
+      title: 'b',
+      artist: 'My Recitations',
+      reciterId: '',
+      reciterName: 'My Recitations',
+      isUserUpload: true,
+      userRecitationId: 'b',
+    };
+    mockPosition = 27;
+    await executeCarRequest({kind: 'resume', recitationId: 'b'});
+    expect(mockUpdateQueue.mock.calls[0][2]).toBe(27);
+  });
+
+  it('keeps the saved position when the player holds another upload', async () => {
+    mockContext = context([mockUpload('a'), mockUpload('b')], [recent]);
+    mockCurrent = {
+      id: 'upload-a',
+      url: 'a.mp3',
+      title: 'a',
+      artist: 'My Recitations',
+      reciterId: '',
+      reciterName: 'My Recitations',
+      isUserUpload: true,
+      userRecitationId: 'a',
+    };
+    mockPosition = 55;
+    await executeCarRequest({kind: 'resume', recitationId: 'b'});
+    expect(mockUpdateQueue.mock.calls[0][2]).toBe(20);
+  });
+  // @ai-end
 });

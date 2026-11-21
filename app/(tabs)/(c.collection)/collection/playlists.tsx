@@ -17,6 +17,7 @@ import {usePlaylists} from '@/hooks/usePlaylists';
 import {PlaylistIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
+import {showCreatePlaylistSheet} from '@/components/collection/showCreatePlaylistSheet'; // @ai
 // @ai-start
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
@@ -30,6 +31,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
 // @ai-end
 
 // @ai-start
@@ -38,6 +40,10 @@ export default function PlaylistsScreen() {
   const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The iPad sidebar opens this as the first screen of the Collection stack.
+  // Back then has nothing to pop and used to switch to the Home tab, so the
+  // arrow is left out there, as the system header does on iPadOS 26. @ai
+  const isStackRoot = useIsStackRoot(); // @ai
   const {t} = useTranslation(['collection', 'common']);
   const nativeMenus = useNativeOptionsMenu(); // @ai
   const {playlists, createPlaylist, deletePlaylist, updatePlaylist} =
@@ -224,14 +230,14 @@ export default function PlaylistsScreen() {
         await deletePlaylist(item.id);
       },
       onEdit: async () => {
-        const result = await SheetManager.show('create-playlist', {
-          payload: {
-            existingColors,
-            isEditMode: true,
-            initialName: item.name,
-            initialColor: item.color || '#6366F1',
-          },
+        // @ai-start
+        const result = await showCreatePlaylistSheet({
+          existingColors,
+          isEditMode: true,
+          initialName: item.name,
+          initialColor: item.color || '#6366F1',
         });
+        // @ai-end
         if (result?.name && result?.color) {
           await updatePlaylist(item.id, {
             name: result.name,
@@ -254,9 +260,7 @@ export default function PlaylistsScreen() {
   // @ai-end
 
   const handleCreatePlaylist = useCallback(async () => {
-    const result = await SheetManager.show('create-playlist', {
-      payload: {existingColors},
-    });
+    const result = await showCreatePlaylistSheet({existingColors}); // @ai
     if (result?.name && result?.color) {
       await createPlaylist(result.name, result.color);
     }
@@ -292,17 +296,23 @@ export default function PlaylistsScreen() {
       <View style={styles.container}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={styles.emptyHeaderTitle}>
               {t('common:terms.playlists')}
             </Text>
@@ -375,7 +385,8 @@ export default function PlaylistsScreen() {
 
   return (
     <View style={styles.container}>
-      {!USE_GLASS && (
+      {/* Not at the stack root: nothing to go back to. @ai */}
+      {!USE_GLASS && !isStackRoot && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,

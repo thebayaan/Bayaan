@@ -129,6 +129,15 @@ export class ListenSession {
     });
   }
 
+  /**
+   * The queue did not go on by itself after a completion that said it would
+   * (the next track was held paused, or failed to load), so the next start
+   * is the listener's own.
+   */
+  cancelAutoplay(): void {
+    this.nextIsAutoplay = false;
+  }
+
   /** Ends the session. A session ends once: a later end sends nothing. */
   end(...[reason, at]: ListenEndArgs): void {
     const track = this.track;

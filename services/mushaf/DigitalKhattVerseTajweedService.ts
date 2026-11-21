@@ -7,6 +7,7 @@ import {layoutWords} from './lineWordSpans';
 import {alignWordTajweed, detectWordTafkhim} from './TajweedAlignmentService';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {slotTajweedSegments} from '@/utils/quranWordPositions';
 
 export interface VerseTajweedOptions {
   /** Rewayah of the rendered text. Defaults to the active mushaf rewayah. */
@@ -26,7 +27,8 @@ export interface VerseTajweedOptions {
  * 1. Take the rendered words (the caller's list, or getVerseWords) and lay
  *    them out with the shared span model, so offsets match the joined verse
  *    text exactly (blank slots skipped, multi-token slots kept whole)
- * 2. Match against indexed tajweed data by wordPositionInVerse
+ * 2. Match against indexed tajweed data by wordPositionInVerse (a slot that
+ *    holds two QPC words takes both: slotTajweedSegments)
  * 3. Use TajweedAlignmentService to align QPC segments onto DK text
  * 4. Return Map<charIndex, ruleName>
  *
@@ -79,15 +81,15 @@ export function getVerseTajweedMap(
   for (const span of spans) {
     const dkWord = span.item;
 
-    // Find matching tajweed word by position in verse
-    const tajweedWord = tajweedWords.find(w => {
-      const pos = parseInt(w.location.split(':')[2], 10);
-      return pos === dkWord.wordPositionInVerse;
-    });
+    // The slot's QPC tajweed word(s), by its position in the verse
+    const segments = slotTajweedSegments(
+      tajweedWords,
+      dkWord.wordPositionInVerse,
+    );
 
     // Get per-character rules: aligned QPC rules + tafkhim detection
-    const wordRules = tajweedWord
-      ? alignWordTajweed(span.text, tajweedWord.segments)
+    const wordRules = segments
+      ? alignWordTajweed(span.text, segments)
       : detectWordTafkhim(span.text);
 
     if (wordRules) {

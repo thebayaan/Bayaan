@@ -64,6 +64,7 @@ import {
 } from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
+import {useWordFlashHighlights} from './useWordFlashHighlights'; // @ai
 import {useRecitationHiddenText} from './useRecitationHiddenText';
 import {useRecitationMarkColors} from './useRecitationMarkColors';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
@@ -523,7 +524,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       }
       return -1;
     },
-    [lineYPositions],
+    [lineYPositions, CONTENT_HEIGHT], // @ai
   );
 
   // @ai-start
@@ -670,13 +671,23 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   );
 
   // Recitation follow-along: recited ayat and the word being recited.
-  const lineHighlights = useRecitationLineHighlights(
+  const recitationHighlights = useRecitationLineHighlights(
     pageNumber,
     pageLines,
     lineBackgroundHighlightsMap,
     textColor,
     isDarkMode,
   );
+  // @ai-start
+  // The words a Quran search matched, flashed when the reader opens there.
+  const lineHighlights = useWordFlashHighlights(
+    pageNumber,
+    pageLines,
+    recitationHighlights,
+    textColor,
+    isDarkMode,
+  );
+  // @ai-end
 
   const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
 

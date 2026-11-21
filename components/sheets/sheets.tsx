@@ -39,7 +39,6 @@ import {RecitationMistakeSheet} from './RecitationMistakeSheet';
 import type {WordMark} from '@/services/recitation/wordMarks';
 import type {PracticeTarget} from '@/services/recitation/practice/types';
 import type {RecitationSummary} from '@/store/recitationTrackingStore';
-import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
 import {AdhkarSessionOptionsSheet} from './AdhkarSessionOptionsSheet';
 import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
@@ -87,7 +86,10 @@ registerSheet('which-ayah', WhichAyahSheet);
 registerSheet('recitation-summary', RecitationSummarySheet);
 registerSheet('recitation-practice', RecitationPracticeSheet);
 registerSheet('recitation-mistake', RecitationMistakeSheet);
-registerSheet('word-detail', WordDetailSheet);
+// @ai-start
+// The word sheet ('word-detail') was retired: a word long-press opens
+// 'verse-actions' on Word Study at that word.
+// @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);
 
@@ -215,6 +217,26 @@ declare module 'react-native-actions-sheet' {
         // disclosure. Defaults to the mushaf's active rewayah.
         // Required with `unitKeys`: their numbering. @ai
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
+        // @ai-start
+        /** Open on this screen instead of the action list (Word Study). */
+        initialScreen?: 'words';
+        /** With initialScreen: the word to open on, as a Hafs verse key and
+         *  word-by-word position (the selection's first word when it is not
+         *  one of its words). */
+        word?: {verseKey: string; position: number};
+        /**
+         * Word Study only, for words that are no verse of `rewayah`: the
+         * unnumbered Fatiha basmala of the Madani and Basri counts (Warsh,
+         * Qalun, al-Duri, al-Susi), whose words are Hafs 1:1's. The sheet
+         * opens on Word Study at `word` over the words of the Hafs verse(s)
+         * verseKey / verseKeys name (captioned "Hafs 1:1", as another
+         * rewayah's verse is). It selects no verse, never waits for one
+         * and never shows the verse menu, whose actions act on verses; back
+         * from Word Study closes the sheet (from root search it returns to
+         * Word Study). unitKeys are not read.
+         */
+        wordStudyOnly?: boolean;
+        // @ai-end
       };
     }>;
     'verse-note': SheetDefinition<{
@@ -267,12 +289,6 @@ declare module 'react-native-actions-sheet' {
     }>;
     'recitation-mistake': SheetDefinition<{
       payload: {mark: WordMark};
-    }>;
-    'word-detail': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        position: number;
-      };
     }>;
     'home-card-options': SheetDefinition<{
       payload: HomeCardOptionsPayload; // @ai

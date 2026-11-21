@@ -12,6 +12,10 @@
  * The same holds for a font change: a line is never built with the layout of
  * another font.
  *
+ * Both renderers also band the words a Quran search matched (the word flash,
+ * chained after the recitation highlights in SkiaPage and in
+ * MushafPageContent, the page of ContinuousMushafView).
+ *
  * DigitalKhattDataService is the fixture-backed stand-in (real slot texts of
  * the bundled words DBs) with a data identity and cache listeners added.
  * JustService is a stand-in whose layouts mark the line text and font they
@@ -21,6 +25,7 @@
 
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
+import Color from 'color';
 import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import type {FixtureDb} from '@/services/mushaf/__fixtures__/rewayahOverlayFixture';
@@ -421,6 +426,8 @@ import {getMushafLayout} from '../../constants';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {quranTextService} from '@/services/mushaf/QuranTextService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore';
+import type {LineHighlight} from '../verseHighlightLayers';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -615,6 +622,45 @@ describe.each([
     expect(mockSkia.paragraphs.slice(-after.length).map(p => p.text)).toEqual(
       after,
     );
+  });
+});
+
+describe.each([
+  ['SkiaPage', skiaPage],
+  ['ContinuousMushafView', continuousView],
+])('%s and the Quran search word flash', (_name, view) => {
+  afterEach(() => {
+    act(() => useMushafWordFlashStore.getState().clear());
+  });
+
+  it('bands the matched word on its line until the flash ends', () => {
+    // The page's first word, banded in the colour of the word being recited.
+    const lines = digitalKhattDataService.getPageLines(PAGE);
+    const lineIndex = lines.findIndex(line => line.line_type === 'ayah');
+    const word = digitalKhattDataService.getWordInfo(
+      lines[lineIndex].first_word_id,
+    );
+    if (!word) throw new Error('the page has words');
+    const flash = Color('#111111').alpha(0.25).toString();
+    const flashedLines = () =>
+      renderers[0].root
+        .findAll(node =>
+          ((node.props.backgroundHighlights ?? []) as LineHighlight[]).some(
+            h => h.color === flash && h.style === 'band',
+          ),
+        )
+        .map(node => node.props.lineIndex);
+
+    mount(view());
+    expect(flashedLines()).toEqual([]);
+    act(() =>
+      useMushafWordFlashStore
+        .getState()
+        .show(word.verseKey, [word.wordPositionInVerse]),
+    );
+    expect(flashedLines()).toEqual([lineIndex]);
+    act(() => useMushafWordFlashStore.getState().clear());
+    expect(flashedLines()).toEqual([]);
   });
 });
 

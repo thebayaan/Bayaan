@@ -14,8 +14,9 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon} from '@/components/Icons';
 import {Input} from '@/components/Input';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 // @ai-start
@@ -113,7 +114,7 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
         </Pressable>
       </View>
 
-      <ScrollView
+      <SheetScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -168,7 +169,7 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
           spellCheck={false}
           containerStyle={styles.inputSection as ViewStyle}
         />
-      </ScrollView>
+      </SheetScrollView>
     </ActionSheet>
   );
 };

@@ -131,6 +131,47 @@ export function anchorTarget(
   return units && unit ? unitTarget(units, unit) : null;
 }
 
+// @ai-start
+/**
+ * Where a Quran text search hit leads: the verse of the rewayah on screen
+ * holding its first matched word (Hafs `verseKey`, Digital Khatt slot
+ * `position`, which every rewayah's text keeps). Hafs: the Hafs verse. Null
+ * for another rewayah while its verses are not ready, and for a word of the
+ * unnumbered Fatiha basmala of the Madani / Basri counts, which no verse
+ * holds: unlike a stored anchor (anchorTarget), a hit never stands for the
+ * verse after it.
+ */
+export function hitTarget(
+  verseKey: string,
+  position: number,
+  shown: ShownVerses,
+): VerseTarget | null {
+  if (shown.rewayah === 'hafs') return anchorTarget(verseKey, shown);
+  const units = readyUnits(shown);
+  const unit = units?.unitForAnchor(`${verseKey}:${position}`) ?? null;
+  return units && unit ? unitTarget(units, unit) : null;
+}
+
+/**
+ * A Quran text search hit's label in the numbering of the rewayah on
+ * screen ("Al-Baqarah 2:255"; "Al-Baqarah 2:254 · Warsh"). While that
+ * rewayah's verses load, and for a word no verse holds: the Hafs verse,
+ * saying so ("Al-Baqarah 2:255 · Hafs"), as the results are the Hafs text.
+ * Word Study's root search labels its ayahs the same way, in the verse
+ * sheet's rewayah (RootSearchContent).
+ */
+export function hitLabel(
+  verseKey: string,
+  position: number,
+  shown: ShownVerses,
+  surahName: string,
+): string {
+  const target = hitTarget(verseKey, position, shown);
+  if (!target) return `${surahName} ${verseKey} · ${getShortLabel('hafs')}`;
+  return verseHistoryLabel(target, verseResultTexts(target, surahName).primary);
+}
+// @ai-end
+
 /** A verse search result's texts, in the numbering of the rewayah on screen. */
 export function verseResultTexts(
   target: VerseTarget,

@@ -13,7 +13,7 @@ import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
 import type {WidgetAdhkarPlayback} from 'bayaan-widgets'; // @ai
 import {
   buildTasbeehEntries,
-  createCountDayTracker,
+  countsOfToday, // @ai
   TASBEEH_ADHKAR,
 } from './buildCatalog';
 import {
@@ -24,7 +24,6 @@ import {
 import {isWidgetEnabled} from './enabledWidgets';
 
 const OPENING_WORDS = 6;
-const countsForToday = createCountDayTracker();
 
 function openingTextForPage(page: number): string {
   // Before the data loads, the line the last snapshot published. @ai
@@ -54,6 +53,15 @@ function adhkarPlayback(): WidgetAdhkarPlayback | null {
 // @ai-end
 
 function surahIdForPage(page: number): number | null {
+  // @ai-start
+  // The surah the reader named on the last-read page, as "Continue reading"
+  // does. The page map alone names the last surah to start on the page,
+  // which is another one on the pages that start two or three.
+  if (page === mushafSessionStore.getLastReadPage()) {
+    const named = mushafSessionStore.getLastReadSurahId();
+    if (named) return named;
+  }
+  // @ai-end
   if (!digitalKhattDataService.initialized) return null;
   return digitalKhattDataService.getPageToSurah()[page] ?? null;
 }
@@ -61,6 +69,7 @@ function surahIdForPage(page: number): number | null {
 export function collectSnapshotInput(now: Date): SnapshotInput {
   const player = usePlayerStore.getState();
   const reciter = useReciterStore.getState().defaultReciter;
+  const adhkar = useAdhkarStore.getState(); // @ai
   return {
     now: now.getTime(),
     theme: useThemeStore.getState().themeMode,
@@ -78,10 +87,14 @@ export function collectSnapshotInput(now: Date): SnapshotInput {
     tasbeeh: isWidgetEnabled('Tasbeeh')
       ? buildTasbeehEntries(
           TASBEEH_ADHKAR,
-          countsForToday(
-            useAdhkarStore.getState().dhikrCounts,
-            localDayKey(now),
+          // @ai-start
+          // The store's day is a Date#toDateString, like the database's.
+          countsOfToday(
+            adhkar.dhikrCounts,
+            adhkar.dhikrCountsDay,
+            now.toDateString(),
           ),
+          // @ai-end
           localDayKey(now),
         )
       : {},

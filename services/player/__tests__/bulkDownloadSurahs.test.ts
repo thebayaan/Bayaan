@@ -120,6 +120,60 @@ describe('bulkDownloadSurahs', () => {
     expect(deps.downloadSurah).toHaveBeenCalledTimes(2);
   });
 
+  it('stops the file in flight when cancelled mid-download', async () => {
+    // A file that never finishes by itself (iOS waiting for a connection):
+    // it ends only when the batch stops it.
+    let cancelRequested = false;
+    const stopped = jest.fn();
+    const deps = makeDeps({
+      downloadSurah: jest.fn(
+        (_surahId, _reciterId, _rewayatId, _onProgress, options) =>
+          new Promise<{filePath: string; fileSize: number}>((_, reject) => {
+            options?.onStart?.(() => {
+              stopped();
+              reject(new Error('cancelled'));
+            });
+            cancelRequested = true;
+          }),
+      ),
+    });
+    const summary = await bulkDownloadSurahs(makeItems(3, 'hafs'), deps, {
+      ...fast,
+      cancelPollMs: 1,
+      isCancelled: () => cancelRequested,
+    });
+
+    expect(stopped).toHaveBeenCalled();
+    expect(deps.downloadSurah).toHaveBeenCalledTimes(1);
+    expect(deps.addDownload).not.toHaveBeenCalled();
+    expect(deps.clearDownloading).toHaveBeenCalledWith('abdul_basit-1-hafs');
+    expect(summary).toEqual({
+      total: 3,
+      downloaded: 0,
+      skipped: 0,
+      failed: 0,
+      cancelled: true,
+    });
+  });
+
+  it('stops the batch when a file cannot start offline', async () => {
+    const deps = makeDeps({
+      downloadSurah: jest.fn(async () => {
+        throw Object.assign(new Error('offline'), {reason: 'offline'});
+      }),
+    });
+    const summary = await bulkDownloadSurahs(makeItems(4, 'hafs'), deps, fast);
+
+    expect(deps.downloadSurah).toHaveBeenCalledTimes(1);
+    expect(summary).toEqual({
+      total: 4,
+      downloaded: 0,
+      skipped: 0,
+      failed: 4,
+      cancelled: false,
+    });
+  });
+
   it('skips items already in flight without downloading again', async () => {
     const deps = makeDeps({
       isDownloadingWithRewayat: jest.fn(

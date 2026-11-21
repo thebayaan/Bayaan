@@ -8,6 +8,7 @@ import Color from 'color';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
+import {clearCacheDirectory} from '@/services/storageService'; // @ai
 import {Feather} from '@expo/vector-icons';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
@@ -85,8 +86,17 @@ export default function StorageScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [isClearing, setIsClearing] = useState(false);
 
-  const {free, downloads, cache, otherApps, loading, error, rawData, refresh} =
-    useStorageBreakdown();
+  const {
+    free,
+    downloads,
+    uploads,
+    cache,
+    otherApps,
+    loading,
+    error,
+    rawData,
+    refresh,
+  } = useStorageBreakdown();
 
   const handleClearAllDownloads = () => {
     if (isClearing) return;
@@ -124,6 +134,11 @@ export default function StorageScreen() {
         try {
           setIsClearing(true);
           await clearPlayerCache();
+          // "Clear cache" only reset the player: the cache folder, which is
+          // what the Cache figure above measures, was never emptied, so the
+          // figure did not move. The player is stopped first so nothing is
+          // reading from the folder while it is emptied.
+          await clearCacheDirectory();
           refresh();
           Alert.alert(t('storage.success'), t('storage.clearCacheSuccess'));
         } catch (cacheError) {
@@ -138,39 +153,51 @@ export default function StorageScreen() {
   const totalRaw = rawData.total || 1;
   let otherAppsPercentage = (rawData.otherApps / totalRaw) * 100;
   let downloadsPercentage = (rawData.downloads / totalRaw) * 100;
+  let uploadsPercentage = (rawData.uploads / totalRaw) * 100;
   let cachePercentage = (rawData.cache / totalRaw) * 100;
   let freePercentage = (rawData.free / totalRaw) * 100;
 
   const MIN_PERCENTAGE = 2;
+  // A sliver too thin to see is widened, and "Other apps" gives up the room.
+  const restForOtherApps = () =>
+    Math.max(
+      0,
+      100 -
+        downloadsPercentage -
+        uploadsPercentage -
+        cachePercentage -
+        freePercentage,
+    );
   if (downloadsPercentage > 0 && downloadsPercentage < MIN_PERCENTAGE) {
     downloadsPercentage = MIN_PERCENTAGE;
-    otherAppsPercentage = Math.max(
-      0,
-      100 - downloadsPercentage - cachePercentage - freePercentage,
-    );
+    otherAppsPercentage = restForOtherApps();
+  }
+  if (uploadsPercentage > 0 && uploadsPercentage < MIN_PERCENTAGE) {
+    uploadsPercentage = MIN_PERCENTAGE;
+    otherAppsPercentage = restForOtherApps();
   }
   if (cachePercentage > 0 && cachePercentage < MIN_PERCENTAGE) {
     cachePercentage = MIN_PERCENTAGE;
-    otherAppsPercentage = Math.max(
-      0,
-      100 - downloadsPercentage - cachePercentage - freePercentage,
-    );
+    otherAppsPercentage = restForOtherApps();
   }
   const totalPercentage =
     otherAppsPercentage +
     downloadsPercentage +
+    uploadsPercentage +
     cachePercentage +
     freePercentage;
   if (totalPercentage > 100) {
     const scale = 100 / totalPercentage;
     otherAppsPercentage *= scale;
     downloadsPercentage *= scale;
+    uploadsPercentage *= scale;
     cachePercentage *= scale;
     freePercentage *= scale;
   }
 
   const colors = {
     downloads: '#34C759',
+    uploads: '#FF9500',
     cache: '#8E8E93',
     otherApps: '#007AFF',
     free: '#E5E5EA',
@@ -228,6 +255,15 @@ export default function StorageScreen() {
                   style={[
                     styles.progressSegment,
                     {
+                      width: `${uploadsPercentage}%`,
+                      backgroundColor: colors.uploads,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.progressSegment,
+                    {
                       width: `${cachePercentage}%`,
                       backgroundColor: colors.cache,
                     },
@@ -256,6 +292,12 @@ export default function StorageScreen() {
                 color={colors.downloads}
                 label={t('storage.downloads')}
                 size={downloads}
+                styles={styles}
+              />
+              <StorageCategory
+                color={colors.uploads}
+                label={t('common:terms.uploads')}
+                size={uploads}
                 styles={styles}
               />
               <StorageCategory
