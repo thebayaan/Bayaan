@@ -9,9 +9,9 @@
 
 ## Summary
 
-Add one optional branding field, `updateSource?: UpdateSource`. When a tenant sets it, the app asks it for the newest build number that the tenant recommends on each platform. If that number is higher than the build number of the installed binary, a small card at the top of the Listen tab says that a new version is available. "Update" opens the store page of the app. The close button hides the card for 7 days.
+Add two optional branding fields, `updateSource?: UpdateSource` and `openUpdate?: () => Promise<boolean>`. When a tenant sets it, the app asks it for the newest build number that the tenant recommends on each platform. If that number is higher than the build number of the installed binary, a small card at the top of the Listen tab says that a new version is available. "Update" opens the store page of the app, or runs the tenant's `openUpdate` when it is set. The close button hides the card for 7 days.
 
-The field is absent on Bayaan, so Bayaan's behavior does not change: no request, no card. The card never blocks the app. There is no "must update" screen and no push notification.
+Both fields are absent on Bayaan, so Bayaan's behavior does not change: no request, no card. The card never blocks the app. There is no "must update" screen and no push notification.
 
 ## Motivation
 
@@ -21,8 +21,7 @@ The app can already reach a store page: `utils/reviewUtils.ts` builds the review
 
 Each tenant knows its own release state, and each tenant may want a different signal:
 
-- a field in a JSON file that the tenant already serves (for example next to the RFC-010 catalog version),
-- a small static JSON on its own CDN,
+- a small JSON document that the tenant serves on its own CDN (for example beside the RFC-010 catalog version file),
 - an endpoint on its backend that follows the RFC-017 envelope.
 
 So the signal is a seam, and the comparison, the link and the card are shared code.
@@ -59,6 +58,14 @@ export interface Branding {
    * A rejected or slow source (over 3 s) counts as "no update".
    */
   updateSource?: UpdateSource;
+
+  /**
+   * RFC-025 — optional handler for the card's "Update" button, for a tenant
+   * that starts the update itself (for example the Play in-app update
+   * sheet). Resolve true when it handled the update. False, a rejection, or
+   * an absent field opens the store page instead. Bayaan ships this unset.
+   */
+  openUpdate?: () => Promise<boolean>;
 }
 ```
 
@@ -104,6 +111,8 @@ The check never throws, and it never blocks start-up: the card hook calls it aft
 
 Both come from branding, never from a literal. `itms-apps://` opens the App Store app directly, with no Safari step.
 
+`openStoreForUpdate()` first calls `branding.openUpdate` when a tenant sets it. A tenant that wants the Play in-app update sheet puts that call (and its native library) in its own branding, and resolves `true`. When the handler resolves `false` or rejects (for example on a phone without Google Play), the store link above opens. The shared code needs no new native dependency.
+
 ### The card
 
 ![The card on the Listen tab, and the states that hide it](./assets/025-update-available-card.svg)
@@ -126,18 +135,19 @@ Both come from branding, never from a literal. `itms-apps://` opens the App Stor
 - **A blocking "update required" screen** (`required` next to `recommended`). Out of scope. A full-screen block is a large product decision, and a wrong number locks every user out. The shape leaves room to add it later as a new optional field without a break.
 - **A push or local notification.** Out of scope. A notification needs a permission prompt and a reason to be in the notification tray; a tenant that already posts notifications can read `checkForUpdate()` itself.
 - **Semantic version strings.** Rejected (see [The seam](#the-seam)).
-- **The Play in-app update sheet on Android.** Not in this RFC. It needs a new native library, which Bayaan does not need for a store link. A tenant can add it later behind its own seam.
+- **The build number from `expo-constants`** (`expoConfig.ios.buildNumber` / `android.versionCode`). Rejected. When an over-the-air update is active, `expoConfig` comes from the update's manifest, so it can report the build of the config at publish time instead of the installed binary. `nativeBuildVersion` is the binary's own value.
+- **The Play in-app update sheet in shared code.** Rejected. It needs a new native library that Bayaan does not need for a store link. `openUpdate` lets a tenant add it in its own branding.
 
 ## Consequences
 
 - **Positive:** a tenant can tell people on old builds that a fix exists, with no app store review and no server push. The store link logic sits in one place.
-- **Neutral:** Bayaan's behavior does not change; the field is absent. The native projects do not change (`expo-application` is already linked). One new line renders the card in `RecitersView.tsx`.
+- **Neutral:** Bayaan's behavior does not change; both fields are absent. The native projects do not change (`expo-application` is already linked). One new line renders the card in `RecitersView.tsx`.
 - **Negative / risks:** a tenant that sets `recommended` too early sends people to a store page with no update. The doc comment on the field says when to set it. A slow source can delay the card, but never the screen: the limit is 3 seconds and the check runs after the first render.
 
 ## How we'll know it worked
 
 - With `updateSource` absent, `components/__tests__/UpdateAvailableCard.test.tsx` shows no card and no call to the check, and the Listen tab renders as before on iOS and Android.
-- `services/__tests__/updateCheck.test.ts` covers: an update on each platform with the branded link; no update for an equal, lower, null or malformed build; no update for a rejected, throwing or slow source; no iOS card without `appStoreId`; the web fallback; the 7-day snooze.
+- `services/__tests__/updateCheck.test.ts` covers: an update on each platform with the branded link; no update for an equal, lower, null or malformed build; no update for a rejected, throwing or slow source; no iOS card without `appStoreId`; the web fallback; `openUpdate` handled, declined and rejected; the 7-day snooze.
 - A tenant build with a source that recommends a higher build shows the card, "Update" opens the store page of that tenant's app, and the close hides it until 7 days pass.
 
 ## Open questions
