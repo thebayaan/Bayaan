@@ -40,6 +40,17 @@ private func takeString(_ key: String) -> String {
   }
 }
 
+// @ai-start
+/// App Shortcuts live in the app target (plugins/withAppShortcuts.js), which
+/// this pod cannot import, so call the refresher through the Objective-C runtime.
+private func refreshAppShortcuts() {
+  guard let cls = NSClassFromString("BayaanAppShortcutsRefresher") else { return }
+  let target = cls as AnyObject
+  let selector = NSSelectorFromString("refresh")
+  if target.responds(to: selector) { _ = target.perform(selector) }
+}
+// @ai-end
+
 public class BayaanWidgetsModule: Module {
   private var observer: NSObjectProtocol?
 
@@ -47,15 +58,8 @@ public class BayaanWidgetsModule: Module {
     Name("BayaanWidgets")
     Events("onCommandQueued")
 
-    // App Shortcuts live in the app target (plugins/withAppShortcuts.js).
-    // Refresh their surah parameters so Siri knows every surah name.
-    OnCreate {
-      if let cls = NSClassFromString("BayaanAppShortcutsRefresher") {
-        let target = cls as AnyObject
-        let selector = NSSelectorFromString("refresh")
-        if target.responds(to: selector) { _ = target.perform(selector) }
-      }
-    }
+    // Refresh the shortcut parameters so Siri knows every surah name.
+    OnCreate { refreshAppShortcuts() }
 
     OnStartObserving {
       self.observer = NotificationCenter.default.addObserver(
@@ -138,10 +142,13 @@ public class BayaanWidgetsModule: Module {
       await AdhkarSessionActivityBridge.endAll(dismissAtMs: dismissAtMs)
     }
 
+    // The catalog holds the reciters the Play Reciter shortcut offers, so
+    // refresh its parameters too. JS writes it only when reciters change.
     Function("writeCatalog") { (json: String) in
       guard let dir = widgetsDir() else { return }
       try? json.data(using: .utf8)?.write(
         to: dir.appendingPathComponent("catalog.json"), options: .atomic)
+      refreshAppShortcuts()
     }
 
     Function("writeContent") { (json: String) in

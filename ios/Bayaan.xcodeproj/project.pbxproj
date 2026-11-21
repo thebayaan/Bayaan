@@ -107,6 +107,7 @@
 				_shared/ContentIntents.swift,
 				_shared/PlaybackIntents.swift,
 				_shared/PlaybackResume.swift,
+				_shared/ReciterEntity.swift,
 				_shared/SurahCatalog.swift,
 				_shared/SurahEntity.swift,
 				_shared/SurahSynonyms.swift,
