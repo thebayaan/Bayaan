@@ -31,7 +31,7 @@ jest.mock('@/services/recitation/RecitationLogDatabase', () => ({
 const mockNavigate = jest.fn();
 jest.mock('@/store/mushafNavigationStore', () => ({
   useMushafNavigationStore: {
-    getState: () => ({navigateToVerse: mockNavigate}),
+    getState: () => ({navigateTo: mockNavigate}),
   },
 }));
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
@@ -162,7 +162,7 @@ describe('RecitationSummarySheet', () => {
     await act(async () => {
       await buttons(r, 'Show')[1].props.onPress();
     });
-    expect(mockNavigate).toHaveBeenCalledWith('18:6', 293);
+    expect(mockNavigate).toHaveBeenCalledWith({page: 293, verseKey: '18:6'});
   });
 
   it('Retry opens a practice take on that ayah', async () => {
@@ -243,7 +243,7 @@ describe('RecitationSummarySheet', () => {
     await act(async () => {
       await buttons(r, 'Show')[0].props.onPress();
     });
-    expect(mockNavigate).toHaveBeenCalledWith('18:3', 293);
+    expect(mockNavigate).toHaveBeenCalledWith({page: 293, verseKey: '18:3'});
   });
 
   it('keeps the sheet drag off Done, and the list scrolling from the rows', async () => {
