@@ -8,6 +8,28 @@ export interface WBWWord {
   audioUrl: string;
 }
 
+/**
+ * Transliterations that wbw-en.db holds damaged, by 's:a:w': a letter of
+ * each became U+FFFD when the file was fetched. Each takes the spelling the
+ * file gives every other copy of the same Arabic word (2:172:6, 2:198:6 and
+ * 2:158:24 among them). The installed copy of the database is never
+ * replaced, so the fix lives here rather than in the file.
+ */
+export const WBW_TRANSLITERATION_FIXES: Readonly<Record<string, string>> = {
+  '2:57:10': 'ṭayyibāti',
+  '5:2:20': 'faḍlan',
+  '24:18:6': 'ʿalīmun',
+};
+
+/**
+ * A word-by-word text as the app shows it: one holding U+FFFD (a lost
+ * letter) is missing, '', which hides its line in the grid and in Word
+ * Study, like a word with no data.
+ */
+function readable(text: string | null): string {
+  return text && !text.includes('\uFFFD') ? text : '';
+}
+
 class WBWDataService {
   private db: SQLite.SQLiteDatabase | null = null;
   private cache: Map<string, WBWWord[]> = new Map();
@@ -33,7 +55,9 @@ class WBWDataService {
       const tableCheck = await db
         .getFirstAsync<{
           name: string;
-        }>("SELECT name FROM sqlite_master WHERE type='table' AND name='words';")
+        }>(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='words';",
+        )
         .catch(() => null);
 
       if (!tableCheck) {
@@ -81,8 +105,10 @@ class WBWDataService {
     const words: WBWWord[] = rows.map(row => ({
       position: row.position,
       textUthmani: row.text_uthmani || '',
-      translation: row.translation,
-      transliteration: row.transliteration,
+      translation: readable(row.translation),
+      transliteration:
+        readable(row.transliteration) ||
+        (WBW_TRANSLITERATION_FIXES[`${verseKey}:${row.position}`] ?? ''),
       audioUrl: row.audio_url,
     }));
 

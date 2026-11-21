@@ -1,5 +1,5 @@
 /**
- * Reading the bundled i'rab database (assets/data/irab-v1.db, built by
+ * Reading the bundled i'rab database (assets/data/irab-v2.db, built by
  * scripts/irab/build-irab-db.ts).
  *
  * A word's entries are stored as `[kind, labelId, textId, spanFrom?, spanTo?]`
@@ -32,6 +32,16 @@ export interface MorphFact {
   /** May hold word placeholders like an i'rab text. */
   value: string;
 }
+
+// @ai-start
+/**
+ * The labels scripts/irab/sarf.ts writes for a word's root (its letters
+ * joined by spaces, ء for hamza: "ك ت ب") and its lemma. A word has at most
+ * one of each; 20,586 words have no lemma.
+ */
+export const MORPH_ROOT_LABEL = 'الجذر';
+export const MORPH_LEMMA_LABEL = 'الأصل المعجمي';
+// @ai-end
 
 export interface WordIrab {
   position: number;
@@ -138,10 +148,17 @@ export function parseWordKey(
   return m ? {verseKey: `${m[1]}:${m[2]}`, position: Number(m[3])} : null;
 }
 
-/** Strips the waqf and verse-end marks from a word for quoting it inline. */
+/**
+ * A word's mushaf text for quoting it inline: without its pause (waqf) marks
+ * U+06D6 to U+06DB, the rub el hizb U+06DE and the sajdah sign U+06E9,
+ * which belong to the place in the verse. Every other mark stays. U+06DC
+ * (small high seen) is part of the word: the seen over the sad of 2:245:14
+ * and 7:69:22 and the saktah sign of 18:1:11, 36:52:6, 69:28:4, 75:27:2 and
+ * 83:14:2 (services/irab/__tests__/quotableWord.database.test.ts).
+ */
 export function quotableWord(text: string): string {
   return text
-    .replace(/[ۖ-ۜ۞۩]/g, '')
+    .replace(/[\u06d6-\u06db\u06de\u06e9]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -151,5 +168,62 @@ export interface IrabBookPassages {
   bookId: number;
   nameAr: string;
   authorAr: string;
-  passages: {text: string; part: string; page: string}[];
+  /** `id` names the passage: a page discussing several verses has one. */
+  passages: {id: number; text: string; part: string; page: string}[];
+}
+
+/** Book passages and the verses (of those given) they discuss. */
+export interface VerseBooksGroup {
+  /** In the order given; a passage discusses a run of verses. */
+  verseKeys: string[];
+  books: IrabBookPassages[];
+}
+
+/**
+ * The passages of several verses' books with each passage once: a page
+ * that discusses 100:1 to 100:5 is linked to each of them. Each passage
+ * goes into the group of exactly the verses that have it, and groups,
+ * books and passages keep the order they first appear in, verse by verse.
+ * A verse with no passage of its own makes no group.
+ */
+export function mergeBookPassages(
+  parts: readonly {
+    verseKey: string;
+    books: readonly IrabBookPassages[];
+  }[],
+): VerseBooksGroup[] {
+  const versesOf = new Map<number, string[]>();
+  for (const part of parts) {
+    for (const book of part.books) {
+      for (const passage of book.passages) {
+        const verses = versesOf.get(passage.id) ?? [];
+        if (!verses.includes(part.verseKey)) verses.push(part.verseKey);
+        versesOf.set(passage.id, verses);
+      }
+    }
+  }
+  const groups = new Map<string, VerseBooksGroup>();
+  const placed = new Set<number>();
+  for (const part of parts) {
+    for (const book of part.books) {
+      for (const passage of book.passages) {
+        if (placed.has(passage.id)) continue;
+        placed.add(passage.id);
+        const verseKeys = versesOf.get(passage.id) ?? [part.verseKey];
+        const key = verseKeys.join(',');
+        let group = groups.get(key);
+        if (!group) {
+          group = {verseKeys, books: []};
+          groups.set(key, group);
+        }
+        let shown = group.books.find(b => b.bookId === book.bookId);
+        if (!shown) {
+          shown = {...book, passages: []};
+          group.books.push(shown);
+        }
+        shown.passages.push(passage);
+      }
+    }
+  }
+  return [...groups.values()];
 }

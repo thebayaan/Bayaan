@@ -9,10 +9,13 @@ import {getAllReciters} from '@/services/dataService';
  * Mount once at the root layout level.
  *
  * - Goes offline → marks store as offline
+ * - Records whether there is a network at all (isConnected), which stays true
+ *   when only the internet check failed
  * - Comes back online → auto-retries reciter fetch to clear any API disruption banner
  */
 export function useNetworkMonitor() {
   const setOnline = useNetworkStore(s => s.setOnline);
+  const setConnected = useNetworkStore(s => s.setConnected);
   const {retryFn} = useApiHealthStore.getState();
 
   useEffect(() => {
@@ -21,6 +24,7 @@ export function useNetworkMonitor() {
         state.isConnected === true && state.isInternetReachable !== false;
       const wasOnline = useNetworkStore.getState().isOnline;
 
+      setConnected(state.isConnected !== false);
       setOnline(online);
 
       // Coming back online — silently retry to clear the disruption banner
@@ -35,5 +39,5 @@ export function useNetworkMonitor() {
     });
 
     return unsubscribe;
-  }, [setOnline]);
+  }, [setOnline, setConnected]);
 }

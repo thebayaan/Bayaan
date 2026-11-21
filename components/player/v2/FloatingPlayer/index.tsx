@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useRef} from 'react';
+import React, {useCallback, useMemo} from 'react'; // @ai
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {GestureDetector} from 'react-native-gesture-handler';
 import {usePathname} from 'expo-router';
@@ -24,6 +24,7 @@ import {useResponsive} from '@/hooks/useResponsive';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getTrackDisplayTitle, getTrackArtistDisplay} from '@/i18n/format';
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
 // @ai-end
 
 const capsuleRadius = (height: number) => height / 2;
@@ -37,26 +38,26 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const playbackState = usePlayerStore(state => state.playback.state);
   const queueTracks = usePlayerStore(state => state.queue.tracks);
   const currentIndex = usePlayerStore(state => state.queue.currentIndex);
-  const trackLoading = usePlayerStore(state => state.loading.trackLoading);
   const stateRestoring = usePlayerStore(state => state.loading.stateRestoring);
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const isMushafActive = pathname === '/mushaf';
   const {isTablet} = useResponsive();
-  const prevTrackIdRef = useRef<string | null>(null);
 
   const currentTrack = useMemo(
     () => queueTracks?.[currentIndex],
     [queueTracks, currentIndex],
   );
 
-  const isLoadingNewTrack = useMemo(() => {
-    const isTrackChanging = currentTrack?.id !== prevTrackIdRef.current;
-    if (currentTrack?.id) {
-      prevTrackIdRef.current = currentTrack.id;
-    }
-    return (trackLoading && isTrackChanging) || playbackState === 'buffering';
-  }, [trackLoading, playbackState, currentTrack?.id]);
+  // The spinner follows the store: 'loading' for the whole of a load, and
+  // 'buffering' while a stalled stream catches up. It used to compare track
+  // ids kept in a ref, which held for one render only, so loading the same
+  // track again (a replay after it ended, the same surah in another rewayah)
+  // showed a play button and no spinner.
+  const isLoadingTrack = playbackState === 'loading';
+  const showSpinner = isLoadingTrack || playbackState === 'buffering';
+  // A stalled stream ('buffering') still counts as playing: a tap pauses.
+  const isPlaying = isActivelyPlaying(playbackState);
 
   // iPad uses TabletDockedPlayer inside the sidebar instead of this pill.
   const shouldShow =
@@ -72,12 +73,16 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   }, []);
 
   const handlePlayPause = useCallback(async () => {
-    if (playbackState === 'playing') {
+    // A load starts playing by itself when it is done. A play() during it
+    // marked the track as playing, and unlocked the full player's controls,
+    // before there was any audio.
+    if (isLoadingTrack) return;
+    if (isPlaying) {
       await pause();
     } else {
       await play();
     }
-  }, [playbackState, pause, play]);
+  }, [isLoadingTrack, isPlaying, pause, play]);
 
   const containerStyle = useMemo(
     () => ({
@@ -150,14 +155,13 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
             style={styles.playButton}
             hitSlop={10}
             accessibilityRole="button"
+            accessibilityState={{disabled: isLoadingTrack}}
             accessibilityLabel={t(
-              playbackState === 'playing'
-                ? 'common:actions.pause'
-                : 'common:actions.play',
+              isPlaying ? 'common:actions.pause' : 'common:actions.play',
             )}>
-            {isLoadingNewTrack ? (
+            {showSpinner ? (
               <LoadingIndicator color={theme.colors.text} />
-            ) : playbackState === 'playing' ? (
+            ) : isPlaying ? (
               <PauseIcon
                 color={theme.colors.text}
                 size={moderateScale(20, 0.2)}

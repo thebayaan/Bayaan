@@ -55,6 +55,7 @@ import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
 // @ai-end
 import {canvasBottomOverflow} from '../constants'; // @ai
 import {useRecitationLineHighlights} from './useRecitationLineHighlights';
+import {useWordFlashHighlights} from './useWordFlashHighlights'; // @ai
 import {useRecitationHiddenText} from './useRecitationHiddenText';
 import {useRecitationMarkColors} from './useRecitationMarkColors';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -517,13 +518,23 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     );
 
     // Recitation follow-along: recited ayat and the word being recited.
-    const lineHighlights = useRecitationLineHighlights(
+    const recitationHighlights = useRecitationLineHighlights(
       pageNumber,
       pageLines,
       lineBackgroundHighlightsMap,
       textColor,
       isDarkMode,
     );
+    // @ai-start
+    // The words a Quran search matched, flashed when the reader opens there.
+    const lineHighlights = useWordFlashHighlights(
+      pageNumber,
+      pageLines,
+      recitationHighlights,
+      textColor,
+      isDarkMode,
+    );
+    // @ai-end
 
     // ── Render ─────────────────────────────────────────────
     const content = (

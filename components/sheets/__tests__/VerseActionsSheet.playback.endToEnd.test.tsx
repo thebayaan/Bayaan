@@ -27,10 +27,17 @@ import type React from 'react';
 
 // ── The sheet's screens and native edges ────────────────────────────────────
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../verse-actions/sheetGestures');
 jest.mock('../verse-actions/HighlightContent', () => ({
   HighlightContent: () => null,
 }));
 jest.mock('../verse-actions/NoteContent', () => ({NoteContent: () => null}));
+// @ai-start: root search (RootResults uses FlashList) is not under test here
+jest.mock('@/components/search/quran/RootResults', () => ({
+  RootResults: () => null,
+}));
+// @ai-end
 jest.mock('../verse-actions/ShareContent', () => ({ShareContent: () => null}));
 jest.mock('../verse-actions/SimilarVersesContent', () => ({
   SimilarVersesContent: () => null,
@@ -43,7 +50,9 @@ jest.mock('../verse-actions/TafseerContent', () => ({
 }));
 jest.mock('../verse-actions/ThemeContent', () => ({ThemeContent: () => null}));
 jest.mock('../verse-actions/WBWContent', () => ({WBWContent: () => null}));
-jest.mock('../verse-actions/IrabContent', () => ({IrabContent: () => null}));
+jest.mock('../verse-actions/WordStudyContent', () => ({
+  WordStudyContent: () => null, // @ai
+}));
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: () => null,
 }));

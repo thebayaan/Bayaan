@@ -5,6 +5,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter} from './SheetGestures';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -146,29 +147,32 @@ export const AdhkarCopyOptionsSheet = (
           />
         </View>
 
-        <Pressable
-          style={({pressed}) => [
-            styles.copyButton,
-            !canCopy && styles.copyButtonDisabled,
-            pressed && canCopy && styles.copyButtonPressed,
-          ]}
-          onPress={handleCopy}
-          disabled={!canCopy}>
-          <Feather
-            name="copy"
-            size={moderateScale(18)}
-            color={
-              canCopy ? theme.colors.background : theme.colors.textSecondary
-            }
-          />
-          <Text
-            style={[
-              styles.copyButtonText,
-              !canCopy && styles.copyButtonTextDisabled,
-            ]}>
-            {t('copy.copyToClipboard')}
-          </Text>
-        </Pressable>
+        {/* A tap on Copy that wobbles never drags the sheet. */}
+        <SheetFooter>
+          <Pressable
+            style={({pressed}) => [
+              styles.copyButton,
+              !canCopy && styles.copyButtonDisabled,
+              pressed && canCopy && styles.copyButtonPressed,
+            ]}
+            onPress={handleCopy}
+            disabled={!canCopy}>
+            <Feather
+              name="copy"
+              size={moderateScale(18)}
+              color={
+                canCopy ? theme.colors.background : theme.colors.textSecondary
+              }
+            />
+            <Text
+              style={[
+                styles.copyButtonText,
+                !canCopy && styles.copyButtonTextDisabled,
+              ]}>
+              {t('copy.copyToClipboard')}
+            </Text>
+          </Pressable>
+        </SheetFooter>
       </View>
     </ActionSheet>
   );

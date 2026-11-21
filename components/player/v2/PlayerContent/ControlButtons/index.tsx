@@ -25,7 +25,7 @@ import {Ionicons} from '@expo/vector-icons';
 import {useAmbientStore} from '@/store/ambientStore';
 import Color from 'color';
 // @ai-start
-import {localizeDigits} from '@/i18n/format';
+import {decimalSeparator, localizeDigits} from '@/i18n/format';
 import {usePlayerA11y} from '@/hooks/usePlayerA11y'; // @ai
 import {nativeMenusAvailable} from '@/components/native/nativeMenus';
 import {PlaybackSpeedMenu, SleepTimerMenu} from '../../ListeningMenus';
@@ -138,7 +138,10 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
                 color: playbackRate !== 1 ? activeIconColor : defaultIconColor,
               },
             ]}>
-            {localizeDigits(`${playbackRate}x`)}
+            {/* Arabic shows ١٫٢٥, not ١.٢٥: the dot needs localizing too. */}
+            {localizeDigits(
+              `${String(playbackRate).replace('.', decimalSeparator())}x`,
+            )}
           </Text>
         </Pressable>
       </PlaybackSpeedMenu>

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  useColorScheme,
   ActivityIndicator,
   type ScrollViewProps,
 } from 'react-native';
@@ -96,15 +95,12 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
   );
   const {lightThemeId, darkThemeId, setReadingTheme, mushafRenderer} =
     useMushafSettingsStore();
-  const systemColorScheme = useColorScheme();
 
-  // Resolve the effective mode (for system, use device appearance)
-  const effectiveMode = useMemo(() => {
-    if (themeMode === 'system') {
-      return systemColorScheme === 'dark' ? 'dark' : 'light';
-    }
-    return themeMode;
-  }, [themeMode, systemColorScheme]);
+  // The mode the app is drawn in right now, taken from the app's own theme.
+  // Asking the device instead could disagree with it (in System mode it read
+  // as light inside a dark app), and then the chips listed, and the one a
+  // tap saved, belonged to the mode the mushaf was not using.
+  const effectiveMode = theme.isDarkMode ? 'dark' : 'light';
 
   // Determine which chips to show
   const visibleThemes = useMemo(() => {
@@ -134,12 +130,9 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
   // Position-based auto-pairing when the effective mode changes
   const autoPairAndSwitchMode = useCallback(
     (newMode: ThemeMode) => {
-      const newEffectiveMode =
-        newMode === 'system'
-          ? systemColorScheme === 'dark'
-            ? 'dark'
-            : 'light'
-          : newMode;
+      // Going to System keeps the current look until the device's scheme
+      // arrives (see themeStore), so there is no new mode to pair with yet.
+      const newEffectiveMode = newMode === 'system' ? effectiveMode : newMode;
 
       if (newEffectiveMode !== effectiveMode) {
         // Find current position in the old mode's list
@@ -164,14 +157,7 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
 
       setThemeMode(newMode);
     },
-    [
-      setThemeMode,
-      setReadingTheme,
-      effectiveMode,
-      lightThemeId,
-      darkThemeId,
-      systemColorScheme,
-    ],
+    [setThemeMode, setReadingTheme, effectiveMode, lightThemeId, darkThemeId],
   );
 
   // Segment changes the whole app's theme mode

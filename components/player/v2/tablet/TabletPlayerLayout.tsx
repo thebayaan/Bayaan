@@ -107,17 +107,25 @@ export function TabletPlayerLayout({
       />
     ) : null;
 
-  if (expanded) {
-    const columnWidth = nowPlayingColumnWidth(width);
-    const paneWidth = width - columnWidth;
-    return (
-      <View
-        style={[
-          styles.root,
-          styles.row,
-          {backgroundColor: readingColors.background},
-        ]}>
+  const columnWidth = nowPlayingColumnWidth(width);
+  const cardWidth = Math.min(width - 2 * margin, READING_COLUMN_MAX);
+  const cardBottom = insets.bottom + margin;
+
+  // One tree for both widths, and only props change between them. With a
+  // tree per width the pane sat at a different place in each, so crossing
+  // 900pt (an 11" iPad turning, a Split View resize) mounted it afresh: the
+  // text jumped back to the playing verse and locked on it again, the
+  // queue's Played list folded, and Reciters went back to the first rewayah.
+  return (
+    <View
+      style={[
+        styles.root,
+        expanded && styles.row,
+        {backgroundColor: readingColors.background},
+      ]}>
+      {expanded ? (
         <NowPlayingColumn
+          key="column"
           width={columnWidth}
           margin={margin}
           artSize={nowPlayingArtSize(columnWidth, margin, height)}
@@ -125,66 +133,44 @@ export function TabletPlayerLayout({
           optionsMenu={optionsMenu} // @ai
           {...toolHandlers}
         />
-        <View style={styles.pane}>
-          <GestureDetector gesture={barDismissGesture}>
-            <View
-              style={[
-                styles.bar,
-                {marginTop: insets.top, paddingHorizontal: margin},
-              ]}>
-              <View style={styles.barSide} />
-              {switcher}
-              <View style={[styles.barSide, styles.barEnd]}>
-                {readingTools}
-              </View>
+      ) : null}
+      <View key="pane" style={styles.pane}>
+        <GestureDetector gesture={barDismissGesture}>
+          <View
+            style={[
+              styles.bar,
+              {marginTop: insets.top, paddingHorizontal: margin},
+            ]}>
+            {/* Expanded, the Now Playing column has the close button. */}
+            <View style={styles.barSide}>
+              {expanded ? null : <CloseButton />}
             </View>
-          </GestureDetector>
-          <PlayerPaneBody
-            pane={activePane}
-            width={paneWidth}
-            bottomInset={insets.bottom}
-          />
-        </View>
-      </View>
-    );
-  }
-
-  const cardWidth = Math.min(width - 2 * margin, READING_COLUMN_MAX);
-  const cardBottom = insets.bottom + margin;
-  return (
-    <View style={[styles.root, {backgroundColor: readingColors.background}]}>
-      <GestureDetector gesture={barDismissGesture}>
-        <View
-          style={[
-            styles.bar,
-            {marginTop: insets.top, paddingHorizontal: margin},
-          ]}>
-          <View style={styles.barSide}>
-            <CloseButton />
+            {switcher}
+            {/* The track's "..." is in the column, or on the transport
+                card beside its title. */}
+            <View style={[styles.barSide, styles.barEnd]}>{readingTools}</View>
           </View>
-          {switcher}
-          {/* The track's "..." is on the transport card, beside its title. */}
-          <View style={[styles.barSide, styles.barEnd]}>{readingTools}</View>
-        </View>
-      </GestureDetector>
-      <View style={styles.pane}>
+        </GestureDetector>
         <PlayerPaneBody
           pane={activePane}
-          width={width}
-          bottomInset={cardBottom + cardHeight}
+          width={expanded ? width - columnWidth : width}
+          bottomInset={expanded ? insets.bottom : cardBottom + cardHeight}
         />
       </View>
-      <TransportCard
-        width={cardWidth}
-        style={[
-          styles.floatingCard,
-          {bottom: cardBottom, left: (width - cardWidth) / 2},
-        ]}
-        onLayout={handleCardLayout}
-        onOptionsPress={onOptionsPress}
-        optionsMenu={optionsMenu} // @ai
-        {...toolHandlers}
-      />
+      {expanded ? null : (
+        <TransportCard
+          key="card"
+          width={cardWidth}
+          style={[
+            styles.floatingCard,
+            {bottom: cardBottom, left: (width - cardWidth) / 2},
+          ]}
+          onLayout={handleCardLayout}
+          onOptionsPress={onOptionsPress}
+          optionsMenu={optionsMenu} // @ai
+          {...toolHandlers}
+        />
+      )}
     </View>
   );
 }

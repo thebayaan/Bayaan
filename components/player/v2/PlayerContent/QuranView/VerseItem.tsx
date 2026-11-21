@@ -19,6 +19,7 @@ import {
   useVerseAnnotationsStore,
 } from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {HIGHLIGHT_COLORS} from '@/types/verse-annotations'; // @ai
 import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
@@ -29,7 +30,11 @@ import type {RewayahWordsStatus} from '@/hooks/useRewayahWords'; // @ai
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
 // @ai-start
-import {unitVerseActionsPayload, type VerseUnitRow} from './verseUnitRows';
+import {
+  unitVerseActionsPayload,
+  unnumberedWordStudyPayload,
+  type VerseUnitRow,
+} from './verseUnitRows';
 import {
   UnitRowTranslations,
   UnitRowWordByWord,
@@ -45,6 +50,7 @@ import {
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
 import {isRTL} from '@/utils/rtl';
+import {useTranslationStore} from '@/store/translationStore';
 // @ai-end
 
 // Type for processed word data from store
@@ -73,6 +79,15 @@ interface SaheehFootnoteEntry {
 interface SaheehData {
   [verseKey: string]: SaheehFootnoteEntry;
 }
+
+// @ai-start
+// Text of a left-to-right script (the transliteration, an English
+// translation) starts at the physical left, text of a right-to-left one at
+// the right. React Native swaps textAlign left and right in an RTL layout,
+// so in the Arabic UI 'left' set English text against the right edge.
+const PHYSICAL_LEFT = isRTL ? 'right' : 'left';
+const PHYSICAL_RIGHT = isRTL ? 'left' : 'right';
+// @ai-end
 
 // Shown in place of the Arabic line when the rewayah's words fail to load. @ai
 const TEXT_UNAVAILABLE_MESSAGE = "Verse text couldn't be loaded.";
@@ -117,9 +132,16 @@ interface VerseItemProps {
    * label, text, selection, bookmark / note dots and verse-actions payload
    * follow the rewayah's own verse, and its translation, notes and word by
    * word come per Hafs verse it holds. The basmala row has no number and no
-   * actions. Omitted: a Hafs verse row, exactly as before.
+   * verse actions; a word of its grid opens Word Study alone. Omitted: a
+   * Hafs verse row, exactly as before.
    */
   unitRow?: VerseUnitRow;
+  /**
+   * Shown as selected whatever the verse selection store holds: the mushaf's
+   * list modes pass the verse the reader was taken to (a search result, a
+   * bookmark, a link), which the mushaf's own selection store holds.
+   */
+  selected?: boolean;
   // @ai-end
 }
 
@@ -159,6 +181,7 @@ export const VerseItem = memo<VerseItemProps>(
     wbwShowTransliteration,
     rewayah,
     unitRow, // @ai
+    selected, // @ai
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation(['player', 'common']);
@@ -199,7 +222,7 @@ export const VerseItem = memo<VerseItemProps>(
     // A selected key means something only in its numbering: a Hafs verse row
     // matches a Hafs selection, a rewayah verse row one of its own rewayah.
     const selectionRewayah = unitRow ? unitRow.rewayah : 'hafs';
-    const isSelected = useVerseSelectionStore(
+    const isSelectedHere = useVerseSelectionStore(
       useCallback(
         s =>
           s.selectedVerseKey === verseKey &&
@@ -207,6 +230,7 @@ export const VerseItem = memo<VerseItemProps>(
         [verseKey, selectionRewayah],
       ),
     );
+    const isSelected = isSelectedHere || !!selected;
     // @ai-end
     const selectVerse = useVerseSelectionStore(s => s.selectVerse);
 
@@ -238,6 +262,24 @@ export const VerseItem = memo<VerseItemProps>(
         [verseKey, unitRow],
       ),
     );
+    // @ai-start
+    // The verse's colour highlight. The rows showed bookmark and note marks
+    // but never the colour, so a highlight picked in the verse sheet left
+    // no trace in the list (the sheet then offered "Remove highlight").
+    const highlightColor = useVerseAnnotationsStore(
+      useCallback(
+        s =>
+          unitRow
+            ? unitRow.unit !== null
+              ? selectUnitAnnotations(s, unitRow.units).highlightColors[
+                  unitRow.unit.key
+                ]
+              : undefined
+            : s.highlights[verseKey],
+        [verseKey, unitRow],
+      ),
+    );
+    // @ai-end
     // Fetch tajweed data directly from store — granular selector means only
     // the ~10 visible VerseItems re-render when tajweed finishes loading
     const processedTajweedAyahData = useTajweedStore(
@@ -340,11 +382,14 @@ export const VerseItem = memo<VerseItemProps>(
     // the unit (in its rewayah's numbering) and opens the verse actions with
     // the unit (contract 4.1). The unnumbered Fatiha basmala is no verse
     // there: nothing to select, no actions.
+    // With a word of its grid, the sheet opens on Word Study at that word
+    // (a Hafs verse and word-by-word position); the promise settles when the
+    // sheet closes. Null when there is no verse to act on.
     const openUnitActions = useCallback(
-      (withHaptics: boolean) => {
-        if (!unitRow?.unit) return;
+      (withHaptics: boolean, word?: UnitRowWord) => {
+        if (!unitRow?.unit) return null;
         const payload = unitVerseActionsPayload(unitRow, source ?? 'player');
-        if (!payload) return;
+        if (!payload) return null;
         if (withHaptics) mediumHaptics();
         selectVerse(
           unitRow.unit.key,
@@ -352,9 +397,37 @@ export const VerseItem = memo<VerseItemProps>(
           unitRow.unit.ayah,
           unitRow.rewayah,
         );
-        SheetManager.show('verse-actions', {payload});
+        return SheetManager.show('verse-actions', {
+          payload: word
+            ? {
+                ...payload,
+                initialScreen: 'words' as const,
+                word: {verseKey: word.hafsKey, position: word.position},
+              }
+            : payload,
+        });
       },
       [unitRow, source, selectVerse],
+    );
+    // @ai-end
+
+    // @ai-start
+    // The verse-actions payload of a Hafs verse row: one builder, so the
+    // long-press, options and word payloads stay the same.
+    const hafsVerseActionsPayload = useCallback(
+      () => ({
+        verseKey,
+        surahNumber: verse.surah_number,
+        ayahNumber: verse.ayah_number,
+        // arabicText omitted — the sheet reads from DK so it always
+        // matches the current rewayah instead of the static Hafs
+        // text on this VerseItem prop.
+        translation: verse.translation || '',
+        transliteration: verse.transliteration || '',
+        source: source ?? 'player',
+        rewayah,
+      }),
+      [verseKey, verse, source, rewayah],
     );
     // @ai-end
 
@@ -369,25 +442,13 @@ export const VerseItem = memo<VerseItemProps>(
       mediumHaptics();
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
       SheetManager.show('verse-actions', {
-        payload: {
-          verseKey,
-          surahNumber: verse.surah_number,
-          ayahNumber: verse.ayah_number,
-          // arabicText omitted — the sheet reads from DK so it always
-          // matches the current rewayah instead of the static Hafs
-          // text on this VerseItem prop.
-          translation: verse.translation || '',
-          transliteration: verse.transliteration || '',
-          source: source ?? 'player',
-          rewayah,
-        },
+        payload: hafsVerseActionsPayload(), // @ai
       });
     }, [
       verseKey,
       verse,
       selectVerse,
-      source,
-      rewayah,
+      hafsVerseActionsPayload, // @ai
       unitRow,
       openUnitActions,
     ]); // @ai
@@ -402,52 +463,61 @@ export const VerseItem = memo<VerseItemProps>(
       // @ai-end
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
       SheetManager.show('verse-actions', {
-        payload: {
-          verseKey,
-          surahNumber: verse.surah_number,
-          ayahNumber: verse.ayah_number,
-          // arabicText omitted — the sheet reads from DK so it always
-          // matches the current rewayah instead of the static Hafs
-          // text on this VerseItem prop.
-          translation: verse.translation || '',
-          transliteration: verse.transliteration || '',
-          source: source ?? 'player',
-          rewayah,
-        },
+        payload: hafsVerseActionsPayload(), // @ai
       });
     }, [
       verseKey,
       verse,
       selectVerse,
-      source,
-      rewayah,
+      hafsVerseActionsPayload, // @ai
       unitRow,
       openUnitActions,
     ]); // @ai
 
+    // @ai-start
+    // A word of the word-by-word grid: the verse is selected and its sheet
+    // opens on Word Study at that word; the word stays lifted until the
+    // sheet closes.
     const handleWordPress = useCallback(
       (position: number) => {
         setSelectedWordPosition(position);
-        SheetManager.show('word-detail', {
-          payload: {verseKey, position},
+        selectVerse(verseKey, verse.surah_number, verse.ayah_number);
+        SheetManager.show('verse-actions', {
+          payload: {
+            ...hafsVerseActionsPayload(),
+            initialScreen: 'words',
+            word: {verseKey, position},
+          },
         }).then(() => {
           setSelectedWordPosition(null);
         });
       },
-      [verseKey],
+      [verseKey, verse, selectVerse, hafsVerseActionsPayload],
     );
 
-    // @ai-start
-    // A verse row's word-by-word word: word detail of its HAFS verse (word
-    // by word is Hafs data, keyed by Hafs verse and word position).
-    const handleUnitWordPress = useCallback((word: UnitRowWord) => {
-      setSelectedUnitWord(word);
-      SheetManager.show('word-detail', {
-        payload: {verseKey: word.hafsKey, position: word.position},
-      }).then(() => {
-        setSelectedUnitWord(null);
-      });
-    }, []);
+    // A verse row's word-by-word word: Word Study of the rewayah verse, at
+    // the word of its HAFS verse (word by word is Hafs data, keyed by Hafs
+    // verse and word position). A word of the unnumbered basmala, which is
+    // no verse here: Word Study alone at that word (Hafs 1:1's words, shown
+    // for the row's rewayah as its verses' are), with no verse selected.
+    // The word stays lifted until the sheet closes.
+    const handleUnitWordPress = useCallback(
+      (word: UnitRowWord) => {
+        const basmala =
+          unitRow && !unitRow.unit
+            ? unnumberedWordStudyPayload(unitRow, word, source ?? 'player')
+            : null;
+        const shown = basmala
+          ? SheetManager.show('verse-actions', {payload: basmala})
+          : openUnitActions(false, word);
+        if (!shown) return;
+        setSelectedUnitWord(word);
+        shown.then(() => {
+          setSelectedUnitWord(null);
+        });
+      },
+      [unitRow, source, openUnitActions],
+    );
     // @ai-end
 
     const handlePress = useCallback(() => {
@@ -490,7 +560,20 @@ export const VerseItem = memo<VerseItemProps>(
     const containerStyle = useMemo(
       () => [
         styles.container,
-        {borderBottomColor: borderColor},
+        {
+          borderBottomColor: borderColor,
+          // @ai-start
+          // The colour highlight: below the follow-along and selection
+          // tints, as on the pages. Spread so an unhighlighted row's style
+          // is exactly as before.
+          ...(highlightColor
+            ? {
+                backgroundColor: HIGHLIGHT_COLORS[highlightColor],
+                borderRadius: moderateScale(8),
+              }
+            : null),
+          // @ai-end
+        },
         isActive && {
           backgroundColor: derivedColors.activeBg,
           borderRadius: moderateScale(8),
@@ -502,6 +585,7 @@ export const VerseItem = memo<VerseItemProps>(
       ],
       [
         borderColor,
+        highlightColor, // @ai
         isActive,
         derivedColors.activeBg,
         isSelected,
@@ -541,21 +625,49 @@ export const VerseItem = memo<VerseItemProps>(
       [textColor, transliterationFontSize],
     );
 
+    // @ai-start
+    // A downloaded translation in a right-to-left script (Urdu, Persian...)
+    // is set from the right; the bundled ones are English.
+    const translationIsRTL = useTranslationStore(
+      useCallback(
+        s =>
+          translationId !== undefined &&
+          s.downloadedMeta.some(
+            m => m.identifier === translationId && m.direction === 'rtl',
+          ),
+        [translationId],
+      ),
+    );
     const translationStyle = useMemo(
-      () => [
-        styles.translationText,
-        {color: textColor, fontSize: moderateScale(translationFontSize)},
-      ],
-      [textColor, translationFontSize],
+      () =>
+        translationIsRTL
+          ? [
+              styles.translationText,
+              {color: textColor, fontSize: moderateScale(translationFontSize)},
+              styles.rtlTranslationText,
+            ]
+          : [
+              styles.translationText,
+              {color: textColor, fontSize: moderateScale(translationFontSize)},
+            ],
+      [textColor, translationFontSize, translationIsRTL],
     );
 
     const translationSourceStyle = useMemo(
-      () => [
-        styles.translationSource,
-        {color: derivedColors.translationSource},
-      ],
-      [derivedColors.translationSource],
+      () =>
+        translationIsRTL
+          ? [
+              styles.translationSource,
+              {color: derivedColors.translationSource},
+              styles.rtlTranslationSource,
+            ]
+          : [
+              styles.translationSource,
+              {color: derivedColors.translationSource},
+            ],
+      [derivedColors.translationSource, translationIsRTL],
     );
+    // @ai-end
 
     // @ai — notes under a verse row's Hafs content (a translation the
     // rewayah divides between verses, the transliteration's Hafs disclosure)
@@ -868,20 +980,31 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(8),
-    textAlign: 'left',
+    textAlign: PHYSICAL_LEFT, // @ai — always Latin
+    ...(isRTL ? {writingDirection: 'ltr'} : null), // @ai — iOS punctuation
   },
   translationText: {
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(8),
-    textAlign: 'left',
+    textAlign: PHYSICAL_LEFT, // @ai — see rtlTranslationText
+    ...(isRTL ? {writingDirection: 'ltr'} : null), // @ai — iOS punctuation
   },
+  // @ai-start
+  rtlTranslationText: {
+    textAlign: PHYSICAL_RIGHT,
+    writingDirection: 'rtl',
+  },
+  rtlTranslationSource: {
+    textAlign: PHYSICAL_RIGHT,
+  },
+  // @ai-end
   translationSource: {
     fontSize: moderateScale(11),
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(2),
     marginBottom: verticalScale(4),
-    textAlign: 'left',
+    textAlign: PHYSICAL_LEFT, // @ai — under its translation
     fontStyle: 'italic',
   },
   footnoteContainer: {

@@ -25,6 +25,8 @@ jest.mock('@/hooks/usePlayerActions', () => ({
     updateSettings: jest.fn(),
   }),
 }));
+// @ai The seek buttons reach the native player through this; not needed here.
+jest.mock('../../seekBy', () => ({seekBy: jest.fn()}));
 const mockQueue = {tracks: [{rewayatId: 'hafs'}], currentIndex: 0};
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: (selector: (s: unknown) => unknown) =>
@@ -64,6 +66,18 @@ jest.mock('@/components/popovers/ToolPopovers', () => {
     children: (onPress: () => void) => unknown;
   }) => children(onFallbackPress);
   return {AmbientPopover: fallback, ReadingSettingsPopover: fallback};
+});
+
+// Lets a test render in Arabic; the module default is English. @ai
+let mockLanguage: 'en' | 'ar' = 'en';
+jest.mock('@/i18n/format', () => {
+  const actual = jest.requireActual('@/i18n/format');
+  return {
+    ...actual,
+    localizeDigits: (value: string | number) =>
+      actual.localizeDigits(value, mockLanguage),
+    decimalSeparator: () => actual.decimalSeparator(mockLanguage),
+  };
 });
 
 import {
@@ -173,6 +187,18 @@ describe('TransportRow', () => {
       ['Forward 15 seconds', false],
     ]);
   });
+
+  // @ai-start
+  // `isLastTrack` is false on the last track when Repeat All wraps to the
+  // first one (usePlayerTransport.test.tsx): Next then stays available.
+  it('keeps next when there is a track to go to', () => {
+    const r = mount(<TransportRow transport={transport()} />);
+    const next = pressables(r).find(
+      p => p.props.accessibilityLabel === 'Next',
+    );
+    expect(next?.props.disabled).toBe(false);
+  });
+  // @ai-end
 });
 
 describe('useListeningTools', () => {
@@ -198,6 +224,16 @@ describe('useListeningTools', () => {
       StyleSheet.flatten(p.props.style({pressed: false})).backgroundColor;
     expect(fill(speed)).not.toBe('transparent');
     expect(fill(repeat)).toBe('transparent');
+  });
+
+  it('writes the speed with the Arabic decimal separator in Arabic', () => {
+    mockLanguage = 'ar';
+    try {
+      const r = mount(<Tools t={transport({playbackRate: 1.25})} />);
+      expect(textOf(toolButtons(r)[0])).toBe('\u0661\u066B\u0662\u0665x');
+    } finally {
+      mockLanguage = 'en';
+    }
   });
 
   it('cycles repeat from its button', () => {

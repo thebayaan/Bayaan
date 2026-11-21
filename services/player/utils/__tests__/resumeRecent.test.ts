@@ -2,6 +2,8 @@ import {resumeRecent} from '../resumeRecent';
 import type {Track} from '@/types/audio';
 
 const mockResumeChain = jest.fn();
+// @ai The recents list as it is when the queue has loaded.
+let mockRecentTracks: object[] = [];
 
 jest.mock('@/services/dataService', () => ({
   getReciterById: async (id: string) =>
@@ -20,12 +22,18 @@ jest.mock('@/utils/audioUtils', () => ({
 jest.mock('@/utils/artworkUtils', () => ({getReciterArtwork: () => 'art'}));
 jest.mock('@/services/player/store/recentlyPlayedStore', () => ({
   useRecentlyPlayedStore: {
-    getState: () => ({resumeChain: mockResumeChain}),
+    getState: () => ({
+      resumeChain: mockResumeChain,
+      recentTracks: mockRecentTracks, // @ai
+    }),
   },
 }));
 
 describe('resumeRecent', () => {
-  beforeEach(() => mockResumeChain.mockReset());
+  beforeEach(() => {
+    mockResumeChain.mockReset();
+    mockRecentTracks = []; // @ai
+  });
 
   it('queues the rewayah from the surah at the saved position', async () => {
     const calls: {tracks: Track[]; index?: number; start?: number}[] = [];
@@ -45,6 +53,70 @@ describe('resumeRecent', () => {
     expect(calls[0].index).toBe(0);
     expect(calls[0].start).toBe(90);
     expect(mockResumeChain).toHaveBeenCalledWith(3);
+  });
+
+  // @ai-start
+  const entry = (reciterId: string, surahId: number, rewayatId = 'rw1') => ({
+    reciter: {id: reciterId},
+    surah: {id: surahId},
+    rewayatId,
+  });
+
+  // A progress tick for the track that just started can move its card to
+  // the front while the queue loads. The place the card had when it was
+  // pressed then belongs to another card, which must not be promoted.
+  it('promotes the resumed entry where it is now, not where it was pressed', async () => {
+    mockRecentTracks = [entry('r9', 5), entry('r8', 7), entry('r1', 2)];
+    await resumeRecent({
+      reciterId: 'r1',
+      surahId: 2,
+      rewayatId: 'rw1',
+      startPosition: 90,
+      recentIndex: 2,
+      updateQueue: async () => {
+        // The tick: the resumed card is already at the front.
+        mockRecentTracks = [entry('r1', 2), entry('r9', 5), entry('r8', 7)];
+      },
+    });
+    expect(mockResumeChain).toHaveBeenCalledTimes(1);
+    expect(mockResumeChain).toHaveBeenCalledWith(0);
+  });
+
+  it('does not take the same surah in another rewayah or an upload for it', async () => {
+    mockRecentTracks = [
+      entry('r1', 2, 'other'),
+      {...entry('r1', 2), isUserUpload: true},
+      entry('r1', 2),
+    ];
+    await resumeRecent({
+      reciterId: 'r1',
+      surahId: 2,
+      rewayatId: 'rw1',
+      startPosition: 0,
+      recentIndex: 1,
+      updateQueue: async () => undefined,
+    });
+    expect(mockResumeChain).toHaveBeenCalledWith(2);
+  });
+  // @ai-end
+
+  // A card saved without a rewayah plays the reciter's first one, and the
+  // tick that moves the card to the front gives it that rewayah. The place
+  // it had when pressed then belongs to its neighbour.
+  it('finds a card saved without a rewayah after a tick gave it the queued one', async () => {
+    mockRecentTracks = [entry('r9', 5), entry('r1', 2, '')];
+    await resumeRecent({
+      reciterId: 'r1',
+      surahId: 2,
+      rewayatId: '',
+      startPosition: 90,
+      recentIndex: 1,
+      updateQueue: async () => {
+        mockRecentTracks = [entry('r1', 2, 'rw-default'), entry('r9', 5)];
+      },
+    });
+    expect(mockResumeChain).toHaveBeenCalledTimes(1);
+    expect(mockResumeChain).toHaveBeenCalledWith(0);
   });
 
   it('does nothing for an unknown reciter', async () => {
