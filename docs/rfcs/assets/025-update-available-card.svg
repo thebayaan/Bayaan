@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 470" font-family="Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="740" height="470" rx="10" fill="#f7f6f2"/>
+
+  <!-- ============ Panel A — Listen tab, update available ============ -->
+  <rect x="40" y="28" width="300" height="414" rx="26" fill="#ffffff" stroke="#d8d6cf" stroke-width="2"/>
+  <text x="62" y="66" font-size="17" font-weight="700" fill="#2a2a2a">Listen</text>
+
+  <!-- the card -->
+  <rect x="58" y="82" width="264" height="64" rx="14" fill="#edebe3" stroke="#a4a4a4" stroke-width="0.8"/>
+  <text x="72" y="108" font-size="12" font-weight="700" fill="#06151C">A new version is available</text>
+  <text x="72" y="125" font-size="9.5" fill="#052c39">Update App to get the latest fixes</text>
+  <text x="72" y="137" font-size="9.5" fill="#052c39">and features.</text>
+  <rect x="236" y="100" width="58" height="26" rx="13" fill="#06151C"/>
+  <text x="265" y="117" font-size="11" font-weight="700" fill="#f4f3ec" text-anchor="middle">Update</text>
+  <line x1="302" y1="108" x2="310" y2="116" stroke="#052c39" stroke-width="1.6"/>
+  <line x1="310" y1="108" x2="302" y2="116" stroke="#052c39" stroke-width="1.6"/>
+
+  <!-- existing top region (RFC-008 slot) and rows, unchanged -->
+  <rect x="58" y="160" width="264" height="96" rx="14" fill="#f0efe9" stroke="#e4e2da" stroke-dasharray="5 4"/>
+  <text x="190" y="204" font-size="11" fill="#8a887f" text-anchor="middle">Top region (RFC-008)</text>
+  <text x="190" y="220" font-size="10" fill="#a8a69c" text-anchor="middle">unchanged</text>
+  <rect x="58" y="270" width="264" height="70" rx="12" fill="#f0efe9" stroke="#e4e2da" stroke-dasharray="5 4"/>
+  <text x="190" y="309" font-size="11" fill="#8a887f" text-anchor="middle">Home rows, unchanged</text>
+  <rect x="58" y="352" width="264" height="70" rx="12" fill="#f0efe9" stroke="#e4e2da" stroke-dasharray="5 4"/>
+
+  <!-- callouts -->
+  <text x="190" y="462" font-size="11" font-weight="700" fill="#2a2a2a" text-anchor="middle">A · recommended build &gt; installed build</text>
+
+  <!-- ============ Panel B — when the card does not show ============ -->
+  <text x="380" y="62" font-size="13" font-weight="700" fill="#2a2a2a">B · The card renders nothing when:</text>
+
+  <g font-size="11.5" fill="#3a3a3a">
+    <rect x="380" y="80" width="320" height="44" rx="10" fill="#ffffff" stroke="#e4e2da"/>
+    <text x="396" y="99" font-weight="700">branding.updateSource is absent</text>
+    <text x="396" y="115" fill="#8a887f" font-size="10.5">default · no request is made</text>
+
+    <rect x="380" y="132" width="320" height="44" rx="10" fill="#ffffff" stroke="#e4e2da"/>
+    <text x="396" y="151" font-weight="700">recommended ≤ installed, or null</text>
+    <text x="396" y="167" fill="#8a887f" font-size="10.5">the app is up to date</text>
+
+    <rect x="380" y="184" width="320" height="44" rx="10" fill="#ffffff" stroke="#e4e2da"/>
+    <text x="396" y="203" font-weight="700">the source fails, is slow (&gt; 3 s) or malformed</text>
+    <text x="396" y="219" fill="#8a887f" font-size="10.5">fail-open: same as "no update"</text>
+
+    <rect x="380" y="236" width="320" height="44" rx="10" fill="#ffffff" stroke="#e4e2da"/>
+    <text x="396" y="255" font-weight="700">iOS and branding.appStoreId is absent</text>
+    <text x="396" y="271" fill="#8a887f" font-size="10.5">no store page of this app to open</text>
+
+    <rect x="380" y="288" width="320" height="44" rx="10" fill="#ffffff" stroke="#e4e2da"/>
+    <text x="396" y="307" font-weight="700">the person closed it less than 7 days ago</text>
+    <text x="396" y="323" fill="#8a887f" font-size="10.5">AsyncStorage @&lt;appSlug&gt;:updateCardSnoozedUntil</text>
+  </g>
+
+  <text x="380" y="366" font-size="13" font-weight="700" fill="#2a2a2a">"Update" opens</text>
+  <g font-size="10.5" fill="#3a3a3a">
+    <text x="380" y="386">iOS · itms-apps://apps.apple.com/app/id&lt;appStoreId&gt;</text>
+    <text x="380" y="404">Android · market://details?id=&lt;bundleId.android&gt;</text>
+    <text x="380" y="422" fill="#8a887f">web store page if the store app does not open</text>
+  </g>
+</svg>
