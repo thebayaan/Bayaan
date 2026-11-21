@@ -11,7 +11,8 @@ import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import Color from 'color';
-import {useRouter} from 'expo-router';
+import {useRouter, useSegments} from 'expo-router'; // @ai
+import {reciterBrowsePathname} from '@/hooks/useTabReciterPath'; // @ai
 import {Ionicons} from '@expo/vector-icons';
 import {DiscoverIcon} from '@/components/Icons';
 // @ai-start
@@ -29,11 +30,11 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
 
   const payload = props.payload;
   const surahId = payload?.surahId ?? '';
-  const source = payload?.source;
 
   const {askEveryTime, setAskEveryTime, setDefaultReciterSelection} =
     useSettings();
   const router = useRouter();
+  const segments = useSegments();
 
   React.useEffect(() => {
     const fetchSurahName = async () => {
@@ -73,20 +74,18 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
   const handleBrowseAllReciters = useCallback(() => {
     if (!surahId) return;
 
-    const route =
-      source === 'search'
-        ? '/(tabs)/(b.search)/reciter/browse'
-        : '/(tabs)/(a.home)/reciter/browse';
-
     handleClose();
     router.push({
-      pathname: route,
+      // The tab the user is in. This used to come from a `source` the
+      // caller passed, and callers in Search and Surahs passed "home": the
+      // app jumped to the Home tab and left the user there after the pick.
+      pathname: reciterBrowsePathname(segments),
       params: {
         view: 'all',
         surahId,
       },
     });
-  }, [surahId, source, handleClose, router]);
+  }, [surahId, segments, handleClose, router]);
 
   const handleReciterSelection = useCallback(
     (action: () => void, selection: string | null) => {

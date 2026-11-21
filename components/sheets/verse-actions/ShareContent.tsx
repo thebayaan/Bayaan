@@ -25,9 +25,9 @@ import {
   getDkFontFamily, // @ai
   useMushafSettingsStore,
 } from '@/store/mushafSettingsStore';
-import {ScrollView} from 'react-native-actions-sheet';
 import {SheetManager} from 'react-native-actions-sheet';
-import {getTranslationTextRaw} from '@/utils/translationLookup';
+import {SheetFooter, SheetScrollView} from './sheetGestures';
+import {loadPlainTranslations} from '@/services/translation/plainTranslations'; // @ai
 import {
   anchorShareUrl, // @ai
   verseShareUrl,
@@ -171,18 +171,27 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   // verse link opens one verse (the URL scheme has no ranges), so the
   // message sent with it cites that verse (linkRefText), not the whole
   // selection.
-  const shareRefs = useCallback(
-    (ready: ReadyVerseSelection) => {
-      const surah = surahData.find(s => s.id === ready.surahNumber);
-      const surahName = surah ? getSurahDisplayName(surah) : '';
-      return {
-        translation: joinTranslationParts(
-          selectionTranslationParts(ready),
-          hafsKey => getTranslationTextRaw(hafsKey, selectedTranslationId),
+  const shareRefs = useCallback((ready: ReadyVerseSelection) => {
+    const surah = surahData.find(s => s.id === ready.surahNumber);
+    const surahName = surah ? getSurahDisplayName(surah) : '';
+    return {
+      verseRefText: `${surahName} ${ready.label}`,
+      linkRefText: `${surahName} ${ready.linkLabel}`,
+    };
+  }, []);
+  // Plain text, without the stored footnote markers. A downloaded
+  // translation that is not in memory yet (right after launch) is read from
+  // its database instead of being left out of the message.
+  const shareTranslation = useCallback(
+    async (ready: ReadyVerseSelection) => {
+      const parts = selectionTranslationParts(ready);
+      return joinTranslationParts(
+        parts,
+        await loadPlainTranslations(
+          parts.map(part => part.hafsKey),
+          selectedTranslationId,
         ),
-        verseRefText: `${surahName} ${ready.label}`,
-        linkRefText: `${surahName} ${ready.linkLabel}`,
-      };
+      );
     },
     [selectedTranslationId],
   );
@@ -221,7 +230,8 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         ready === selection && verseTexts.status === 'ready'
           ? verseTexts
           : await resolveSelectionTexts(ready);
-      const {translation, verseRefText} = shareRefs(ready);
+      const {verseRefText} = shareRefs(ready);
+      const translation = await shareTranslation(ready);
       // @ai-end
       if (result.status !== 'ready') {
         showToast(
@@ -258,6 +268,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     selection, // @ai
     verseTexts,
     shareRefs, // @ai
+    shareTranslation, // @ai
     rewayahLabel,
   ]);
 
@@ -295,7 +306,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   if (!fontMgr) return null;
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} bounces={true}>
+    <SheetScrollView showsVerticalScrollIndicator={false}>
       {/* Visible preview */}
       <View style={styles.previewContent}>
         {/* @ai-start */}
@@ -391,7 +402,9 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         />
       </View>
 
-      <View style={styles.buttonsContainer}>
+      {/* The sheet never drags from the share buttons, so a tap on one is
+          always a tap. */}
+      <SheetFooter style={styles.buttonsContainer}>
         <Pressable
           style={({pressed}) => [
             styles.primaryButton,
@@ -447,8 +460,8 @@ export const ShareContent: React.FC<ShareContentProps> = ({
           />
           <Text style={styles.secondaryButtonText}>{t('share.link')}</Text>
         </Pressable>
-      </View>
-    </ScrollView>
+      </SheetFooter>
+    </SheetScrollView>
   );
 };
 // @ai-end

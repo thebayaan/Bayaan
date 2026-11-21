@@ -14,6 +14,8 @@
 import {
   anchorTarget,
   bookmarkChipText,
+  hitLabel, // @ai
+  hitTarget, // @ai
   historyEntryLabel,
   verseHistoryLabel,
   verseQueryTarget,
@@ -178,6 +180,68 @@ describe('anchorTarget: a stored anchor in the rewayah on screen', () => {
     expect(anchorTarget('1:8', HAFS)).toBeNull();
   });
 });
+
+// @ai-start
+describe('hitTarget and hitLabel: a Quran search hit in the rewayah on screen', () => {
+  it('Hafs: the Hafs verse, labelled as a typed "N:M"', () => {
+    expect(hitTarget('1:7', 5, HAFS)).toEqual({
+      verseKey: '1:7',
+      rewayah: 'hafs',
+      pageVerseKey: '1:7',
+      anchor: '1:7',
+    });
+    expect(hitLabel('1:7', 5, HAFS, 'Al-Fatihah')).toBe('Al-Fatihah 1:7');
+  });
+
+  it('another rewayah: the verse holding the first matched word', () => {
+    const shown = shownReady('warsh');
+    // The two parts of Hafs 1:7 are Warsh 1:6 and 1:7.
+    expect(hitTarget('1:7', 1, shown)?.verseKey).toBe('1:6');
+    expect(hitTarget('1:7', 5, shown)?.verseKey).toBe('1:7');
+    expect(hitTarget('106:4', 5, shown)).toEqual({
+      verseKey: '106:5',
+      rewayah: 'warsh',
+      pageVerseKey: '106:4',
+      anchor: '106:4:5',
+    });
+    expect(hitLabel('106:4', 5, shown, 'Quraysh')).toBe(
+      'Quraysh 106:5 · Warsh',
+    );
+  });
+
+  it('while its verses load: no target, and the Hafs verse says so', () => {
+    expect(hitTarget('106:4', 5, WARSH_LOADING)).toBeNull();
+    expect(hitLabel('106:4', 5, WARSH_LOADING, 'Quraysh')).toBe(
+      'Quraysh 106:4 · Hafs',
+    );
+  });
+
+  it('a word of the unnumbered Fatiha basmala names no verse', () => {
+    // The Madani and Basri counts (Warsh, al-Duri) do not number the
+    // basmala: their 1:1 is Hafs 1:2. A hit on the basmala (الله, بسم الله
+    // الرحمن الرحيم) is in no verse there, so it names none: the Hafs verse,
+    // saying so, never the next verse under the rewayah's name.
+    for (const rewayah of ['warsh', 'al-duri-abi-amr'] as const) {
+      const shown = shownReady(rewayah);
+      for (const position of [1, 2, 3, 4]) {
+        expect(hitTarget('1:1', position, shown)).toBeNull();
+      }
+      expect(hitLabel('1:1', 2, shown, 'Al-Fatihah')).toBe(
+        'Al-Fatihah 1:1 · Hafs',
+      );
+      // Its first verse holds Hafs 1:2's words.
+      expect(hitTarget('1:2', 1, shown)?.verseKey).toBe('1:1');
+    }
+    // The counts that number it (Shu'bah, al-Bazzi): their verse 1:1.
+    for (const rewayah of ['shubah', 'al-bazzi'] as const) {
+      expect(hitTarget('1:1', 2, shownReady(rewayah))).toMatchObject({
+        verseKey: '1:1',
+        pageVerseKey: '1:1',
+      });
+    }
+  });
+});
+// @ai-end
 
 describe('bookmarkChipText', () => {
   /** The chip text of `row` with `shown` on screen, its rewayah ready. */

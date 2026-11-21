@@ -11,7 +11,14 @@ jest.mock('expo-audio', () => ({setAudioModeAsync: jest.fn()}));
 
 import {ExpoAudioService} from '../ExpoAudioService';
 
-type Listener = () => void;
+/** The fields of a playbackStatusUpdate that the service reads. */
+interface Status {
+  isLoaded: boolean;
+  playing: boolean;
+  isBuffering: boolean;
+  didJustFinish: boolean;
+}
+type Listener = (status: Status) => void;
 
 /** The slice of AudioPlayer that loadTrack() uses, as on Android. */
 class FakePlayer {
@@ -27,7 +34,13 @@ class FakePlayer {
   /** A native playbackStatusUpdate. */
   status(isLoaded: boolean): void {
     this.isLoaded = isLoaded;
-    this.listeners.forEach(listener => listener());
+    const update: Status = {
+      isLoaded,
+      playing: false,
+      isBuffering: false,
+      didJustFinish: false,
+    };
+    this.listeners.forEach(listener => listener(update));
   }
 
   listenerCount(): number {
@@ -55,6 +68,8 @@ describe('ExpoAudioService.loadTrack while no JS timer runs', () => {
 
   it('ends when the status updates report the new source loaded', async () => {
     const {service, player} = makeService();
+    // The service's own status listener (errors, outside plays) stays.
+    const ownListeners = player.listenerCount();
     const done = jest.fn();
     service.loadTrack('https://example.test/next.mp3').then(done);
     await flush();
@@ -72,11 +87,12 @@ describe('ExpoAudioService.loadTrack while no JS timer runs', () => {
     expect(done).toHaveBeenCalledTimes(1);
     expect(service.getPlaybackState()).toBe('ready');
     expect(service.getCurrentUrl()).toBe('https://example.test/next.mp3');
-    expect(player.listenerCount()).toBe(0);
+    expect(player.listenerCount()).toBe(ownListeners);
   });
 
   it('still ends on the timer in the foreground', async () => {
     const {service, player} = makeService();
+    const ownListeners = player.listenerCount();
     const done = jest.fn();
     service.loadTrack('https://example.test/next.mp3').then(done);
     await flush();
@@ -87,6 +103,6 @@ describe('ExpoAudioService.loadTrack while no JS timer runs', () => {
     await jest.advanceTimersByTimeAsync(50);
 
     expect(done).toHaveBeenCalledTimes(1);
-    expect(player.listenerCount()).toBe(0);
+    expect(player.listenerCount()).toBe(ownListeners);
   });
 });

@@ -3,6 +3,8 @@ import {useCallback, useEffect, useState} from 'react';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useProgress} from '@/services/player/store/progressStore';
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
+import {seekBy} from '../seekBy';
 
 export const SEEK_INTERVAL = 15;
 
@@ -23,11 +25,19 @@ export function usePlayerTransport() {
   const progress = useProgress();
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
-  const isLastTrack = queue.currentIndex === queue.tracks.length - 1;
+  // Next has nowhere to go from the last track, unless Repeat All takes it
+  // round to the first one, as the end of a track and Previous already do.
+  // It used to be greyed out on the last track with Repeat All on.
+  const isLastTrack =
+    queue.currentIndex === queue.tracks.length - 1 && repeatMode !== 'queue';
 
-  const [isPlaying, setIsPlaying] = useState(() => playbackState === 'playing');
+  // A stalled stream ('buffering') still counts as playing, so the button
+  // shows Pause and the first tap pauses.
+  const [isPlaying, setIsPlaying] = useState(() =>
+    isActivelyPlaying(playbackState),
+  );
   useEffect(() => {
-    setIsPlaying(playbackState === 'playing');
+    setIsPlaying(isActivelyPlaying(playbackState));
   }, [playbackState]);
 
   const togglePlay = useCallback(async () => {
@@ -51,17 +61,17 @@ export function usePlayerTransport() {
     if (trackLoading || isLastTrack) return;
     await skipToNext();
   }, [trackLoading, isLastTrack, skipToNext]);
-  // Read at the press, so the seek handlers do not change on every tick.
+  // seekBy() jumps from where the audio really is; the progress shown here
+  // can be two seconds old. The position is read at the press, so the seek
+  // handlers do not change on every tick.
   const seekBack = useCallback(async () => {
     if (trackLoading) return;
-    const {position} = usePlayerStore.getState().playback;
-    await seekTo(Math.max(0, position - SEEK_INTERVAL));
-  }, [trackLoading, seekTo]);
+    await seekBy(-SEEK_INTERVAL);
+  }, [trackLoading]);
   const seekForward = useCallback(async () => {
     if (trackLoading) return;
-    const {position} = usePlayerStore.getState().playback;
-    await seekTo(position + SEEK_INTERVAL);
-  }, [trackLoading, seekTo]);
+    await seekBy(SEEK_INTERVAL);
+  }, [trackLoading]);
 
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);

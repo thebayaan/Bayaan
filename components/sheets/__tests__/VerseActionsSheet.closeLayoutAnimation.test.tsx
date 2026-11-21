@@ -20,6 +20,8 @@ import TestRenderer from 'react-test-renderer';
 /** The props that the sheet gives the library sheet, last render first. */
 const mockSheetProps: Array<Record<string, unknown>> = [];
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../verse-actions/sheetGestures');
 jest.mock('../verse-actions/SimilarVersesContent', () => ({
   SimilarVersesContent: () => null,
 }));
@@ -36,7 +38,13 @@ jest.mock('../verse-actions/TafseerContent', () => ({
 }));
 jest.mock('../verse-actions/ThemeContent', () => ({ThemeContent: () => null}));
 jest.mock('../verse-actions/WBWContent', () => ({WBWContent: () => null}));
-jest.mock('../verse-actions/IrabContent', () => ({IrabContent: () => null}));
+jest.mock('../verse-actions/WordStudyContent', () => ({
+  WordStudyContent: () => null,
+}));
+// Root search (RootResults uses FlashList) is not under test here.
+jest.mock('@/components/search/quran/RootResults', () => ({
+  RootResults: () => null,
+}));
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: () => null,
 }));

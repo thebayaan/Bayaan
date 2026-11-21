@@ -13,6 +13,7 @@ import {useRouter} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 // @ai-start
 import {flipX} from '@/utils/rtl';
+import {useIsStackRoot} from '@/components/tablet/useIsStackRoot';
 // @ai-end
 
 interface CollectionStickyHeaderProps {
@@ -30,6 +31,10 @@ export const CollectionStickyHeader: React.FC<CollectionStickyHeaderProps> = ({
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // A section the iPad sidebar opened is the first screen of its stack: back
+  // has nothing to pop there and used to switch to the Home tab, so the arrow
+  // is left out and only the title shows. @ai
+  const isStackRoot = useIsStackRoot(); // @ai
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [threshold - 40, threshold],
@@ -53,17 +58,23 @@ export const CollectionStickyHeader: React.FC<CollectionStickyHeaderProps> = ({
         ]}
       />
       <View style={styles.headerContent}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.back()}
-          hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(22)}
-            color={theme.colors.text}
-            style={flipX}
-          />
-        </Pressable>
+        {/* @ai-start */}
+        {isStackRoot ? (
+          <View style={styles.backButton} />
+        ) : (
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(22)}
+              color={theme.colors.text}
+              style={flipX}
+            />
+          </Pressable>
+        )}
+        {/* @ai-end */}
         <Text
           style={[styles.stickyHeaderTitle, {color: theme.colors.text}]}
           numberOfLines={1}>

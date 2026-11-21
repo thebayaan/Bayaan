@@ -47,9 +47,9 @@ Additional licensing:
 
 ## Qur'an texts of the other rewayat
 
-The word text of the seven non-Hafs rewayah databases (`data/mushaf/digitalkhatt/dk_words_<id>.db`: Warsh, Qalun, al-Bazzi, Qunbul, al-Duri, al-Susi, Shu'bah), the highlight and verse-map files derived from it (`<id>-diff.json`, `<id>-versemap.json`) and the basmala files (`<id>-basmala.json`) come from the official Uthmanic riwayah texts of the **King Fahd Glorious Qur'an Printing Complex** (KFGQPC, https://qurancomplex.gov.sa), version 2.x; the basmala lines come from KFGQPC's signed Word typesetting of each riwayah. The exact files and their checksums are listed in `scripts/rewayah/sources/SOURCES.md` and `scripts/rewayah/sources/sources.lock.json`. The text is used as published; the only changes are the display adaptations listed in `docs/features/rewayat.md`, needed because the Digital Khatt font cannot draw some riwayah marks. The word rows and page layout these texts are placed into come from Digital Khatt (above).
+The word text of the seven non-Hafs rewayah databases (`data/mushaf/digitalkhatt/dk_words_<id>.db`: Warsh, Qalun, al-Bazzi, Qunbul, al-Duri, al-Susi, Shu'bah), the highlight and verse-map files derived from it (`<id>-diff.json`, `<id>-versemap.json`), the per-word readings index built from those files (`dk_readings.db`, which repeats words of these texts) and the basmala files (`<id>-basmala.json`) come from the official Uthmanic riwayah texts of the **King Fahd Glorious Qur'an Printing Complex** (KFGQPC, https://qurancomplex.gov.sa), version 2.x; the basmala lines come from KFGQPC's signed Word typesetting of each riwayah. The exact files and their checksums are listed in `scripts/rewayah/sources/SOURCES.md` and `scripts/rewayah/sources/sources.lock.json`. The text is used as published; the only changes are the display adaptations listed in `docs/features/rewayat.md`, needed because the Digital Khatt font cannot draw some riwayah marks. The word rows and page layout these texts are placed into come from Digital Khatt (above).
 
-**Licence status.** KFGQPC offers these packages to developers on its developer page (https://qurancomplex.gov.sa/en/techquran/dev/). No licence or terms of use for the text was found in the packages. The end-user licence embedded in their riwayah fonts covers only those fonts, and Bayaan does not ship them. No written permission from KFGQPC for these texts is recorded in this repository yet. Until one is, this section records where the text comes from, not a licence grant. Details are in `scripts/rewayah/sources/SOURCES.md` (Licence status).
+**Licence status.** KFGQPC offers these packages to developers on its developer page (https://qurancomplex.gov.sa/en/techquran/dev/). No licence or terms of use for the text was found in the packages. The end-user licence embedded in their riwayah fonts covers only those fonts, and Bayaan does not ship them. No written permission from KFGQPC for these texts is recorded in this repository yet. Until one is, this section records where the text comes from, not a licence grant. The same open question covers every file derived from them, `dk_readings.db` included. Details are in `scripts/rewayah/sources/SOURCES.md` (Licence status).
 
 ## Recitation follow-along model (Tilawa)
 
@@ -91,24 +91,245 @@ and `IqraEval/Iqra_train` (now under non-commercial terms).
 
 ## Quran i'rab (grammatical analysis)
 
-`assets/data/irab-v1.db` is built by `scripts/irab/build-irab-db.ts` from:
+`assets/data/irab-v2.db` is built by `scripts/irab/build-irab-db.ts` from the
+sources below. Its `meta` table keeps the notices that the treebank's and the
+corpus's licences ask derived files to carry (`treebank_notice`,
+`qac_notice`), the version of each source and the changes listed here.
 
 - **The Quranic Treebank** — https://github.com/NoorBayan/Quranic
-  (commit `e791af79`), MIT License, Copyright (c) 2025 NoorBayan. Word-level
-  syntax (i'rab relations) for the whole Quran.
-- **Quranic Arabic Corpus** v0.4 — https://corpus.quran.com, Dr. Kais Dukes,
-  University of Leeds, GNU General Public License. The morphology (part of
-  speech, case, mood, root, lemma) inside the Quranic Treebank comes from it.
+  (commit `e791af79`), MIT License, Copyright (c) 2025 NoorBayan. Used: its
+  word-level syntax (i'rab relations) for the whole Quran. The licence text is
+  in `licenses/NoorBayan-Quranic-MIT.txt` and in the database
+  (`treebank_notice`). The MIT grant covers NoorBayan's own annotation only:
+  the treebank's morphological columns (segmentation, part of speech, case,
+  mood, root, lemma, and the feature string it keeps "from source corpus")
+  are the Quranic Arabic Corpus annotation, which keeps its own licence and
+  terms (next item).
+- **Quranic Arabic Corpus** (version 0.4) — https://corpus.quran.com,
+  Copyright (C) 2011 Kais Dukes, University of Leeds, GNU General Public
+  License. The corpus's download page refers to its licence page
+  (https://corpus.quran.com/license.jsp), which gives version 3 of the GPL;
+  that text is in `licenses/GPL-3.0.txt`. Used: the morphology above, read
+  from the Quranic Treebank. Changes were made: case and mood labels that
+  break a rule of grammar are corrected where MASAQ agrees (519 by the word's
+  role, `case_fixes`, and the `constraint_*` lists in the database's `meta`
+  table), one word's segmentation is fixed (26:86:2, `segmentation_fixes`),
+  and the tags are written as Arabic grammar terms. The app's Credits screen
+  names the corpus and links to https://corpus.quran.com, as its terms ask.
+  The corpus's notice, verbatim from https://corpus.quran.com/download (also
+  in `licenses/quranic-arabic-corpus-notice.txt`, and stored byte for byte in
+  the database as `qac_notice`):
+
+  ```
+  #  Quranic Arabic Corpus (Version 0.4)
+  #  Copyright (C) 2011 Kais Dukes
+  #  License: GNU General Public License
+  #
+  #  The Quranic Arabic Corpus includes syntactic and morphological
+  #  annotation of the Quran, and builds on the verified Arabic text
+  #  distributed by the Tanzil project.
+  #
+  #  TERMS OF USE:
+  #
+  #  - Permission is granted to copy and distribute verbatim copies
+  #    of this file, but CHANGING IT IS NOT ALLOWED.
+  #
+  #  - This annotation can be used in any website or application,
+  #    provided its source (the Quranic Arabic Corpus) is clearly
+  #    indicated, and a link is made to http://corpus.quran.com to enable
+  #    users to keep track of changes.
+  #
+  #  - This copyright notice shall be included in all verbatim copies
+  #    of the text, and shall be reproduced appropriately in all works
+  #    derived from or containing substantial portion of this file.
+  #
+  #  Please check updates at: http://corpus.quran.com/download
+  ```
+
 - **MASAQ: Morphologically-Analyzed and Syntactically-Annotated Quran
   Dataset** v5 — https://data.mendeley.com/datasets/9yvrzxktmr/5, Majdi
-  Sawalha et al., University of Jordan, CC BY 4.0. Used to cross-check every
+  Sawalha et al., University of Jordan, CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/). Used to cross-check every
   word; where it reads a word differently its reading is shown as «وجه آخر»,
   and the build drops case signs it does not confirm. Changes were made:
   roles and cases are mapped to Arabic grammar terms.
 - **Quranpedia** data dumps — https://quranpedia.net/dumps (version
   2026-08-10): the classical i'rab books *al-Tibyan fi I'rab al-Qur'an* of
   al-Ukbari (d. 616 AH) and *I'rab al-Qur'an* of al-Nahhas (d. 338 AH),
-  converted to plain text.
+  converted to plain text. Quranpedia's al-Nahhas is the edition of Dar
+  al-Kutub al-Ilmiyya (Beirut, 1st edition, 1421 AH), and the dump's licence
+  leaves contemporary works with their authors and publishers. So that only
+  al-Nahhas's text is shown under his name, the build leaves out the modern
+  editor's footnotes and their markers («١», «٢» …) and the publisher's
+  introduction (part 1, pages 3–12), which the dump files under the verses of
+  surah 114. The database's `meta` table records what was left out
+  (`book_318_footnotes_removed`, `book_318_note_markers_removed`,
+  `book_318_front_matter_removed`). al-Ukbari's opening pages (his preface
+  and his i'rab of the isti'adha and the basmala, part 1, pages 1–4), which
+  the dump files under 114:5, are filed with 1:1 instead, unchanged
+  (`book_309_opening_refiled`).
+- **Open questions.** No answer is recorded yet; ask before release.
+  - The corpus's terms say "CHANGING IT IS NOT ALLOWED", while the licence
+    they name, the GPL, allows changes (and section 7 of its version 3 lets a
+    recipient remove further restrictions added to a GPL work). The build
+    corrects case and mood labels, fixes one segmentation and writes the tags
+    in Arabic. Whether that counts as a change the terms forbid is not
+    stated. The notice is kept in the derived file, as the terms ask.
+  - Quranpedia describes the treebank as "building on the Quranic Arabic
+    Corpus". Whether NoorBayan's syntax layer derives from the corpus's own
+    treebank (GPL), and so whether the MIT grant covers all of it, is not
+    stated upstream.
+  - The al-Nahhas text keeps the edition's verse headings
+    ([سورة … : آية …]), verse references ([القمر: ١٩]), metre labels
+    ([الرجز]) and poem numbers (١-). Whether they count as the editor's
+    contemporary work is not settled.
+  - al-Ukbari's last page (part 2, page 1312) opens with the editor's
+    collation lines «وَجَاء فِي آخر (أ)» and «وَفِي آخر (ب)», which quote how
+    two manuscripts end. They are shown as printed, under his name.
+
+## Arabic word meanings (gharib) and rasm
+
+`assets/data/gharib-v1.db` and `assets/data/rasm-v1.db` are built by
+`scripts/word-study/` from the two inputs pinned in
+`scripts/word-study/sources.lock.json`; `scripts/word-study/SOURCES.md`
+records how each was obtained.
+
+### Gharib: Ibn al-Ha'im, *al-Tibyan fi Tafsir Gharib al-Qur'an*
+
+- **Quranpedia** data dumps — https://quranpedia.net/dumps, file
+  `meanings.json.gz`, **version 2026-11-14** (SHA-256
+  `b46ca5ae7baa5287dc08816d5c6037e8ad9282e49cf870357e6bb6184b8d0699`, as
+  listed in the dumps' `manifest.json`): book 327, *al-Tibyan fi Tafsir
+  Gharib al-Qur'an* (التبيان في تفسير غريب القرآن) by Ibn al-Ha'im (d. 815 AH),
+  edited by Dahi Abd al-Baqi Muhammad (Dar al-Gharb al-Islami, 1st edition,
+  1423 AH). The work is a classical text. Changes were made: the edition's
+  apparatus (the source siglum `[زه]`, bare verse numbers such as `[7]`, and
+  footnote markers) was removed; the words the editor restored in square
+  brackets are kept, without the brackets; and each entry was placed on the
+  words of the verse it explains. The book's own wording is not changed.
+- Quranpedia's licence (https://quranpedia.net/dumps/LICENSE.md, version
+  2026-11-13), English part, verbatim:
+
+  > ### Ownership
+  > The classical works contained in this data — the Quran text in its canonical qira'at, and the classical tafsirs — are the shared heritage of the Muslim ummah; no one claims ownership of them. The digitization, structuring, verification, diacritical correction (dabt), linking, and metadata in this dataset are the work of the **Quranpedia.net** team, compiled and continuously corrected over years. Translations and contemporary works remain the intellectual property of their respective authors and publishers.
+  >
+  > ### License
+  > - **Free to use** inside apps, websites, bots, and research tools — no attribution required (a visible link to https://quranpedia.net is appreciated).
+  > - **Republishing this data — in full or in part — as a downloadable database or dataset requires**: (1) crediting **Quranpedia.net** as the source with a link, and (2) stating this dump's version.
+  > - The content is **continuously corrected**. Keep any copy current via `https://quranpedia.net/api/v1/changes?since=<version>` — distributing outdated Quranic text is the distributor's responsibility.
+  > - Provided as-is, without warranty; verification remains the user's duty.
+
+  The database can be downloaded from this repository on its own, so it is
+  credited as republished data: Quranpedia.net, with a link and the dump
+  version, here, in the database's `meta` table (`source_327_credit`), and on
+  the app's Credits screen. The app's gharib section names the book and
+  "Quranpedia (quranpedia.net)". Re-sync with the dump on each release.
+
+### Rasm: Tanzil Quran Text (Simple, version 1.1)
+
+- **Tanzil Project** — https://tanzil.net, Tanzil Quran Text (Simple),
+  **version 1.1** (released 2021-02-12), downloaded on 2026-11-14 from
+  https://tanzil.net/download/ as text without pause marks (SHA-256
+  `f3268cfe7a400add8a8024fe23368d66f58cc8baa51773fe94e323625c66344b`).
+  Licensed under Creative Commons Attribution 3.0 (CC BY 3.0,
+  https://creativecommons.org/licenses/by/3.0/), with the terms of use in its
+  notice below. It is used as the standard (imla'i) spelling the app compares
+  with the mushaf's.
+  Each verse is split into its words and stored letter for letter, only for
+  the 6,913 words whose spelling differs from the mushaf's; the basmala the
+  text file puts before verse 1 of each surah is not used. The copyright
+  notice is stored in the database's `meta` table (`notice`). The app's rasm
+  section names "Tanzil Project (tanzil.net)", and the Credits screen links
+  to https://tanzil.net.
+- The notice in the downloaded file (stored byte for byte in the database;
+  trailing spaces dropped here):
+
+  ```
+  # PLEASE DO NOT REMOVE OR CHANGE THIS COPYRIGHT BLOCK
+  #====================================================================
+  #
+  #  Tanzil Quran Text (Simple, Version 1.1)
+  #  Copyright (C) 2007-2026 Tanzil Project
+  #  License: Creative Commons Attribution 3.0
+  #
+  #  This copy of the Quran text is carefully produced, highly
+  #  verified and continuously monitored by a group of specialists
+  #  at Tanzil Project.
+  #
+  #  TERMS OF USE:
+  #
+  #  - Permission is granted to copy and distribute verbatim copies
+  #    of this text, but CHANGING IT IS NOT ALLOWED.
+  #
+  #  - This Quran text can be used in any website or application,
+  #    provided that its source (Tanzil Project) is clearly indicated,
+  #    and a link is made to tanzil.net to enable users to keep
+  #    track of changes.
+  #
+  #  - This copyright notice shall be included in all verbatim copies
+  #    of the text, and shall be reproduced appropriately in all files
+  #    derived from or containing substantial portion of this text.
+  #
+  #  Please check updates at: http://tanzil.net/updates/
+  #
+  #====================================================================
+  ```
+
+- **Open questions.** No answer from Tanzil is recorded yet; ask before
+  release.
+  - Tanzil's FAQ (https://tanzil.net/docs/faq) answers "I want to develop a
+    Quranic website/application. Can I use your resources?" with "Sure. We
+    have provided all resources used in Tanzil in our resources page. They
+    are available for non-commercial purposes." The text's own licence above
+    has no such condition. If the FAQ line covers the Quran text too, this
+    data is for non-commercial use only, as the Tanzil transliteration in the
+    adhkar is (see Adhkar text sources below), and anyone redistributing or
+    using the app commercially must obtain permission from Tanzil first.
+  - The terms say "CHANGING IT IS NOT ALLOWED". The words are stored letter
+    for letter, but split per word and only where they differ from the
+    mushaf; whether such excerpts count as a change is not stated. The
+    notice is kept in the derived file, as the terms ask.
+
+## Quran word search index
+
+`assets/data/quran-search-v1.db` is built by
+`scripts/search/build-quran-search-db.ts` from two files already in this
+repository; it adds no outside source:
+
+- **Digital Khatt** Hafs words (`data/mushaf/digitalkhatt/digital-khatt-v2.db`),
+  SIL Open Font License 1.1 (see Fonts above). The index stores search
+  spellings derived from each word by rule (the Quran text itself is not
+  copied into it) with the word's position.
+- **Quranic Arabic Corpus** morphology, version 0.4 —
+  https://corpus.quran.com, GNU General Public License with the corpus's
+  terms of use — as carried by **the Quranic Treebank**
+  (https://github.com/NoorBayan/Quranic, MIT License, Copyright (c) 2025
+  NoorBayan) and read from the i'rab database (see Quran i'rab above): the
+  proclitic segmentation, with which the word search matches a word without
+  its proclitics, and the roots and lemmas of the root search. The roots and
+  lemmas are stored as they are in the i'rab database. The app's Credits
+  screen credits the corpus for the word and root search as well as the
+  i'rab.
+
+The database's `meta` table names these sources (`morphology_source`,
+`morphology_license`) and holds, byte for byte, the Quranic Arabic Corpus
+copyright notice and terms of use (`morphology_notice`, from
+`licenses/quranic-arabic-corpus-notice.txt`, as published at
+https://corpus.quran.com/download, read on 2026-11-18) and the Quranic
+Treebank's MIT licence (`treebank_notice`, from
+`licenses/NoorBayan-Quranic-MIT.txt`): the build reads the same files the
+i'rab database stores. The corpus's terms ask that its notice be reproduced
+in works derived from it.
+
+- **Open question.** The terms also say "CHANGING IT IS NOT ALLOWED" of the
+  corpus file. The index stores the corpus's roots and lemmas per word, as
+  the i'rab database does; whether that counts as a change is not stated.
+
+The build records, in the database's `meta` table, a sha256 of the Digital
+Khatt words and of the morphology it reads (not of the files). The build's
+`--imlaei` option, unused in this version, would add the words of an imla'i
+Quran text; a text fed in that way needs its own licence check and notice
+here first.
 
 ## Adhkar content & audio
 

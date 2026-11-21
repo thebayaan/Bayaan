@@ -72,6 +72,14 @@ jest.mock('@/store/mushafPlayerStore', () => ({
 jest.mock('react-native-actions-sheet', () => ({
   SheetManager: {hide: jest.fn(async () => undefined), show: jest.fn()},
 }));
+jest.mock('@/components/sheets/SheetGestures', () => {
+  const {View: MockView} = jest.requireActual('react-native');
+  return {
+    SheetFooter: (props: object) => (
+      <MockView {...props} testID="sheet-footer" />
+    ),
+  };
+});
 
 import {RecitationMistakeSheet} from '../RecitationMistakeSheet';
 
@@ -115,6 +123,14 @@ function button(r: TestRenderer.ReactTestRenderer, label: string) {
         .findAll(m => (m.type as unknown) === Text)
         .some(m => [m.props.children].flat().join('') === label),
   );
+}
+
+/** Whether a SheetFooter holds `node`, keeping the sheet's drag off it. */
+function inSheetFooter(node: TestRenderer.ReactTestInstance): boolean {
+  for (let n: TestRenderer.ReactTestInstance | null = node; n; n = n.parent) {
+    if (n.props.testID === 'sheet-footer') return true;
+  }
+  return false;
 }
 
 beforeEach(() => {
@@ -190,5 +206,16 @@ describe('RecitationMistakeSheet', () => {
     const r = await render({...MARK, status: 'corrected'});
     expect(texts(r)).toContain('You went back and recited it correctly.');
     expect(texts(r)).not.toContain('I read it correctly');
+  });
+
+  it('keeps the sheet drag off its buttons', async () => {
+    const r = await render(MARK);
+    for (const label of [
+      'Listen to this ayah',
+      'I read it correctly',
+      'Continue',
+    ]) {
+      expect(inSheetFooter(button(r, label))).toBe(true);
+    }
   });
 });

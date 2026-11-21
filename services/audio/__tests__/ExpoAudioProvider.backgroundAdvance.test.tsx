@@ -26,11 +26,12 @@ let mockStatus: Status = {
   duration: 0,
   didJustFinish: false,
 };
-const mockListeners = new Set<() => void>();
+// expo-audio hands each listener the new status.
+const mockListeners = new Set<(status: Status) => void>();
 
 jest.mock('expo-audio', () => {
   const {useSyncExternalStore} = jest.requireActual('react');
-  const subscribe = (listener: () => void) => {
+  const subscribe = (listener: (status: Status) => void) => {
     mockListeners.add(listener);
     return () => mockListeners.delete(listener);
   };
@@ -46,7 +47,7 @@ jest.mock('expo-audio', () => {
     play: jest.fn(),
     pause: jest.fn(),
     seekTo: jest.fn(() => Promise.resolve()),
-    addListener: (_event: string, listener: () => void) => {
+    addListener: (_event: string, listener: (status: Status) => void) => {
       const remove = subscribe(listener);
       return {remove};
     },
@@ -147,7 +148,7 @@ function track(id: string, surahId: string): Track {
 async function native(patch: Partial<Status>): Promise<void> {
   await act(async () => {
     mockStatus = {...mockStatus, didJustFinish: false, ...patch};
-    mockListeners.forEach(listener => listener());
+    mockListeners.forEach(listener => listener(mockStatus));
   });
 }
 

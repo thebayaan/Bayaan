@@ -8,11 +8,11 @@ import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {
   useDownloadActions,
   useDownloadProgress,
-  useIsDownloaded,
-  useIsDownloadedWithRewayat,
+  useIsDownloadedForPlayback,
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
+import {showDownloadFailedToast} from './downloadFailedToast';
 import {getReciterByIdSync} from '@/services/dataService';
 import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
@@ -71,18 +71,14 @@ export function useSurahOptions(
   const {navigateToReciterProfile} = useReciterNavigation();
   const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
   const downloadProgress = useDownloadProgress(downloadId);
-  const isTrackDownloadedBase = useIsDownloaded(
+  // The rule playback uses, so "Download" never fetches a second copy of a
+  // file that already plays (one an older version recorded without a
+  // rewayah plays in the reciter's first rewayah).
+  const isTrackDownloaded = useIsDownloadedForPlayback(
     reciterId || '__none__',
     surahId,
+    rewayatId,
   );
-  const isTrackDownloadedRewayat = useIsDownloadedWithRewayat(
-    reciterId || '__none__',
-    surahId,
-    rewayatId || '',
-  );
-  const isTrackDownloaded = rewayatId
-    ? isTrackDownloadedRewayat
-    : isTrackDownloadedBase;
   const isCurrentlyDownloading = useIsDownloading(downloadId);
   const {setDownloading, addDownload, clearDownloading, setDownloadProgress} =
     useDownloadActions();
@@ -134,6 +130,7 @@ export function useSurahOptions(
     } catch (error) {
       console.error('Download failed:', error);
       clearDownloading(downloadId);
+      showDownloadFailedToast(surah, error);
     }
   }, [
     reciterId,

@@ -14,10 +14,10 @@
  * Per line it asserts: spans index exactly into the getLineText string (one
  * separator between slots, none for blank slots); every slot hit-tests to its
  * own verse; the Allah-name map equals the token-level map of the line text;
- * Hafs tajweed equals the word-id walker on Hafs and is absent on any other
- * rewayah; every whole-word diff tint is exactly a flagged slot's whole-word
- * part (no inline marker) and every foreground index lies inside a slot's
- * whole-word part.
+ * Hafs tajweed equals the word-id walker on Hafs (a slot that holds two QPC
+ * words, 37:130:3, takes both) and is absent on any other rewayah; every
+ * whole-word diff tint is exactly a flagged slot's whole-word part (no inline
+ * marker) and every foreground index lies inside a slot's whole-word part.
  *
  * Basmala (contract C6, @ai): every one of the 112 basmallah lines draws the
  * rewayah's basmala for the surah it opens (Hafs: BASMALLAH_TEXT unchanged),
@@ -107,6 +107,7 @@ import {rewayahDiffService} from '../RewayahDiffService';
 import {getLineWordSpans, wholeWordText} from '../lineWordSpans';
 import type {FakeDKService} from '../__fixtures__/rewayahOverlayFixture';
 import {preloadTajweedData} from '@/utils/tajweedLoader';
+import {slotTajweedSegments} from '@/utils/quranWordPositions';
 import {useTajweedStore} from '@/store/tajweedStore';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 
@@ -297,13 +298,12 @@ run('overlay walkers on every line of every words DB (local only)', () => {
             for (const span of spans) {
               const verseWords = tajweed[span.info.verseKey];
               if (!verseWords) continue;
-              const tw = verseWords.find(
-                w =>
-                  Number(w.location.split(':')[2]) ===
-                  span.info.wordPositionInVerse,
+              const segments = slotTajweedSegments(
+                verseWords,
+                span.info.wordPositionInVerse,
               );
-              const rules = tw
-                ? alignWordTajweed(span.text, tw.segments)
+              const rules = segments
+                ? alignWordTajweed(span.text, segments)
                 : detectWordTafkhim(span.text);
               rules?.forEach((rule, k) => expected.set(span.start + k, rule));
             }

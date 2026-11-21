@@ -86,10 +86,24 @@ const SavedAdhkarScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Load saved adhkar on mount and when savedIds changes
+  const hasLoaded = useRef(false);
+  const lastSavedCount = useRef(savedIds.size);
   useEffect(() => {
+    // A dhikr un-saved in the reader leaves this list in place. Every
+    // change used to reload it behind the full-screen spinner, which
+    // unmounts the list: back from the reader the user saw a spinner and
+    // then the list from the top.
+    const shrank = savedIds.size < lastSavedCount.current;
+    lastSavedCount.current = savedIds.size;
+    if (shrank && hasLoaded.current) {
+      setAdhkarList(prev => prev.filter(d => savedIds.has(d.id)));
+      return;
+    }
+
     async function loadSavedAdhkar() {
       try {
-        setIsLoading(true);
+        // No spinner here: isLoading starts true for the first load, and a
+        // later reload (a dhikr saved elsewhere) keeps the list on screen.
         const saved = await adhkarService.getSaved();
 
         // Fetch full dhikr data for each saved item
@@ -101,6 +115,7 @@ const SavedAdhkarScreen: React.FC = () => {
         // Filter out nulls and reverse to show newest first
         const validAdhkar = adhkarResults.filter((d): d is Dhikr => d !== null);
         setAdhkarList(validAdhkar);
+        hasLoaded.current = true;
       } catch (error) {
         console.error('Failed to load saved adhkar:', error);
       } finally {
@@ -109,7 +124,7 @@ const SavedAdhkarScreen: React.FC = () => {
     }
 
     loadSavedAdhkar();
-  }, [savedIds.size]); // Reload when saved count changes
+  }, [savedIds]);
 
   // The list renders rows of cards: one per row, two on a wide iPad. @ai
   const rows = useMemo(

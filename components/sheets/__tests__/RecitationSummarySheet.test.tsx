@@ -45,6 +45,17 @@ jest.mock('react-native-actions-sheet', () => ({
   },
 }));
 
+jest.mock('@/components/sheets/SheetGestures', () => {
+  const {ScrollView: MockScrollView, View: MockView} =
+    jest.requireActual('react-native');
+  return {
+    SheetScrollView: MockScrollView,
+    SheetFooter: (props: object) => (
+      <MockView {...props} testID="sheet-footer" />
+    ),
+  };
+});
+
 import {RecitationSummarySheet} from '../RecitationSummarySheet';
 
 const SUMMARY: RecitationSummary = {
@@ -107,6 +118,14 @@ function buttons(r: TestRenderer.ReactTestRenderer, label: string) {
         .findAll(m => (m.type as unknown) === Text)
         .some(m => [m.props.children].flat().join('') === label),
   );
+}
+
+/** Whether a SheetFooter holds `node`, keeping the sheet's drag off it. */
+function inSheetFooter(node: TestRenderer.ReactTestInstance): boolean {
+  for (let n: TestRenderer.ReactTestInstance | null = node; n; n = n.parent) {
+    if (n.props.testID === 'sheet-footer') return true;
+  }
+  return false;
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -225,5 +244,19 @@ describe('RecitationSummarySheet', () => {
       await buttons(r, 'Show')[0].props.onPress();
     });
     expect(mockNavigate).toHaveBeenCalledWith('18:3', 293);
+  });
+
+  it('keeps the sheet drag off Done, and the list scrolling from the rows', async () => {
+    const r = await render({
+      ...SUMMARY,
+      marks: [{surah: 18, ayah: 3, word: 2, kind: 'wrong', status: 'mistake'}],
+    });
+    const [done] = buttons(r, 'Done');
+    expect(inSheetFooter(done)).toBe(true);
+    for (const label of ['Show', 'Retry', 'I read it correctly']) {
+      const rowButtons = buttons(r, label);
+      expect(rowButtons.length).toBeGreaterThan(0);
+      expect(rowButtons.map(inSheetFooter)).not.toContain(true);
+    }
   });
 });

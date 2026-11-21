@@ -7,6 +7,7 @@ type SheetProps = {
   containerStyle?: unknown;
   id?: string;
   gestureEnabled?: boolean;
+  overdrawEnabled?: boolean;
   animated?: boolean;
   overlayColor?: string;
   children?: React.ReactNode;
@@ -115,13 +116,30 @@ afterEach(() => {
   act(() => mounted.splice(0).forEach(renderer => renderer.unmount()));
 });
 
-it('passes the sheet through untouched on phones', () => {
+it('passes the sheet through on phones', () => {
   Object.assign(mockResponsive, {width: 393, isTablet: false});
   const {sheet, card} = render('menu');
   expect(sheet.containerStyle).toBe(base);
   expect(sheet.id).toBe('surah-options');
   expect(sheet.gestureEnabled).toBeUndefined();
   expect(card).toBeNull();
+});
+
+it('keeps a phone sheet from stretching up while its content scrolls', () => {
+  Object.assign(mockResponsive, {width: 393, isTablet: false});
+  expect(render().sheet.overdrawEnabled).toBe(false);
+
+  // A sheet can still ask for the stretch.
+  act(() => {
+    mounted.push(
+      TestRenderer.create(
+        <ActionSheet id="stretchy" overdrawEnabled={true}>
+          <Text>options</Text>
+        </ActionSheet>,
+      ),
+    );
+  });
+  expect(latestSheetProps('stretchy')?.overdrawEnabled).toBe(true);
 });
 
 it('shows a centered card capped at 560pt on iPad', () => {

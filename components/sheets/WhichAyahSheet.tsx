@@ -7,11 +7,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {
-  ScrollView,
-  SheetManager,
-  type SheetProps,
-} from 'react-native-actions-sheet';
+import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
 import {router} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
@@ -19,6 +15,7 @@ import {useTranslation} from 'react-i18next';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter, SheetScrollView} from './SheetGestures';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
 import {SURAHS} from '@/data/surahData';
 import {useTheme} from '@/hooks/useTheme';
@@ -369,7 +366,7 @@ function FoundAyah({
         })}
       </Text>
       {fontMgr && textWidth > 0 ? (
-        <ScrollView
+        <SheetScrollView
           style={{maxHeight: Math.round(windowHeight * AYAH_MAX_HEIGHT_SHARE)}}
           showsVerticalScrollIndicator={true}>
           <SkiaVerseText
@@ -385,7 +382,7 @@ function FoundAyah({
             arabicTextWeight={arabicTextWeight}
             textAlign="center"
           />
-        </ScrollView>
+        </SheetScrollView>
       ) : null}
       {twins.length > 0 && (
         <View style={styles.twins}>
@@ -458,6 +455,8 @@ function Waiting({
   );
 }
 
+// The sheet's buttons sit in a SheetFooter: a tap that wobbles never turns
+// into a drag of the sheet.
 function PrimaryButton({
   styles,
   theme,
@@ -470,15 +469,17 @@ function PrimaryButton({
   onPress: () => void;
 }): React.JSX.Element {
   return (
-    <Pressable
-      style={[styles.primaryButton, {backgroundColor: theme.colors.text}]}
-      onPress={onPress}
-      accessibilityRole="button">
-      <Text
-        style={[styles.primaryButtonText, {color: theme.colors.background}]}>
-        {label}
-      </Text>
-    </Pressable>
+    <SheetFooter>
+      <Pressable
+        style={[styles.primaryButton, {backgroundColor: theme.colors.text}]}
+        onPress={onPress}
+        accessibilityRole="button">
+        <Text
+          style={[styles.primaryButtonText, {color: theme.colors.background}]}>
+          {label}
+        </Text>
+      </Pressable>
+    </SheetFooter>
   );
 }
 
@@ -492,12 +493,14 @@ function SecondaryButton({
   onPress: () => void;
 }): React.JSX.Element {
   return (
-    <Pressable
-      style={styles.secondaryButton}
-      onPress={onPress}
-      accessibilityRole="button">
-      <Text style={styles.secondaryButtonText}>{label}</Text>
-    </Pressable>
+    <SheetFooter>
+      <Pressable
+        style={styles.secondaryButton}
+        onPress={onPress}
+        accessibilityRole="button">
+        <Text style={styles.secondaryButtonText}>{label}</Text>
+      </Pressable>
+    </SheetFooter>
   );
 }
 

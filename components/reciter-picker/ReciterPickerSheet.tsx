@@ -10,8 +10,8 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 import {moderateScale} from '@/utils/scale';
-import {FlatList} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFlatList} from '@/components/sheets/SheetGestures';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
@@ -27,11 +27,18 @@ import {
 export interface ReciterPickerItem {
   id: string;
   name: string;
+  // The reciter's catalogue name, which the bundled photos are keyed by.
+  // `name` is what is shown and may be localised; an Arabic name finds no
+  // photo. Falls back to `name`.
+  imageName?: string;
   imageUrl: string | null;
   subtitle: string;
   // Extra strings matched by search besides the name (e.g. English and Arabic
-  // names, rewayah names).
+  // names).
   searchTerms: string[];
+  // Rewayah names, matched by search apart from searchTerms: they join reader
+  // and teacher with "A'n" ("from"), which must not count as an article.
+  rewayahTerms?: string[];
 }
 
 interface ReciterPickerSheetProps {
@@ -48,6 +55,7 @@ interface ReciterPickerSheetProps {
 const PICKER_FIELDS: readonly SearchField<ReciterPickerItem>[] = [
   {get: item => item.name, weight: 1},
   {get: item => item.searchTerms, weight: 0.9},
+  {get: item => item.rewayahTerms ?? [], weight: 0.9, articleSpellings: false},
 ];
 
 export function ReciterPickerSheet({
@@ -91,7 +99,7 @@ export function ReciterPickerSheet({
           <View style={styles.reciterImageContainer}>
             <ReciterImage
               imageUrl={item.imageUrl || undefined}
-              reciterName={item.name}
+              reciterName={item.imageName ?? item.name}
               style={styles.reciterImage}
               profileIconSize={moderateScale(20)}
             />
@@ -165,7 +173,7 @@ export function ReciterPickerSheet({
           />
         </View>
 
-        <FlatList
+        <SheetFlatList
           data={filteredItems}
           renderItem={renderItem}
           keyExtractor={item => item.id}

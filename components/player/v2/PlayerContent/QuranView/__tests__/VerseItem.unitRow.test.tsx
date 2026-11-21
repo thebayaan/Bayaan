@@ -4,7 +4,8 @@
  * the rewayah's OWN verse. Its pill, text, selection, bookmark / note dots
  * and verse-actions payload follow that verse in the rewayah's numbering;
  * its translations, notes, word by word and reflections come per Hafs verse
- * it holds; the unnumbered Fatiha basmala has no number and no actions.
+ * it holds; the unnumbered Fatiha basmala has no number and no verse
+ * actions, and its words open Word Study alone.
  * Real slots (the verse-units fixture): Warsh al-Fatihah (Hafs 1:7 split
  * into Warsh 1:6 and 1:7) and al-‘Asr (Warsh 103:1 = Hafs 103:1 + 103:2).
  * Hafs rows: VerseItem.hafsGolden.test.tsx.
@@ -138,6 +139,8 @@ import {fixtureUnits} from '../__fixtures__/verseUnitsFixtures';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {StyleSheet} from 'react-native'; // @ai
+import {HIGHLIGHT_COLORS} from '@/types/verse-annotations'; // @ai
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -255,6 +258,7 @@ beforeEach(() => {
     notedVerseKeys: new Set(),
     bookmarkRows: {},
     noteRows: {},
+    highlightRows: {}, // @ai
   } as never);
 });
 
@@ -409,6 +413,37 @@ describe('bookmark and note dots from the stored rows (contract section 3)', () 
   });
 });
 
+// @ai-start
+describe('colour highlight from the stored rows (contract section 3)', () => {
+  const background = (key: string) => {
+    const r = render(row(fatihah, key));
+    const style = StyleSheet.flatten(rowPressable(r).props.style);
+    act(() => r.unmount());
+    return style.backgroundColor;
+  };
+
+  it('a Warsh row at Warsh 1:7 (anchor 1:7:5) tints Warsh 1:7 only', () => {
+    useVerseAnnotationsStore.setState({
+      highlightRows: {
+        '1:7:5': {verseKey: '1:7:5', rewayahId: 'warsh', color: 'green'},
+      },
+    } as never);
+    expect(background('1:7')).toBe(HIGHLIGHT_COLORS.green);
+    expect(background('1:6')).toBeUndefined();
+  });
+
+  it('a Hafs row on Hafs 1:7 tints both Warsh verses holding it', () => {
+    useVerseAnnotationsStore.setState({
+      highlightRows: {
+        '1:7': {verseKey: '1:7', rewayahId: 'hafs', color: 'blue'},
+      },
+    } as never);
+    expect(background('1:6')).toBe(HIGHLIGHT_COLORS.blue);
+    expect(background('1:7')).toBe(HIGHLIGHT_COLORS.blue);
+  });
+});
+// @ai-end
+
 describe('Hafs-aligned content per Hafs verse', () => {
   it('Hafs 1:7: its translation once under Warsh 1:6, the note under both', () => {
     const note =
@@ -502,16 +537,46 @@ describe('word by word: a Hafs grid per Hafs verse, cut to the row', () => {
     ]);
   });
 
-  it('a word opens the word detail of its Hafs verse', () => {
+  // @ai-start
+  it("a word opens Word Study of the row's verse at the word of its Hafs verse", () => {
     // The sheet stays open: the word stays highlighted.
     mockSheetShow.mockImplementationOnce(() => new Promise(() => undefined));
     render(row(fatihah, '1:7'), {showWBW: true});
     act(() => mockHandlers.onWordPress?.(6));
     expect(mockSheetShow.mock.calls).toEqual([
-      ['word-detail', {payload: {verseKey: '1:7', position: 6}}],
+      [
+        'verse-actions',
+        {
+          payload: {
+            verseKey: '1:7',
+            surahNumber: 1,
+            ayahNumber: 7,
+            source: 'player',
+            rewayah: 'warsh',
+            unitKeys: ['1:7'],
+            initialScreen: 'words',
+            word: {verseKey: '1:7', position: 6},
+          },
+        },
+      ],
+    ]);
+    // The verse is selected, as a long press selects it.
+    const sel = useVerseSelectionStore.getState();
+    expect([sel.selectedVerseKey, sel.selectedRewayah]).toEqual([
+      '1:7',
+      'warsh',
     ]);
     expect(last('WBWVerseView').selectedWordPosition).toBe(6);
   });
+
+  it('the word is let go when the sheet closes', async () => {
+    render(row(fatihah, '1:7'), {showWBW: true});
+    await act(async () => {
+      mockHandlers.onWordPress?.(6);
+    });
+    expect(last('WBWVerseView').selectedWordPosition).toBeNull();
+  });
+  // @ai-end
 });
 
 describe('the unnumbered Fatiha basmala (Madani count)', () => {
@@ -533,4 +598,45 @@ describe('the unnumbered Fatiha basmala (Madani count)', () => {
     expect(mockHaptics).not.toHaveBeenCalled();
     expect(useVerseSelectionStore.getState().selectedVerseKey).toBeNull();
   });
+
+  // @ai-start
+  it('a word opens Word Study alone at that word of Hafs 1:1, selecting no verse', () => {
+    // The sheet stays open: the word stays lifted.
+    mockSheetShow.mockImplementationOnce(() => new Promise(() => undefined));
+    render(basmala, {showWBW: true, source: 'mushaf'});
+    act(() => mockHandlers.onWordPress?.(2));
+    expect(mockSheetShow.mock.calls).toEqual([
+      [
+        'verse-actions',
+        {
+          payload: {
+            verseKey: '1:1',
+            surahNumber: 1,
+            ayahNumber: 1,
+            source: 'mushaf',
+            rewayah: 'warsh',
+            initialScreen: 'words',
+            word: {verseKey: '1:1', position: 2},
+            wordStudyOnly: true,
+          },
+        },
+      ],
+    ]);
+    // No verse: nothing selected, so no row lights up as selected.
+    const sel = useVerseSelectionStore.getState();
+    expect([sel.selectedVerseKey, sel.selectedRewayah]).toEqual([null, null]);
+    expect(last('WBWVerseView').selectedWordPosition).toBe(2);
+    // The grid buzzes for the word itself; the row adds nothing.
+    expect(mockHaptics).not.toHaveBeenCalled();
+  });
+
+  it('the basmala word is let go when the sheet closes', async () => {
+    render(basmala, {showWBW: true});
+    await act(async () => {
+      mockHandlers.onWordPress?.(4);
+    });
+    expect(mockSheetShow).toHaveBeenCalledTimes(1);
+    expect(last('WBWVerseView').selectedWordPosition).toBeNull();
+  });
+  // @ai-end
 });

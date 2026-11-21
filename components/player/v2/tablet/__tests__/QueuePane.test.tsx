@@ -37,12 +37,13 @@ jest.mock('@/hooks/useReciterNavigation', () => ({
 type MockTrack = {id: string; title: string; reciterId?: string};
 let mockQueue: {tracks: MockTrack[]; currentIndex: number};
 let mockRepeatMode = 'none';
+let mockPlaybackState = 'paused';
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: (selector: (s: unknown) => unknown) =>
     selector({
       queue: mockQueue,
       settings: {repeatMode: mockRepeatMode},
-      playback: {state: 'paused'},
+      playback: {state: mockPlaybackState},
     }),
 }));
 jest.mock('../../PlayerContent/QueueList', () => ({
@@ -166,6 +167,7 @@ beforeEach(() => {
   // a was played, b is playing, c and d are up next.
   mockQueue = {tracks: ['a', 'b', 'c', 'd'].map(track), currentIndex: 1};
   mockRepeatMode = 'none';
+  mockPlaybackState = 'paused';
   jest.clearAllMocks();
 });
 
@@ -343,6 +345,35 @@ describe('QueuePane', () => {
     const r = render();
     await act(async () => {
       await button(r, 'Surah d, Reciter').props.onPress();
+    });
+    expect(mockActions.updateQueue).toHaveBeenCalledWith(mockQueue.tracks, 3);
+    expect(mockActions.play).toHaveBeenCalled();
+  });
+
+  // A tap on it used to load the track again: a long surah went back to 0:00.
+  it('leaves the playing track alone when its row is tapped', () => {
+    const r = render();
+    const rows = r.root.findAll(
+      n => n.props.accessibilityLabel === 'Surah b, Reciter',
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.props.onPress).toBeUndefined();
+      expect(row.props.accessibilityRole).toBeUndefined();
+    }
+  });
+
+  // Once the queue has ended, its last surah sits at 0:00 and nothing plays,
+  // so a tap loses no place. Play starts the queue over, so the row is the
+  // way to hear that surah again.
+  it('plays the last track again from its row once the queue has ended', async () => {
+    mockQueue = {...mockQueue, currentIndex: 3};
+    mockPlaybackState = 'ended';
+    const row = button(render(), 'Surah d, Reciter');
+    expect(row).toBeDefined();
+    expect(row.props.accessibilityRole).toBe('button');
+    await act(async () => {
+      await row.props.onPress();
     });
     expect(mockActions.updateQueue).toHaveBeenCalledWith(mockQueue.tracks, 3);
     expect(mockActions.play).toHaveBeenCalled();

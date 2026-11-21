@@ -1,11 +1,10 @@
-import React, {useEffect, useState} from 'react';
+import React, {useMemo} from 'react'; // @ai
 import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
-import {getReciterById} from '@/services/dataService';
+import {getReciterByIdSync} from '@/services/dataService'; // @ai
 import {Feather} from '@expo/vector-icons';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -36,25 +35,14 @@ export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
       const {theme} = useTheme();
       const {t} = useTranslation(['collection', 'common']);
       const styles = createStyles(theme);
-      const [reciter, setReciter] = useState<Reciter | null>(null);
-
-      useEffect(() => {
-        let mounted = true;
-        const loadReciter = async () => {
-          try {
-            const data = await getReciterById(reciterId);
-            if (mounted && data) {
-              setReciter(data);
-            }
-          } catch (error) {
-            console.error('Error loading reciter:', error);
-          }
-        };
-        loadReciter();
-        return () => {
-          mounted = false;
-        };
-      }, [reciterId]);
+      // @ai-start
+      // Read from the catalogue in memory. The async lookup reloaded the
+      // whole catalogue for every row and drew the row a moment late.
+      const reciter = useMemo(
+        () => getReciterByIdSync(reciterId) ?? null,
+        [reciterId],
+      );
+      // @ai-end
 
       if (!reciter) return null;
 
