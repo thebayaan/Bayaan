@@ -9,7 +9,7 @@
 
 ## Summary
 
-Add two optional branding fields, `updateSource?: UpdateSource` and `openUpdate?: () => Promise<boolean>`. When a tenant sets it, the app asks it for the newest build number that the tenant recommends on each platform. If that number is higher than the build number of the installed binary, a small card at the top of the Listen tab says that a new version is available. "Update" opens the store page of the app, or runs the tenant's `openUpdate` when it is set. The close button hides the card for 7 days.
+Add two optional branding fields, `updateSource?: UpdateSource` and `openUpdate?: (storeUrl: string) => Promise<boolean>`. When a tenant sets it, the app asks it for the newest build number that the tenant recommends on each platform. If that number is higher than the build number of the installed binary, a small card at the top of the Listen tab says that a new version is available. "Update" opens the store page of the app, or runs the tenant's `openUpdate` when it is set. The close button hides the card for 7 days.
 
 Both fields are absent on Bayaan, so Bayaan's behavior does not change: no request, no card. The card never blocks the app. There is no "must update" screen and no push notification.
 
@@ -62,10 +62,11 @@ export interface Branding {
   /**
    * RFC-025 — optional handler for the card's "Update" button, for a tenant
    * that starts the update itself (for example the Play in-app update
-   * sheet). Resolve true when it handled the update. False, a rejection, or
-   * an absent field opens the store page instead. Bayaan ships this unset.
+   * sheet). It gets the store link of this platform. Resolve true when it
+   * handled the update. False, a rejection, or an absent field opens the
+   * store link instead. Bayaan ships this unset.
    */
-  openUpdate?: () => Promise<boolean>;
+  openUpdate?: (storeUrl: string) => Promise<boolean>;
 }
 ```
 
@@ -111,7 +112,7 @@ The check never throws, and it never blocks start-up: the card hook calls it aft
 
 Both come from branding, never from a literal. `itms-apps://` opens the App Store app directly, with no Safari step.
 
-`openStoreForUpdate()` first calls `branding.openUpdate` when a tenant sets it. A tenant that wants the Play in-app update sheet puts that call (and its native library) in its own branding, and resolves `true`. When the handler resolves `false` or rejects (for example on a phone without Google Play), the store link above opens. The shared code needs no new native dependency.
+`openStoreForUpdate()` first calls `branding.openUpdate(storeUrl)` when a tenant sets it. A tenant that wants the Play in-app update sheet puts that call (and its native library) in its own branding, and resolves `true`. When the handler resolves `false` or rejects (for example on a phone without Google Play), the store link above opens. The shared code needs no new native dependency.
 
 ### The card
 
