@@ -21,8 +21,10 @@ import Animated, {
   withTiming,
   Easing,
   withSequence,
+  cancelAnimation, // @ai
 } from 'react-native-reanimated';
 import {Theme} from '@/utils/themeUtils';
+import {useScreenFocusEffect} from '@/hooks/useScreenFocusEffect'; // @ai
 import {DesignFamily, FullWidthDesign} from './types';
 
 // ===== SHARED STYLES =====
@@ -32,7 +34,8 @@ const abs = StyleSheet.absoluteFill;
 function ArabesqueBackground({theme}: {theme: Theme}) {
   const shimmerX = useSharedValue(-1);
 
-  React.useEffect(() => {
+  // Only while the screen is focused (see useScreenFocusEffect). @ai
+  const shimmer = React.useCallback(() => {
     shimmerX.value = withRepeat(
       withSequence(
         withTiming(1, {duration: 3000, easing: Easing.inOut(Easing.ease)}),
@@ -40,7 +43,9 @@ function ArabesqueBackground({theme}: {theme: Theme}) {
       ),
       -1,
     );
+    return () => cancelAnimation(shimmerX); // @ai
   }, [shimmerX]);
+  useScreenFocusEffect(shimmer); // @ai
 
   const shimmerStyle = useAnimatedStyle(() => ({
     transform: [{translateX: shimmerX.value * 200}],
