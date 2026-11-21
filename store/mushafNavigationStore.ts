@@ -10,7 +10,7 @@ interface MushafNavigationState {
   // @ai-start
   /**
    * How many mushaf readers (MushafViewer) are mounted. Only a reader
-   * carries out a request made with `navigateToVerse`. With none open (the
+   * carries out a request made with `navigateTo`. With none open (the
    * verse sheet was opened from the audio player), a request did nothing
    * and then replayed the next time a reader opened: ask `isReaderOpen`
    * first and open the reader's route instead.
@@ -18,10 +18,15 @@ interface MushafNavigationState {
   readerCount: number;
   /** A reader mounted; returns what to call when it unmounts. */
   readerOpened: () => () => void;
+  // Turn the open reader to `page`, select `verseKey` there, if any, and name
+  // `surahId` in the header, if any (Similar Verses, a recitation mark, a
+  // link to the open reader).
+  navigateTo: (request: {
+    page: number;
+    verseKey?: string;
+    surahId?: number;
+  }) => void;
   // @ai-end
-  navigateToVerse: (verseKey: string, page: number) => void;
-  // A link to the open reader: its page, and its verse to select, if any. @ai
-  navigateToPage: (page: number, surahId?: number, verseKey?: string) => void;
   clear: () => void;
 }
 
@@ -41,16 +46,7 @@ export const useMushafNavigationStore = create<MushafNavigationState>(set => ({
       set(s => ({readerCount: Math.max(0, s.readerCount - 1)}));
     };
   },
-  // @ai-end
-  navigateToVerse: (verseKey, page) =>
-    set(s => ({
-      targetPage: page,
-      targetVerseKey: verseKey,
-      targetSurahId: null, // @ai
-      requestId: s.requestId + 1,
-    })),
-  // @ai-start
-  navigateToPage: (page, surahId, verseKey) =>
+  navigateTo: ({page, verseKey, surahId}) =>
     set(s => ({
       targetPage: page,
       targetVerseKey: verseKey ?? null,

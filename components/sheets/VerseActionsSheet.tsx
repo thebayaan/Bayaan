@@ -950,7 +950,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         }
         useMushafNavigationStore
           .getState()
-          .navigateToVerse(targetVerseKey, page);
+          .navigateTo({page, verseKey: targetVerseKey});
         return;
       }
       // No reader is open: the sheet was opened from the audio player. The
