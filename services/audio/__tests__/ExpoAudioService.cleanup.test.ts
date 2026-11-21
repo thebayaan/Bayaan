@@ -17,6 +17,7 @@ import {ExpoAudioService} from '../ExpoAudioService';
 /** The slice of AudioPlayer that loadTrack() uses. */
 class FakePlayer {
   isLoaded = false;
+  addListener = jest.fn(() => ({remove: jest.fn()}));
   replace = jest.fn(async (_source: {uri: string}) => {
     this.isLoaded = false;
     // The new source finishes loading on the next tick.
