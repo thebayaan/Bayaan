@@ -2,7 +2,7 @@
 
 | Field     | Value                                                                                                    |
 | --------- | -------------------------------------------------------------------------------------------------------- |
-| Status    | Proposed (the design is doc-only; stacked code PRs follow after the shape is agreed). This PR also has one separate fix: the Home animations that run while Home is hidden (see "A fix in this PR"). |
+| Status    | Proposed (the design is doc-only; stacked code PRs follow after the shape is agreed)                     |
 | Date      | 2026-11-20                                                                                               |
 | Author    | Omar Zarka (Qariah)                                                                                      |
 | Builds on | RFC-012 and RFC-020 (the `branding.searchFilters` seam and the chip flow); the Quran word search of #521 |
@@ -291,14 +291,9 @@ Stacked code PRs, each with its tests, each behind the switch:
 
 **Evidence from the prototype** (on `develop` with #521): the whole Jest suite passes (506 suites). The go-to source is a copy of the Mushaf parser, and a differential test compares the two on 1,541 inputs in 3 states. A release build passed 22 of 22 device checks on a mid-range Android phone.
 
-### A fix in this PR: the Home animations run while Home is hidden
+### A fault that the timing found
 
-The timing of the prototype found a fault in `develop` that slows each Android screen, with the switch on or off. The fix is one separate commit in this PR, so it can merge without the RFC, or move to its own PR.
-
-- **Impact.** On a 2 GB Android phone (Galaxy A10s), the main thread is at about 99% of one core on the Search and Settings tabs, with nothing on the screen in motion. Each JS read that waits for the main thread then waits long: on Android, expo-audio serves `playing` and `currentTime` on the main thread. A search there took up to 0.5 s more, and more while a track played.
-- **Cause.** `RecitersHero` mounts endless Reanimated animations: the 20 tile columns of `BrowseAllHero` (`components/hero/BrowseAllHero.tsx:153`, `withRepeat(..., -1)`) and the shimmer of the random-recitation background (`components/hero/random-recitation/backgrounds.tsx:36`). The Home tab stays mounted behind the other tabs, and the Home list stays mounted (and frozen) under a pushed screen. The animations stop only on unmount. A system trace of the Search tab shows 58 frames a second, each in the animation phase, and no draw.
-- **Fix.** A hook, `hooks/useScreenFocusEffect.ts`, runs an effect while its screen has focus, and runs the cleanup on blur. It listens to the focus and blur events, so it also works in a screen that `freezeOnBlur` froze, where an effect on a focus state does not run. Outside a screen it runs like `useEffect`. The tile columns (each resumes where it stopped), the shimmer and the bars of `NowPlayingIndicator` use it.
-- **Result.** The main thread on the Search and Settings tabs went from 99% to 7%. On a visible Home the animations run as before. The hook has 4 tests, and the hero, sheet and player suites pass with no change.
+The timing of the prototype found that the Home hero animations run while Home is hidden. On a 2 GB Android phone this keeps the main thread at about 99% on every tab, so each screen is slower, with the switch on or off. The fix is not part of this RFC: it is #552.
 
 ## Alternatives considered
 
