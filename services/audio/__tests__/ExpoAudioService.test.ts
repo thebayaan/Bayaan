@@ -39,9 +39,6 @@ class FakeAudioPlayer {
   volume = 1;
   muted = false;
 
-  // The service waits on status updates while it loads; none are sent here.
-  addListener = jest.fn(() => ({remove: jest.fn()}));
-
   replace = jest.fn(async (_source: {uri: string}) => {
     // Mimic expo-audio: replace() resets isLoaded then loads the new source.
     // Tests drive the loaded state via simulateLoaded().

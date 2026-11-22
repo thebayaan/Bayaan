@@ -237,4 +237,25 @@ describe('ExpoAudioService: waiting for a load without JS timers', () => {
 
     expect(loaded).toBe(false);
   });
+
+  it('the timer still ends the wait in the foreground, with no status event', async () => {
+    const {service, player} = makeService();
+    player.replace.mockImplementationOnce(async () => {
+      player.isLoaded = false;
+    });
+
+    let loaded = false;
+    const loading = service.loadTrack(URL_A).then(() => {
+      loaded = true;
+    });
+    await jest.advanceTimersByTimeAsync(100);
+    expect(loaded).toBe(false);
+
+    player.isLoaded = true;
+    await jest.advanceTimersByTimeAsync(50);
+    await loading;
+
+    expect(loaded).toBe(true);
+    expect(service.isSourceReady(URL_A)).toBe(true);
+  });
 });
