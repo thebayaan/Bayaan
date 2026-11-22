@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React, {useEffect} from 'react';
 import {View, StyleSheet} from 'react-native';
 import Animated, {
   useSharedValue,
@@ -10,10 +10,8 @@ import Animated, {
   interpolate,
   Easing,
   Extrapolation,
-  cancelAnimation, // @ai
 } from 'react-native-reanimated';
 import {moderateScale} from '@/utils/scale';
-import {useScreenFocusEffect} from '@/hooks/useScreenFocusEffect'; // @ai
 import {LinearGradient} from 'expo-linear-gradient';
 import {getRandomColors} from '@/utils/gradientColors';
 
@@ -59,9 +57,7 @@ export const NowPlayingIndicator: React.FC<NowPlayingIndicatorProps> = ({
     return [progress1, progress2, progress3].slice(0, barCount);
   }, [barCount, progress1, progress2, progress3]);
 
-  // Only while the screen is focused: a row of the playing surah on a
-  // hidden tab or under the next screen kept the UI thread busy. @ai
-  const animate = useCallback(() => {
+  useEffect(() => {
     if (isPlaying) {
       progressArray.forEach((progress, index) => {
         const baseDuration = animationDuration;
@@ -145,18 +141,12 @@ export const NowPlayingIndicator: React.FC<NowPlayingIndicatorProps> = ({
           withRepeat(withSequence(...sequence), -1, false),
         );
       });
-      // @ai-start
-      return () => {
-        progressArray.forEach(progress => cancelAnimation(progress));
-      };
-      // @ai-end
     } else {
       progressArray.forEach(progress => {
         progress.value = withTiming(0, {duration: animationDuration / 3});
       });
     }
   }, [isPlaying, animationDuration, progressArray]);
-  useScreenFocusEffect(animate); // @ai
 
   // Pre-create animated styles
   const animatedStyle1 = useAnimatedStyle(() => {
