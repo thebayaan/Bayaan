@@ -13,6 +13,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {resumeRecent} from '@/services/player/utils/resumeRecent';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useShownPlaybackTime} from '@/services/player/store/progressStore'; // @ai
 import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {useRouter, Link} from 'expo-router';
@@ -79,17 +80,19 @@ export const RecentReciterCard = ({
   const {updateQueue, play, pause} = usePlayerActions();
   const router = useRouter();
   // Single consolidated subscription with shallow equality
-  const {playbackStatus, currentIndex, tracks, storePosition, storeDuration} =
-    usePlayerStore(
-      state => ({
-        playbackStatus: state.playback.state,
-        currentIndex: state.queue.currentIndex,
-        tracks: state.queue.tracks,
-        storePosition: state.playback.position,
-        storeDuration: state.playback.duration,
-      }),
-      shallow,
-    );
+  const {playbackStatus, currentIndex, tracks} = usePlayerStore(
+    state => ({
+      playbackStatus: state.playback.state,
+      currentIndex: state.queue.currentIndex,
+      tracks: state.queue.tracks,
+    }),
+    shallow,
+  );
+  // @ai-start
+  // Held at the shown values in the background (see useShownPlaybackTime).
+  const {position: storePosition, duration: storeDuration} =
+    useShownPlaybackTime();
+  // @ai-end
 
   // Check if this specific card represents the currently active track in the player
   const isCurrentlyPlaying = useMemo(() => {
