@@ -15,6 +15,10 @@ import {
 } from '@/components/Icons';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {localizeDigits} from '@/i18n/format';
+import {
+  SurahGradientMesh,
+  paletteForSurah,
+} from '@/components/hero/SurahGradientMesh';
 
 /**
  * Artwork for the Collection tab and the screens behind it. A category
@@ -41,21 +45,75 @@ export const CATEGORY_COLORS: Record<CollectionCategoryId, string> = {
   uploads: '#8B5CF6',
 };
 
-/** Muted squares behind the surah-name glyphs. */
-export const COVER_COLORS = [
-  '#2F5D50',
-  '#7A5A3E',
-  '#3D4E6B',
-  '#5C4470',
-  '#8A4F4F',
-  '#4D6B3D',
-];
-
-export function coverColor(surahId: number): string {
-  return COVER_COLORS[Math.abs(surahId) % COVER_COLORS.length];
+/**
+ * A surah's tile in the Surahs tab style: its gradient mesh (the same
+ * palette the Surahs cards and hero use) under the name glyph. Drawn on
+ * the device, so it works offline and follows the theme.
+ */
+function SurahMeshTile({
+  surahId,
+  width,
+  height,
+  glyph,
+  style,
+}: {
+  surahId: number | null;
+  width: number;
+  height: number;
+  glyph: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const {theme} = useTheme();
+  // Small tiles get stronger colour so they still read as distinct.
+  const intensity = Math.min(3, Math.max(1, 120 / Math.max(width, 1)));
+  return (
+    <View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: Color(theme.colors.text)
+            .alpha(theme.isDarkMode ? 0.06 : 0.035)
+            .string(),
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          paddingHorizontal: width * 0.08,
+        },
+        style,
+      ]}>
+      {surahId !== null ? (
+        <SurahGradientMesh
+          palette={paletteForSurah(surahId)}
+          isDark={theme.isDarkMode}
+          viewBoxWidth={120}
+          viewBoxHeight={120}
+          intensity={intensity}
+        />
+      ) : null}
+      {glyph && surahId !== null ? (
+        <Text
+          style={{
+            fontFamily: 'SurahNames',
+            fontSize: width * 0.3,
+            color: theme.colors.text,
+            width: '100%',
+            textAlign: 'center',
+            textShadowColor: 'rgba(0, 0, 0, 0.1)',
+            textShadowOffset: {width: 0, height: 1},
+            textShadowRadius: 2,
+          }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.4}>
+          {surahGlyphMap[surahId] ?? ''}
+        </Text>
+      ) : null}
+    </View>
+  );
 }
 
-/** A surah's name glyph on its colour. */
+/** A surah's cover: the Surahs tab card's mesh and name glyph. */
 export function SurahCover({
   surahId,
   size,
@@ -67,35 +125,22 @@ export function SurahCover({
   radius?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const {theme} = useTheme();
   return (
-    <View
+    <SurahMeshTile
+      surahId={surahId}
+      width={size}
+      height={size}
+      glyph
       style={[
         {
-          width: size,
-          height: size,
           borderRadius: radius ?? Math.round(size * 0.24),
-          backgroundColor: coverColor(surahId),
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          paddingHorizontal: size * 0.08,
+          borderWidth: 0.5,
+          borderColor: Color(theme.colors.text).alpha(0.08).string(),
         },
         style,
-      ]}>
-      <Text
-        style={{
-          fontFamily: 'SurahNames',
-          fontSize: size * 0.34,
-          color: '#FFFFFF',
-          width: '100%',
-          textAlign: 'center',
-        }}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.4}>
-        {surahGlyphMap[surahId] ?? ''}
-      </Text>
-    </View>
+      ]}
+    />
   );
 }
 
@@ -109,6 +154,7 @@ export function SurahMosaic({
   size: number;
   radius?: number;
 }) {
+  const {theme} = useTheme();
   const r = radius ?? Math.round(size * 0.2);
   if (surahIds.length <= 1) {
     return <SurahCover surahId={surahIds[0] ?? 1} size={size} radius={r} />;
@@ -119,11 +165,9 @@ export function SurahMosaic({
     surahIds.length === 2
       ? [surahIds[0], surahIds[1], surahIds[1], surahIds[0]]
       : [0, 1, 2, 3].map(i => surahIds[i] ?? null);
-  // A hairline between the four squares keeps two surahs that share a
-  // colour from merging into one block.
+  // A hairline between the four squares keeps them apart.
   const gap = Math.max(1, Math.round(size * 0.025));
   const half = Math.floor((size - gap) / 2);
-  const showGlyphs = size >= 80;
   return (
     <View
       style={{
@@ -135,35 +179,18 @@ export function SurahMosaic({
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         alignContent: 'space-between',
+        borderWidth: 0.5,
+        borderColor: Color(theme.colors.text).alpha(0.08).string(),
       }}>
       {ids.map((id, i) => (
-        <View
+        <SurahMeshTile
           key={i}
-          style={{
-            width: half,
-            height: half,
-            backgroundColor:
-              id === null ? 'rgba(127,127,127,0.18)' : coverColor(id),
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: half * 0.1,
-          }}>
-          {showGlyphs && id !== null ? (
-            <Text
-              style={{
-                fontFamily: 'SurahNames',
-                fontSize: half * 0.32,
-                color: 'rgba(255,255,255,0.92)',
-                width: '100%',
-                textAlign: 'center',
-              }}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.4}>
-              {surahGlyphMap[id] ?? ''}
-            </Text>
-          ) : null}
-        </View>
+          surahId={id}
+          width={half}
+          height={half}
+          // Glyphs only where they're big enough to read.
+          glyph={size >= 80}
+        />
       ))}
     </View>
   );
