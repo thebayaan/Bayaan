@@ -107,18 +107,16 @@ export function useCollectionPreviews(): Record<
       loved: newestLoved
         ? {kind: 'cover', surahId: Number(newestLoved.surahId)}
         : null,
-      // A small mosaic shows its first surah; skip one that Loved already
-      // shows so the two rows don't look the same.
+      // A small mosaic shows its first surah; lead with one Loved and
+      // Downloads aren't already showing so the rows don't look the same.
       playlists:
         newestPlaylist && playlistSurahs.length > 0
           ? {
               kind: 'mosaic',
-              surahIds:
-                newestLoved &&
-                playlistSurahs.length > 1 &&
-                playlistSurahs[0] === Number(newestLoved.surahId)
-                  ? [...playlistSurahs.slice(1), playlistSurahs[0]]
-                  : playlistSurahs,
+              surahIds: leadWithUnused(playlistSurahs, [
+                newestLoved ? Number(newestLoved.surahId) : null,
+                newestDownload ? Number(newestDownload.surahId) : null,
+              ]),
             }
           : null,
       downloads: newestDownload
@@ -159,6 +157,12 @@ export function useCollectionPreviews(): Record<
     hasNotes,
     uploadsCount,
   ]);
+}
+
+/** Moves the first surah not in `used` to the front, keeping the rest. */
+function leadWithUnused(ids: number[], used: Array<number | null>): number[] {
+  const i = ids.findIndex(id => !used.includes(id));
+  return i <= 0 ? ids : [ids[i], ...ids.slice(0, i), ...ids.slice(i + 1)];
 }
 
 /** The first four surahs of each playlist, for their mosaic covers. */
