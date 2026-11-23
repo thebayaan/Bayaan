@@ -368,6 +368,15 @@ export default function PlaylistsScreen() {
           name={item.name}
           itemCount={item.itemCount}
           color={item.color}
+          art={
+            (covers[item.id]?.length ?? 0) > 0 ? ( // @ai
+              <SurahMosaic
+                surahIds={covers[item.id]}
+                size={moderateScale(50)}
+                radius={moderateScale(10)}
+              />
+            ) : undefined
+          }
           onPress={() => handlePlaylistPress(item.id)}
           onLongPress={() => handlePlaylistOptions(item)}
           onOptionsPress={() => handlePlaylistOptions(item)}

@@ -635,7 +635,11 @@ const LovedScreen = () => {
           onSearch={() => setSearching(true)}
           extra={
             <CollectionOptionsMenu payload={optionsPayload}>
-              <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+              <Pressable
+                onPress={handleOptionsMenu}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('collectionScreen.actions.moreOptions')}>
                 <Feather
                   name="more-horizontal"
                   size={moderateScale(20)}
@@ -839,6 +843,9 @@ const LovedScreen = () => {
           surahId={track.surahId}
           rewayatId={track.rewayatId}
           userRecitationId={track.userRecitationId}
+          // The cover already says which surah it is. @ai
+          art={<SurahCover surahId={surah.id} size={moderateScale(50)} />}
+          showSurahNumber={false}
           onPress={() => handleSurahPress(track, reciter, surah)}
           onPlayPress={() => handleSurahPress(track, reciter, surah)}
           onOptionsPress={() => handleShowOptions(track, reciter, surah)}

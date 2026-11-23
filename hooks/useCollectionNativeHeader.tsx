@@ -26,6 +26,9 @@ export function useCollectionNativeHeader({
     if (!USE_GLASS) return;
 
     navigation.setOptions({
+      // VoiceOver and the back menu read `title`; without it they read the
+      // route name ("collection/loved"). @ai
+      title,
       headerTitle: hasContent
         ? () => (
             <RNAnimated.Text

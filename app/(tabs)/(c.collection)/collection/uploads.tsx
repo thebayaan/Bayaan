@@ -285,6 +285,10 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
         </Pressable>
         <Pressable
           style={styles.itemOptionsZone}
+          accessibilityRole="button"
+          accessibilityLabel={i18n.t(
+            'collection:collectionScreen.actions.moreOptions',
+          )}
           onPress={() => onShowOptions(item, index)}>
           {isCurrentTrack ? (
             <NowPlayingIndicator
@@ -409,7 +413,11 @@ export default function UploadsScreen() {
           onSearch={() => setSearching(true)}
           extra={
             <CollectionOptionsMenu payload={optionsPayload}>
-              <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+              <Pressable
+                onPress={handleOptionsMenu}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('collectionScreen.actions.moreOptions')}>
                 <Feather
                   name="more-horizontal"
                   size={moderateScale(20)}

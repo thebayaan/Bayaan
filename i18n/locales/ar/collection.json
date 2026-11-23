@@ -90,7 +90,8 @@
       "notes_other": "{{count}} ملاحظة"
     },
     "actions": {
-      "playAll": "تشغيل الكل"
+      "playAll": "تشغيل الكل",
+      "moreOptions": "خيارات إضافية"
     },
     "downloads": {
       "byReciter": "حسب القارئ",

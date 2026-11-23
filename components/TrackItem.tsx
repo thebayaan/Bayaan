@@ -52,6 +52,10 @@ interface TrackItemProps {
    * options aren't surah options (downloads, uploads). @ai
    */
   optionsMenu?: React.ReactNode;
+  /** Drawn in place of the reciter photo, e.g. a surah cover. @ai */
+  art?: React.ReactNode;
+  /** Prefix the title with the surah number (default true). @ai */
+  showSurahNumber?: boolean;
 }
 
 // @ai-start
@@ -67,6 +71,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     onOptionsPress,
     onLongPress,
     optionsMenu,
+    art, // @ai
+    showSurahNumber = true, // @ai
   }) => {
     const {theme} = useTheme();
     // @ai-start
@@ -188,12 +194,12 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 
     // The Arabic surah name is already shown as text in Arabic mode.
     const surahGlyph =
-      currentLanguageConfig.bilingualContent === 'ar' // @ai
+      currentLanguageConfig.bilingualContent === 'ar' || art // @ai
         ? undefined
         : surahGlyphMap[surah.id];
-    const surahTitle = `${localizeDigits(surah.id)}. ${getSurahDisplayName(
-      surah,
-    )}`;
+    const surahTitle = showSurahNumber // @ai
+      ? `${localizeDigits(surah.id)}. ${getSurahDisplayName(surah)}`
+      : getSurahDisplayName(surah);
     const knownStyle = KNOWN_STYLES.find(
       s => s === rewayat?.style?.toLowerCase(),
     );
@@ -218,11 +224,13 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         onPress={onPress}
         onLongPress={rowMenu ? undefined : onLongPress}>
         <View style={styles.imageContainer}>
-          <ReciterImage
-            reciterName={reciter?.name || ''}
-            imageUrl={reciter?.image_url || undefined}
-            style={styles.reciterImage}
-          />
+          {art ?? ( // @ai
+            <ReciterImage
+              reciterName={reciter?.name || ''}
+              imageUrl={reciter?.image_url || undefined}
+              style={styles.reciterImage}
+            />
+          )}
         </View>
 
         <View style={styles.trackInfo}>

@@ -11,6 +11,7 @@ import {Theme} from '@/utils/themeUtils';
 import {flipX} from '@/utils/rtl';
 import {useLoved} from '@/hooks/useLoved';
 import {usePlaylists} from '@/hooks/usePlaylists';
+import {usePlaylistCovers} from '@/hooks/useCollectionPreviews';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useDownloads} from '@/services/player/store/downloadSelectors';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -61,6 +62,7 @@ export function CollectionSearchResults({query}: {query: string}) {
   const router = useRouter();
   const {lovedTracks} = useLoved();
   const {playlists} = usePlaylists();
+  const playlistCovers = usePlaylistCovers(playlists);
   const {favoriteReciters} = useFavoriteReciters();
   const downloads = useDownloads();
   const uploads = useUploadsStore(s => s.recitations);
@@ -147,7 +149,12 @@ export function CollectionSearchResults({query}: {query: string}) {
         key: `playlist-${p.id}`,
         title: p.name,
         subtitle: t('common:counts.surahs', {count: p.itemCount}),
-        art: art('playlists', null),
+        art: art(
+          'playlists',
+          (playlistCovers[p.id]?.length ?? 0) > 0
+            ? {kind: 'mosaic', surahIds: playlistCovers[p.id]}
+            : null,
+        ),
         onPress: () => router.push(`/playlist/${p.id}` as never),
       }));
 
@@ -303,6 +310,7 @@ export function CollectionSearchResults({query}: {query: string}) {
     router,
     lovedTracks,
     playlists,
+    playlistCovers,
     downloads,
     bookmarks,
     notes,

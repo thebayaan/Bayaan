@@ -70,7 +70,8 @@
       "notes_other": "{{count}} notes"
     },
     "actions": {
-      "playAll": "Play all"
+      "playAll": "Play all",
+      "moreOptions": "More options"
     },
     "downloads": {
       "byReciter": "By reciter",

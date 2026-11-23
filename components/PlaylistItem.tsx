@@ -21,6 +21,8 @@ interface PlaylistItemProps {
   /** A native menu laid over the ••• button on tablets. @ai */
   optionsMenu?: React.ReactNode;
   isSelected?: boolean;
+  /** Drawn in place of the tinted icon, e.g. the playlist's mosaic. @ai */
+  art?: React.ReactNode;
 }
 
 // @ai-start
@@ -34,6 +36,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
     onOptionsPress,
     optionsMenu,
     isSelected,
+    art,
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation(['collection', 'common']);
@@ -53,14 +56,18 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
         style={[styles.playlistItem, isSelected && styles.selectedPlaylistItem]}
         onPress={handlePress}
         onLongPress={handleLongPress}>
-        <View
-          style={[
-            styles.iconContainer,
-            {backgroundColor, borderColor},
-            isSelected && styles.selectedIconContainer,
-          ]}>
-          <PlaylistIcon color={playlistColor} size={moderateScale(24)} />
-        </View>
+        {art ? (
+          <View style={styles.artContainer}>{art}</View>
+        ) : (
+          <View
+            style={[
+              styles.iconContainer,
+              {backgroundColor, borderColor},
+              isSelected && styles.selectedIconContainer,
+            ]}>
+            <PlaylistIcon color={playlistColor} size={moderateScale(24)} />
+          </View>
+        )}
         <View style={styles.playlistInfo}>
           <Text style={styles.playlistName}>{name}</Text>
           <Text style={styles.playlistSubtitle} numberOfLines={1}>
@@ -116,6 +123,11 @@ const createStyles = (theme: Theme) =>
       overflow: 'hidden',
       borderRadius: moderateScale(10),
       borderWidth: moderateScale(1),
+    },
+    artContainer: {
+      width: moderateScale(50),
+      height: moderateScale(50),
+      marginEnd: moderateScale(12),
     },
     playlistInfo: {
       flex: 1,

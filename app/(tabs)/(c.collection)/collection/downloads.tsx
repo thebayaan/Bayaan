@@ -236,7 +236,11 @@ export default function DownloadsScreen() {
           onSearch={() => setSearching(true)}
           extra={
             <CollectionOptionsMenu payload={optionsPayload}>
-              <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+              <Pressable
+                onPress={handleOptionsMenu}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('collectionScreen.actions.moreOptions')}>
                 <Feather
                   name="more-horizontal"
                   size={moderateScale(20)}
@@ -904,6 +908,9 @@ export default function DownloadsScreen() {
         reciterId={download.reciterId}
         surahId={download.surahId}
         rewayatId={download.rewayatId}
+        // The cover already says which surah it is. @ai
+        art={<SurahCover surahId={surah.id} size={moderateScale(50)} />}
+        showSurahNumber={false}
         onPress={() => handleSurahPress(download, reciter, surah)}
         onPlayPress={() => handleSurahPress(download, reciter, surah)}
         onOptionsPress={() => handleShowOptions(download, reciter, surah)}
