@@ -83,7 +83,7 @@ const SCREENS = Object.keys(COLLECTION_SORTS) as CollectionScreenKey[];
 
 interface CollectionViewState {
   prefs: Record<CollectionScreenKey, CollectionViewPref>;
-  /** Downloads: grouped under each reciter, or every surah in one list. */
+  /** Downloads: every surah in one list (default), or grouped by reciter. */
   downloadsGrouping: 'reciter' | 'surah';
   setView: (screen: CollectionScreenKey, view: CollectionView) => void;
   setSort: (screen: CollectionScreenKey, sort: string) => void;
@@ -96,7 +96,9 @@ export const useCollectionViewStore = create<CollectionViewState>()(set => ({
     CollectionViewPref
   >,
   downloadsGrouping:
-    mmkv.getString('downloadsGrouping') === 'surah' ? 'surah' : 'reciter',
+    // All surahs is the default; only a saved "By reciter" overrides it.
+    // A new key, so the old saved default ("reciter") doesn't stick.
+    mmkv.getString('downloadsGrouping.v2') === 'reciter' ? 'reciter' : 'surah',
   setView: (screen, view) =>
     set(state => {
       const next = {...state.prefs[screen], view};
@@ -110,7 +112,7 @@ export const useCollectionViewStore = create<CollectionViewState>()(set => ({
       return {prefs: {...state.prefs, [screen]: next}};
     }),
   setDownloadsGrouping: grouping => {
-    mmkv.set('downloadsGrouping', grouping);
+    mmkv.set('downloadsGrouping.v2', grouping);
     set({downloadsGrouping: grouping});
   },
 }));

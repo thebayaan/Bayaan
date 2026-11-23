@@ -758,11 +758,11 @@ export default function DownloadsScreen() {
   const groupingControl = (
     <NativeSegmentedControl
       values={[
-        t('collectionScreen.downloads.byReciter'),
         t('collectionScreen.downloads.allSurahs'),
+        t('collectionScreen.downloads.byReciter'),
       ]}
-      selectedIndex={grouping === 'reciter' ? 0 : 1}
-      onChange={index => setGrouping(index === 0 ? 'reciter' : 'surah')}
+      selectedIndex={grouping === 'surah' ? 0 : 1}
+      onChange={index => setGrouping(index === 0 ? 'surah' : 'reciter')}
       accessibilityLabel={t('collectionScreen.downloads.groupingLabel')}
       style={{marginTop: moderateScale(14), height: moderateScale(34)}}
     />
