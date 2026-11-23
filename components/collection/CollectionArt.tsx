@@ -65,7 +65,7 @@ function SurahMeshTile({
 }) {
   const {theme} = useTheme();
   // Small tiles get stronger colour so they still read as distinct.
-  const intensity = Math.min(3, Math.max(1, 120 / Math.max(width, 1)));
+  const intensity = Math.min(4, Math.max(1.4, 160 / Math.max(width, 1)));
   return (
     <View
       style={[
@@ -156,7 +156,9 @@ export function SurahMosaic({
 }) {
   const {theme} = useTheme();
   const r = radius ?? Math.round(size * 0.2);
-  if (surahIds.length <= 1) {
+  // Below 80pt four squares are too small for glyphs and read as blurs,
+  // so a small mosaic shows its first surah's cover instead.
+  if (surahIds.length <= 1 || size < 80) {
     return <SurahCover surahId={surahIds[0] ?? 1} size={size} radius={r} />;
   }
   // Two surahs sit on a diagonal; with three, the last square stays empty
@@ -183,14 +185,7 @@ export function SurahMosaic({
         borderColor: Color(theme.colors.text).alpha(0.08).string(),
       }}>
       {ids.map((id, i) => (
-        <SurahMeshTile
-          key={i}
-          surahId={id}
-          width={half}
-          height={half}
-          // Glyphs only where they're big enough to read.
-          glyph={size >= 80}
-        />
+        <SurahMeshTile key={i} surahId={id} width={half} height={half} glyph />
       ))}
     </View>
   );

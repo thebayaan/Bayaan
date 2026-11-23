@@ -56,6 +56,8 @@ interface TrackItemProps {
   art?: React.ReactNode;
   /** No row background, for rows inside a panel. @ai */
   transparent?: boolean;
+  /** Leave out the reciter's name, e.g. under that reciter's heading. @ai */
+  hideReciterName?: boolean;
   /** Prefix the title with the surah number (default true). @ai */
   showSurahNumber?: boolean;
 }
@@ -76,6 +78,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     art, // @ai
     showSurahNumber = true, // @ai
     transparent, // @ai
+    hideReciterName, // @ai
   }) => {
     const {theme} = useTheme();
     // @ai-start
@@ -272,10 +275,15 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                 style={styles.downloadIcon}
               />
             ) : null}
-            <Text
-              style={[styles.reciterName, {color: theme.colors.textSecondary}]}>
-              {getReciterDisplayName(reciter)}
-            </Text>
+            {hideReciterName ? null : ( // @ai
+              <Text
+                style={[
+                  styles.reciterName,
+                  {color: theme.colors.textSecondary},
+                ]}>
+                {getReciterDisplayName(reciter)}
+              </Text>
+            )}
           </View>
           {renderRewayatBadge()}
         </View>
@@ -307,6 +315,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         {onOptionsPress && (
           <Pressable
             style={styles.optionsZone}
+            accessibilityRole="button" // @ai
+            accessibilityLabel={tHome('surahItem.moreOptions')} // @ai
             onPress={tapMenu ? undefined : onOptionsPress}>
             {isCurrentTrack ? (
               <NowPlayingIndicator

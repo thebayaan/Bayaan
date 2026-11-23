@@ -372,6 +372,7 @@ export default function PlaylistsScreen() {
             name={item.name}
             itemCount={item.itemCount}
             color={item.color}
+            countOnly
             art={
               (covers[item.id]?.length ?? 0) > 0 ? ( // @ai
                 <SurahMosaic

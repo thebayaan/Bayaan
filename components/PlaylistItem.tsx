@@ -23,6 +23,8 @@ interface PlaylistItemProps {
   isSelected?: boolean;
   /** Drawn in place of the tinted icon, e.g. the playlist's mosaic. @ai */
   art?: React.ReactNode;
+  /** Just the surah count, on screens that only list playlists. @ai */
+  countOnly?: boolean;
 }
 
 // @ai-start
@@ -37,6 +39,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
     optionsMenu,
     isSelected,
     art,
+    countOnly,
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation(['collection', 'common']);
@@ -71,9 +74,11 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
         <View style={styles.playlistInfo}>
           <Text style={styles.playlistName}>{name}</Text>
           <Text style={styles.playlistSubtitle} numberOfLines={1}>
-            {t('playlistItem.subtitle', {
-              surahs: t('common:counts.surahs', {count: itemCount}),
-            })}
+            {countOnly
+              ? t('common:counts.surahs', {count: itemCount})
+              : t('playlistItem.subtitle', {
+                  surahs: t('common:counts.surahs', {count: itemCount}),
+                })}
           </Text>
         </View>
         {onOptionsPress && !isSelected && (

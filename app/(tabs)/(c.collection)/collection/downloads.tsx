@@ -923,6 +923,8 @@ export default function DownloadsScreen() {
       <PanelRow first={item.first} last={item.last}>
         <TrackItem
           transparent
+          // Under its reciter's heading the name would repeat. @ai
+          hideReciterName={item.inGroup}
           reciterId={download.reciterId}
           surahId={download.surahId}
           rewayatId={download.rewayatId}
