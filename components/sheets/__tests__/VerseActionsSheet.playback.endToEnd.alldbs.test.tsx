@@ -23,6 +23,10 @@ import type React from 'react';
 
 // The sheet's lists and footers as plain views: no sheet here.
 jest.mock('../verse-actions/sheetGestures');
+// The iPad translations picker is not under test. @ai
+jest.mock('../verse-actions/TranslationsDialog', () => ({
+  TranslationsDialog: () => null,
+}));
 jest.mock('../verse-actions/HighlightContent', () => ({
   HighlightContent: () => null,
 }));

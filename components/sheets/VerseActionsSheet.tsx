@@ -14,9 +14,11 @@ import {
 } from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
+import {useResponsive} from '@/hooks/useResponsive'; // @ai
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet, {
+  CARD_BOTTOM_PADDING, // @ai
   type AdaptiveActionSheetProps, // @ai
 } from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
@@ -95,6 +97,7 @@ import {NoteContent} from './verse-actions/NoteContent';
 import {ShareContent} from './verse-actions/ShareContent';
 import {SimilarVersesContent} from './verse-actions/SimilarVersesContent';
 import {TranslationContent} from './verse-actions/TranslationContent';
+import {TranslationsDialog} from './verse-actions/TranslationsDialog'; // @ai
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
@@ -254,6 +257,7 @@ const pendingStyles = StyleSheet.create({
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
   const {height: windowHeight} = useWindowDimensions(); // @ai
+  const {isTablet} = useResponsive(); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // @ai-start
@@ -269,6 +273,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(
     props.payload?.initialScreen === 'words' || wordStudyOnly ? 'words' : null,
   );
+  // iPad: the translations picker open over the card (the gear on the
+  // Translation and Tafsir screens). @ai
+  const [translationsOpen, setTranslationsOpen] = useState(false);
   // The word Word Study opens on (Hafs verse + word-by-word position).
   const [wordTarget, setWordTarget] = useState<WordRef | undefined>(
     props.payload?.word,
@@ -991,7 +998,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       gestureEnabled={true}
       onRequestClose={handleRequestClose} // @ai
       onClose={handleOnClose}>
-      <View style={[styles.container, activeScreen && {flex: 1}]}>
+      <View
+        style={[
+          styles.container,
+          isTablet && (activeScreen ? styles.tabletScreen : styles.tabletMenu), // @ai
+          activeScreen && {flex: 1},
+        ]}>
         {/* @ai-start: Word Study only names no verse: no header, no menu */}
         {!activeScreen && !wordStudyOnly && (
           <View style={styles.header}>
@@ -1032,6 +1044,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 <Pressable
                   onPress={() => {
                     lightHaptics();
+                    // @ai-start
+                    // iPad: the picker opens over this card, which stays
+                    // on this screen for when it closes.
+                    if (isTablet) {
+                      setTranslationsOpen(true);
+                      return;
+                    }
+                    // @ai-end
                     hideCurrentSheet();
                     usePlayerStore.getState().setSheetMode('hidden');
                     setTimeout(() => {
@@ -1182,7 +1202,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         ) : wordStudyOnly ? null /* @ai — never the verse menu */ : (
           <SheetScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{paddingBottom: moderateScale(10)}}>
+            contentContainerStyle={{
+              // On iPad the menu scrolls into the card's bottom padding, so
+              // its end keeps that padding once scrolled to. @ai
+              paddingBottom:
+                moderateScale(10) + (isTablet ? CARD_BOTTOM_PADDING : 0),
+            }}>
             {/* LISTEN */}
             <View style={styles.card}>
               <Pressable
@@ -1505,6 +1530,13 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           </SheetScrollView>
         )}
       </View>
+      {/* @ai */}
+      {isTablet && (
+        <TranslationsDialog
+          visible={translationsOpen}
+          onClose={() => setTranslationsOpen(false)}
+        />
+      )}
     </ActionSheet>
   );
 };
@@ -1531,6 +1563,29 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(30),
     },
+    // @ai-start
+    // On iPad the card has a max height; shrink to it so the menu scrolls
+    // instead of running off the card. The menu drops the phone sheet's
+    // bottom padding and runs to the card's bottom edge, so rows that fit
+    // before still show at rest; the scroll content adds the card's padding
+    // back at its end.
+    tabletMenu: {
+      flexShrink: 1,
+      paddingBottom: 0,
+      marginBottom: -CARD_BOTTOM_PADDING,
+    },
+    // A screen fills the card's fixed height, and may also shrink to it:
+    // switching from the menu, the container keeps the height it measured
+    // for the menu as its flex basis (seen on the iPad simulator, Fabric),
+    // which without shrinking ran the screens' Prev / Next footers past the
+    // card's bottom edge. Like the menu it drops the phone sheet's bottom
+    // padding, so a footer ends on its own padding plus the card's.
+    tabletScreen: {
+      flexShrink: 1,
+      paddingBottom: 0,
+      marginBottom: 0,
+    },
+    // @ai-end
     header: {
       alignItems: 'center',
       marginTop: moderateScale(4),

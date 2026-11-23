@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useEffect,
   useLayoutEffect,
+  useContext,
 } from 'react';
 import {
   View,
@@ -20,7 +21,7 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
-import {useHeaderHeight} from 'expo-router/react-navigation';
+import {HeaderHeightContext} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {layerVisibilityProps} from '@/utils/layerVisibility'; // @ai
 import {useNavigation} from 'expo-router';
@@ -230,7 +231,9 @@ export default function TranslationsContent({
   const {t} = useTranslation(['home', 'common']);
   const navigation = useNavigation();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const rawHeaderHeight = useHeaderHeight();
+  // Read softly: the iPad verse card shows this in a dialog outside any
+  // screen, where there is no header (useHeaderHeight would throw). @ai
+  const rawHeaderHeight = useContext(HeaderHeightContext) ?? 0;
   const headerHeight = USE_GLASS && !onClose ? rawHeaderHeight : 0;
   const bottomInset = useBottomInset();
 

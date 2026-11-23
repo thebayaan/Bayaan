@@ -20,6 +20,10 @@ jest.mock('../verse-actions/SimilarVersesContent', () => ({
   },
 }));
 // The other screens are not under test.
+// The iPad translations picker is not under test. @ai
+jest.mock('../verse-actions/TranslationsDialog', () => ({
+  TranslationsDialog: () => null,
+}));
 jest.mock('../verse-actions/HighlightContent', () => ({
   HighlightContent: () => null,
 }));
