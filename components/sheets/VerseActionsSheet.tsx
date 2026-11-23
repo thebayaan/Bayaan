@@ -1220,16 +1220,27 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   />
                 )}
                 {isSimilar && qulKey && (
-                  <SimilarVersesContent
-                    verseKey={qulKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    section={activeScreen === 'similar' ? 'similar' : 'phrases'}
-                    rewayah={resolvedRewayah} // @ai
-                    onDone={handleDismiss}
-                    hafsReferences={resolvedRewayah !== 'hafs'}
-                    onOpenVerse={handleOpenVerseInReader}
-                  />
+                  // @ai: in a native sheet it fills its slot exactly, as the
+                  // full screens do
+                  <View style={inNativeSheet ? styles.screenSlot : undefined}>
+                    <View
+                      style={
+                        inNativeSheet ? StyleSheet.absoluteFill : undefined
+                      }>
+                      <SimilarVersesContent
+                        verseKey={qulKey}
+                        surahNumber={surahNumber}
+                        ayahNumber={ayahNumber}
+                        section={
+                          activeScreen === 'similar' ? 'similar' : 'phrases'
+                        }
+                        rewayah={resolvedRewayah} // @ai
+                        onDone={handleDismiss}
+                        hafsReferences={resolvedRewayah !== 'hafs'}
+                        onOpenVerse={handleOpenVerseInReader}
+                      />
+                    </View>
+                  </View>
                 )}
               </>
             ) : null}

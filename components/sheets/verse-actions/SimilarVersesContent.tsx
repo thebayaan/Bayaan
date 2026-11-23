@@ -12,6 +12,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {SheetScrollView} from './sheetGestures';
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {qulDataService} from '@/services/mushaf/QulDataService';
@@ -96,6 +97,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const inNativeSheet = useNativeSheetId() !== null; // @ai
   const {t} = useTranslation(['sheets', 'common']);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
@@ -211,7 +213,8 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
 
   return (
     <SheetScrollView
-      style={styles.scrollContent}
+      // @ai: a native sheet is full height; the list fills it.
+      style={inNativeSheet ? styles.fill : styles.scrollContent}
       showsVerticalScrollIndicator={false}
       onLayout={handleContentLayout}>
       {/* @ai-start */}
@@ -445,6 +448,7 @@ const createStyles = (theme: Theme) =>
       flexShrink: 1,
       maxHeight: verticalScale(450),
     },
+    fill: {flex: 1}, // @ai
     section: {
       marginBottom: verticalScale(16),
     },
