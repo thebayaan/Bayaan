@@ -123,12 +123,15 @@ export function CollectionEmptyPanel({
   message,
   link,
   style,
+  ghostRows = 3,
 }: {
   category: CollectionCategoryId;
   heading: string;
   message: string;
   link?: {label: string; onPress: () => void};
   style?: StyleProp<ViewStyle>;
+  /** Fewer faint rows where the panel sits low on a busy screen. */
+  ghostRows?: 1 | 2 | 3;
 }) {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -148,7 +151,7 @@ export function CollectionEmptyPanel({
     : Color(color).darken(0.25).string();
   return (
     <View style={[styles.panel, {backgroundColor: panel}, style]}>
-      {[1, 0.6, 0.3].map((opacity, i) => (
+      {[1, 0.6, 0.3].slice(0, ghostRows).map((opacity, i) => (
         <View
           key={i}
           style={[styles.ghostRow, {opacity}]}

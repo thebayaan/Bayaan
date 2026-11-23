@@ -92,7 +92,10 @@
       "errorTitle": "خطأ في التنزيل",
       "errorMessage": "ربما تعذّر تنزيل بعض السور.",
       "stoppedOnLeave": "توقّف تنزيل الكل",
-      "stoppedOnLeaveHint": "افتح صفحة القارئ مجددًا للمتابعة."
+      "stoppedOnLeaveHint": "افتح صفحة القارئ مجددًا للمتابعة.",
+      "a11yStart": "تنزيل كل السور",
+      "a11yCancel": "إلغاء تنزيل كل السور",
+      "a11yDone": "تم تنزيل كل السور"
     },
     "menu": {
       "label": "العرض والترتيب",
@@ -103,7 +106,8 @@
       "desc": "ترتيب عكسي",
       "revelation": "ترتيب النزول",
       "lovedOnly": "المحبّبة فقط"
-    }
+    },
+    "shuffle": "عشوائي"
   },
   "adhkar": {
     "otherSection": "أخرى",

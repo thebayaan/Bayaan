@@ -69,9 +69,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   const styles = createStyles(theme);
 
   const getDownloadAllLabel = () => {
-    if (isDownloadingAll) return 'Cancel downloading all surahs';
-    if (allDownloaded) return 'All surahs downloaded';
-    return 'Download all surahs';
+    // @ai: spoken labels follow the app language.
+    if (isDownloadingAll)
+      return t('player:reciterProfile.downloadAll.a11yCancel');
+    if (allDownloaded) return t('player:reciterProfile.downloadAll.a11yDone');
+    return t('player:reciterProfile.downloadAll.a11yStart');
   };
 
   const favoriteLabel = t('player:reciterProfile.favorite');
@@ -130,7 +132,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           accessibilityRole="button">
           <ShuffleIcon color={theme.colors.text} size={moderateScale(15)} />
           <Text style={styles.secondaryText} numberOfLines={1}>
-            {t('common:actions.shuffle')}
+            {
+              t(
+                'player:reciterProfile.shuffle',
+              ) /* @ai: short, fits in Arabic */
+            }
           </Text>
         </Pressable>
         <Pressable
