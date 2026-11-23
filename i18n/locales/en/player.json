@@ -30,7 +30,9 @@
     "untagged": "Untagged",
     "addRecitation": "Add Recitation",
     "emptyTitle": "No uploads yet",
-    "emptySubtitle": "Upload recitations to see them here"
+    "emptySubtitle": "Upload recitations to see them here",
+    "emptyHeading": "Your recordings of this reciter",
+    "emptyMessage": "Add audio from Files and it shows up here, under this reciter."
   },
   "uploadPlaceholder": {
     "hint": "Tag this recitation to see surah text and details",
@@ -79,6 +81,16 @@
       "errorMessage": "Some downloads may have failed.",
       "stoppedOnLeave": "Download all stopped",
       "stoppedOnLeaveHint": "Open the reciter again to carry on."
+    },
+    "menu": {
+      "label": "View and sort",
+      "grid": "Grid",
+      "list": "List",
+      "sortBy": "Sort by",
+      "asc": "Surah order",
+      "desc": "Reverse order",
+      "revelation": "Order of revelation",
+      "lovedOnly": "Loved only"
     }
   },
   "adhkar": {

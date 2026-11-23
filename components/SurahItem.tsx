@@ -46,6 +46,14 @@ import {
 } from '@/components/sheets/options/SurahOptionsContext';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {listRowContextMenusEnabled} from '@/components/native/nativeMenus'; // @ai
+import {SurahCover} from '@/components/collection/CollectionArt'; // @ai
+import {
+  PANEL_ART_GAP,
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PANEL_ROW_PADDING,
+  PANEL_ROW_VERTICAL,
+} from '@/components/collection/CollectionPanel'; // @ai
 // @ai-end
 // @ai-end
 
@@ -72,6 +80,12 @@ interface SurahItemProps {
    * options aren't surah options (downloads). @ai
    */
   optionsMenu?: React.ReactNode;
+  /**
+   * A row inside a rounded Collection-style panel: the surah cover instead
+   * of the glyph, no background of its own, and two lines (name, then
+   * meaning and verses). @ai
+   */
+  panel?: boolean;
 }
 
 // @ai-start
@@ -89,6 +103,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     pressAction = 'play', // @ai
     tableColumns = false, // @ai
     optionsMenu, // @ai
+    panel = false, // @ai
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation(['home', 'common']);
@@ -203,7 +218,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       | 'madinah';
 
     return (
-      <View style={styles.surahItem}>
+      <View style={[styles.surahItem, panel && styles.panelItem]}>
         {/* Left zone - Play action */}
         {/* @ai-start */}
         <RowMenu
@@ -211,7 +226,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
           payload={optionsPayload}
           style={styles.playZoneHost}>
           <Pressable
-            style={styles.playZone}
+            style={[styles.playZone, panel && styles.panelPlayZone]}
             onPress={handlePress}
             onLongPress={onLongPress ? handleLongPress : undefined}
             accessibilityRole="button"
@@ -232,18 +247,30 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             onAccessibilityAction={e => {
               if (e.nativeEvent.actionName === 'longpress') handleLongPress();
             }}>
+            {panel ? (
+              <SurahCover
+                surahId={item.id}
+                size={PANEL_ART_SIZE}
+                radius={PANEL_ART_RADIUS}
+                style={styles.panelCover}
+              />
+            ) : (
+              <View
+                style={styles.surahGlyphContainer}
+                accessibilityElementsHidden={true}>
+                <Text
+                  style={styles.surahGlyph}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit>
+                  {surahGlyphMap[item.id]}
+                </Text>
+              </View>
+            )}
             <View
-              style={styles.surahGlyphContainer}
-              accessibilityElementsHidden={true}>
-              <Text
-                style={styles.surahGlyph}
-                numberOfLines={1}
-                adjustsFontSizeToFit>
-                {surahGlyphMap[item.id]}
-              </Text>
-            </View>
-            <View
-              style={styles.surahInfoContainer}
+              style={[
+                styles.surahInfoContainer,
+                panel && styles.panelInfoContainer,
+              ]}
               accessibilityElementsHidden={true}>
               <View style={styles.nameContainer}>
                 {isCurrentTrack ? (
@@ -289,11 +316,15 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
                   style={[
                     styles.surahSecondaryInfo,
                     tableColumns && styles.tableSecondary,
-                  ]}>
-                  {meaning ?? versesLabel}
+                    panel && styles.panelSecondary,
+                  ]}
+                  numberOfLines={panel ? 1 : undefined}>
+                  {panel && meaning
+                    ? `${meaning} · ${versesLabel}`
+                    : (meaning ?? versesLabel)}
                 </Text>
               </View>
-              {tableColumns ? null : rewayatName ? (
+              {tableColumns || panel ? null : rewayatName ? (
                 <Text style={styles.rewayatText}>{rewayatName}</Text>
               ) : (
                 <View
@@ -354,7 +385,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
         {/* Right zone - Options action */}
         {onOptionsPress && (
           <Pressable
-            style={styles.optionsZone}
+            style={[styles.optionsZone, panel && styles.panelOptionsZone]}
             onPress={tapMenu || optionsMenu ? undefined : handleOptionsPress} // @ai
             accessibilityRole="button"
             accessibilityLabel={t('surahItem.moreOptions')}
@@ -492,6 +523,21 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       backgroundColor: theme.colors.background,
     },
+    // @ai-start Collection-style panel row (see `panel`).
+    panelItem: {backgroundColor: 'transparent'},
+    panelPlayZone: {
+      paddingVertical: PANEL_ROW_VERTICAL,
+      paddingStart: PANEL_ROW_PADDING,
+    },
+    panelCover: {marginEnd: PANEL_ART_GAP},
+    panelSecondary: {flexShrink: 1},
+    panelInfoContainer: {marginStart: 0, gap: moderateScale(2)},
+    panelOptionsZone: {
+      width: 'auto',
+      minWidth: moderateScale(44),
+      paddingEnd: moderateScale(8),
+    },
+    // @ai-end
     playZoneHost: {
       flex: 1,
     },

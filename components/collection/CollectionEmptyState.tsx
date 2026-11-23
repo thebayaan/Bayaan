@@ -1,6 +1,13 @@
 // @ai-generated
 import React, {useMemo} from 'react';
-import {Pressable, ScrollView, Text, View} from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleProp,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useRouter} from 'expo-router';
@@ -63,21 +70,6 @@ export function CollectionEmptyState({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const bottom = useLibraryListBottomPadding();
-  const panel = usePanelColor();
-  const color = CATEGORY_COLORS[category];
-  const ghost = Color(theme.colors.text)
-    .alpha(theme.isDarkMode ? 0.09 : 0.07)
-    .string();
-  const art = Color(color)
-    .alpha(theme.isDarkMode ? 0.22 : 0.16)
-    .string();
-  const separator = Color(theme.colors.text).alpha(0.12).string();
-  // The link takes the category colour, a little darker on light so it
-  // reads as text.
-  const linkColor = theme.isDarkMode
-    ? Color(color).lighten(0.15).string()
-    : Color(color).darken(0.25).string();
-
   return (
     <ScrollView
       style={styles.container}
@@ -108,56 +100,90 @@ export function CollectionEmptyState({
           ) : undefined
         }
       />
-      <View
-        style={[
-          styles.panel,
-          {backgroundColor: panel, marginTop: primary ? 0 : moderateScale(4)},
-        ]}>
-        {[1, 0.6, 0.3].map((opacity, i) => (
-          <View
-            key={i}
-            style={[styles.ghostRow, {opacity}]}
-            importantForAccessibility="no-hide-descendants"
-            accessibilityElementsHidden>
-            {i > 0 ? (
-              <View style={[styles.separator, {backgroundColor: separator}]} />
-            ) : null}
-            <View style={[styles.ghostArt, {backgroundColor: art}]} />
-            <View style={styles.ghostLines}>
-              <View
-                style={[
-                  styles.ghostLine,
-                  {width: '58%', backgroundColor: ghost},
-                ]}
-              />
-              <View
-                style={[
-                  styles.ghostLine,
-                  {width: '36%', backgroundColor: ghost},
-                ]}
-              />
-            </View>
-          </View>
-        ))}
-        <View style={styles.message}>
-          <Text style={styles.heading} accessibilityRole="header">
-            {heading}
-          </Text>
-          <Text style={styles.body}>{message}</Text>
-          {link ? (
-            <Pressable
-              onPress={link.onPress}
-              hitSlop={8}
-              accessibilityRole="link"
-              style={({pressed}) => pressed && {opacity: 0.6}}>
-              <Text style={[styles.link, {color: linkColor}]}>
-                {link.label}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
+      <CollectionEmptyPanel
+        category={category}
+        heading={heading}
+        message={message}
+        link={link}
+        style={{marginTop: primary ? 0 : moderateScale(4)}}
+      />
     </ScrollView>
+  );
+}
+
+/**
+ * The panel part of an empty Collection screen on its own: three faint
+ * rows in the category's colour fading into a heading, a line on how to
+ * add something and an optional link. Also used inside other screens,
+ * such as a reciter's My Uploads tab.
+ */
+export function CollectionEmptyPanel({
+  category,
+  heading,
+  message,
+  link,
+  style,
+}: {
+  category: CollectionCategoryId;
+  heading: string;
+  message: string;
+  link?: {label: string; onPress: () => void};
+  style?: StyleProp<ViewStyle>;
+}) {
+  const {theme} = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const panel = usePanelColor();
+  const color = CATEGORY_COLORS[category];
+  const ghost = Color(theme.colors.text)
+    .alpha(theme.isDarkMode ? 0.09 : 0.07)
+    .string();
+  const art = Color(color)
+    .alpha(theme.isDarkMode ? 0.22 : 0.16)
+    .string();
+  const separator = Color(theme.colors.text).alpha(0.12).string();
+  // The link takes the category colour, a little darker on light so it
+  // reads as text.
+  const linkColor = theme.isDarkMode
+    ? Color(color).lighten(0.15).string()
+    : Color(color).darken(0.25).string();
+  return (
+    <View style={[styles.panel, {backgroundColor: panel}, style]}>
+      {[1, 0.6, 0.3].map((opacity, i) => (
+        <View
+          key={i}
+          style={[styles.ghostRow, {opacity}]}
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden>
+          {i > 0 ? (
+            <View style={[styles.separator, {backgroundColor: separator}]} />
+          ) : null}
+          <View style={[styles.ghostArt, {backgroundColor: art}]} />
+          <View style={styles.ghostLines}>
+            <View
+              style={[styles.ghostLine, {width: '58%', backgroundColor: ghost}]}
+            />
+            <View
+              style={[styles.ghostLine, {width: '36%', backgroundColor: ghost}]}
+            />
+          </View>
+        </View>
+      ))}
+      <View style={styles.message}>
+        <Text style={styles.heading} accessibilityRole="header">
+          {heading}
+        </Text>
+        <Text style={styles.body}>{message}</Text>
+        {link ? (
+          <Pressable
+            onPress={link.onPress}
+            hitSlop={8}
+            accessibilityRole="link"
+            style={({pressed}) => pressed && {opacity: 0.6}}>
+            <Text style={[styles.link, {color: linkColor}]}>{link.label}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
