@@ -17,7 +17,7 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById} from '@/services/dataService';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {UploadCard} from './UploadCard';
 import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -285,7 +285,7 @@ export const UploadsTabContent = React.forwardRef<
 
     const handleOrganize = useCallback(
       (item: UploadedRecitation) => {
-        SheetManager.show('organize-recitation', {
+        showSheet('organize-recitation', {
           payload: {recitation: item, prefillReciterId: reciterId},
         });
       },
@@ -307,7 +307,7 @@ export const UploadsTabContent = React.forwardRef<
 
     const handleShowOptions = useCallback(
       (item: UploadedRecitation, index: number) => {
-        SheetManager.show('upload-options', {
+        showSheet('upload-options', {
           payload: buildUploadOptions(item, index),
         });
       },
@@ -347,7 +347,7 @@ export const UploadsTabContent = React.forwardRef<
         // so closing it without saving left the new upload untagged, and it
         // vanished from the page it had just been added on.
         await updateTags(recitation.id, {reciterId});
-        SheetManager.show('organize-recitation', {
+        showSheet('organize-recitation', {
           payload: {
             recitation: {...recitation, reciterId},
             prefillReciterId: reciterId,

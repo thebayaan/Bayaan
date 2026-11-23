@@ -54,7 +54,6 @@ import {
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import Color from 'color';
-import {SheetManager} from 'react-native-actions-sheet';
 import {useTranslation} from 'react-i18next';
 import {
   BASMALLAH_TEXT,
@@ -138,6 +137,7 @@ import {
   wordAdvanceEm,
   type WordGlyphs,
 } from './qcfDrawing';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 /** Where a page draws: its view, and the text block inside it. */
 export interface QCFPageFrame {
@@ -771,7 +771,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
         const mark =
           hit && line ? markAtChar(line, hit.charIndex, marks) : null;
         if (mark) {
-          SheetManager.show('recitation-mistake', {payload: {mark}}).catch(
+          showSheet('recitation-mistake', {payload: {mark}}).catch(
             () => undefined,
           );
           return;

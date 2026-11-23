@@ -15,7 +15,7 @@ import {
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet, {
   type AdaptiveActionSheetProps, // @ai
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -124,6 +124,13 @@ import {
 } from '@/services/keyboard/keyCommands';
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 import {SheetScrollView} from './verse-actions/sheetGestures';
+import {
+  hideSheet as hideAnySheet,
+  showSheet,
+} from '@/components/sheets/sheetControl'; // @ai
+import {useNativeSheetLevel} from '@/components/native/nativeSheetContext'; // @ai
+import {setNativeSheetDetents} from '@/components/native/nativeSheets'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 const surahData = require('@/data/surahData.json');
 
@@ -253,6 +260,7 @@ const pendingStyles = StyleSheet.create({
 
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(30)); // @ai
   const {height: windowHeight} = useWindowDimensions(); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
@@ -289,11 +297,23 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setActiveScreenRaw(screen);
   }, []);
 
+  // @ai-start
+  // A native sheet sizes this view to its detent, so the menu fills it and
+  // scrolls instead of running past the bottom edge.
+  const nativeLevel = useNativeSheetLevel();
+  const inNativeSheet = nativeLevel !== null;
+  // Hides a native sheet too (sheetControl), resolving once it is gone.
+  const hideSheet = useCallback(
+    (): Promise<unknown> => hideAnySheet('verse-actions'),
+    [],
+  );
+  // @ai-end
+
   const hideCurrentSheet = useCallback(() => {
-    SheetManager.hide(props.sheetId).catch(error => {
+    hideSheet().catch(error => {
       console.warn('[VerseActionsSheet] Failed to hide sheet:', error);
     });
-  }, [props.sheetId]);
+  }, [hideSheet]);
 
   const payload = props.payload;
   const verseKey = payload?.verseKey ?? '';
@@ -459,12 +479,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     } catch (error) {
       console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
     }
-    await SheetManager.hide(props.sheetId);
+    await hideSheet();
   }, [
     readySelection, // @ai
     requireSelection, // @ai
     isBookmarked,
-    props.sheetId,
+    hideSheet,
   ]);
 
   const handleHighlight = useCallback(async () => {
@@ -534,7 +554,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           formatQuranCitation(ready.label, result.rewayah),
         ),
       );
-      await SheetManager.hide(props.sheetId);
+      await hideSheet();
     } finally {
       setIsCopying(false);
     }
@@ -546,7 +566,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     arabicTexts,
     resolvedRewayah,
     translationFor,
-    props.sheetId,
+    hideSheet,
   ]);
   // @ai-end
 
@@ -665,8 +685,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           pendingStartVerseKey: firstKey,
         });
         if (units) store.setPendingStart(units[0]); // @ai
-        await SheetManager.hide(props.sheetId);
-        SheetManager.show('mushaf-player-options', {
+        await hideSheet();
+        showSheet('mushaf-player-options', {
           payload: {currentPage: page},
         });
         return;
@@ -719,7 +739,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       hideCurrentSheet();
       store.startPlayback(page, units ? units[0] : firstKey); // @ai
     },
-    [readySelection, requireSelection, props.sheetId, hideCurrentSheet], // @ai
+    [readySelection, requireSelection, hideSheet, hideCurrentSheet], // @ai
   );
 
   const handlePlaySelection = useCallback(
@@ -743,9 +763,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleShowFollowAlong = useCallback(async () => {
     lightHaptics();
-    await SheetManager.hide(props.sheetId);
-    SheetManager.show('follow-along');
-  }, [props.sheetId]);
+    await hideSheet();
+    showSheet('follow-along');
+  }, [hideSheet]);
 
   const handlePlayerPlayFromHere = useCallback(async () => {
     lightHaptics();
@@ -815,7 +835,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       playerState.pause();
     }
 
-    await SheetManager.hide(props.sheetId);
+    await hideSheet();
     playerState.setSheetMode('hidden');
 
     useMushafPlayerStore.setState({pendingStartVerseKey: firstKey});
@@ -837,7 +857,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       },
     });
     // @ai-end
-  }, [readySelection, requireSelection, props.sheetId]); // @ai
+  }, [readySelection, requireSelection, hideSheet]); // @ai
 
   // @ai-start
   // Root search from Word Study: the root's ayahs in the sheet. Back returns
@@ -941,7 +961,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       // Close first and wait for it. Closing clears the mushaf selection
       // (handleOnClose), about 200 ms later: asked for before that, the
       // reader jumped to the page but the verse it had just lit went dark.
-      await SheetManager.hide(props.sheetId);
+      await hideSheet();
       if (isReaderOpen()) {
         // From the full player, the open reader is under it: close the player
         // too, or the reader jumps and flashes the verse out of sight.
@@ -964,8 +984,23 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         params: {page: String(page), surah, ayah},
       });
     },
-    [props.sheetId, source],
+    [hideSheet, source],
   );
+  // @ai-end
+
+  // @ai-start
+  // In a native sheet the menu, Highlight and Share size the sheet to
+  // themselves; the full-screen views, the similar-verse lists and the note
+  // (keyboard) take full height.
+  const needsFullHeight =
+    activeScreen !== null &&
+    activeScreen !== 'highlight' &&
+    activeScreen !== 'share';
+  const nativeKey = nativeLevel?.key;
+  useEffect(() => {
+    if (nativeKey === undefined) return;
+    setNativeSheetDetents(nativeKey, needsFullHeight ? ['large'] : null);
+  }, [nativeKey, needsFullHeight]);
   // @ai-end
 
   if (!payload) return null;
@@ -991,7 +1026,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       gestureEnabled={true}
       onRequestClose={handleRequestClose} // @ai
       onClose={handleOnClose}>
-      <View style={[styles.container, activeScreen && {flex: 1}]}>
+      <View
+        style={[
+          styles.container,
+          // @ai: in a native sheet the menu scrolls to the screen edge and
+          // ends with the inset itself (below); the container adds nothing.
+          {paddingBottom: inNativeSheet ? 0 : sheetBottomPadding},
+          activeScreen && (!inNativeSheet || needsFullHeight) && {flex: 1},
+        ]}>
         {/* @ai-start: Word Study only names no verse: no header, no menu */}
         {!activeScreen && !wordStudyOnly && (
           <View style={styles.header}>
@@ -1182,7 +1224,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         ) : wordStudyOnly ? null /* @ai — never the verse menu */ : (
           <SheetScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{paddingBottom: moderateScale(10)}}>
+            contentContainerStyle={{
+              paddingBottom:
+                moderateScale(10) + (inNativeSheet ? sheetBottomPadding : 0),
+            }}>
             {/* LISTEN */}
             <View style={styles.card}>
               <Pressable

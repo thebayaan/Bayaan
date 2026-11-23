@@ -7,7 +7,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
+import {type SheetProps} from 'react-native-actions-sheet';
 import {router} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
@@ -40,6 +40,7 @@ import {
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
+import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 // Which ayah?: listens and names the ayah being recited, by the reader or
 // anyone nearby, then offers to open or play it. Opened from "Recite to
@@ -101,7 +102,7 @@ export const WhichAyahSheet = (
       const key = keyOf(ayah);
       const page = digitalKhattDataService.getPageForVerse(key);
       await stopAyahIdentify();
-      await SheetManager.hide(props.sheetId);
+      await hideSheet('which-ayah');
       router.push({
         pathname: '/mushaf',
         params: {
@@ -119,7 +120,7 @@ export const WhichAyahSheet = (
           currentPage: page,
           pendingStartVerseKey: key,
         });
-        SheetManager.show('mushaf-player-options', {
+        showSheet('mushaf-player-options', {
           payload: {currentPage: page},
         });
         return;
@@ -153,7 +154,7 @@ export const WhichAyahSheet = (
             styles={styles}
             theme={theme}
             onStart={begin}
-            onNotNow={() => void SheetManager.hide(props.sheetId)}
+            onNotNow={() => void hideSheet('which-ayah')}
           />
         ) : (
           <IdentifyBody

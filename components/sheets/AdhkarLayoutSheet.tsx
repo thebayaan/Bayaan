@@ -20,6 +20,7 @@ import {
 import {isRTL, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -127,6 +128,7 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
 // @ai-start
 export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation(['sheets', 'common']);
 
@@ -152,7 +154,10 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
       <SheetScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
+        contentContainerStyle={[
+          styles.scrollContent,
+          {paddingBottom: sheetBottomPadding},
+        ]}>
         <View style={styles.container}>
           <Text style={styles.title}>{t('adhkarLayout.title')}</Text>
 

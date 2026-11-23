@@ -1,5 +1,6 @@
 // @ai-generated
-import {SheetManager, type Sheets} from 'react-native-actions-sheet';
+import {type Sheets} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 type CreatePlaylistPayload = Sheets['create-playlist']['payload'];
 type CreatePlaylistResult = Sheets['create-playlist']['returnValue'];
@@ -22,7 +23,7 @@ export async function showCreatePlaylistSheet(
   if (isOpen) return undefined;
   isOpen = true;
   try {
-    return await SheetManager.show('create-playlist', {payload});
+    return await showSheet('create-playlist', {payload});
   } finally {
     isOpen = false;
   }

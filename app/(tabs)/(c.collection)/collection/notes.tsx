@@ -20,7 +20,6 @@ import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotati
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {NoteItem} from '@/components/collection/NoteItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
-import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseNote} from '@/types/verse-annotations';
@@ -39,6 +38,7 @@ import {
 import {savedVerseRouteParams} from '@/services/verse-annotations/unitAnnotations'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 interface NoteData {
@@ -118,7 +118,7 @@ const NotesScreen = () => {
       // straight in the database and a sheet does not change screen focus, so
       // without this reload the row kept its old text, and a deleted note
       // stayed listed and reopened as an empty "Add note" form.
-      await SheetManager.show('verse-note', {
+      await showSheet('verse-note', {
         payload: {
           verseKey: item.note.verseKey,
           surahNumber: item.note.surahNumber,
@@ -186,7 +186,7 @@ const NotesScreen = () => {
 
   const handleOptionsPress = useCallback(
     (item: NoteData) => {
-      SheetManager.show('collection-options', {payload: buildOptions(item)});
+      showSheet('collection-options', {payload: buildOptions(item)});
     },
     [buildOptions],
   );

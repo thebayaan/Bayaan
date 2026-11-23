@@ -35,6 +35,7 @@ import type {SimilarAyah, MutashabihatPhrase} from '@/types/qul';
 import {flipX, isRTL, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const surahData = require('@/data/surahData.json') as Array<{

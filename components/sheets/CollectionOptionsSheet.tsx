@@ -3,15 +3,18 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 export const CollectionOptionsSheet = (
   props: SheetProps<'collection-options'>,
 ) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
 
   const payload = props.payload;
@@ -30,7 +33,7 @@ export const CollectionOptionsSheet = (
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -54,7 +57,7 @@ export const CollectionOptionsSheet = (
                     // races the library's mount queue — the new sheet
                     // flashes open then closes. Awaiting hide first
                     // serializes the transition.
-                    await SheetManager.hide('collection-options');
+                    await hideSheet('collection-options');
                     opt.onPress();
                   }}
                   disabled={opt.disabled}>
@@ -81,7 +84,7 @@ export const CollectionOptionsSheet = (
                 opt.disabled && styles.optionDisabled,
               ]}
               onPress={async () => {
-                await SheetManager.hide('collection-options');
+                await hideSheet('collection-options');
                 opt.onPress();
               }}
               disabled={opt.disabled}>

@@ -25,7 +25,7 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistHeader} from './PlaylistHeader';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useRouter} from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {UserPlaylist} from '@/services/database/DatabaseService';
@@ -399,7 +399,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     shouldClearPlaylistRef.current = true;
-    SheetManager.show('playlist-context', {payload: playlistOptions});
+    showSheet('playlist-context', {payload: playlistOptions});
   }, [playlistOptions]);
   // @ai-end
 
@@ -457,7 +457,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
   const handleShowTrackOptions = useCallback(
     (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
-      SheetManager.show('surah-options', {
+      showSheet('surah-options', {
         payload: buildTrackOptions(track, reciter, surah),
       });
     },

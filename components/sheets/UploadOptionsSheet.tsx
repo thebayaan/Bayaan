@@ -5,7 +5,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon, ProfileIcon} from '@/components/Icons';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -38,6 +38,8 @@ import {
   localizeDigits,
 } from '@/i18n/format';
 import {getUploadDisplayTitle} from './options/uploadOptions';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const surahInfo = require('@/data/surahInfo.json');
@@ -124,6 +126,7 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
 // @ai-start
 export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
@@ -184,7 +187,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('upload-options');
+    hideSheet('upload-options');
   }, []);
 
   const handlePlay = useCallback(() => {
@@ -196,7 +199,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
     if (!recitation) return;
     handleClose();
     setTimeout(() => {
-      SheetManager.show('organize-recitation', {
+      showSheet('organize-recitation', {
         payload: {recitation, prefillReciterId: reciterId},
       });
     }, 300);
@@ -214,7 +217,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
 
   const handleAddToPlaylist = useCallback(() => {
     if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
+    showSheet('select-playlist', {
       payload: {
         surah,
         reciterId,
@@ -421,7 +424,8 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
           <SheetScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}>
-            <View style={styles.infoContent}>
+            <View
+              style={[styles.infoContent, {paddingBottom: sheetBottomPadding}]}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>
                   {surah ? getSurahDisplayName(surah) : ''}
@@ -444,7 +448,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
           </SheetScrollView>
         </>
       ) : (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
           <View style={styles.header}>
             <Text style={styles.title} numberOfLines={1}>
               {title}

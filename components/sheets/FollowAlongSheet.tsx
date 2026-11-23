@@ -11,14 +11,18 @@ import {RECITERS, Reciter} from '@/data/reciterData';
 import {useTimestampStore} from '@/store/timestampStore';
 import {ReciterItem} from '@/components/ReciterItem';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
-import {SheetManager} from 'react-native-actions-sheet';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 // @ai-end
 
 // @ai-start
 export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
+  const inNativeSheet = useNativeSheetId() !== null; // @ai
   const styles = createStyles(theme);
   const {navigateToReciterProfile} = useReciterNavigation();
   const {t} = useTranslation('sheets');
@@ -29,7 +33,7 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
   }, []);
 
   const handleReciterPress = (reciter: Reciter) => {
-    SheetManager.hide('follow-along');
+    hideSheet('follow-along');
     navigateToReciterProfile(reciter.id);
   };
 
@@ -42,7 +46,13 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('followAlong.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View
+        style={[
+          styles.container,
+          {paddingBottom: inNativeSheet ? 0 : sheetBottomPadding},
+          // @ai: bounded by a native sheet, so the list scrolls inside it
+          inNativeSheet && styles.fill,
+        ]}>
         <Text style={styles.description}>{t('followAlong.description')}</Text>
         <SheetFlatList
           data={supportedReciters}
@@ -54,7 +64,10 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
               showFollowAlong
             />
           )}
-          style={styles.list}
+          style={[styles.list, inNativeSheet && styles.fill]}
+          contentContainerStyle={
+            inNativeSheet ? {paddingBottom: sheetBottomPadding} : undefined
+          }
           showsVerticalScrollIndicator={false}
         />
       </View>
@@ -92,6 +105,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
+    fill: {flex: 1}, // @ai
     container: {
       paddingVertical: moderateScale(16),
       paddingBottom: moderateScale(40),

@@ -45,7 +45,6 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore'; // @ai
 import {showToast} from '@/utils/toastUtils'; // @ai
 import {isRTL} from '@/utils/rtl'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
-import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
 import {USE_GLASS} from '@/hooks/useGlassProps';
@@ -60,6 +59,7 @@ import {stopRecitationTracking} from '@/services/recitation/RecitationTrackingSe
 import {playbackNoticeText} from '@/i18n/playback';
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 export type MushafScreenParams = {
@@ -231,7 +231,7 @@ function MushafReader({
   useEffect(() => {
     if (!playerOptions) return;
     useMushafPlayerStore.setState({currentPage: page});
-    SheetManager.show('mushaf-player-options', {payload: {currentPage: page}});
+    showSheet('mushaf-player-options', {payload: {currentPage: page}});
   }, [playerOptions, page]);
 
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
@@ -366,7 +366,7 @@ export function MushafToolbar() {
   const handlePlay = useCallback(() => {
     const page = useMushafPlayerStore.getState().currentPage || 1;
     useMushafPlayerStore.setState({currentPage: page});
-    SheetManager.show('mushaf-player-options', {
+    showSheet('mushaf-player-options', {
       payload: {currentPage: page},
     });
   }, []);
@@ -395,7 +395,7 @@ export function MushafToolbar() {
 
   const handleOptions = useCallback(() => {
     const page = useMushafPlayerStore.getState().currentPage || 1;
-    SheetManager.show('mushaf-player-options', {
+    showSheet('mushaf-player-options', {
       payload: {currentPage: page},
     });
   }, []);
@@ -480,7 +480,7 @@ export function MushafToolbar() {
           </Stack.Toolbar.Button>
         )}
         <Stack.Toolbar.Spacer />
-        <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
+        <Stack.Toolbar.Button icon="ellipsis" onPress={handleOptions}>
           {t('toolbar.options')}
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
@@ -525,7 +525,7 @@ export function MushafToolbar() {
       </Stack.Toolbar.Button>
       {isRTL ? previousButton : nextButton /* @ai */}
       <Stack.Toolbar.Spacer />
-      <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
+      <Stack.Toolbar.Button icon="ellipsis" onPress={handleOptions}>
         {t('toolbar.options')}
       </Stack.Toolbar.Button>
     </Stack.Toolbar>

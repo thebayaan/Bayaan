@@ -9,7 +9,7 @@ import {View, Text, TextInput, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetFooter, SheetScrollView} from './SheetGestures';
 import Color from 'color';
@@ -34,11 +34,20 @@ import {
   useVerseSelection,
 } from '@/components/share/useVerseSelection';
 import {addSelectionNote} from './verse-actions/selectionAnnotations';
+import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {useNativeSheetKeyboardHeight} from '@/components/sheets/useNativeSheetKeyboardHeight'; // @ai
 // @ai-end
 
 // @ai-start
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
+  // The scroll view's own padding already ends the content. @ai
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    moderateScale(16),
+  );
+  useNativeSheetKeyboardHeight(); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {t} = useTranslation('sheets');
 
@@ -221,7 +230,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       await addSelectionNote(ready, noteText.trim());
       // @ai-end
     }
-    SheetManager.hideAll();
+    hideAllSheets();
     return true; // @ai
   }, [
     verseKey,
@@ -264,7 +273,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     if (remaining === 0) {
       useVerseAnnotationsStore.getState().removeNote(verseKey);
     }
-    SheetManager.hideAll();
+    hideAllSheets();
   }, [verseKey, noteId]);
 
   const canSave = noteText.trim().length > 0;
@@ -277,7 +286,10 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       gestureEnabled={true}>
       <SheetScrollView
         style={styles.container}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {paddingBottom: sheetBottomPadding},
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {/* @ai: the verses in the note's own rewayah numbering, once known */}

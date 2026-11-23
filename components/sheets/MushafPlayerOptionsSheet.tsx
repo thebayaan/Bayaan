@@ -23,7 +23,7 @@ import Animated, {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetFooter, SheetNoDrag, SheetScrollView} from './SheetGestures';
 import {
@@ -52,6 +52,8 @@ import {
   pickerVerseLabel,
   rangePickerNumbering,
 } from '@/utils/playbackRangePicker';
+import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 // @ai-end
 
 // ---------------------------------------------------------------------------
@@ -144,6 +146,7 @@ export const MushafPlayerOptionsSheet = (
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const insets = useSafeAreaInsets();
+  const inNativeSheet = useNativeSheetId() !== null; // @ai
 
   const currentPage = props.payload?.currentPage ?? 1;
 
@@ -331,7 +334,7 @@ export const MushafPlayerOptionsSheet = (
   // @ai-start
   const handleOpenReciterPicker = useCallback(async () => {
     setExpandedSection(null);
-    const reciter: AvailableReciter | undefined = await SheetManager.show(
+    const reciter: AvailableReciter | undefined = await showSheet(
       'mushaf-reciter-picker',
       {payload: {selectedRewayatId}},
     );
@@ -401,7 +404,7 @@ export const MushafPlayerOptionsSheet = (
       currentPage,
       selection.kind === 'units' ? selection.first : startVerseKey,
     ); // @ai
-    SheetManager.hide('mushaf-player-options');
+    hideSheet('mushaf-player-options');
   }, [
     selectedRewayatId,
     selectedReciterName,
@@ -489,7 +492,9 @@ export const MushafPlayerOptionsSheet = (
       gestureEnabled={expandedSection === null}
       onBeforeClose={handleBeforeClose /* @ai */}>
       <SheetScrollView
-        style={styles.scrollView}
+        // @ai: a native sheet is full height, so the scroll fills it and
+        // the Play footer sits at the sheet's bottom edge.
+        style={[styles.scrollView, inNativeSheet && styles.scrollViewFill]}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}>
         {/* Title */}
@@ -536,10 +541,10 @@ export const MushafPlayerOptionsSheet = (
                 {startPickStep === 'surahList'
                   ? renderSurahList(handleStartSurahPick)
                   : startPickSurah
-                    ? renderAyahGrid(startPickSurah, handleStartAyahPick, () =>
-                        setStartPickStep('surahList'),
-                      )
-                    : null}
+                  ? renderAyahGrid(startPickSurah, handleStartAyahPick, () =>
+                      setStartPickStep('surahList'),
+                    )
+                  : null}
               </AccordionScrollList>
             </View>
           )}
@@ -577,10 +582,10 @@ export const MushafPlayerOptionsSheet = (
                 {endPickStep === 'surahList'
                   ? renderSurahList(handleEndSurahPick)
                   : endPickSurah
-                    ? renderAyahGrid(endPickSurah, handleEndAyahPick, () =>
-                        setEndPickStep('surahList'),
-                      )
-                    : null}
+                  ? renderAyahGrid(endPickSurah, handleEndAyahPick, () =>
+                      setEndPickStep('surahList'),
+                    )
+                  : null}
               </AccordionScrollList>
             </View>
           )}
@@ -748,6 +753,7 @@ const createStyles = (theme: Theme) =>
     scrollView: {
       flexGrow: 0,
     },
+    scrollViewFill: {flexGrow: 1, flexShrink: 1}, // @ai: flexGrow, since scrollView sets it
     container: {
       paddingHorizontal: ms(20),
       paddingTop: ms(12),

@@ -1,12 +1,12 @@
 import React from 'react';
 import {Keyboard, Pressable, StyleSheet, Text, View} from 'react-native';
-import {SheetManager} from 'react-native-actions-sheet';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
 import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability';
 import {moderateScale} from '@/utils/scale';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 /**
  * "Recite to search": for readers who cannot type Arabic. Opens Which ayah?,
@@ -19,7 +19,7 @@ export function ReciteToSearchRow(): React.JSX.Element | null {
 
   function open(): void {
     Keyboard.dismiss();
-    SheetManager.show('which-ayah');
+    showSheet('which-ayah');
   }
 
   if (!RECITATION_AVAILABLE) return null;

@@ -18,6 +18,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
 import {TabletDialog} from '@/components/layout/TabletDialog';
+import {useVisibleAfterNativeSheets} from '@/components/native/useVisibleAfterNativeSheets'; // @ai
 
 /** Card height on iPad; the chips scroll inside it. */
 const TABLET_HEIGHT = 640;
@@ -239,6 +240,7 @@ export default function FilterModal({
   theme,
   initialFilters,
 }: FilterModalProps) {
+  const modalVisible = useVisibleAfterNativeSheets(visible); // @ai
   const insets = useSafeAreaInsets();
   const {isTablet} = useResponsive();
   const {t} = useTranslation(['home', 'common']);
@@ -432,7 +434,7 @@ export default function FilterModal({
   // bottom edge.
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       transparent
       animationType={isTablet ? 'fade' : 'slide'}
       onRequestClose={onClose}>

@@ -3,13 +3,15 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetFooter} from './SheetGestures';
 import Color from 'color';
 import {SLEEP_TIMER_OPTIONS} from '@/constants/playback'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 const TIMER_OPTIONS = SLEEP_TIMER_OPTIONS; // @ai
@@ -17,6 +19,7 @@ const TIMER_OPTIONS = SLEEP_TIMER_OPTIONS; // @ai
 // @ai-start
 export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
 
@@ -30,14 +33,14 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
     if (onTimerChange) {
       onTimerChange(minutes);
     }
-    SheetManager.hide('sleep-timer');
+    hideSheet('sleep-timer');
   };
 
   const handleTurnOff = () => {
     if (onTurnOffTimer) {
       onTurnOffTimer();
     }
-    SheetManager.hide('sleep-timer');
+    hideSheet('sleep-timer');
   };
 
   return (
@@ -50,7 +53,7 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('sleepTimer.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         {remainingTime !== null && remainingTime > 0 && (
           <Text style={styles.remainingTime}>
             {remainingTime < 1

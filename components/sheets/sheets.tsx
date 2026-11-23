@@ -26,6 +26,7 @@ import {AddToCollectionSheet} from './AddToCollectionSheet';
 import {AmbientSoundsSheet} from './AmbientSoundsSheet';
 import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 import {VerseActionsSheet} from './VerseActionsSheet';
+import {registerNativeSheet} from './sheetControl'; // @ai
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafReciterPickerSheet} from './MushafReciterPickerSheet'; // @ai
@@ -89,6 +90,62 @@ registerSheet('recitation-mistake', RecitationMistakeSheet);
 // @ai-start
 // The word sheet ('word-detail') was retired: a word long-press opens
 // 'verse-actions' on Word Study at that word.
+// @ai-end
+
+// @ai-start
+// Presented as native sheets on iPhone when nativeSheetsEnabled (showSheet).
+registerNativeSheet('verse-actions', VerseActionsSheet, {detents: 'fit'});
+registerNativeSheet('mushaf-layout', MushafLayoutSheet);
+// Playback settings is a form that needs the room; it opens full height.
+registerNativeSheet('mushaf-player-options', MushafPlayerOptionsSheet, {
+  detents: ['large'],
+});
+registerNativeSheet('mushaf-repeat-options', MushafRepeatOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('mushaf-reciter-picker', MushafReciterPickerSheet);
+registerNativeSheet('follow-along', FollowAlongSheet);
+registerNativeSheet('ambient-sounds', AmbientSoundsSheet, {
+  detents: 'fit',
+});
+// Menus size to their content.
+registerNativeSheet('surah-options', SurahOptionsSheet, {detents: 'fit'});
+registerNativeSheet('home-card-options', HomeCardOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('download-options', DownloadOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('upload-options', UploadOptionsSheet, {detents: 'fit'});
+registerNativeSheet('add-to-collection', AddToCollectionSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('select-playlist', SelectPlaylistSheet, {detents: 'fit'});
+// Forms: sized to their content, full height while the keyboard is up.
+registerNativeSheet('create-playlist', CreatePlaylistSheet, {detents: 'fit'});
+registerNativeSheet('favorite-reciters', FavoriteRecitersSheet, {
+  detents: ['large'],
+});
+registerNativeSheet('select-reciter', SelectReciterSheet, {detents: 'fit'});
+registerNativeSheet('collection-options', CollectionOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('playlist-context', PlaylistContextSheet, {detents: 'fit'});
+registerNativeSheet('player-options', PlayerOptionsSheet, {detents: 'fit'});
+registerNativeSheet('rewayat-info', RewayatInfoSheet);
+registerNativeSheet('adhkar-layout', AdhkarLayoutSheet);
+registerNativeSheet('adhkar-copy-options', AdhkarCopyOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('adhkar-session-options', AdhkarSessionOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('playback-speed', PlaybackSpeedSheet, {detents: 'fit'});
+registerNativeSheet('sleep-timer', SleepTimerSheet, {detents: 'fit'});
+registerNativeSheet('verse-note', VerseNoteSheet, {detents: 'fit'});
+registerNativeSheet('organize-recitation', OrganizeRecitationSheet, {
+  detents: ['large'],
+});
 // @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);

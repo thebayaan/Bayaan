@@ -20,7 +20,6 @@ import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotati
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {BookmarkItem} from '@/components/collection/BookmarkItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
-import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseBookmark} from '@/types/verse-annotations';
@@ -45,6 +44,7 @@ import {
 } from '@/components/sheets/options/collectionOptions';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 interface BookmarkData {
@@ -154,7 +154,7 @@ const BookmarksScreen = () => {
 
   const handleOptionsPress = useCallback(
     (item: BookmarkData) => {
-      SheetManager.show('collection-options', {payload: buildOptions(item)});
+      showSheet('collection-options', {payload: buildOptions(item)});
     },
     [buildOptions],
   );

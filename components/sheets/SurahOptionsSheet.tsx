@@ -10,7 +10,7 @@ import {
   ProfileIcon,
   LearnAboutIcon,
 } from '@/components/Icons';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -33,6 +33,8 @@ import {
   getSurahDisplayName,
   getSurahMeaning,
 } from '@/i18n/format';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // Import surah info data
@@ -62,6 +64,11 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
 // @ai-start
 export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const {theme} = useTheme();
+  // The last card's margin, unless the playlist card (no margin) ends it.
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    props.payload?.onRemoveFromPlaylist ? 0 : moderateScale(8),
+  ); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
@@ -102,7 +109,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('surah-options');
+    hideSheet('surah-options');
   }, []);
 
   // @ai-start
@@ -166,7 +173,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
           <SheetScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}>
-            <View style={styles.infoContent}>
+            <View
+              style={[styles.infoContent, {paddingBottom: sheetBottomPadding}]}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>
                   {getSurahDisplayName(surah)}
@@ -189,7 +197,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
           </SheetScrollView>
         </>
       ) : (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
           <View style={styles.header}>
             <Text style={styles.surahName}>{getSurahDisplayName(surah)}</Text>
             <Text style={styles.surahTranslation}>

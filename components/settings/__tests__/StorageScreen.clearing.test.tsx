@@ -5,7 +5,7 @@
  * The screen lives in app/, so its test lives here.
  */
 import React from 'react';
-import {ActionSheetIOS} from 'react-native';
+import {ActionSheetIOS, Alert} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
 let resolveClear: (() => void) | undefined;
@@ -126,6 +126,13 @@ it('disables both actions while a clear is running', async () => {
 it('Clear cache resets the player, then empties the cache folder', async () => {
   // It used to stop at the player, so the Cache figure never went down.
   const alertSpy = jest.spyOn(Alert, 'alert');
+  // @ai: on iPhone the confirmation is an action sheet; option 0 confirms.
+  let choose: ((index: number) => void) | undefined;
+  const sheetSpy = jest
+    .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
+    .mockImplementation((_options, callback) => {
+      choose = callback;
+    });
   mockCalls.length = 0;
   let tree!: TestRenderer.ReactTestRenderer;
   act(() => {
@@ -134,10 +141,9 @@ it('Clear cache resets the player, then empties the cache folder', async () => {
   const [, clearCache] = actionButtons(tree);
   act(() => clearCache.props.onPress());
 
-  const buttons = alertSpy.mock.calls[0][2] as AlertButton[];
-  const confirm = buttons.find(b => b.style === 'destructive')!;
+  expect(sheetSpy).toHaveBeenCalledTimes(1);
   await act(async () => {
-    await confirm.onPress?.();
+    choose?.(0);
   });
 
   expect(mockCalls).toEqual(['player', 'cacheDirectory']);
@@ -146,4 +152,5 @@ it('Clear cache resets the player, then empties the cache folder', async () => {
     'storage.clearCacheSuccess',
   );
   alertSpy.mockRestore();
+  sheetSpy.mockRestore();
 });

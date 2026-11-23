@@ -1,5 +1,4 @@
 import React, {useCallback, useMemo} from 'react';
-import {SheetManager} from 'react-native-actions-sheet';
 import {RootResults} from '@/components/search/quran/RootResults';
 import {
   hitLabel,
@@ -12,6 +11,7 @@ import {getSurahDisplayName} from '@/i18n/format';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {matchedPositions, type QuranVerseHit} from '@/utils/search/quranSearch';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 
 interface RootSearchContentProps {
   /** The verse sheet this screen is in: an ayah closes it. */
@@ -73,7 +73,7 @@ export const RootSearchContent: React.FC<RootSearchContentProps> = ({
 
   const handleVersePress = useCallback(
     async (hit: QuranVerseHit) => {
-      await SheetManager.hide(sheetId);
+      await hideSheet(sheetId as 'verse-actions');
       usePlayerStore.getState().setSheetMode('hidden');
       openQuranHit(hit.verseKey, matchedPositions(hit));
     },

@@ -5,7 +5,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -21,6 +21,8 @@ import RenderHtml, {
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, getSurahMeaning} from '@/i18n/format';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const surahInfo = require('@/data/surahInfo.json');
@@ -49,6 +51,7 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
 // @ai-start
 export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
@@ -106,7 +109,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('download-options');
+    hideSheet('download-options');
   }, []);
 
   const handlePlay = useCallback(() => {
@@ -126,7 +129,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
   const handleAddToPlaylist = useCallback(() => {
     if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
+    showSheet('select-playlist', {
       payload: {
         surah,
         reciterId,
@@ -187,7 +190,8 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
           <SheetScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}>
-            <View style={styles.infoContent}>
+            <View
+              style={[styles.infoContent, {paddingBottom: sheetBottomPadding}]}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>{surahName}</Text>
                 {surahMeaning ? (
@@ -208,7 +212,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
           </SheetScrollView>
         </>
       ) : (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
           <View style={styles.header}>
             <Text style={styles.surahName}>{surahName}</Text>
             {surahMeaning ? (

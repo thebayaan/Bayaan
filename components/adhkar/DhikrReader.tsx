@@ -12,7 +12,6 @@ import {
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
-import {SheetManager} from 'react-native-actions-sheet';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {AdhkarAudioControls} from './AdhkarAudioControls';
@@ -24,6 +23,7 @@ import {AdhkarLatinText} from './AdhkarLatinText';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {isRTL} from '@/utils/rtl';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // Enable LayoutAnimation for Android
@@ -82,11 +82,11 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
   }, []);
 
   const handleOpenCopyOptions = useCallback(() => {
-    SheetManager.show('adhkar-copy-options', {payload: {dhikr}});
+    showSheet('adhkar-copy-options', {payload: {dhikr}});
   }, [dhikr]);
 
   const handleOpenSettings = useCallback(() => {
-    SheetManager.show('adhkar-layout');
+    showSheet('adhkar-layout');
   }, []);
 
   const handleShare = useCallback(async () => {

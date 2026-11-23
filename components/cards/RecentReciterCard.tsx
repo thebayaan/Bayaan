@@ -17,7 +17,7 @@ import {useShownPlaybackTime} from '@/services/player/store/progressStore'; // @
 import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {useRouter, Link} from 'expo-router';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
 import {createStyles} from '@/components/cards/recentCardStyles';
@@ -286,7 +286,7 @@ export const RecentReciterCard = ({
   // On iPad the card is a context menu (long press or secondary click).
   const contextMenu = useNativeOptionsMenu('longPress');
   const handleLongPress = useCallback(() => {
-    SheetManager.show('home-card-options', {payload: optionsPayload});
+    showSheet('home-card-options', {payload: optionsPayload});
   }, [optionsPayload]);
   const onLongPress = contextMenu ? undefined : handleLongPress;
   // @ai-end

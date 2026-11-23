@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {SheetManager, SheetProps} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetFooter} from './SheetGestures';
 import {Feather} from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import {RECITATION_DOWNLOAD_MB} from '@/constants/recitation';
 import {useTheme} from '@/hooks/useTheme';
 import {formatNumber} from '@/i18n/format';
 import {Theme} from '@/utils/themeUtils';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 
 interface IntroPoint {
   icon: React.ComponentProps<typeof Feather>['name'];
@@ -40,7 +41,7 @@ export const RecitationIntroSheet = (
   ];
 
   function close(start: boolean): void {
-    void SheetManager.hide(props.sheetId, {payload: start});
+    void hideSheet('recitation-intro', {payload: start});
   }
 
   return (
