@@ -41,7 +41,7 @@ export const CATEGORY_COLORS: Record<CollectionCategoryId, string> = {
   downloads: '#10AC84',
   bookmarks: '#F59E0B',
   notes: '#3B82F6',
-  reciters: '#3B82F6',
+  reciters: '#EC4899',
   uploads: '#8B5CF6',
 };
 

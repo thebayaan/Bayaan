@@ -22,7 +22,7 @@ import {
 import {useUploadsStore} from '@/store/uploadsStore';
 import {useFocusEffect} from 'expo-router';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-import {useBottomInset} from '@/hooks/useBottomInset';
+import {useLibraryListBottomPadding} from '@/hooks/useBottomInset';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -51,7 +51,7 @@ export default function CollectionScreen() {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
-  const bottomInset = useBottomInset();
+  const bottomPadding = useLibraryListBottomPadding();
   const {t} = useTranslation(['collection', 'common']);
   const {isTablet} = useResponsive();
   const {lovedTracks} = useLoved();
@@ -65,6 +65,7 @@ export default function CollectionScreen() {
   const [recentBookmarks, setRecentBookmarks] = useState<VerseBookmark[]>([]);
   const [latestNote, setLatestNote] = useState<VerseNote | null>(null);
   const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const previews = useCollectionPreviews();
 
   useFocusEffect(
@@ -176,9 +177,9 @@ export default function CollectionScreen() {
       id: 'reciters',
       label: t('common:terms.reciters'),
       icon: (
-        <ProfileIcon color="#3B82F6" size={moderateScale(22)} filled={true} />
+        <ProfileIcon color="#EC4899" size={moderateScale(22)} filled={true} />
       ),
-      color: '#3B82F6',
+      color: '#EC4899',
       count: favoriteReciters.length,
       emptyText: t('collectionScreen.empty.reciters'),
       route: '/collection/favorite-reciters',
@@ -294,23 +295,26 @@ export default function CollectionScreen() {
           paddingTop: USE_GLASS
             ? moderateScale(16)
             : insets.top + moderateScale(16),
+          paddingBottom: bottomPadding,
         }}>
         <CollectionHomeList
           categories={categories}
           onAdd={handleAddPress}
+          searching={searching}
+          onStartSearch={() => setSearching(true)}
           search={
             <CollectionSearchField
               value={query}
               onChangeText={setQuery}
+              onCancel={() => {
+                setSearching(false);
+                setQuery('');
+              }}
               placeholder={t('collectionScreen.search.placeholder')}
             />
           }
-          results={
-            query.trim() ? <CollectionSearchResults query={query} /> : null
-          }
+          results={<CollectionSearchResults query={query} />}
         />
-
-        <View style={{height: bottomInset}} />
       </ScrollView>
     </View>
   );

@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useCallback, useMemo, useState} from 'react';
-import {Pressable, Text, View} from 'react-native';
+import {Pressable, ScrollView, Text, View} from 'react-native';
 import {useFocusEffect, useRouter} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
@@ -89,7 +89,6 @@ export function CollectionSearchResults({query}: {query: string}) {
 
   const groups = useMemo<Group[]>(() => {
     const q = query.trim();
-    if (!q) return [];
     const open = (pathname: string) => () =>
       router.push({pathname: pathname as never, params: {q}});
     const art = (
@@ -304,7 +303,7 @@ export function CollectionSearchResults({query}: {query: string}) {
         seeAll: open('/collection/uploads'),
       },
     ];
-    return all.filter(g => g.results.length > 0);
+    return q ? all : all.map(g => ({...g, results: []}));
   }, [
     query,
     router,
@@ -320,49 +319,51 @@ export function CollectionSearchResults({query}: {query: string}) {
     t,
   ]);
 
-  if (groups.length === 0) {
-    return (
-      <Text style={styles.empty}>
-        {t('collectionScreen.search.noResults', {query: query.trim()})}
-      </Text>
-    );
-  }
-
-  const activeScope =
-    scope !== 'all' && groups.some(g => g.id === scope) ? scope : 'all';
-  const shown =
-    activeScope === 'all' ? groups : groups.filter(g => g.id === activeScope);
+  const q = query.trim();
+  const shown = groups.filter(
+    g => g.results.length > 0 && (scope === 'all' || g.id === scope),
+  );
 
   return (
     <View style={styles.root}>
-      {groups.length > 1 ? (
-        <View style={styles.chips}>
-          {(['all', ...groups.map(g => g.id)] as const).map(id => {
-            const on = id === activeScope;
-            const label =
-              id === 'all'
-                ? t('collectionScreen.search.all')
-                : groups.find(g => g.id === id)?.label;
-            return (
-              <Pressable
-                key={id}
-                onPress={() => setScope(id)}
-                accessibilityRole="button"
-                accessibilityState={{selected: on}}
-                style={[styles.chip, on && styles.chipOn]}>
-                <Text style={[styles.chipText, on && styles.chipTextOn]}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+      {/* The category pills are there from the first tap, so a search can
+          be narrowed before anything is typed. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        style={styles.chipsScroller}
+        contentContainerStyle={styles.chips}>
+        {(['all', ...groups.map(g => g.id)] as const).map(id => {
+          const on = id === scope;
+          const label =
+            id === 'all'
+              ? t('collectionScreen.search.all')
+              : groups.find(g => g.id === id)?.label;
+          return (
+            <Pressable
+              key={id}
+              onPress={() => setScope(id)}
+              accessibilityRole="button"
+              accessibilityState={{selected: on}}
+              style={[styles.chip, on && styles.chipOn]}>
+              <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      {!q ? (
+        <Text style={styles.empty}>{t('collectionScreen.search.hint')}</Text>
+      ) : shown.length === 0 ? (
+        <Text style={styles.empty}>
+          {t('collectionScreen.search.noResults', {query: q})}
+        </Text>
       ) : null}
       {shown.map(group => {
         const rows =
-          activeScope === 'all'
-            ? group.results.slice(0, PER_GROUP)
-            : group.results;
+          scope === 'all' ? group.results.slice(0, PER_GROUP) : group.results;
         const more = group.results.length - rows.length;
         return (
           <View key={group.id} style={styles.section}>
@@ -433,7 +434,9 @@ export function CollectionSearchResults({query}: {query: string}) {
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     root: {gap: '18@ms'},
-    chips: {flexDirection: 'row', flexWrap: 'wrap', gap: '6@ms'},
+    // Runs edge to edge under the 16pt screen margin.
+    chipsScroller: {marginHorizontal: '-16@ms'},
+    chips: {flexDirection: 'row', gap: '6@ms', paddingHorizontal: '16@ms'},
     chip: {
       paddingHorizontal: '12@ms',
       paddingVertical: '6@ms',
@@ -500,7 +503,7 @@ const createStyles = (theme: Theme) =>
       fontSize: '14@ms',
       color: theme.colors.textSecondary,
       textAlign: 'center',
-      marginTop: '32@ms',
+      marginTop: '20@ms',
       paddingHorizontal: '24@ms',
     },
   });

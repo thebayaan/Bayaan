@@ -34,14 +34,18 @@ const GROUPS: Array<{key: 'listening' | 'reading' | 'yours'; ids: string[]}> = [
 interface CollectionHomeListProps {
   categories: CollectionHomeCategory[];
   onAdd: () => void;
-  /** The search field under the title. */
+  /** The live search field, shown in place of the pill while searching. */
   search?: React.ReactNode;
-  /** Shown instead of the categories while there's a query. */
+  /** Shown instead of the categories while searching. */
   results?: React.ReactNode;
+  /** Searching: the field replaces the pill and the + button. */
+  searching?: boolean;
+  /** Tapping the search pill. */
+  onStartSearch?: () => void;
 }
 
 /**
- * The Collection tab on phones: a large title with an add button, then the
+ * The Collection tab on phones: a search pill with an add button, then the
  * categories grouped under grey labels (Listening, Reading, Yours), each
  * group in one rounded card. Each row keeps today's tinted icon and says
  * what's inside instead of only how many items there are.
@@ -51,6 +55,8 @@ export function CollectionHomeList({
   onAdd,
   search,
   results,
+  searching,
+  onStartSearch,
 }: CollectionHomeListProps) {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -64,84 +70,107 @@ export function CollectionHomeList({
 
   return (
     <View style={styles.root}>
-      <View style={styles.titleRow}>
-        <Text style={styles.title} accessibilityRole="header">
-          {t('common:tabs.collection')}
-        </Text>
-        <Pressable
-          onPress={onAdd}
-          hitSlop={6}
-          style={({pressed}) => [styles.addButton, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel={t('collectionScreen.addToCollection')}>
-          <Feather
-            name="plus"
-            size={moderateScale(19)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </View>
+      {/* A search pill sits where the title was; tapping it opens search
+          (the field, the category pills and the results). */}
+      {searching ? (
+        search
+      ) : (
+        <View style={styles.titleRow}>
+          <Pressable
+            onPress={onStartSearch}
+            accessibilityRole="search"
+            accessibilityLabel={t('collectionScreen.search.placeholder')}
+            style={({pressed}) => [
+              styles.searchPill,
+              pressed && styles.pressed,
+            ]}>
+            <Feather
+              name="search"
+              size={moderateScale(16)}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={styles.searchPlaceholder} numberOfLines={1}>
+              {t('collectionScreen.search.placeholder')}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onAdd}
+            hitSlop={6}
+            style={({pressed}) => [styles.addButton, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('collectionScreen.addToCollection')}>
+            <Feather
+              name="plus"
+              size={moderateScale(19)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </View>
+      )}
 
-      {search}
+      {searching ? results : null}
 
-      {results ??
-        GROUPS.map(group => {
-          const rows = group.ids
-            .map(id => byId.get(id))
-            .filter((c): c is CollectionHomeCategory => Boolean(c));
-          if (rows.length === 0) return null;
-          return (
-            <View key={group.key} style={styles.section}>
-              <Text style={styles.sectionLabel} accessibilityRole="header">
-                {t(`collectionScreen.groups.${group.key}`)}
-              </Text>
-              <View style={styles.card}>
-                {rows.map((category, index) => {
-                  const isEmpty = category.count === 0;
-                  const subtitle = isEmpty
-                    ? category.emptyText
-                    : (category.summary ??
-                      t('collectionScreen.itemsCount', {
-                        count: category.count,
-                      }));
-                  return (
-                    <View key={category.id}>
-                      {index > 0 ? <View style={styles.separator} /> : null}
-                      <Pressable
-                        onPress={() => router.push(category.route as never)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${category.label}, ${subtitle}`}
-                        style={({pressed}) => [
-                          styles.row,
-                          pressed && styles.rowPressed,
-                        ]}>
-                        <CollectionPreview
-                          category={category.id as CollectionCategoryId}
-                          data={isEmpty ? null : (category.previewData ?? null)}
-                          size={moderateScale(38)}
-                        />
-                        <View style={styles.text}>
-                          <Text style={styles.label} numberOfLines={1}>
-                            {category.label}
-                          </Text>
-                          <Text style={styles.subtitle} numberOfLines={1}>
-                            {subtitle}
-                          </Text>
-                        </View>
-                        <Feather
-                          name="chevron-right"
-                          size={moderateScale(17)}
-                          color={theme.colors.textSecondary}
-                          style={flipX}
-                        />
-                      </Pressable>
-                    </View>
-                  );
-                })}
+      {searching
+        ? null
+        : GROUPS.map(group => {
+            const rows = group.ids
+              .map(id => byId.get(id))
+              .filter((c): c is CollectionHomeCategory => Boolean(c));
+            if (rows.length === 0) return null;
+            return (
+              <View key={group.key} style={styles.section}>
+                <Text style={styles.sectionLabel} accessibilityRole="header">
+                  {t(`collectionScreen.groups.${group.key}`)}
+                </Text>
+                <View style={styles.card}>
+                  {rows.map((category, index) => {
+                    const isEmpty = category.count === 0;
+                    const subtitle = isEmpty
+                      ? category.emptyText
+                      : (category.summary ??
+                        t('collectionScreen.itemsCount', {
+                          count: category.count,
+                        }));
+                    return (
+                      <View key={category.id}>
+                        {index > 0 ? <View style={styles.separator} /> : null}
+                        <Pressable
+                          onPress={() => router.push(category.route as never)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${category.label}, ${subtitle}`}
+                          style={({pressed}) => [
+                            styles.row,
+                            pressed && styles.rowPressed,
+                          ]}>
+                          <CollectionPreview
+                            category={category.id as CollectionCategoryId}
+                            data={
+                              isEmpty ? null : (category.previewData ?? null)
+                            }
+                            size={moderateScale(38)}
+                          />
+                          <View style={styles.text}>
+                            <Text style={styles.label} numberOfLines={1}>
+                              {category.label}
+                            </Text>
+                            <Text style={styles.subtitle} numberOfLines={1}>
+                              {subtitle}
+                            </Text>
+                          </View>
+                          <Feather
+                            name="chevron-right"
+                            size={moderateScale(17)}
+                            color={theme.colors.textSecondary}
+                            style={flipX}
+                          />
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })}
     </View>
   );
 }
@@ -155,14 +184,23 @@ const createStyles = (theme: Theme) =>
     titleRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingStart: '4@ms',
+      gap: '10@ms',
     },
-    title: {
-      fontFamily: theme.fonts.extraBold,
-      fontSize: '30@ms',
-      letterSpacing: -0.5,
-      color: theme.colors.text,
+    searchPill: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: '8@ms',
+      height: '40@ms',
+      borderRadius: '12@ms',
+      paddingHorizontal: '12@ms',
+      backgroundColor: Color(theme.colors.text).alpha(0.07).string(),
+    },
+    searchPlaceholder: {
+      flex: 1,
+      fontFamily: theme.fonts.regular,
+      fontSize: '15@ms',
+      color: theme.colors.textSecondary,
     },
     addButton: {
       width: '38@ms',

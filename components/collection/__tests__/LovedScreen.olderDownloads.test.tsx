@@ -253,7 +253,9 @@ const badges = (tree: TestRenderer.ReactTestRenderer) =>
 
 /** The options of the screen's ••• menu. */
 function screenOptions(tree: TestRenderer.ReactTestRenderer) {
-  const header = tree.root.find(node => (node.type as unknown) === CollectionScreenHeader);
+  const header = tree.root.find(
+    node => (node.type as unknown) === CollectionScreenHeader,
+  );
   act(() => {
     pressMoreButton(header);
   });
