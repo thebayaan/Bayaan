@@ -1574,14 +1574,15 @@ const createStyles = (theme: Theme) =>
       paddingBottom: 0,
       marginBottom: -CARD_BOTTOM_PADDING,
     },
-    // A screen fills the card's fixed height and keeps the phone sheet's
-    // padding. It may also shrink: switching from the menu, the container
-    // keeps the height it measured for the menu as its flex basis (seen on
-    // the iPad simulator, Fabric), which without shrinking ran the screens'
-    // Prev / Next footers past the card's bottom edge.
+    // A screen fills the card's fixed height, and may also shrink to it:
+    // switching from the menu, the container keeps the height it measured
+    // for the menu as its flex basis (seen on the iPad simulator, Fabric),
+    // which without shrinking ran the screens' Prev / Next footers past the
+    // card's bottom edge. Like the menu it drops the phone sheet's bottom
+    // padding, so a footer ends on its own padding plus the card's.
     tabletScreen: {
       flexShrink: 1,
-      paddingBottom: moderateScale(30),
+      paddingBottom: 0,
       marginBottom: 0,
     },
     // @ai-end

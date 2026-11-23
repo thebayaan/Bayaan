@@ -341,17 +341,26 @@ it('leaves the phone menu as it was', async () => {
   expect(containerStyle().paddingBottom).toBeGreaterThan(0);
 });
 
-it('lets the iPad screens shrink to the card, with the phone padding', async () => {
+it('lets the iPad screens shrink to the card, without the phone padding', async () => {
   await openSheet();
   press('Translation');
   // Shrinks so its footer stays in the card even when the container keeps
-  // the menu's measured height as its flex basis.
+  // the menu's measured height as its flex basis; the card has its own
+  // bottom padding.
   expect(containerStyle()).toMatchObject({
     flex: 1,
     flexShrink: 1,
-    paddingBottom: moderateScale(30), // the phone sheet's
+    paddingBottom: 0,
     marginBottom: 0,
   });
+});
+
+it('keeps the phone padding on phone screens', async () => {
+  mockIsTablet = false;
+  await openSheet();
+  press('Translation');
+  expect(containerStyle().paddingBottom).toBe(moderateScale(30));
+  expect(containerStyle().flexShrink).toBeUndefined();
 });
 
 const pickerOpen = () => texts().includes('close picker');
