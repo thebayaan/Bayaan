@@ -14,7 +14,7 @@ import {keyCommandsSupported} from '@/services/keyboard/keyCommands';
 import PlayerContent from './PlayerContent';
 import {TabletPlayerLayout} from './tablet/TabletPlayerLayout';
 // @ai-start
-import {nativeMenusAvailable} from '@/components/native/nativeMenus';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
   PlayerOptionsMenu,
   type PlayerOptionsPayload,
@@ -28,6 +28,7 @@ import {
  */
 export const PlayerBody = () => {
   const {isTablet} = useResponsive();
+  const nativeOptionsMenu = useNativeOptionsMenu('tap'); // @ai
   const remainingTime = useSleepTimerRemaining();
   const {navigateToReciterProfile} = useReciterNavigation();
 
@@ -158,7 +159,9 @@ export const PlayerBody = () => {
   }, [optionsPayload]);
 
   const optionsMenu =
-    isTablet && nativeMenusAvailable && optionsPayload ? (
+    nativeOptionsMenu &&
+    optionsPayload &&
+    (optionsPayload.surah || optionsPayload.isUserUpload) ? (
       <PlayerOptionsMenu payload={optionsPayload} layout="overlay" />
     ) : null;
   // @ai-end
@@ -178,7 +181,7 @@ export const PlayerBody = () => {
   const body = isTablet ? (
     <TabletPlayerLayout {...handlers} optionsMenu={optionsMenu} />
   ) : (
-    <PlayerContent {...handlers} />
+    <PlayerContent {...handlers} optionsMenu={optionsMenu} />
   );
 
   return (

@@ -72,7 +72,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
         {onOptionsPress && !isSelected && (
           <Pressable
             style={styles.optionsButton}
-            onPress={onOptionsPress}
+            onPress={optionsMenu ? undefined : onOptionsPress}
             hitSlop={8}>
             <Feather
               name="more-horizontal"

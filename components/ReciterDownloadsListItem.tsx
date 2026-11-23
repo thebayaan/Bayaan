@@ -73,7 +73,7 @@ export const ReciterDownloadsListItem: React.FC<ReciterDownloadsListItemProps> =
           {onOptionsPress && (
             <Pressable
               style={styles.optionsZone}
-              onPress={onOptionsPress}
+              onPress={optionsMenu ? undefined : onOptionsPress}
               hitSlop={8}>
               <Feather
                 name="more-horizontal"

@@ -89,7 +89,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
         {onOptionsPress && (
           <Pressable
             style={styles.optionsZone}
-            onPress={() => onOptionsPress(item)}
+            onPress={optionsMenu ? undefined : () => onOptionsPress(item)}
             hitSlop={8}>
             <Feather
               name="more-horizontal"
