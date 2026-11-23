@@ -1389,7 +1389,13 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
             {/* paddingTop offsets below native header (iOS) or sticky title (Android) */}
             <View
               onLayout={e => setStickyHeight(e.nativeEvent.layout.height)}
-              style={{paddingTop: stickyPinOffset}}
+              // @ai: the offset above the tabs is painted too, so rows
+              // scrolling up don't show between the top bar and the tabs.
+              // Before the header collapses, the header sits over it.
+              style={{
+                paddingTop: stickyPinOffset,
+                backgroundColor: theme.colors.background,
+              }}
               pointerEvents="box-none">
               <View style={{backgroundColor: theme.colors.background}}>
                 {tabs.length > 0 && (

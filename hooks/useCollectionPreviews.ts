@@ -26,7 +26,7 @@ export function useCollectionPreviews(): Record<
   const {favoriteReciters} = useFavoriteReciters();
   const {playlists, getPlaylistItems} = usePlaylists();
   const downloads = useDownloads();
-  const uploadsCount = useUploadsStore(s => s.totalCount);
+  const uploads = useUploadsStore(s => s.recitations);
 
   const [newestBookmark, setNewestBookmark] = useState<VerseBookmark | null>(
     null,
@@ -145,7 +145,16 @@ export function useCollectionPreviews(): Record<
               })),
             }
           : null,
-      uploads: uploadsCount > 0 ? {kind: 'wave'} : null,
+      // The newest upload tagged with a surah, as a cover with an upload
+      // badge like Downloads; untagged uploads keep the glass icon.
+      uploads: (() => {
+        const tagged = uploads
+          .filter(u => u.surahNumber)
+          .sort((a, b) => b.dateAdded - a.dateAdded)[0];
+        return tagged?.surahNumber
+          ? {kind: 'cover', surahId: tagged.surahNumber, badge: 'upload'}
+          : null;
+      })(),
     };
   }, [
     lovedTracks,
@@ -155,7 +164,7 @@ export function useCollectionPreviews(): Record<
     playlistSurahs,
     newestBookmark,
     hasNotes,
-    uploadsCount,
+    uploads,
   ]);
 }
 
