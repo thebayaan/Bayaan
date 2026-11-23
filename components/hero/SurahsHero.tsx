@@ -10,7 +10,11 @@ import {HeroSection} from './HeroSection';
 import {SurahOfTheDay} from './SurahOfTheDay';
 import {Link} from 'expo-router';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {SESSION_SEED, pickHeroTheme} from '@/components/hero/heroThemes';
 import {
   MESH_PALETTES,
@@ -57,6 +61,7 @@ export const SurahHeroSection = ({
   const {t} = useTranslation('home');
   const surahMeaning = getSurahMeaning(surah);
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const heroTheme = useMemo(() => pickHeroTheme(), []);
   const handleLongPress = useCallback(() => {
     onLongPress?.(surah);
@@ -158,7 +163,8 @@ export const SurahHeroSection = ({
             <GlassView
               style={styles.glassInner}
               glassEffectStyle="regular"
-              colorScheme={glassColorScheme}>
+              colorScheme={glassColorScheme}
+              tintColor={glassTint}>
               {cardContent}
             </GlassView>
           </Link.AppleZoom>

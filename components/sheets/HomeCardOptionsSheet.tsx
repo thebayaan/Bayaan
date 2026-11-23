@@ -95,12 +95,7 @@ const HomeCardOptionsContent = ({
               hiding a group (an upload's card hides the ones that cannot
               apply to it) never leaves a divider at the edge. */}
           {variant === 'recent' && (
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleContinuePlaying}>
+            <Pressable style={[styles.option]} onPress={handleContinuePlaying}>
               <PlayIcon color={iconColor} size={iconSize} />
               <Text style={styles.optionText}>
                 {t('homeCardOptions.continuePlaying')}
@@ -112,12 +107,7 @@ const HomeCardOptionsContent = ({
             <>
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleAddToQueue}>
+              <Pressable style={[styles.option]} onPress={handleAddToQueue}>
                 <View style={styles.rotatedIcon}>
                   <QueueIcon color={iconColor} size={iconSize} filled={true} />
                 </View>
@@ -132,12 +122,7 @@ const HomeCardOptionsContent = ({
             <>
               {variant === 'recent' && <View style={styles.divider} />}
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleGoToReciter}>
+              <Pressable style={[styles.option]} onPress={handleGoToReciter}>
                 <ProfileIcon color={iconColor} size={iconSize} filled={false} />
                 <Text style={styles.optionText}>
                   {t('homeCardOptions.goToReciter')}
@@ -146,12 +131,7 @@ const HomeCardOptionsContent = ({
 
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleToggleFavorite}>
+              <Pressable style={[styles.option]} onPress={handleToggleFavorite}>
                 <StarIcon
                   color={iconColor}
                   size={iconSize}
@@ -170,12 +150,7 @@ const HomeCardOptionsContent = ({
             <>
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleToggleLoved}>
+              <Pressable style={[styles.option]} onPress={handleToggleLoved}>
                 <HeartIcon
                   color={iconColor}
                   size={moderateScale(22)}
@@ -190,12 +165,7 @@ const HomeCardOptionsContent = ({
 
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleAddToPlaylist}>
+              <Pressable style={[styles.option]} onPress={handleAddToPlaylist}>
                 <Feather name="plus-circle" size={iconSize} color={iconColor} />
                 <Text style={styles.optionText}>
                   {t('homeCardOptions.addToCollection')}
@@ -208,12 +178,7 @@ const HomeCardOptionsContent = ({
             <>
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleShare}>
+              <Pressable style={[styles.option]} onPress={handleShare}>
                 <ShareIcon size={iconSize} color={iconColor} />
                 <Text style={styles.optionText}>
                   {t('common:actions.share')}
@@ -226,10 +191,7 @@ const HomeCardOptionsContent = ({
         {variant === 'recent' && (
           <View style={styles.destructiveCard}>
             <Pressable
-              style={({pressed}) => [
-                styles.optionDestructive,
-                pressed && styles.optionDestructivePressed,
-              ]}
+              style={[styles.optionDestructive]}
               onPress={handleRemoveFromRecents}>
               <Feather name="minus-circle" size={iconSize} color="#ff4444" />
               <Text style={styles.optionTextDestructive}>
@@ -303,9 +265,6 @@ export const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),
@@ -327,9 +286,6 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionDestructivePressed: {
-      backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,

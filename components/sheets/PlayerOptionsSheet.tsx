@@ -185,12 +185,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     optionEntries.push({
       key: 'edit',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleEditDetails}>
+        <Pressable style={[styles.option]} onPress={handleEditDetails}>
           <FontAwesome5
             name="sliders-h"
             size={moderateScale(16)}
@@ -206,12 +201,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     optionEntries.push({
       key: 'download',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleDownload}>
+        <Pressable style={[styles.option]} onPress={handleDownload}>
           {isCurrentlyDownloading ? (
             <CircularProgress
               progress={downloadProgress}
@@ -246,12 +236,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     optionEntries.push({
       key: 'collection',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleAddToPlaylist}>
+        <Pressable style={[styles.option]} onPress={handleAddToPlaylist}>
           <Feather
             name="plus-circle"
             size={moderateScale(18)}
@@ -267,12 +252,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     optionEntries.push({
       key: 'love',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleToggleLove}>
+        <Pressable style={[styles.option]} onPress={handleToggleLove}>
           <HeartIcon
             color={theme.colors.text}
             size={moderateScale(18)}
@@ -292,12 +272,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     optionEntries.push({
       key: 'share',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleShare}>
+        <Pressable style={[styles.option]} onPress={handleShare}>
           <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
           <Text style={styles.optionText}>{t('common:actions.share')}</Text>
         </Pressable>
@@ -309,12 +284,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     optionEntries.push({
       key: 'reciter',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleGoToReciter}>
+        <Pressable style={[styles.option]} onPress={handleGoToReciter}>
           <ProfileIcon
             color={theme.colors.text}
             size={moderateScale(18)}
@@ -330,12 +300,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     optionEntries.push({
       key: 'info',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleViewInfo}>
+        <Pressable style={[styles.option]} onPress={handleViewInfo}>
           <Feather
             name="info"
             size={moderateScale(18)}
@@ -480,9 +445,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,

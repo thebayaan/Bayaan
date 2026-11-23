@@ -196,10 +196,9 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
             {/* Add to Loved Option */}
             {reciterId && (
               <Pressable
-                style={({pressed}) => [
+                style={[
                   styles.lovedOption,
                   isLovedState && styles.lovedOptionActive,
-                  pressed && styles.lovedOptionPressed,
                 ]}
                 onPress={handleToggleLoved}>
                 <View
@@ -352,9 +351,6 @@ const createStyles = (theme: Theme) =>
     lovedOptionActive: {
       backgroundColor: Color('#FF6B6B').alpha(0.08).toString(),
       borderColor: Color('#FF6B6B').alpha(0.2).toString(),
-    },
-    lovedOptionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     lovedIconContainer: {
       width: moderateScale(50),

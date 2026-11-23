@@ -91,13 +91,13 @@ export const VerseHitRow: React.FC<VerseHitRowProps> = ({
       })}
       accessibilityHint={t('quranSearch.hitHint')}
       {...hoverProps}
-      style={({pressed}) => [
+      style={[
         styles.row,
         isTablet && styles.rowTablet,
         isTablet &&
           inset &&
           (windowWidth >= WIDE_WINDOW ? styles.insetWide : styles.inset),
-        (pressed || hovered) && styles.rowPressed,
+        hovered && styles.rowPressed,
       ]}>
       <View style={styles.header}>
         <Text style={styles.reference} numberOfLines={1}>

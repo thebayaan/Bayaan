@@ -1232,10 +1232,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             <View style={styles.card}>
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={
                   source === 'player'
                     ? isCurrentTrackTimestamped()
@@ -1253,10 +1250,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={
                   source === 'player'
                     ? isCurrentTrackTimestamped()
@@ -1278,10 +1272,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             <View style={styles.card}>
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleToggleBookmark}>
                 <Feather
                   name={isBookmarked ? 'minus-circle' : 'bookmark'}
@@ -1297,10 +1288,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleHighlight}>
                 {isHighlighted ? (
                   <Feather
@@ -1323,10 +1311,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleNote}>
                 <PageQuillIcon
                   size={moderateScale(18)}
@@ -1342,10 +1327,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             <View style={styles.card}>
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleTranslation}>
                 <MaterialCommunityIcons
                   name="translate"
@@ -1361,10 +1343,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleTafseer}>
                     <StackedVolumesIcon
                       size={moderateScale(18)}
@@ -1381,10 +1360,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleTheme}>
                     <GroupedLinesIcon
                       size={moderateScale(18)}
@@ -1401,10 +1377,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleWBW}>
                     <BreakdownIcon
                       size={moderateScale(18)}
@@ -1422,10 +1395,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button"
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleWordStudy}>
                 <MaterialCommunityIcons
                   name="file-tree-outline"
@@ -1446,10 +1416,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleCommunityReflections}>
                     <MaterialCommunityIcons
                       name="comment-quote-outline"
@@ -1467,10 +1434,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleSimilarVerses}>
                     <MirrorWavesIcon
                       size={moderateScale(18)}
@@ -1487,10 +1451,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleSharedPhrases}>
                     <ChainLinksIcon
                       size={moderateScale(18)}
@@ -1508,10 +1469,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             <View style={styles.card}>
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleCopy}
                 // @ai-start
                 disabled={isCopying}
@@ -1536,10 +1494,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleShare}>
                 <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
                 <Text style={styles.optionText}>
@@ -1612,9 +1567,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,

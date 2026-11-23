@@ -36,11 +36,7 @@ const CheckboxRow: React.FC<CheckboxRowProps> = ({
 }) => {
   return (
     <Pressable
-      style={({pressed}) => [
-        styles.checkboxRow,
-        disabled && styles.checkboxRowDisabled,
-        pressed && !disabled && styles.checkboxRowPressed,
-      ]}
+      style={[styles.checkboxRow, disabled && styles.checkboxRowDisabled]}
       onPress={onToggle}
       disabled={disabled}>
       <View
@@ -237,9 +233,6 @@ const createStyles = (theme: Theme) =>
     },
     checkboxRowDisabled: {
       opacity: 0.4,
-    },
-    checkboxRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     checkbox: {
       width: moderateScale(24),

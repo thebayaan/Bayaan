@@ -23,7 +23,11 @@ import {Theme} from '@/utils/themeUtils';
 import {getJuzForSurah, getJuzName} from '@/data/juzData';
 import {useHeaderHeight} from 'expo-router/react-navigation';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
@@ -168,6 +172,7 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
   const {t} = useTranslation(['home', 'common']);
   const navigation = useNavigation();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const iosHeaderHeight = isGlass ? headerHeight : 0;
@@ -444,7 +449,10 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     if (USE_GLASS) {
       return (
         <View style={styles.glassWrapper}>
-          <GlassView style={styles.glassInner} colorScheme={glassColorScheme}>
+          <GlassView
+            style={styles.glassInner}
+            colorScheme={glassColorScheme}
+            tintColor={glassTint}>
             {controlsContent}
           </GlassView>
         </View>

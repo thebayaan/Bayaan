@@ -512,10 +512,7 @@ const TextWeightControl: React.FC<TextWeightControlProps> = ({
           <React.Fragment key={option}>
             {idx > 0 && <View style={styles.divider} />}
             <Pressable
-              style={({pressed}) => [
-                styles.radioRow,
-                pressed && styles.radioRowPressed,
-              ]}
+              style={[styles.radioRow]}
               onPress={() => onChange(option)}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: isSelected}}>
@@ -914,10 +911,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </Text>
           <View style={styles.card}>
             <Pressable
-              style={({pressed}) => [
-                styles.settingRow,
-                pressed && styles.settingRowPressed,
-              ]}
+              style={[styles.settingRow]}
               onPress={() => setViewMode('mushaf')}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: viewMode === 'mushaf'}}>
@@ -938,10 +932,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             </Pressable>
             <View style={styles.divider} />
             <Pressable
-              style={({pressed}) => [
-                styles.settingRow,
-                pressed && styles.settingRowPressed,
-              ]}
+              style={[styles.settingRow]}
               onPress={() => setViewMode('list')}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: viewMode === 'list'}}>
@@ -967,10 +958,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </Text>
           <View style={styles.card}>
             <Pressable
-              style={({pressed}) => [
-                styles.settingRow,
-                pressed && styles.settingRowPressed,
-              ]}
+              style={[styles.settingRow]}
               onPress={() => setScrollDirection('horizontal')}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: scrollDirection === 'horizontal'}}>
@@ -991,10 +979,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             </Pressable>
             <View style={styles.divider} />
             <Pressable
-              style={({pressed}) => [
-                styles.settingRow,
-                pressed && styles.settingRowPressed,
-              ]}
+              style={[styles.settingRow]}
               onPress={() => setScrollDirection('vertical')}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: scrollDirection === 'vertical'}}>
@@ -1023,10 +1008,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               </Text>
               <View style={styles.card}>
                 <Pressable
-                  style={({pressed}) => [
-                    styles.settingRow,
-                    pressed && styles.settingRowPressed,
-                  ]}
+                  style={[styles.settingRow]}
                   onPress={() => setPageLayout('fullscreen')}
                   accessibilityRole="radio" // @ai
                   accessibilityState={{checked: pageLayout === 'fullscreen'}}>
@@ -1047,10 +1029,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 </Pressable>
                 <View style={styles.divider} />
                 <Pressable
-                  style={({pressed}) => [
-                    styles.settingRow,
-                    pressed && styles.settingRowPressed,
-                  ]}
+                  style={[styles.settingRow]}
                   onPress={() => setPageLayout('book')}
                   accessibilityRole="radio" // @ai
                   accessibilityState={{checked: pageLayout === 'book'}}>
@@ -1080,12 +1059,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         {t('mushafSettings.readingThemeHeader')}
       </Text>
       <View style={styles.card}>
-        <Pressable
-          style={({pressed}) => [
-            styles.settingRow,
-            pressed && styles.settingRowPressed,
-          ]}
-          onPress={onOpenThemePicker}>
+        <Pressable style={[styles.settingRow]} onPress={onOpenThemePicker}>
           <Text style={styles.settingRowLabel}>
             {themeMode === 'system'
               ? t('mushafSettings.system')
@@ -1125,10 +1099,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{checked: wbwShowTranslation}}
-          style={({pressed}) => [
-            styles.settingRow,
-            pressed && styles.settingRowPressed,
-          ]}
+          style={[styles.settingRow]}
           onPress={toggleWBWTranslation}>
           <Text style={styles.settingRowLabel}>
             {t('mushafSettings.englishMeanings')}
@@ -1145,10 +1116,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{checked: wbwShowTransliteration}}
-          style={({pressed}) => [
-            styles.settingRow,
-            pressed && styles.settingRowPressed,
-          ]}
+          style={[styles.settingRow]}
           onPress={toggleWBWTransliteration}>
           <Text style={styles.settingRowLabel}>
             {t('mushafSettings.transliteration')}
@@ -1399,9 +1367,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             <React.Fragment key={option.value}>
               {idx > 0 && <View style={styles.divider} />}
               <Pressable
-                style={({pressed}) => [
+                style={[
                   styles.radioRow,
-                  pressed && styles.radioRowPressed,
                   isHafsOnly && styles.radioRowDisabled, // @ai
                 ]}
                 disabled={isHafsOnly} // @ai
@@ -1656,11 +1623,7 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
   return (
     <View style={styles.card}>
       <Pressable
-        style={({pressed}) => [
-          styles.settingRow,
-          pressed && styles.settingRowPressed,
-          disabled && styles.radioRowDisabled,
-        ]}
+        style={[styles.settingRow, disabled && styles.radioRowDisabled]}
         accessibilityRole="button"
         accessibilityState={{expanded, disabled}}
         accessibilityLabel={
@@ -1697,10 +1660,7 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
               <React.Fragment key={id}>
                 {idx > 0 && <View style={styles.divider} />}
                 <Pressable
-                  style={({pressed}) => [
-                    styles.radioRow,
-                    pressed && styles.radioRowPressed,
-                  ]}
+                  style={[styles.radioRow]}
                   onPress={() => onSelect(id)}>
                   <View
                     style={[
@@ -1799,10 +1759,7 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
       {legend.entries.length > 0 && <View style={styles.divider} />}
       {legend.entries.length > 0 && (
         <Pressable
-          style={({pressed}) => [
-            styles.settingRow,
-            pressed && styles.settingRowPressed,
-          ]}
+          style={[styles.settingRow]}
           onPress={() => setShowLegend(!showLegend)}>
           <Feather
             name="info"
@@ -2053,9 +2010,6 @@ const createStyles = (theme: Theme, onSheet: boolean) =>
       paddingHorizontal: moderateScale(18),
       marginHorizontal: -moderateScale(18),
     },
-    radioRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     radioRowDisabled: {
       opacity: 0.45,
     },
@@ -2107,9 +2061,6 @@ const createStyles = (theme: Theme, onSheet: boolean) =>
       paddingHorizontal: moderateScale(14),
       marginHorizontal: -moderateScale(14),
       gap: moderateScale(12),
-    },
-    settingRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     settingRowLabel: {
       flex: 1,

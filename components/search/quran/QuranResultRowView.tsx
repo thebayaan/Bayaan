@@ -65,7 +65,7 @@ function RootSuggestion({
       accessibilityLabel={title}
       accessibilityHint={t('quranSearch.rootSuggestionHint')}
       {...hoverProps}
-      style={({pressed}) => [
+      style={[
         styles.suggestion,
         // @ai-start
         // Tablets: inset from the pane edge with a rounded fill, like the
@@ -77,7 +77,7 @@ function RootSuggestion({
             ? styles.suggestionInsetWide
             : styles.suggestionInset),
         // @ai-end
-        (pressed || hovered) && styles.pressed,
+        hovered && styles.pressed,
       ]}>
       <View style={styles.fill}>
         <Text style={styles.suggestionTitle}>{title}</Text>
@@ -111,10 +111,7 @@ function ShowMore({
       onPress={onPress}
       accessibilityRole="button"
       {...hoverProps}
-      style={({pressed}) => [
-        styles.more,
-        (pressed || hovered) && styles.pressed,
-      ]}>
+      style={[styles.more, hovered && styles.pressed]}>
       <Text style={styles.moreText}>
         {t('quranSearch.showMore', {
           count: Math.min(remaining, QURAN_PAGE_SIZE),

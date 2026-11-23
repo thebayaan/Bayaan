@@ -138,10 +138,7 @@ export function ReciterPickerSheet({
       return (
         <Pressable
           key={key}
-          style={({pressed}) => [
-            styles.reciterRow,
-            pressed && styles.reciterRowPressed,
-          ]}
+          style={[styles.reciterRow]}
           onPress={() => onSelect(item)}>
           <View style={styles.reciterImageContainer}>
             <ReciterImage
@@ -412,9 +409,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(5),
       paddingHorizontal: moderateScale(14),
       borderRadius: moderateScale(12),
-    },
-    reciterRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     reciterImageContainer: {
       width: moderateScale(46),

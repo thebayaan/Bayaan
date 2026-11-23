@@ -46,10 +46,7 @@ export function AdhkarSessionOptionsSheet(
           <Pressable
             testID="adhkar-session-stop"
             accessibilityRole="button"
-            style={({pressed}) => [
-              styles.optionDestructive,
-              pressed && styles.optionDestructivePressed,
-            ]}
+            style={[styles.optionDestructive]}
             onPress={handleStop}>
             <Feather name="x-circle" size={moderateScale(18)} color="#ff4444" />
             <Text style={styles.optionTextDestructive}>

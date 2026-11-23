@@ -44,13 +44,11 @@ export function PictureTile({
       accessibilityHint={accessibilityHint}
       accessibilityState={{checked: selected, disabled}}
       testID={testID}>
-      {({pressed}) => (
+      {
         <>
           <Animated.View
             style={[styles.ring, selected && styles.ringSelected, ring]}>
-            <View style={[styles.mock, pressed && styles.mockPressed]}>
-              {children}
-            </View>
+            <View style={[styles.mock]}>{children}</View>
           </Animated.View>
           <Text
             style={[styles.label, selected && styles.labelSelected]}
@@ -58,7 +56,7 @@ export function PictureTile({
             {label}
           </Text>
         </>
-      )}
+      }
     </Pressable>
   );
 }
@@ -97,9 +95,6 @@ function createStyles(theme: Theme) {
         .toString(),
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    mockPressed: {
-      backgroundColor: text.alpha(0.06).toString(),
     },
     // One line at its normal size; a long name truncates. The pop scales
     // the ring only.

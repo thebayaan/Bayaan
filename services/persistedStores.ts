@@ -22,6 +22,7 @@ import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
+import {useGlassTintStore} from '@/store/glassTintStore'; // @ai: temporary tint dial
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {usePlayCountStore} from '@/store/playCountStore';
@@ -40,6 +41,7 @@ export const PERSISTED_STORES: readonly PersistedStore[] = [
   useAmbientStore,
   useAnalyticsConsentStore,
   useDevSettingsStore,
+  useGlassTintStore,
   useMushafPlayerStore,
   useMushafSettingsStore,
   usePlayCountStore,

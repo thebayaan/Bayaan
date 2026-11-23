@@ -761,7 +761,7 @@ export default function TranslationsContent({
     return (
       <View style={cardStyle}>
         <Pressable
-          style={({pressed}) => [styles.row, pressed && styles.rowPressed]}
+          style={[styles.row]}
           onPress={() => {
             if (isReady) {
               handleSelectTranslation(item.id);
@@ -848,7 +848,7 @@ export default function TranslationsContent({
     return (
       <View style={cardStyle}>
         <Pressable
-          style={({pressed}) => [styles.row, pressed && styles.rowPressed]}
+          style={[styles.row]}
           onPress={() => {
             if (isReady) {
               handleSelectTafseer(item.id);
@@ -1176,9 +1176,6 @@ const createStyles = (theme: Theme) =>
       minHeight: moderateScale(56),
       paddingVertical: moderateScale(10),
       paddingHorizontal: moderateScale(18),
-    },
-    rowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     rowActions: {
       flexDirection: 'row',

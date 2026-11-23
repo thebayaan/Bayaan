@@ -66,10 +66,7 @@ export const RecentVerseRow: React.FC<RecentVerseRowProps> = ({
       accessibilityLabel={label}
       accessibilityHint={t('quranSearch.hitHint')}
       {...hoverProps}
-      style={({pressed}) => [
-        styles.row,
-        (pressed || hovered) && styles.pressed,
-      ]}>
+      style={[styles.row, hovered && styles.pressed]}>
       <View style={styles.icon}>
         <Feather
           name="book-open"

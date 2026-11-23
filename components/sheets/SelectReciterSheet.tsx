@@ -124,10 +124,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
 
         <View style={styles.optionsGrid}>
           <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
+            style={[styles.option]}
             onPress={() =>
               handleReciterSelection(handleUseDefaultReciter, 'useDefault')
             }>
@@ -142,10 +139,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
           </Pressable>
 
           <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
+            style={[styles.option]}
             onPress={() =>
               handleReciterSelection(handleUseRandomReciter, 'randomReciter')
             }>
@@ -154,10 +148,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
           </Pressable>
 
           <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
+            style={[styles.option]}
             onPress={() =>
               handleReciterSelection(handleBrowseAllReciters, 'browseAll')
             }>
@@ -231,9 +222,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateScale(12),
       borderWidth: 1,
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,

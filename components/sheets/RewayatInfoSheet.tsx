@@ -86,10 +86,9 @@ export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
             {availableRewayat.map(rewayat => (
               <Pressable
                 key={rewayat.id}
-                style={({pressed}) => [
+                style={[
                   styles.rewayatItem,
                   selectedRewayatId === rewayat.id && styles.selectedRewayat,
-                  pressed && styles.rewayatItemPressed,
                 ]}
                 onPress={() => handleRewayatSelect(rewayat.id)}>
                 <View>
@@ -194,9 +193,6 @@ const createStyles = (theme: Theme) =>
     selectedRewayat: {
       backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
       borderColor: theme.colors.text,
-    },
-    rewayatItemPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     rewayatName: {
       fontSize: moderateScale(16),

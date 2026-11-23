@@ -30,7 +30,11 @@ import {Link} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getRandomColors} from '@/utils/gradientColors';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 // @ai-end
@@ -431,6 +435,7 @@ export const ScrollingHero = React.memo(
     const {theme} = useTheme();
     const {t} = useTranslation('home');
     const glassColorScheme = useGlassColorScheme();
+    const glassTint = useGlassTint(); // @ai
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const distributedReciters = useDistributedReciters(RECITERS);
@@ -456,7 +461,8 @@ export const ScrollingHero = React.memo(
             <GlassView
               style={[styles.browseButton, {borderRadius: moderateScale(25)}]}
               glassEffectStyle="regular"
-              colorScheme={glassColorScheme}>
+              colorScheme={glassColorScheme}
+              tintColor={glassTint}>
               <Text style={styles.buttonText}>{t('browse.browseAll')}</Text>
               <Feather
                 name="arrow-right"
@@ -500,7 +506,8 @@ export const ScrollingHero = React.memo(
                 <GlassView
                   style={styles.glassInner}
                   glassEffectStyle="regular"
-                  colorScheme={glassColorScheme}>
+                  colorScheme={glassColorScheme}
+                  tintColor={glassTint}>
                   {scrollingContent}
                 </GlassView>
               </Link.AppleZoom>

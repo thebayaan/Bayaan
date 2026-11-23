@@ -6,7 +6,11 @@ import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
 import {Link} from 'expo-router';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
 import {getRewayatPersonLabel} from '@/data/rewayat';
@@ -30,6 +34,7 @@ function RewayatCard({
   const {theme} = useTheme();
   const {t} = useTranslation(['home', 'common']);
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const styles = useMemo(
     () => createStyles(theme, width, height),
     [theme, width, height],
@@ -71,7 +76,8 @@ function RewayatCard({
                 styles.glassContainer,
               ])}
               glassEffectStyle="regular"
-              colorScheme={glassColorScheme}>
+              colorScheme={glassColorScheme}
+              tintColor={glassTint}>
               {content}
             </GlassView>
           </Link.AppleZoom>
@@ -144,9 +150,6 @@ function createStyles(
       fontSize: moderateScale(10),
       fontFamily: theme.fonts.regular,
       color: theme.colors.textTertiary,
-    },
-    pressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
   });
 }

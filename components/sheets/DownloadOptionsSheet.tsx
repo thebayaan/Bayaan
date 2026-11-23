@@ -221,12 +221,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
           </View>
 
           <View style={styles.card}>
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handlePlay}>
+            <Pressable style={[styles.option]} onPress={handlePlay}>
               <PlayIcon color={theme.colors.text} size={moderateScale(18)} />
               <Text style={styles.optionText}>{t('options.playNow')}</Text>
             </Pressable>
@@ -234,11 +229,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleToggleLove}>
               <HeartIcon
                 color={theme.colors.text}
@@ -258,12 +249,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
             <View style={styles.divider} />
 
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleAddToQueue}>
+            <Pressable style={[styles.option]} onPress={handleAddToQueue}>
               <View style={styles.rotatedIcon}>
                 <QueueIcon
                   color={theme.colors.text}
@@ -277,11 +263,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleAddToPlaylist}>
               <Feather
                 name="plus-circle"
@@ -299,12 +281,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
             <View style={styles.divider} />
 
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleViewInfo}>
+            <Pressable style={[styles.option]} onPress={handleViewInfo}>
               <Feather
                 name="info"
                 size={moderateScale(18)}
@@ -318,10 +295,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
           <View style={styles.destructiveCard}>
             <Pressable
-              style={({pressed}) => [
-                styles.optionDestructive,
-                pressed && styles.optionDestructivePressed,
-              ]}
+              style={[styles.optionDestructive]}
               onPress={handleRemoveDownload}>
               <Feather
                 name="trash-2"
@@ -409,9 +383,6 @@ const createStyles = (theme: Theme) =>
     optionDisabled: {
       opacity: 0.5,
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),
@@ -427,9 +398,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionDestructivePressed: {
-      backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,

@@ -25,13 +25,7 @@ export function ReciteToSearchRow(): React.JSX.Element | null {
   if (!RECITATION_AVAILABLE) return null;
 
   return (
-    <Pressable
-      onPress={open}
-      accessibilityRole="button"
-      style={({pressed}) => [
-        styles.row,
-        {backgroundColor: pressed ? subtle : 'transparent'},
-      ]}>
+    <Pressable onPress={open} accessibilityRole="button" style={[styles.row]}>
       <View style={[styles.icon, {backgroundColor: subtle}]}>
         <Feather
           name="mic"

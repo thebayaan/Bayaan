@@ -45,11 +45,7 @@ export const CollectionOptionsSheet = (
               <React.Fragment key={i}>
                 {i > 0 && <View style={styles.divider} />}
                 <Pressable
-                  style={({pressed}) => [
-                    styles.option,
-                    pressed && styles.optionPressed,
-                    opt.disabled && styles.optionDisabled,
-                  ]}
+                  style={[styles.option, opt.disabled && styles.optionDisabled]}
                   onPress={async () => {
                     // Await the hide before invoking the option's onPress.
                     // Calling SheetManager.show from inside opt.onPress while
@@ -78,9 +74,8 @@ export const CollectionOptionsSheet = (
         {destructiveOptions.map((opt, i) => (
           <View key={`destructive-${i}`} style={styles.destructiveCard}>
             <Pressable
-              style={({pressed}) => [
+              style={[
                 styles.optionDestructive,
-                pressed && styles.optionDestructivePressed,
                 opt.disabled && styles.optionDisabled,
               ]}
               onPress={async () => {
@@ -165,9 +160,6 @@ const createStyles = (theme: Theme) =>
     optionDisabled: {
       opacity: 0.5,
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),
@@ -186,9 +178,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionDestructivePressed: {
-      backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,

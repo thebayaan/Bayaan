@@ -1,5 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {
+  FlatList as PlainFlatList,
+  ScrollView as PlainScrollView,
   View,
   type FlatList as RNFlatList,
   type FlatListProps,
@@ -19,6 +21,7 @@ import {
 // The sheet's drag gesture. The package reads it from this context for its
 // own ScrollView and FlatList but does not export it.
 import {usePanGestureContext} from 'react-native-actions-sheet/dist/src/context';
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 
 // How sheet content shares touches with the sheet's drag-to-close gesture.
 //
@@ -138,6 +141,22 @@ export function SheetScrollView({
 }: SheetScrollViewProps) {
   const drag = useSheetDrag();
   const [atTop, handleScroll] = useAtTop(onScroll);
+  // @ai-start
+  // A native sheet has no library drag to share touches with, and Gesture
+  // Handler's ScrollView there may not scroll at all: use React Native's.
+  const inNativeSheet = useNativeSheetId() !== null;
+  if (inNativeSheet) {
+    return (
+      <PlainScrollView
+        {...props}
+        ref={ref}
+        scrollEventThrottle={scrollEventThrottle}
+        onScroll={onScroll}
+        overScrollMode={overScrollMode}
+      />
+    );
+  }
+  // @ai-end
   return (
     <LegacyScrollView
       {...props}
@@ -168,6 +187,21 @@ export function SheetFlatList<ItemT>({
 }: SheetFlatListProps<ItemT>) {
   const drag = useSheetDrag();
   const [atTop, handleScroll] = useAtTop(onScroll);
+  // @ai-start
+  // As SheetScrollView: React Native's own list inside a native sheet.
+  const inNativeSheet = useNativeSheetId() !== null;
+  if (inNativeSheet) {
+    return (
+      <PlainFlatList<ItemT>
+        {...props}
+        ref={ref}
+        scrollEventThrottle={scrollEventThrottle}
+        onScroll={onScroll}
+        overScrollMode={overScrollMode}
+      />
+    );
+  }
+  // @ai-end
   return (
     <LegacyFlatList<ItemT>
       {...props}

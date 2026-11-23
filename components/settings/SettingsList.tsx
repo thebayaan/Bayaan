@@ -232,11 +232,7 @@ export function SettingsRow({
   }
   return (
     <Pressable
-      style={({pressed}) => [
-        styles.row,
-        pressed && styles.pressed,
-        disabled && styles.disabled,
-      ]}
+      style={[styles.row, disabled && styles.disabled]}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole={accessibilityRole ?? 'button'}
@@ -301,9 +297,6 @@ function createStyles(theme: Theme) {
       paddingHorizontal: SETTINGS_ROW_INSET,
       paddingVertical: moderateScale(10),
       gap: ICON_GAP,
-    },
-    pressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     disabled: {
       opacity: 0.45,

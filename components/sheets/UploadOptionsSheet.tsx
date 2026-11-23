@@ -272,9 +272,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   optionEntries.push({
     key: 'play',
     render: () => (
-      <Pressable
-        style={({pressed}) => [styles.option, pressed && styles.optionPressed]}
-        onPress={handlePlay}>
+      <Pressable style={[styles.option]} onPress={handlePlay}>
         <PlayIcon color={theme.colors.text} size={moderateScale(18)} />
         <Text style={styles.optionText}>{t('options.playNow')}</Text>
       </Pressable>
@@ -284,9 +282,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   optionEntries.push({
     key: 'organize',
     render: () => (
-      <Pressable
-        style={({pressed}) => [styles.option, pressed && styles.optionPressed]}
-        onPress={handleOrganize}>
+      <Pressable style={[styles.option]} onPress={handleOrganize}>
         <Feather
           name="sliders"
           size={moderateScale(18)}
@@ -300,9 +296,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   optionEntries.push({
     key: 'queue',
     render: () => (
-      <Pressable
-        style={({pressed}) => [styles.option, pressed && styles.optionPressed]}
-        onPress={handleAddToQueue}>
+      <Pressable style={[styles.option]} onPress={handleAddToQueue}>
         <View style={styles.rotatedIcon}>
           <QueueIcon
             color={theme.colors.text}
@@ -319,12 +313,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
     optionEntries.push({
       key: 'love',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleToggleLove}>
+        <Pressable style={[styles.option]} onPress={handleToggleLove}>
           <HeartIcon
             color={theme.colors.text}
             size={moderateScale(18)}
@@ -342,12 +331,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
     optionEntries.push({
       key: 'collection',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleAddToPlaylist}>
+        <Pressable style={[styles.option]} onPress={handleAddToPlaylist}>
           <Feather
             name="plus-circle"
             size={moderateScale(18)}
@@ -363,12 +347,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
     optionEntries.push({
       key: 'reciter',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleGoToReciter}>
+        <Pressable style={[styles.option]} onPress={handleGoToReciter}>
           <ProfileIcon
             color={theme.colors.text}
             size={moderateScale(18)}
@@ -384,12 +363,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
     optionEntries.push({
       key: 'info',
       render: () => (
-        <Pressable
-          style={({pressed}) => [
-            styles.option,
-            pressed && styles.optionPressed,
-          ]}
-          onPress={handleViewInfo}>
+        <Pressable style={[styles.option]} onPress={handleViewInfo}>
           <Feather
             name="info"
             size={moderateScale(18)}
@@ -471,10 +445,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
 
           <View style={styles.destructiveCard}>
             <Pressable
-              style={({pressed}) => [
-                styles.optionDestructive,
-                pressed && styles.optionDestructivePressed,
-              ]}
+              style={[styles.optionDestructive]}
               onPress={handleDelete}>
               <Feather
                 name="trash-2"
@@ -559,9 +530,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),
@@ -574,9 +542,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionDestructivePressed: {
-      backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,

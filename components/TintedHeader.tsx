@@ -123,7 +123,11 @@ export function tintedRootBackOptions(
 export function tintedHeaderRight(
   render: (() => ReactNode) | undefined,
 ): Partial<NativeStackNavigationOptions> {
-  if (!USE_GLASS || !render) return {headerRight: render};
+  if (!USE_GLASS) return {headerRight: render};
+  // No buttons: clear the items too, as options merge and earlier items
+  // would otherwise stay (the reciter page's search kept its buttons).
+  if (!render)
+    return {headerRight: undefined, unstable_headerRightItems: () => []};
   return {
     headerRight: undefined,
     unstable_headerRightItems: () => [

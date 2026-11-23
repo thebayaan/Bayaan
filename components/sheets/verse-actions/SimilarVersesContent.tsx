@@ -300,10 +300,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                   return (
                     <View key={match.verseKey}>
                       <Pressable
-                        style={({pressed}) => [
-                          styles.matchRow,
-                          pressed && styles.matchRowPressed,
-                        ]}
+                        style={[styles.matchRow]}
                         onPress={() => toggleVerse(match.verseKey)}>
                         <Feather
                           name={isVerseExpanded ? 'chevron-up' : 'chevron-down'}
@@ -394,10 +391,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
               return (
                 <Pressable
                   key={similar.matchedVerseKey}
-                  style={({pressed}) => [
-                    styles.similarCard,
-                    pressed && styles.similarCardPressed,
-                  ]}
+                  style={[styles.similarCard]}
                   onPress={() => handleVersePress(similar.matchedVerseKey)}>
                   <View style={styles.similarHeader}>
                     <Text style={styles.similarRef}>
@@ -517,9 +511,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(4),
       borderRadius: moderateScale(8),
     },
-    matchRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     matchRef: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-SemiBold',
@@ -575,9 +566,6 @@ const createStyles = (theme: Theme) =>
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
       padding: moderateScale(14),
       marginBottom: moderateScale(8),
-    },
-    similarCardPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     similarHeader: {
       flexDirection: 'row',

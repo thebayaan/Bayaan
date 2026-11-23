@@ -91,12 +91,7 @@ export const AddToCollectionSheet = (
         </View>
 
         <View style={styles.card}>
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleNewUpload}>
+          <Pressable style={[styles.option]} onPress={handleNewUpload}>
             <Feather
               name="mic"
               size={moderateScale(18)}
@@ -109,12 +104,7 @@ export const AddToCollectionSheet = (
 
           <View style={styles.divider} />
 
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleNewPlaylist}>
+          <Pressable style={[styles.option]} onPress={handleNewPlaylist}>
             <PlaylistIcon color={theme.colors.text} size={moderateScale(18)} />
             <Text style={styles.optionText}>
               {t('addToCollection.createPlaylist')}
@@ -123,12 +113,7 @@ export const AddToCollectionSheet = (
 
           <View style={styles.divider} />
 
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleAddFavoriteReciter}>
+          <Pressable style={[styles.option]} onPress={handleAddFavoriteReciter}>
             <Feather
               name="star"
               size={moderateScale(18)}
@@ -194,9 +179,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,

@@ -4,7 +4,8 @@ import {StyleSheet} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
-import {GLASS_TINT_ALPHA, USE_GLASS} from '@/hooks/useGlassProps';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useGlassTintStore} from '@/store/glassTintStore';
 import {useResponsive} from '@/hooks/useResponsive';
 
 // The tab bar's glass is drawn by iOS and takes no tint, but it bends what
@@ -17,8 +18,9 @@ export function TabBarScrim() {
   const {bottom} = useSafeAreaInsets();
   // iPad's tab bar sits at the top, so there is nothing to darken below.
   const {isTablet} = useResponsive();
+  const darkTint = useGlassTintStore(s => s.dark);
   if (!USE_GLASS || !isDark || isTablet) return null;
-  const strength = Math.min(0.9, GLASS_TINT_ALPHA.dark * 2.5);
+  const strength = Math.min(0.9, darkTint * 2.5);
   return (
     <LinearGradient
       pointerEvents="none"

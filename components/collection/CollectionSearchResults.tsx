@@ -395,10 +395,7 @@ export function CollectionSearchResults({query}: {query: string}) {
                     accessibilityLabel={
                       r.subtitle ? `${r.title}, ${r.subtitle}` : r.title
                     }
-                    style={({pressed}) => [
-                      styles.row,
-                      pressed && styles.rowPressed,
-                    ]}>
+                    style={[styles.row]}>
                     {r.art}
                     <View style={styles.text}>
                       <Text style={styles.title} numberOfLines={1}>
@@ -425,10 +422,7 @@ export function CollectionSearchResults({query}: {query: string}) {
                   <Pressable
                     onPress={group.seeAll}
                     accessibilityRole="button"
-                    style={({pressed}) => [
-                      styles.row,
-                      pressed && styles.rowPressed,
-                    ]}>
+                    style={[styles.row]}>
                     <Text style={styles.seeAll}>
                       {t('collectionScreen.search.seeAll', {
                         total: localizeDigits(group.results.length),
@@ -484,9 +478,6 @@ const createStyles = (theme: Theme) =>
       minHeight: '58@ms',
       paddingVertical: '9@ms',
       paddingHorizontal: SETTINGS_ROW_INSET, // @ai
-    },
-    rowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).string(),
     },
     face: {width: '40@ms', height: '40@ms', borderRadius: '20@ms'},
     text: {flex: 1, minWidth: 0},

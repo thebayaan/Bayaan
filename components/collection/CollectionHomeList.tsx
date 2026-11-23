@@ -148,10 +148,7 @@ export function CollectionHomeList({
                           onPress={() => router.push(category.route as never)}
                           accessibilityRole="button"
                           accessibilityLabel={`${category.label}, ${subtitle}`}
-                          style={({pressed}) => [
-                            styles.row,
-                            pressed && styles.rowPressed,
-                          ]}>
+                          style={[styles.row]}>
                           <CollectionPreview
                             category={category.id as CollectionCategoryId}
                             data={
@@ -242,9 +239,6 @@ const createStyles = (theme: Theme) =>
       minHeight: '60@ms',
       paddingVertical: '9@ms',
       paddingHorizontal: SETTINGS_ROW_INSET, // @ai
-    },
-    rowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).string(),
     },
     text: {flex: 1, minWidth: 0},
     label: {

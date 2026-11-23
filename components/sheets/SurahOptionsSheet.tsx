@@ -208,11 +208,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
 
           <View style={styles.card}>
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleToggleLove}>
               <HeartIcon
                 color={theme.colors.text}
@@ -233,11 +229,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleDownload}>
               {isCurrentlyDownloading ? (
                 <CircularProgress
@@ -269,11 +261,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !onAddToQueue && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !onAddToQueue && styles.optionDisabled]}
               onPress={handleAddToQueue}>
               <View style={styles.rotatedIcon}>
                 <QueueIcon
@@ -294,11 +282,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleAddToPlaylist}>
               <Feather
                 name="plus-circle"
@@ -317,12 +301,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             {reciterId && rewayatId && (
               <>
                 <View style={styles.divider} />
-                <Pressable
-                  style={({pressed}) => [
-                    styles.option,
-                    pressed && styles.optionPressed,
-                  ]}
-                  onPress={handleShare}>
+                <Pressable style={[styles.option]} onPress={handleShare}>
                   <ShareIcon
                     size={moderateScale(18)}
                     color={theme.colors.text}
@@ -337,12 +316,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             {reciterId && !payload?.hideGoToReciter && (
               <>
                 <View style={styles.divider} />
-                <Pressable
-                  style={({pressed}) => [
-                    styles.option,
-                    pressed && styles.optionPressed,
-                  ]}
-                  onPress={handleGoToReciter}>
+                <Pressable style={[styles.option]} onPress={handleGoToReciter}>
                   <ProfileIcon
                     color={theme.colors.text}
                     size={moderateScale(18)}
@@ -357,12 +331,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
 
             <View style={styles.divider} />
 
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleViewInfo}>
+            <Pressable style={[styles.option]} onPress={handleViewInfo}>
               <LearnAboutIcon
                 size={moderateScale(18)}
                 color={theme.colors.text}
@@ -376,10 +345,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
           {onRemoveFromPlaylist && (
             <View style={styles.destructiveCard}>
               <Pressable
-                style={({pressed}) => [
-                  styles.optionDestructive,
-                  pressed && styles.optionDestructivePressed,
-                ]}
+                style={[styles.optionDestructive]}
                 onPress={handleRemoveFromPlaylist}>
                 <Feather
                   name="minus-circle"
@@ -468,9 +434,6 @@ const createStyles = (theme: Theme) =>
     optionDisabled: {
       opacity: 0.5,
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),
@@ -489,9 +452,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionDestructivePressed: {
-      backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,

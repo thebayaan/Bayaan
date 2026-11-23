@@ -78,11 +78,7 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
             return (
               <Pressable
                 key={minutes}
-                style={({pressed}) => [
-                  styles.option,
-                  isSelected && styles.selectedTimer,
-                  pressed && !isSelected && styles.optionPressed,
-                ]}
+                style={[styles.option, isSelected && styles.selectedTimer]}
                 onPress={() => handleTimerSelect(minutes)}>
                 <Text
                   style={[
@@ -98,12 +94,7 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
         {(sleepTimer > 0 || remainingTime !== null) && (
           // A tap on Turn off that wobbles never drags the sheet.
           <SheetFooter style={styles.turnOffFooter}>
-            <Pressable
-              style={({pressed}) => [
-                styles.turnOffButton,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleTurnOff}>
+            <Pressable style={[styles.turnOffButton]} onPress={handleTurnOff}>
               <Text style={styles.turnOffText}>{t('sleepTimer.turnOff')}</Text>
             </Pressable>
           </SheetFooter>
@@ -165,9 +156,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(20),
       borderRadius: moderateScale(20),
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
     },
     selectedTimer: {
       backgroundColor: theme.colors.text,

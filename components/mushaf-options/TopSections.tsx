@@ -275,7 +275,7 @@ function ThemeTile({
       accessibilityLabel={option.name}
       accessibilityState={{checked: selected}}
       testID={`mushaf-options-theme-${option.id}`}>
-      {({pressed}) => (
+      {
         <>
           <Animated.View
             style={[
@@ -294,7 +294,6 @@ function ThemeTile({
                   style={[styles.themeLine, {backgroundColor: line, width}]}
                 />
               ))}
-              {pressed ? <View style={styles.themePagePressed} /> : null}
             </View>
           </Animated.View>
           <Text
@@ -303,7 +302,7 @@ function ThemeTile({
             {option.name}
           </Text>
         </>
-      )}
+      }
     </Pressable>
   );
 }
@@ -382,10 +381,6 @@ function createThemeStyles(theme: Theme) {
       gap: moderateScale(5),
       alignItems: 'flex-end',
       overflow: 'hidden',
-    },
-    themePagePressed: {
-      ...StyleSheet.absoluteFill,
-      backgroundColor: textAlpha(theme, 0.06),
     },
     themeLine: {
       height: 3,
