@@ -21,6 +21,7 @@ jest.mock('@/hooks/useTheme', () => ({
         textSecondary: '#666666',
         background: '#ffffff',
       },
+      typography: {mediumSize: 14, smallSize: 12},
     },
   }),
 }));
@@ -66,7 +67,7 @@ function row(renderer: TestRenderer.ReactTestRenderer, label: string) {
 }
 
 const isTicked = (node: TestRenderer.ReactTestInstance) =>
-  node.findAll(child => child.props.name === 'check-circle').length > 0;
+  node.findAll(child => child.props.name === 'check').length > 0;
 
 beforeEach(() => {
   jest.clearAllMocks();

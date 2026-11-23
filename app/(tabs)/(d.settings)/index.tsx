@@ -1,28 +1,29 @@
 import React, {useMemo} from 'react';
-import {Text, Pressable, ScrollView, View} from 'react-native';
+import {ScrollView, View} from 'react-native';
 import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {Theme} from '@/utils/themeUtils';
-import {Feather, MaterialIcons} from '@expo/vector-icons';
+import {moderateScale} from '@/utils/scale';
 import {clearPlayerCache} from '@/services/player/utils/storage';
-import Color from 'color';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
-import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
-import {ThemePicker} from '@/components/settings/ThemePicker';
+import {AppearancePicker} from '@/components/settings/AppearancePicker'; // @ai
+import {
+  SettingsRow,
+  SettingsSection,
+  useSettingsStyles,
+  type SettingsIconName,
+} from '@/components/settings/SettingsList'; // @ai
 import branding from '@/config/branding';
 // @ai-start
-import {flipX, latinLetterSpacing} from '@/utils/rtl';
+import {currentLanguageConfig} from '@/i18n/language';
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
 import {
   SETTINGS_SPLIT_MIN_WIDTH,
-  customIconMap,
   getSettingsSections,
   isExternalLink,
   openSettingsItem,
@@ -31,34 +32,6 @@ import {
 import {TabletSettingsHome} from '@/components/settings/TabletSettingsList';
 import MushafSettingsScreen from './mushaf-settings';
 // @ai-end
-
-const renderIcon = (
-  item: {icon: string; iconType: string},
-  iconColor: string,
-) => {
-  if (item.iconType === 'custom') {
-    const IconComponent = customIconMap[item.icon];
-    if (IconComponent) {
-      return <IconComponent size={moderateScale(22)} color={iconColor} />;
-    }
-  }
-  if (item.iconType === 'material') {
-    return (
-      <MaterialIcons
-        name={item.icon as any}
-        size={moderateScale(20)}
-        color={iconColor}
-      />
-    );
-  }
-  return (
-    <Feather
-      name={item.icon as any}
-      size={moderateScale(20)}
-      color={iconColor}
-    />
-  );
-};
 
 // @ai-start
 /**
@@ -76,27 +49,16 @@ export default function SettingsScreen() {
     <TabletSettingsHome />
   );
 }
-
 function PhoneSettingsScreen() {
   const router = useRouter();
-  const {theme} = useTheme();
   const bottomInset = useBottomInset();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const glassColorScheme = useGlassColorScheme();
+  const styles = useSettingsStyles();
+  const {theme} = useTheme();
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
   const {t} = useTranslation(['settings', 'common']);
   const settingsSections = useMemo(() => getSettingsSections(t), [t]);
   const {analyticsEnabled, setAnalyticsEnabled} = useAnalyticsConsentStore();
-
-  const handleAnalyticsToggle = (value: boolean): void => {
-    // The analytics service subscribes to this store and pushes the choice
-    // straight to the PostHog SDK, so flipping the flag is all we do here.
-    setAnalyticsEnabled(value);
-  };
-
-  const iconColor = theme.colors.text;
-  const chevronColor = theme.colors.textSecondary;
 
   const handleSettingPress = async (type: string) => {
     if (type === 'clearCache') {
@@ -108,6 +70,10 @@ function PhoneSettingsScreen() {
     );
   };
 
+  /** A value shown at the trailing end of a row, before its chevron. */
+  const trailingValue = (type: string): string | undefined =>
+    type === 'language' ? currentLanguageConfig.endonym : undefined;
+
   // iOS 26+ NativeTabs: automatic content insets handle top/bottom; manual
   // padding would double-pad. Other platforms: opt out of automatic and pad
   // manually.
@@ -118,136 +84,70 @@ function PhoneSettingsScreen() {
         paddingBottom: bottomInset,
       };
 
-  const renderCard = (children: React.ReactNode) =>
-    USE_GLASS ? (
-      <GlassView
-        style={styles.card}
-        glassEffectStyle="regular"
-        colorScheme={glassColorScheme}>
-        {children}
-      </GlassView>
-    ) : (
-      <View style={styles.card}>{children}</View>
-    );
-
   return (
-    <View style={styles.container}>
+    <View style={{flex: 1, backgroundColor: theme.colors.background}}>
       <ScrollView
         contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
-        contentContainerStyle={[styles.scrollContent, contentPadding]}
+        contentContainerStyle={[styles.page, contentPadding]}
         showsVerticalScrollIndicator={false}>
-        {/* Appearance */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>
-            {t('settings:index.appearance')}
-          </Text>
-          <ThemePicker />
-        </View>
+        <SettingsSection
+          title={t('settings:index.appearance')}
+          separatorInset="none">
+          <AppearancePicker />
+        </SettingsSection>
 
-        {/* Settings Sections */}
         {settingsSections.map(section => (
-          <View key={section.section} style={styles.section}>
-            <Text style={styles.sectionHeader}>
-              {section.section.toUpperCase()}
-            </Text>
-            {renderCard(
-              section.items.map((item, itemIndex) => (
-                <React.Fragment key={item.type}>
-                  {itemIndex > 0 && <View style={styles.divider} />}
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.settingsRow,
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() => handleSettingPress(item.type)}>
-                    <View style={styles.settingsItemIcon}>
-                      {renderIcon(item, iconColor)}
-                    </View>
-                    <View style={styles.settingsTextContainer}>
-                      <Text style={styles.settingsTitle}>{item.title}</Text>
-                      <Text style={styles.settingsDescription}>
-                        {item.description}
-                      </Text>
-                    </View>
-                    <Feather
-                      name={
-                        isExternalLink(item.type)
-                          ? 'external-link'
-                          : 'chevron-right'
-                      }
-                      size={moderateScale(16)}
-                      color={chevronColor}
-                      style={isExternalLink(item.type) ? undefined : flipX}
-                    />
-                  </Pressable>
-                </React.Fragment>
-              )),
-            )}
-          </View>
+          <SettingsSection key={section.section} title={section.section}>
+            {section.items.map(item => {
+              const external = isExternalLink(item.type);
+              return (
+                <SettingsRow
+                  key={item.type}
+                  icon={ROW_ICONS[item.type] ?? 'circle'}
+                  title={item.title}
+                  value={trailingValue(item.type)}
+                  accessory={external ? 'external' : 'chevron'}
+                  accessibilityRole={external ? 'link' : 'button'}
+                  accessibilityHint={item.description}
+                  onPress={() => handleSettingPress(item.type)}
+                />
+              );
+            })}
+          </SettingsSection>
         ))}
 
-        {/* Privacy Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>
-            {t('settings:index.analytics.section')}
-          </Text>
-          {renderCard(
-            <View style={styles.settingsRow}>
-              <View style={styles.settingsItemIcon}>
-                <Feather
-                  name="bar-chart-2"
-                  size={moderateScale(20)}
-                  color={iconColor}
-                />
-              </View>
-              <View style={styles.settingsTextContainer}>
-                <Text style={styles.settingsTitle}>
-                  {t('settings:index.analytics.title')}
-                </Text>
-                <Text style={styles.settingsDescription}>
-                  {t('settings:index.analytics.description', {
-                    appName: branding.appName,
-                  })}
-                </Text>
-              </View>
+        <SettingsSection
+          title={t('settings:index.analytics.section')}
+          footer={t('settings:index.analytics.description', {
+            appName: branding.appName,
+          })}>
+          <SettingsRow
+            icon="bar-chart-2"
+            title={t('settings:index.analytics.title')}
+            accessory={
               <NativeSwitch
                 value={analyticsEnabled}
-                onValueChange={handleAnalyticsToggle}
-                style={styles.switchStyle}
+                onValueChange={setAnalyticsEnabled}
               />
-            </View>,
-          )}
-        </View>
+            }
+          />
+        </SettingsSection>
 
-        {/* Developer Section */}
         {__DEV__ && (
           // Dev-only tools stay in English. // @ai
           // i18next-instrument-ignore
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>DEVELOPER</Text>
-            {renderCard(
-              <View style={styles.settingsRow}>
-                <View style={styles.settingsItemIcon}>
-                  <Feather
-                    name="tool"
-                    size={moderateScale(20)}
-                    color={iconColor}
-                  />
-                </View>
-                <View style={styles.settingsTextContainer}>
-                  <Text style={styles.settingsTitle}>Floating Dev Menu</Text>
-                  <Text style={styles.settingsDescription}>
-                    Show the floating developer tools button
-                  </Text>
-                </View>
+          <SettingsSection title="Developer">
+            <SettingsRow
+              icon="tool"
+              title="Floating Dev Menu"
+              accessory={
                 <NativeSwitch
                   value={showFloatingDevMenu}
                   onValueChange={toggleFloatingDevMenu}
-                  style={styles.switchStyle}
                 />
-              </View>,
-            )}
-          </View>
+              }
+            />
+          </SettingsSection>
         )}
       </ScrollView>
     </View>
@@ -256,85 +156,22 @@ function PhoneSettingsScreen() {
 // @ai-end
 
 // @ai-start
-const createStyles = (theme: Theme) =>
-  ScaledSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    scrollContent: {
-      paddingHorizontal: moderateScale(16),
-    },
-    section: {
-      marginBottom: moderateScale(14),
-    },
-    sectionHeader: {
-      textAlign: 'left',
-      fontSize: moderateScale(10.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textSecondary,
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
-      marginBottom: moderateScale(6),
-      marginLeft: moderateScale(2),
-    },
-
-    // --- Cards ---
-    card: {
-      backgroundColor: USE_GLASS
-        ? undefined
-        : Color(theme.colors.text).alpha(0.04).toString(),
-      borderRadius: moderateScale(14),
-      borderWidth: USE_GLASS ? 0 : 1,
-      borderColor: USE_GLASS
-        ? undefined
-        : Color(theme.colors.text).alpha(0.06).toString(),
-      overflow: 'hidden',
-    },
-    divider: {
-      height: 1,
-      backgroundColor: Color(theme.colors.text)
-        .alpha(USE_GLASS ? 0.1 : 0.06)
-        .toString(),
-      marginHorizontal: moderateScale(16),
-    },
-
-    // --- Settings Rows ---
-    settingsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(12),
-      paddingHorizontal: moderateScale(14),
-    },
-    pressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    settingsItemIcon: {
-      marginRight: moderateScale(12),
-      width: moderateScale(24),
-      alignItems: 'center',
-    },
-    settingsTextContainer: {
-      flex: 1,
-      marginRight: moderateScale(10),
-    },
-    settingsTitle: {
-      textAlign: 'left',
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.text,
-    },
-    settingsDescription: {
-      textAlign: 'left',
-      fontSize: moderateScale(11),
-      fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
-      marginTop: moderateScale(1),
-    },
-
-    // --- Switch ---
-    switchStyle: {
-      transform: [{scaleX: 0.8}, {scaleY: 0.8}],
-    },
-  });
+/** Monochrome outline icons for the phone list (the iPad list keeps its own). */
+const ROW_ICONS: Record<string, SettingsIconName> = {
+  mushafSettings: 'book-open',
+  translations: 'type',
+  defaultReciter: 'mic',
+  reciterChoice: 'sliders',
+  language: 'globe',
+  storage: 'hard-drive',
+  rateApp: 'star',
+  featureRequest: 'zap',
+  support: 'message-circle',
+  whatsNew: 'gift',
+  about: 'info',
+  credits: 'award',
+  github: 'github',
+  terms: 'file-text',
+  privacy: 'shield',
+};
 // @ai-end

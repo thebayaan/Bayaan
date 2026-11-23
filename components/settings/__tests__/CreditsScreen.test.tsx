@@ -23,6 +23,7 @@ jest.mock('@/hooks/useTheme', () => ({
         textTertiary: '#777777',
         background: '#ffffff',
       },
+      typography: {mediumSize: 14, smallSize: 12},
     },
   }),
 }));

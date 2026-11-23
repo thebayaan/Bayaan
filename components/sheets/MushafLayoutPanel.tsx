@@ -75,6 +75,7 @@ export function MushafLayoutPanel({
         // without the container's padding or the card's own bottom margin.
         containerStyle={inNativeSheet ? styles.flushBottom : undefined}
         context={context}
+        surface="sheet"
         onOpenThemePicker={handleOpenThemePicker}
       />
     </ScrollComponent>
