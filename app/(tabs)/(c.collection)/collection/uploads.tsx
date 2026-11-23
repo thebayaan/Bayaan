@@ -77,7 +77,6 @@ import {
   CollectionSearchField,
 } from '@/components/collection/CollectionScreenHeader';
 import {GRID_PADDING} from '@/components/collection/CollectionGridTile';
-import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
 import {useCollectionViewPref} from '@/store/collectionViewStore';
 import {matchesQuery} from '@/utils/collectionSearch';
 // @ai-end
@@ -352,7 +351,6 @@ export default function UploadsScreen() {
   const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
   const [searching, setSearching] = useState(Boolean(initialQuery));
   const [query, setQuery] = useState(initialQuery ?? '');
-  const previews = useCollectionPreviews();
   const uploadTitle = useCallback((r: UploadedRecitation) => {
     if (r.title) return r.title;
     const surah = r.surahNumber ? getSurahById(r.surahNumber) : undefined;
@@ -627,7 +625,7 @@ export default function UploadsScreen() {
   ) : (
     <CollectionScreenHeader
       category="uploads"
-      preview={previews.uploads}
+      preview={null}
       title={t('common:terms.uploads')}
       meta={t('uploadsScreen.recitationsCount', {count: totalCount})}
       primary={{

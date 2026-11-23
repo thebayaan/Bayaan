@@ -50,10 +50,7 @@ import {
   GRID_PADDING,
   useGridTileWidth,
 } from '@/components/collection/CollectionGridTile';
-import {
-  useCollectionPreviews,
-  usePlaylistCovers,
-} from '@/hooks/useCollectionPreviews';
+import {usePlaylistCovers} from '@/hooks/useCollectionPreviews';
 import {useCollectionViewPref} from '@/store/collectionViewStore';
 import {matchesQuery} from '@/utils/collectionSearch';
 // @ai-end
@@ -81,9 +78,8 @@ export default function PlaylistsScreen() {
   const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
   const [searching, setSearching] = useState(Boolean(initialQuery));
   const [query, setQuery] = useState(initialQuery ?? '');
-  const previews = useCollectionPreviews();
   const covers = usePlaylistCovers(playlists);
-  const tileWidth = useGridTileWidth(2);
+  const tileWidth = useGridTileWidth(3);
   const sortedPlaylists = useMemo(() => {
     const list = [...playlists];
     if (sort === 'title') list.sort((a, b) => a.name.localeCompare(b.name));
@@ -463,7 +459,7 @@ export default function PlaylistsScreen() {
   ) : (
     <CollectionScreenHeader
       category="playlists"
-      preview={previews.playlists}
+      preview={null}
       title={t('common:terms.playlists')}
       meta={t('collectionScreen.meta.pair', {
         a: t('playlistsScreen.count', {count: playlists.length}),
@@ -517,7 +513,7 @@ export default function PlaylistsScreen() {
         renderItem={renderItem}
         keyExtractor={item => item.id}
         ListHeaderComponent={listHeader} // @ai
-        numColumns={view === 'grid' ? 2 : 1} // @ai
+        numColumns={view === 'grid' ? 3 : 1} // @ai
         columnWrapperStyle={
           view === 'grid' // @ai
             ? {

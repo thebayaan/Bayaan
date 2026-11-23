@@ -47,7 +47,6 @@ import {
   CollectionSearchField,
 } from '@/components/collection/CollectionScreenHeader';
 import {GRID_PADDING} from '@/components/collection/CollectionGridTile';
-import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
 import {useCollectionViewPref} from '@/store/collectionViewStore';
 import {matchesQuery, matchesVerseRef} from '@/utils/collectionSearch';
 // @ai-end
@@ -82,7 +81,6 @@ const NotesScreen = () => {
   const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
   const [searching, setSearching] = useState(Boolean(initialQuery));
   const [query, setQuery] = useState(initialQuery ?? '');
-  const previews = useCollectionPreviews();
   const visibleNotes = useMemo(() => {
     const list = [...notes];
     if (sort === 'oldest') {
@@ -279,7 +277,7 @@ const NotesScreen = () => {
   ) : (
     <CollectionScreenHeader
       category="notes"
-      preview={previews.notes}
+      preview={null}
       title={t('collectionScreen.notes')}
       meta={t('collectionScreen.meta.notes', {count: notes.length})}
       actions={renderHeaderRight()}

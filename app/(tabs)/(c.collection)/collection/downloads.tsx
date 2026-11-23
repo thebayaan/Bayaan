@@ -72,7 +72,6 @@ import {
 } from '@/components/collection/CollectionGridTile';
 import {NativeSegmentedControl} from '@/components/native/NativeSegmentedControl';
 import {ReciterImage} from '@/components/ReciterImage';
-import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
 import {
   useCollectionViewPref,
   useCollectionViewStore,
@@ -150,8 +149,7 @@ export default function DownloadsScreen() {
   const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
   const [searching, setSearching] = useState(Boolean(initialQuery));
   const [query, setQuery] = useState(initialQuery ?? '');
-  const previews = useCollectionPreviews();
-  const reciterTileWidth = useGridTileWidth(2);
+  const reciterTileWidth = useGridTileWidth(3);
   const surahTileWidth = useGridTileWidth(3);
   const formatSize = useCallback(
     (bytes: number) =>
@@ -774,7 +772,7 @@ export default function DownloadsScreen() {
   ) : (
     <CollectionScreenHeader
       category="downloads"
-      preview={previews.downloads}
+      preview={null}
       title={t('common:terms.downloads')}
       meta={t('collectionScreen.meta.pair', {
         a: t('common:counts.surahs', {count: downloads.length}),
@@ -931,7 +929,7 @@ export default function DownloadsScreen() {
       </PanelRow>
     );
   };
-  const columns = view === 'grid' ? (grouping === 'reciter' ? 2 : 3) : 1;
+  const columns = view === 'grid' ? 3 : 1;
   // @ai-end
 
   return (

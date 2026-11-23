@@ -53,7 +53,6 @@ import {
   CollectionSearchField,
 } from '@/components/collection/CollectionScreenHeader';
 import {GRID_PADDING} from '@/components/collection/CollectionGridTile';
-import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
 import {useCollectionViewPref} from '@/store/collectionViewStore';
 import {matchesQuery, matchesVerseRef} from '@/utils/collectionSearch';
 // @ai-end
@@ -90,7 +89,6 @@ const BookmarksScreen = () => {
   const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
   const [searching, setSearching] = useState(Boolean(initialQuery));
   const [query, setQuery] = useState(initialQuery ?? '');
-  const previews = useCollectionPreviews();
   const visibleBookmarks = useMemo(() => {
     const list = [...bookmarks];
     if (sort === 'oldest') {
@@ -250,7 +248,7 @@ const BookmarksScreen = () => {
   ) : (
     <CollectionScreenHeader
       category="bookmarks"
-      preview={previews.bookmarks}
+      preview={null}
       title={t('common:terms.bookmarks')}
       meta={t('collectionScreen.meta.inSurahs', {
         ayahs: t('common:counts.ayahs', {count: bookmarks.length}),
