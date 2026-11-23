@@ -422,7 +422,11 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
   const renderHeaderRight = useCallback(
     () => (
-      <Pressable onPress={handleOptionsPress} hitSlop={8}>
+      <Pressable
+        onPress={handleOptionsPress}
+        hitSlop={8}
+        accessibilityRole="button" // @ai
+        accessibilityLabel={t('collectionScreen.actions.moreOptions')}>
         <Feather
           name="more-horizontal"
           size={moderateScale(20)}
@@ -433,7 +437,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         )}
       </Pressable>
     ),
-    [handleOptionsPress, theme.colors.text, nativeMenus, playlistOptions],
+    [handleOptionsPress, theme.colors.text, nativeMenus, playlistOptions, t],
   );
 
   useCollectionNativeHeader({

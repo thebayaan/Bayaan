@@ -264,7 +264,45 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
             )}
           </View>
           {/* Under its reciter's heading the whole line would repeat. @ai */}
-          {hideReciterName ? null : (
+          {transparent ? (
+            // @ai In a panel: one secondary line, like Music's two-line
+            // rows: reciter · riwayah (or just the riwayah under a heading),
+            // still led by the download state.
+            <View style={styles.reciterInfoRow}>
+              {isCurrentlyDownloading ? (
+                <CircularProgress
+                  progress={downloadProgress}
+                  size={moderateScale(13)}
+                  strokeWidth={moderateScale(1.5)}
+                  color={theme.colors.textSecondary}
+                />
+              ) : isDownloadedState && !hideReciterName ? (
+                <Ionicons
+                  name="arrow-down-circle"
+                  size={moderateScale(13)}
+                  color={theme.colors.textSecondary}
+                  style={styles.downloadIcon}
+                />
+              ) : null}
+              <Text
+                style={[
+                  styles.reciterName,
+                  {color: theme.colors.textSecondary, flexShrink: 1},
+                ]}
+                numberOfLines={1}>
+                {[
+                  hideReciterName ? null : getReciterDisplayName(reciter),
+                  rewayat
+                    ? `${getDisplayLabelFromName(rewayat.name)}${
+                        styleLabel ? ` \u2022 ${styleLabel}` : ''
+                      }`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' \u00B7 ')}
+              </Text>
+            </View>
+          ) : hideReciterName ? null : (
             <View style={styles.reciterInfoRow}>
               {isCurrentlyDownloading ? (
                 <CircularProgress
@@ -290,7 +328,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
               </Text>
             </View>
           )}
-          {renderRewayatBadge()}
+          {transparent ? null : renderRewayatBadge()}
         </View>
       </Pressable>
     );
