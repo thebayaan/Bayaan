@@ -428,6 +428,7 @@ export const UploadsTabContent = React.forwardRef<
             onPress: handleAddRecitation,
           }}
           style={styles.emptyPanel}
+          ghostRows={1}
         />
       ),
       [handleAddRecitation, styles, t],
@@ -606,7 +607,7 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'stretch' as const,
     },
     emptyPanel: {
-      marginTop: moderateScale(16),
+      marginTop: moderateScale(8),
     },
     addButton: {
       flexDirection: 'row',

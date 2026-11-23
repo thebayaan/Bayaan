@@ -80,7 +80,10 @@
       "errorTitle": "Download Error",
       "errorMessage": "Some downloads may have failed.",
       "stoppedOnLeave": "Download all stopped",
-      "stoppedOnLeaveHint": "Open the reciter again to carry on."
+      "stoppedOnLeaveHint": "Open the reciter again to carry on.",
+      "a11yStart": "Download all surahs",
+      "a11yCancel": "Cancel downloading all surahs",
+      "a11yDone": "All surahs downloaded"
     },
     "menu": {
       "label": "View and sort",
@@ -91,7 +94,8 @@
       "desc": "Reverse order",
       "revelation": "Order of revelation",
       "lovedOnly": "Loved only"
-    }
+    },
+    "shuffle": "Shuffle"
   },
   "adhkar": {
     "otherSection": "Other",
