@@ -9,6 +9,8 @@ import {moderateScale} from '@/utils/scale';
 import {NativeMenu} from '@/components/native/NativeMenu';
 import type {NativeMenuEntry} from '@/components/native/menuTypes';
 
+const NO_ENTRIES: NativeMenuEntry[] = []; // @ai
+
 export type ReciterViewMode = 'card' | 'list';
 export type ReciterSortOption = 'asc' | 'desc' | 'revelation';
 
@@ -23,17 +25,18 @@ const SORTS: ReciterSortOption[] = ['asc', 'desc', 'revelation'];
 export function ReciterViewMenu({
   viewMode,
   sortOption,
-  lovedOnly,
+  lovedOnly = false,
   onViewModeChange,
   onSortChange,
   onToggleLovedOnly,
 }: {
   viewMode: ReciterViewMode;
   sortOption: ReciterSortOption;
-  lovedOnly: boolean;
+  lovedOnly?: boolean;
   onViewModeChange: (mode: ReciterViewMode) => void;
   onSortChange: (sort: ReciterSortOption) => void;
-  onToggleLovedOnly: () => void;
+  /** Left out (the Surahs tab), the menu has no Loved only filter. @ai */
+  onToggleLovedOnly?: () => void;
 }) {
   const {theme} = useTheme();
   const {t} = useTranslation('player');
@@ -66,19 +69,23 @@ export function ReciterViewMenu({
           checked: sortOption === id,
         })),
       },
-      {
-        id: 'filter',
-        items: [
-          {
-            id: 'loved',
-            title: t('reciterProfile.menu.lovedOnly'),
-            systemImage: lovedOnly ? 'heart.fill' : 'heart',
-            checked: lovedOnly,
-          },
-        ],
-      },
+      ...(onToggleLovedOnly
+        ? ([
+            {
+              id: 'filter',
+              items: [
+                {
+                  id: 'loved',
+                  title: t('reciterProfile.menu.lovedOnly'),
+                  systemImage: lovedOnly ? 'heart.fill' : 'heart',
+                  checked: lovedOnly,
+                },
+              ],
+            },
+          ] as NativeMenuEntry[])
+        : NO_ENTRIES),
     ],
-    [viewMode, sortOption, lovedOnly, t],
+    [viewMode, sortOption, lovedOnly, onToggleLovedOnly, t],
   );
 
   const onSelect = (id: string) => {
@@ -88,7 +95,7 @@ export function ReciterViewMenu({
     } else if (kind === 'sort' && SORTS.includes(value as ReciterSortOption)) {
       onSortChange(value as ReciterSortOption);
     } else if (kind === 'loved') {
-      onToggleLovedOnly();
+      onToggleLovedOnly?.();
     }
   };
 

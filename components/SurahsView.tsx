@@ -29,6 +29,22 @@ import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
 import {computeGridLayout} from '@/utils/gridLayout';
+// @ai-start
+import {nativeMenusAvailable} from '@/components/native/nativeMenus';
+import {ReciterViewMenu} from '@/components/reciter-profile/components/ReciterViewMenu';
+import {CollectionSearchField} from '@/components/collection/CollectionScreenHeader';
+import {
+  PANEL_MARGIN,
+  PANEL_ROW_PADDING,
+  PanelRow,
+} from '@/components/collection/CollectionPanel';
+import {
+  GROUPED_HEADER_GAP,
+  GROUPED_SECTION_GAP,
+  groupedHeaderStyle,
+} from '@/components/settings/SettingsList';
+import {matchesQuery} from '@/utils/collectionSearch';
+// @ai-end
 // @ai-end
 
 interface SurahsViewProps {
@@ -61,7 +77,7 @@ export default function SurahsView({
   onSurahLongPress,
 }: SurahsViewProps) {
   const {theme} = useTheme();
-  const {t} = useTranslation(['home', 'common']);
+  const {t} = useTranslation(['home', 'common', 'reader']);
   const bottomInset = useBottomInset();
   const insets = useSafeAreaInsets();
   const {isTablet, width: windowWidth} = useResponsive();
@@ -79,7 +95,16 @@ export default function SurahsView({
   const sortOption = useSettings(state => state.browseSortOption);
   const setBrowseSortOption = useSettings(state => state.setBrowseSortOption);
 
-  const displaySurahs = useMemo(() => {
+  // @ai-start: search is a button; tapping it swaps the top for a field.
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
+  const stopSearching = useCallback(() => {
+    setSearching(false);
+    setQuery('');
+  }, []);
+  // @ai-end
+
+  const sortedSurahs = useMemo(() => {
     const result = [...SURAHS];
     switch (sortOption) {
       case 'asc':
@@ -92,6 +117,23 @@ export default function SurahsView({
         return result;
     }
   }, [sortOption]);
+
+  // @ai-start
+  const displaySurahs = useMemo(
+    () =>
+      searching && query.trim()
+        ? sortedSurahs.filter(surah =>
+            matchesQuery(query, [
+              surah.id,
+              surah.name,
+              surah.name_arabic,
+              surah.translated_name_english,
+            ]),
+          )
+        : sortedSurahs,
+    [sortedSurahs, searching, query],
+  );
+  // @ai-end
 
   // Phones keep the two-column grid and the one-column list; tablets add
   // columns to both.
@@ -123,10 +165,30 @@ export default function SurahsView({
       buildSurahListItems(displaySurahs, {
         viewMode,
         numColumns,
-        juzHeaders: sortOption === 'asc' || sortOption === 'desc',
+        juzHeaders:
+          !(searching && query.trim()) && // @ai: results run on, ungrouped
+          (sortOption === 'asc' || sortOption === 'desc'),
       }),
-    [displaySurahs, viewMode, sortOption, numColumns],
+    [displaySurahs, viewMode, sortOption, numColumns, searching, query],
   );
+
+  // @ai-start
+  // Phone list: each juz is one inset panel in the Settings look, as on the
+  // reciter page. Where a row sits in its panel decides its corners.
+  const panels = !tabletColumns && viewMode === 'list';
+  const panelEdges = useMemo(() => {
+    const edges = new Map<string, {first: boolean; last: boolean}>();
+    if (!panels) return edges;
+    data.forEach((item, i) => {
+      if (item.type !== 'surah-row') return;
+      edges.set(item.key, {
+        first: i === 0 || data[i - 1].type !== 'surah-row',
+        last: i === data.length - 1 || data[i + 1].type !== 'surah-row',
+      });
+    });
+    return edges;
+  }, [data, panels]);
+  // @ai-end
 
   const getColorForSurah = useCallback((id: number): string => {
     return GRADIENT_COLORS[id % GRADIENT_COLORS.length];
@@ -152,6 +214,17 @@ export default function SurahsView({
   const renderItem = useCallback(
     ({item}: ListRenderItemInfo<FlatItem>) => {
       if (item.type === 'juz-header') {
+        // @ai-start
+        if (panels) {
+          return (
+            <Text
+              style={[groupedHeaderStyle(theme), styles.panelJuzHeader]}
+              accessibilityRole="header">
+              {juzLabel(item.juz)}
+            </Text>
+          );
+        }
+        // @ai-end
         return (
           <View
             style={[
@@ -230,6 +303,22 @@ export default function SurahsView({
         );
       }
 
+      // @ai-start
+      if (panels) {
+        const edge = panelEdges.get(item.key);
+        return (
+          <PanelRow first={edge?.first ?? true} last={edge?.last ?? true}>
+            <SurahItem
+              pressAction="read"
+              item={surahs[0]}
+              onPress={onSurahPress}
+              onLongPress={onSurahLongPress}
+              panel
+            />
+          </PanelRow>
+        );
+      }
+      // @ai-end
       return (
         <SurahItem
           pressAction="read" // @ai
@@ -245,81 +334,144 @@ export default function SurahsView({
       getColorForSurah,
       onSurahPress,
       onSurahLongPress,
-      theme.colors.background,
-      theme.colors.textSecondary,
+      theme,
       juzLabel,
+      panels,
+      panelEdges,
     ],
   );
 
   const ListHeader = useMemo(
-    () => (
-      <View>
-        <View style={styles.heroContainer}>
-          <ContinueReadingHero onSurahLongPress={onSurahLongPress} />
+    () =>
+      // @ai-start
+      searching ? (
+        <CollectionSearchField
+          value={query}
+          onChangeText={setQuery}
+          onCancel={stopSearching}
+          placeholder={t('reader:mushaf.searchSurahs')}
+          resultLabel={
+            query.trim() && displaySurahs.length === 0
+              ? t('common:status.noResults')
+              : undefined
+          }
+          style={styles.searchField}
+        />
+      ) : nativeMenusAvailable ? (
+        <View>
+          <View style={styles.topActions}>
+            <Pressable
+              onPress={() => setSearching(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('common:actions.search')}>
+              <Feather
+                name="search"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <ReciterViewMenu
+              viewMode={viewMode}
+              sortOption={sortOption}
+              onViewModeChange={setBrowseViewMode}
+              onSortChange={changeSortOption}
+            />
+          </View>
+          <View style={styles.heroContainer}>
+            <ContinueReadingHero onSurahLongPress={onSurahLongPress} />
+          </View>
+          <View style={styles.panelTopGap} />
         </View>
-
-        <View style={styles.optionsBar}>
-          <View style={styles.sortOptions}>
-            {(['asc', 'desc', 'revelation'] as SortOption[]).map(option => {
-              const isActive = sortOption === option;
-              const iconName =
-                option === 'asc'
-                  ? 'arrow-up'
-                  : option === 'desc'
-                    ? 'arrow-down'
-                    : 'calendar';
-              const label =
-                option === 'asc'
-                  ? t('sort.asc')
-                  : option === 'desc'
-                    ? t('sort.desc')
-                    : t('sort.revelation');
-              return (
-                <Pressable
-                  key={option}
-                  style={[
-                    styles.sortButton,
-                    isActive && {
-                      backgroundColor: Color(theme.colors.text)
-                        .alpha(0.1)
-                        .toString(),
-                    },
-                  ]}
-                  onPress={() => changeSortOption(option)}>
-                  <Feather
-                    name={iconName}
-                    size={moderateScale(14)}
-                    color={
-                      isActive ? theme.colors.text : theme.colors.textSecondary
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.sortButtonText,
-                      {
-                        color: isActive
-                          ? theme.colors.text
-                          : theme.colors.textSecondary,
-                      },
-                    ]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
+      ) : (
+        // @ai-end
+        <View>
+          <View style={styles.heroContainer}>
+            <ContinueReadingHero onSurahLongPress={onSurahLongPress} />
           </View>
 
-          <Pressable style={styles.viewModeButton} onPress={toggleViewMode}>
-            <Feather
-              name={viewMode === 'card' ? 'list' : 'grid'}
-              size={moderateScale(16)}
-              color={theme.colors.text}
-            />
-          </Pressable>
+          <View style={styles.optionsBar}>
+            <View style={styles.sortOptions}>
+              {(['asc', 'desc', 'revelation'] as SortOption[]).map(option => {
+                const isActive = sortOption === option;
+                const iconName =
+                  option === 'asc'
+                    ? 'arrow-up'
+                    : option === 'desc'
+                      ? 'arrow-down'
+                      : 'calendar';
+                const label =
+                  option === 'asc'
+                    ? t('sort.asc')
+                    : option === 'desc'
+                      ? t('sort.desc')
+                      : t('sort.revelation');
+                return (
+                  <Pressable
+                    key={option}
+                    style={[
+                      styles.sortButton,
+                      isActive && {
+                        backgroundColor: Color(theme.colors.text)
+                          .alpha(0.1)
+                          .toString(),
+                      },
+                    ]}
+                    onPress={() => changeSortOption(option)}>
+                    <Feather
+                      name={iconName}
+                      size={moderateScale(14)}
+                      color={
+                        isActive
+                          ? theme.colors.text
+                          : theme.colors.textSecondary
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.sortButtonText,
+                        {
+                          color: isActive
+                            ? theme.colors.text
+                            : theme.colors.textSecondary,
+                        },
+                      ]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.barActions}>
+              <Pressable
+                style={styles.viewModeButton}
+                onPress={() => setSearching(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('common:actions.search')}>
+                <Feather
+                  name="search"
+                  size={moderateScale(16)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+              <Pressable style={styles.viewModeButton} onPress={toggleViewMode}>
+                <Feather
+                  name={viewMode === 'card' ? 'list' : 'grid'}
+                  size={moderateScale(16)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+            </View>
+          </View>
         </View>
-      </View>
-    ),
+      ),
     [
+      searching,
+      query,
+      stopSearching,
+      displaySurahs.length,
+      setBrowseViewMode,
       onSurahLongPress,
       sortOption,
       viewMode,
@@ -351,7 +503,8 @@ export default function SurahsView({
         ListHeaderComponent={ListHeader}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
-        stickyHeaderIndices={stickyIndices}
+        stickyHeaderIndices={panels ? undefined : stickyIndices} // @ai
+        keyboardShouldPersistTaps="handled" // @ai
         showsVerticalScrollIndicator={false}
         contentContainerStyle={contentPadding}
         contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
@@ -398,6 +551,33 @@ const styles = StyleSheet.create({
   viewModeButton: {
     padding: moderateScale(6),
   },
+  // @ai-start
+  barActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: moderateScale(4),
+  },
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: moderateScale(20),
+    paddingHorizontal: moderateScale(22),
+    paddingTop: moderateScale(4),
+    paddingBottom: moderateScale(8),
+  },
+  searchField: {
+    paddingHorizontal: moderateScale(16),
+    paddingTop: moderateScale(4),
+    paddingBottom: moderateScale(12),
+  },
+  panelTopGap: {height: moderateScale(4)},
+  panelJuzHeader: {
+    paddingHorizontal: PANEL_MARGIN + PANEL_ROW_PADDING,
+    paddingTop: GROUPED_SECTION_GAP,
+    paddingBottom: GROUPED_HEADER_GAP,
+  },
+  // @ai-end
   cardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

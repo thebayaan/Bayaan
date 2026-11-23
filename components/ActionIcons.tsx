@@ -39,6 +39,9 @@ export function BackIcon({
   );
 }
 
+/** See ShareIcon. @ai */
+const SHARE_GLYPH_SCALE = 1.2;
+
 export function ShareIcon({
   size,
   color,
@@ -48,7 +51,11 @@ export function ShareIcon({
     return (
       <SymbolView
         name="square.and.arrow.up"
-        size={size}
+        // @ai: SymbolView fits the glyph inside a size×size box, and this
+        // one is much taller than it is wide (box plus arrow), so at the
+        // other icons' box it drew about a fifth smaller than iOS's own
+        // share button. A box 1.2× as large matches the system bar's glyph.
+        size={size * SHARE_GLYPH_SCALE}
         tintColor={color}
         weight="medium"
         style={style}

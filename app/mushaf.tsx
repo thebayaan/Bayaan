@@ -421,6 +421,7 @@ export function MushafToolbar() {
     return (
       <Stack.Toolbar>
         <Stack.Toolbar.Button
+          {...buttonLook} // @ai
           icon="stop.fill"
           onPress={() => void stopRecitationTracking()}>
           {t('recitation.stop')}
@@ -428,6 +429,7 @@ export function MushafToolbar() {
         <Stack.Toolbar.Spacer />
         {hideText && (
           <Stack.Toolbar.Button
+            {...buttonLook} // @ai
             icon="chevron.left.2"
             accessibilityLabel={t('recitation.nextAyah')}
             onPress={() => peekOnPage('ayah', currentPage || 1)}>
@@ -436,6 +438,7 @@ export function MushafToolbar() {
         )}
         {hideText && (
           <Stack.Toolbar.Button
+            {...buttonLook} // @ai
             icon="chevron.left"
             accessibilityLabel={t('recitation.nextWord')}
             onPress={() => peekOnPage('word', currentPage || 1)}>
@@ -453,6 +456,7 @@ export function MushafToolbar() {
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button
+          {...buttonLook} // @ai
           icon={hideText ? 'eye.slash' : 'eye'}
           onPress={toggleHideText}>
           {hideText ? t('recitation.showText') : t('recitation.hideText')}
@@ -480,6 +484,7 @@ export function MushafToolbar() {
         </Stack.Toolbar.Button>
         {mic.enabled && (
           <Stack.Toolbar.Button
+            {...buttonLook} // @ai
             icon={
               mic.busy
                 ? 'hourglass'
