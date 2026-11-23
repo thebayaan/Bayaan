@@ -330,6 +330,11 @@ function NativeSheetBody({
   }, []);
   const level = useNativeSheetLevel();
   const {height: windowHeight} = useWindowDimensions();
+  // The sheet's own height, so content given fixed detents gets a bounded
+  // height to scroll in. Inside a ScrollView `flex: 1` alone can leave it as
+  // tall as its content, and its scroll views then never scroll (Word Study,
+  // Tafseer). @ai
+  const [viewport, setViewport] = useState<number | null>(null);
   if (!level?.fitted) {
     return <View style={styles.nativeBody}>{children}</View>;
   }
@@ -355,10 +360,18 @@ function NativeSheetBody({
       contentContainerStyle={styles.nativeFitBody}
       scrollEnabled={level.fit}
       bounces={false}
+      onLayout={event => setViewport(event.nativeEvent.layout.height)}
       showsVerticalScrollIndicator={false}>
       <View
         onLayout={level.fit ? onLayout : undefined}
-        style={level.fit ? undefined : styles.nativeFill}>
+        style={
+          level.fit
+            ? undefined
+            : [
+                styles.nativeFill,
+                viewport !== null && {height: viewport - NATIVE_BODY_TOP},
+              ]
+        }>
         {children}
       </View>
     </ScrollView>
