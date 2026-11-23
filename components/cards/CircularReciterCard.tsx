@@ -85,8 +85,8 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
           marginBottom: verticalScale(5),
           alignItems: 'center',
           justifyContent: 'center',
-          borderWidth: 1.5,
-          borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+          // No border: iOS clips to the outer circle while the photo sits
+          // inside the border, which left flat sides on the photo. @ai
         },
         reciterImage: {
           width: '100%',
