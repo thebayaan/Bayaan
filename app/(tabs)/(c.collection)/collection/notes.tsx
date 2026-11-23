@@ -26,6 +26,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseNote} from '@/types/verse-annotations';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
 import i18n from '@/i18n';
 import {getSurahDisplayName} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
@@ -350,51 +351,20 @@ const NotesScreen = () => {
   }
 
   if (notes.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View
-        style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-              {t('collectionScreen.notes')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <Feather
-              name="file-text"
-              size={moderateScale(48)}
-              color={theme.colors.textSecondary}
-            />
-          </View>
-          <Text style={[styles.emptyTitle, {color: theme.colors.text}]}>
-            {t('collectionScreen.empty.notes')}
-          </Text>
-          <Text
-            style={[styles.emptySubtitle, {color: theme.colors.textSecondary}]}>
-            {t('notesScreen.emptySubtitle')}
-          </Text>
-        </View>
-      </View>
+      <CollectionEmptyState
+        category="notes"
+        title={t('collectionScreen.notes')}
+        meta={t('collectionScreen.emptyState.notes.meta')}
+        heading={t('collectionScreen.emptyState.notes.heading')}
+        message={t('collectionScreen.emptyState.notes.message')}
+        showBack={!isStackRoot}
+        link={{
+          label: t('collectionScreen.emptyState.notes.link'),
+          onPress: () => router.push('/mushaf' as never),
+        }}
+      />
     );
   }
 

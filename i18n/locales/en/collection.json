@@ -77,6 +77,48 @@
       "byReciter": "By reciter",
       "allSurahs": "All surahs",
       "groupingLabel": "Show downloads"
+    },
+    "emptyState": {
+      "loved": {
+        "meta": "No surahs yet",
+        "heading": "Nothing loved yet",
+        "message": "Tap the heart on the player or on any surah to keep it here.",
+        "link": "Browse reciters"
+      },
+      "playlists": {
+        "meta": "No playlists yet",
+        "heading": "Make your first playlist",
+        "message": "Group surahs for a routine, like Al-Kahf on Friday or before sleep.",
+        "button": "New playlist"
+      },
+      "downloads": {
+        "meta": "Nothing downloaded",
+        "heading": "Listen without a connection",
+        "message": "Tap Download on a surah or a reciter to keep it on this phone.",
+        "link": "Browse surahs"
+      },
+      "bookmarks": {
+        "meta": "No verses yet",
+        "heading": "Mark verses to come back to",
+        "message": "In the Mushaf, long-press a verse and choose Bookmark.",
+        "link": "Open the Mushaf"
+      },
+      "notes": {
+        "meta": "No notes yet",
+        "heading": "Write down what a verse means to you",
+        "message": "In the Mushaf, long-press a verse and choose Add note.",
+        "link": "Open the Mushaf"
+      },
+      "reciters": {
+        "meta": "No reciters yet",
+        "heading": "Keep your reciters close",
+        "message": "Tap Favorite on a reciter’s page, or add a few now."
+      },
+      "uploads": {
+        "meta": "No recitations yet",
+        "heading": "Bring your own recordings",
+        "message": "Add audio from Files, then tag the surah and reciter."
+      }
     }
   },
   "bookmarksScreen": {

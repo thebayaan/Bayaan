@@ -1,7 +1,6 @@
 import React, {useRef, useCallback, useMemo, useState} from 'react'; // @ai
 import {
   View,
-  Text,
   Pressable,
   StyleSheet,
   Animated as RNAnimated,
@@ -31,6 +30,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
 import {
   PANEL_ART_RADIUS,
   PANEL_ART_SIZE,
@@ -411,60 +411,27 @@ export default function PlaylistsScreen() {
   );
 
   if (playlists.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('common:terms.playlists')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <PlaylistIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('playlistsScreen.emptyTitle')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('playlistsScreen.emptySubtitle')}
-          </Text>
-          <Pressable
-            style={styles.emptyActionBar}
-            onPress={handleCreatePlaylist}>
+      <CollectionEmptyState
+        category="playlists"
+        title={t('common:terms.playlists')}
+        meta={t('collectionScreen.emptyState.playlists.meta')}
+        heading={t('collectionScreen.emptyState.playlists.heading')}
+        message={t('collectionScreen.emptyState.playlists.message')}
+        showBack={!isStackRoot}
+        primary={{
+          label: t('collectionScreen.emptyState.playlists.button'),
+          icon: (
             <Feather
               name="plus"
               size={moderateScale(16)}
-              color={theme.colors.textSecondary}
+              color={theme.colors.background}
             />
-            <Text style={styles.emptyActionText}>
-              {t('playlistsScreen.createNew')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+          ),
+          onPress: handleCreatePlaylist,
+        }}
+      />
     );
   }
 

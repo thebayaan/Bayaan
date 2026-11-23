@@ -1,7 +1,6 @@
 import React, {useCallback, useRef, useMemo, useState} from 'react'; // @ai
 import {
   View,
-  Text,
   Pressable,
   StyleSheet,
   Alert,
@@ -49,6 +48,7 @@ import {confirmDestructive} from '@/utils/confirmDestructive';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
 import {
   PANEL_ART_RADIUS,
   PANEL_ART_SIZE,
@@ -870,49 +870,21 @@ const LovedScreen = () => {
   const getItemKey = (item: LovedTrackData) => item.track.key; // @ai
 
   if (lovedData.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('collectionScreen.loved')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <HeartIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-              filled={true}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('collectionScreen.empty.loved')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('lovedScreen.emptySubtitle')}
-          </Text>
-        </View>
-      </View>
+      <CollectionEmptyState
+        category="loved"
+        title={t('collectionScreen.loved')}
+        meta={t('collectionScreen.emptyState.loved.meta')}
+        heading={t('collectionScreen.emptyState.loved.heading')}
+        message={t('collectionScreen.emptyState.loved.message')}
+        showBack={!isStackRoot}
+        link={{
+          label: t('collectionScreen.emptyState.loved.link'),
+          onPress: () =>
+            router.push('/(tabs)/(a.home)/reciter/browse' as never),
+        }}
+      />
     );
   }
 

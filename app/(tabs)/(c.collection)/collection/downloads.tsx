@@ -25,7 +25,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createDownloadedTrack} from '@/utils/track';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import {DownloadIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 // @ai-start
 import {confirmDestructive} from '@/utils/confirmDestructive';
@@ -37,6 +37,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
 import {
   PANEL_ART_RADIUS,
   PANEL_ART_SIZE,
@@ -715,49 +716,20 @@ export default function DownloadsScreen() {
   const hasDownloads = downloadData.length > 0;
 
   if (downloads.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('common:terms.downloads')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <DownloadIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-              filled={true}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('collectionScreen.empty.downloads')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('downloadsScreen.emptySubtitle')}
-          </Text>
-        </View>
-      </View>
+      <CollectionEmptyState
+        category="downloads"
+        title={t('common:terms.downloads')}
+        meta={t('collectionScreen.emptyState.downloads.meta')}
+        heading={t('collectionScreen.emptyState.downloads.heading')}
+        message={t('collectionScreen.emptyState.downloads.message')}
+        showBack={!isStackRoot}
+        link={{
+          label: t('collectionScreen.emptyState.downloads.link'),
+          onPress: () => router.push('/(tabs)/(b.surahs)' as never),
+        }}
+      />
     );
   }
 

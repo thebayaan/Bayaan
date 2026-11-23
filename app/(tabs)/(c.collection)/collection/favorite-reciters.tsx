@@ -1,7 +1,6 @@
 import React, {useRef, useState, useCallback, useMemo} from 'react';
 import {
   View,
-  Text,
   Pressable,
   StyleSheet,
   Animated as RNAnimated,
@@ -14,7 +13,6 @@ import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useRouter} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import {ProfileIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import Color from 'color';
 import {Reciter} from '@/data/reciterData';
@@ -25,6 +23,7 @@ import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
 import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
 import {getReciterDisplayName} from '@/i18n/format';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
@@ -341,61 +340,27 @@ export default function FavoriteRecitersScreen() {
   );
 
   if (favoriteReciters.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('favoriteRecitersScreen.title')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <ProfileIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-              filled={true}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('favoriteRecitersScreen.emptyTitle')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('favoriteRecitersScreen.emptySubtitle')}
-          </Text>
-          <Pressable
-            style={styles.emptyActionBar}
-            onPress={handleOpenSelectReciters}>
+      <CollectionEmptyState
+        category="reciters"
+        title={t('favoriteRecitersScreen.title')}
+        meta={t('collectionScreen.emptyState.reciters.meta')}
+        heading={t('collectionScreen.emptyState.reciters.heading')}
+        message={t('collectionScreen.emptyState.reciters.message')}
+        showBack={!isStackRoot}
+        primary={{
+          label: t('favoriteRecitersScreen.addReciters'),
+          icon: (
             <Feather
               name="plus"
               size={moderateScale(16)}
-              color={theme.colors.textSecondary}
+              color={theme.colors.background}
             />
-            <Text style={styles.emptyActionText}>
-              {t('favoriteRecitersScreen.addReciters')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+          ),
+          onPress: handleOpenSelectReciters,
+        }}
+      />
     );
   }
 

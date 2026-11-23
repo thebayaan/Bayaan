@@ -15,7 +15,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -43,6 +43,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
 import {
   PANEL_ART_GAP,
   PANEL_ART_RADIUS,
@@ -571,70 +572,30 @@ export default function UploadsScreen() {
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
 
   if (!hasRecitations) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('common:terms.uploads')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <MicrophoneIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
+      <CollectionEmptyState
+        category="uploads"
+        title={t('common:terms.uploads')}
+        meta={t('collectionScreen.emptyState.uploads.meta')}
+        heading={t('collectionScreen.emptyState.uploads.heading')}
+        message={t('collectionScreen.emptyState.uploads.message')}
+        showBack={!isStackRoot}
+        primary={{
+          label: isImporting
+            ? t('uploadsScreen.opening')
+            : t('uploadsScreen.addRecitation'),
+          icon: (
+            <Feather
+              name="plus"
+              size={moderateScale(16)}
+              color={theme.colors.background}
             />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('collectionScreen.empty.uploads')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('uploadsScreen.emptySubtitle')}
-          </Text>
-          <Pressable
-            style={styles.emptyActionBar}
-            onPress={handleImportFile}
-            disabled={isImporting}>
-            {isImporting ? (
-              <ActivityIndicator
-                size="small"
-                color={theme.colors.textSecondary}
-              />
-            ) : (
-              <Feather
-                name="plus"
-                size={moderateScale(16)}
-                color={theme.colors.textSecondary}
-              />
-            )}
-            <Text style={styles.emptyActionText}>
-              {isImporting
-                ? t('uploadsScreen.opening')
-                : t('uploadsScreen.addRecitation')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+          ),
+          onPress: handleImportFile,
+          disabled: isImporting,
+        }}
+      />
     );
   }
 
