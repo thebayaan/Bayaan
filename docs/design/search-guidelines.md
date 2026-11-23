@@ -100,12 +100,13 @@ It also does not rank. The Surahs tab lists hits in the user's sort order, so `a
 
 ### 2.3 Look and entry
 
-- **U1 (MUST)** One field component, `SearchField`, used everywhere except the native bar. Same height, fill, radius, `SearchIcon`, and the same clear glyph.
+- **U1 (MUST)** One field component, `SearchField`, used everywhere on both platforms. Same height, fill, radius, `SearchIcon`, and the same clear glyph.
+- **U1b (MUST)** The only exception is the Search tab on iOS glass, which keeps the native `Stack.SearchBar` because the detached iOS 27 tab pill needs it (Osman, 2026-11-23). No other screen uses the native bar, Browse surahs included.
 - **U2 (MUST)** Pick the entry by context:
 
   | Context | Entry | Example |
   |---|---|---|
-  | Search is the screen's purpose | Always-visible field. iOS glass uses the native `Stack.SearchBar` | Search tab, Browse surahs/reciters, pickers, default reciter |
+  | Search is the screen's purpose | Always-visible `SearchField` (native bar on the iOS Search tab only, U1b) | Search tab, Browse surahs/reciters, pickers, default reciter |
   | Search narrows a list that has its own header and actions | Header search button; the header becomes `SearchField` with Cancel, list stays in place | Collection, Surahs tab, **reciter page** |
   | Search is a mode inside a reader or sheet | Inline field, autofocus on open | Mushaf search, verse picker |
 
