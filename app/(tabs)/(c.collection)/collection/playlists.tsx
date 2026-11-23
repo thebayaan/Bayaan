@@ -31,7 +31,11 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
-import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
+import {
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PanelRow,
+} from '@/components/collection/CollectionPanel'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
 import {
@@ -377,8 +381,8 @@ export default function PlaylistsScreen() {
               (covers[item.id]?.length ?? 0) > 0 ? ( // @ai
                 <SurahMosaic
                   surahIds={covers[item.id]}
-                  size={moderateScale(50)}
-                  radius={moderateScale(10)}
+                  size={PANEL_ART_SIZE}
+                  radius={PANEL_ART_RADIUS}
                 />
               ) : undefined
             }

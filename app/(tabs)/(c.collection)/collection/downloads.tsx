@@ -37,7 +37,13 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
-import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
+import {
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PANEL_MARGIN,
+  PANEL_ROW_PADDING,
+  PanelRow,
+} from '@/components/collection/CollectionPanel'; // @ai
 import {getReciterDisplayName} from '@/i18n/format';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
@@ -282,9 +288,10 @@ export default function DownloadsScreen() {
           flexDirection: 'row',
           alignItems: 'center',
           gap: moderateScale(12),
-          paddingHorizontal: GRID_PADDING,
-          paddingTop: moderateScale(16),
-          paddingBottom: moderateScale(6),
+          // Lines up with the rows' artwork; about 35pt between panels.
+          paddingHorizontal: PANEL_MARGIN + PANEL_ROW_PADDING,
+          paddingTop: moderateScale(28),
+          paddingBottom: moderateScale(8),
         },
         groupFace: {
           width: moderateScale(40),
@@ -929,7 +936,13 @@ export default function DownloadsScreen() {
           surahId={download.surahId}
           rewayatId={download.rewayatId}
           // The cover already says which surah it is. @ai
-          art={<SurahCover surahId={surah.id} size={moderateScale(50)} />}
+          art={
+            <SurahCover
+              surahId={surah.id}
+              size={PANEL_ART_SIZE}
+              radius={PANEL_ART_RADIUS}
+            />
+          }
           showSurahNumber={false}
           onPress={() => handleSurahPress(download, reciter, surah)}
           onPlayPress={() => handleSurahPress(download, reciter, surah)}

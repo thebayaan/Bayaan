@@ -43,7 +43,14 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
-import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
+import {
+  PANEL_ART_GAP,
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PANEL_ROW_PADDING,
+  PANEL_ROW_VERTICAL,
+  PanelRow,
+} from '@/components/collection/CollectionPanel'; // @ai
 import i18n from '@/i18n';
 import {
   getReciterDisplayName,
@@ -934,23 +941,23 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(8),
-      paddingLeft: moderateScale(18),
+      paddingVertical: PANEL_ROW_VERTICAL,
+      paddingStart: PANEL_ROW_PADDING,
     },
     itemIconContainer: {
-      width: moderateScale(44),
-      height: moderateScale(44),
-      borderRadius: moderateScale(10),
+      width: PANEL_ART_SIZE,
+      height: PANEL_ART_SIZE,
+      borderRadius: PANEL_ART_RADIUS,
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: moderateScale(10),
+      marginEnd: PANEL_ART_GAP,
     },
     itemReciterImage: {
-      width: moderateScale(44),
-      height: moderateScale(44),
-      borderRadius: moderateScale(10),
-      marginRight: moderateScale(10),
+      width: PANEL_ART_SIZE,
+      height: PANEL_ART_SIZE,
+      borderRadius: PANEL_ART_RADIUS,
+      marginEnd: PANEL_ART_GAP,
     },
     itemInfoContainer: {
       flex: 1,

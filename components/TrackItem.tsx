@@ -25,6 +25,10 @@ import {currentLanguageConfig} from '@/i18n/language'; // @ai
 import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {listRowContextMenusEnabled} from '@/components/native/nativeMenus'; // @ai
+import {
+  PANEL_ROW_PADDING,
+  PANEL_ROW_VERTICAL,
+} from '@/components/collection/CollectionPanel'; // @ai
 // @ai-end
 import {
   getReciterDisplayName,
@@ -226,7 +230,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 
     const playZone = (
       <Pressable
-        style={styles.playZone}
+        style={[styles.playZone, transparent && panelPlayZone]} // @ai
         onPress={onPress}
         onLongPress={rowMenu ? undefined : onLongPress}>
         <View style={styles.imageContainer}>
@@ -359,6 +363,12 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 TrackItem.displayName = 'TrackItem';
 
 // @ai-start
+// Inside a Collection panel: the iOS list row padding.
+const panelPlayZone = {
+  paddingVertical: PANEL_ROW_VERTICAL,
+  paddingStart: PANEL_ROW_PADDING,
+  paddingEnd: 0,
+};
 const styles = StyleSheet.create({
   trackItem: {
     flexDirection: 'row',

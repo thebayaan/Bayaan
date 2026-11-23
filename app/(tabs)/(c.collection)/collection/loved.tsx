@@ -49,7 +49,11 @@ import {confirmDestructive} from '@/utils/confirmDestructive';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {useTranslation} from 'react-i18next';
-import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
+import {
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PanelRow,
+} from '@/components/collection/CollectionPanel'; // @ai
 import {flipX} from '@/utils/rtl';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
@@ -846,7 +850,13 @@ const LovedScreen = () => {
           rewayatId={track.rewayatId}
           userRecitationId={track.userRecitationId}
           // The cover already says which surah it is. @ai
-          art={<SurahCover surahId={surah.id} size={moderateScale(50)} />}
+          art={
+            <SurahCover
+              surahId={surah.id}
+              size={PANEL_ART_SIZE}
+              radius={PANEL_ART_RADIUS}
+            />
+          }
           showSurahNumber={false}
           onPress={() => handleSurahPress(track, reciter, surah)}
           onPlayPress={() => handleSurahPress(track, reciter, surah)}

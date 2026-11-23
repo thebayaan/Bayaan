@@ -81,6 +81,7 @@ function SurahMeshTile({
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
+          borderCurve: 'continuous',
           paddingHorizontal: width * 0.08,
         },
         style,
@@ -128,7 +129,6 @@ export function SurahCover({
   radius?: number;
   style?: StyleProp<ViewStyle>;
 }) {
-  const {theme} = useTheme();
   return (
     <SurahMeshTile
       surahId={surahId}
@@ -138,8 +138,6 @@ export function SurahCover({
       style={[
         {
           borderRadius: radius ?? Math.round(size * 0.24),
-          borderWidth: 0.5,
-          borderColor: Color(theme.colors.text).alpha(0.08).string(),
         },
         style,
       ]}
@@ -157,7 +155,6 @@ export function SurahMosaic({
   size: number;
   radius?: number;
 }) {
-  const {theme} = useTheme();
   const r = radius ?? Math.round(size * 0.2);
   // Below 80pt four squares are too small for glyphs and read as blurs,
   // so a small mosaic shows its first surah's cover instead.
@@ -184,8 +181,6 @@ export function SurahMosaic({
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         alignContent: 'space-between',
-        borderWidth: 0.5,
-        borderColor: Color(theme.colors.text).alpha(0.08).string(),
       }}>
       {ids.map((id, i) => (
         <SurahMeshTile key={i} surahId={id} width={half} height={half} glyph />
@@ -252,8 +247,6 @@ export function GlassIcon({
           borderRadius: Math.round(size * 0.3),
           alignItems: 'center',
           justifyContent: 'center',
-          borderWidth: 0.75,
-          borderColor: 'rgba(255,255,255,0.4)',
         }}>
         <CategoryGlyph category={category} color="#FFFFFF" size={size * 0.5} />
       </LinearGradient>
@@ -364,9 +357,9 @@ export function CollectionPreview({
             width: size,
             height: size,
             borderRadius: radius,
-            backgroundColor: theme.isDarkMode ? '#1E2A2F' : '#FFFFFF',
-            borderWidth: 1,
-            borderColor: Color(theme.colors.text).alpha(0.12).string(),
+            backgroundColor: theme.isDarkMode
+              ? '#1E2A2F'
+              : Color(theme.colors.text).alpha(0.05).string(),
             paddingHorizontal: size * 0.17,
             paddingTop: size * 0.12,
             gap: size * 0.08,

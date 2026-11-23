@@ -1,6 +1,7 @@
 // @ai-generated
 import React, {useMemo} from 'react';
 import {
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -8,7 +9,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import {Feather} from '@expo/vector-icons';
+import {Feather, MaterialIcons} from '@expo/vector-icons';
+import {SymbolView} from 'expo-symbols';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -266,7 +268,21 @@ export function CollectionHeaderActions({
           entries={entries}
           onSelect={onSelect}
           accessibilityLabel={t('collectionScreen.view.menuLabel')}>
-          <Feather name="list" size={iconSize} color={theme.colors.text} />
+          {/* Apple Music's view-and-sort glyph. */}
+          {Platform.OS === 'ios' ? (
+            <SymbolView
+              name="line.3.horizontal.decrease"
+              size={iconSize}
+              tintColor={theme.colors.text}
+              weight="medium"
+            />
+          ) : (
+            <MaterialIcons
+              name="sort"
+              size={iconSize}
+              color={theme.colors.text}
+            />
+          )}
         </NativeMenu>
       ) : null}
       {extra}
@@ -350,7 +366,7 @@ const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
       alignItems: 'stretch',
-      paddingHorizontal: '20@ms',
+      paddingHorizontal: '16@ms',
       paddingBottom: '12@ms',
       backgroundColor: theme.colors.background,
     },

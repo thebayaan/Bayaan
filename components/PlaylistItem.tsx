@@ -6,6 +6,12 @@ import {Theme} from '@/utils/themeUtils';
 import {MaterialIcons, Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
+import {
+  PANEL_ART_GAP,
+  PANEL_ART_SIZE,
+  PANEL_ROW_PADDING,
+  PANEL_ROW_VERTICAL,
+} from '@/components/collection/CollectionPanel'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
@@ -56,7 +62,11 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
 
     return (
       <Pressable
-        style={[styles.playlistItem, isSelected && styles.selectedPlaylistItem]}
+        style={[
+          styles.playlistItem,
+          art ? styles.panelItem : null, // @ai
+          isSelected && styles.selectedPlaylistItem,
+        ]}
         onPress={handlePress}
         onLongPress={handleLongPress}>
         {art ? (
@@ -130,9 +140,14 @@ const createStyles = (theme: Theme) =>
       borderWidth: moderateScale(1),
     },
     artContainer: {
-      width: moderateScale(50),
-      height: moderateScale(50),
-      marginEnd: moderateScale(12),
+      width: PANEL_ART_SIZE,
+      height: PANEL_ART_SIZE,
+      marginEnd: PANEL_ART_GAP,
+    },
+    panelItem: {
+      paddingVertical: PANEL_ROW_VERTICAL,
+      paddingStart: PANEL_ROW_PADDING,
+      paddingEnd: moderateScale(4),
     },
     playlistInfo: {
       flex: 1,

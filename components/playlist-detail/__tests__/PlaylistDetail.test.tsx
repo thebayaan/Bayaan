@@ -87,7 +87,21 @@ jest.mock('@/components/sheets/options/playlistOptions', () => ({
 jest.mock('@/components/collection/CollectionStickyHeader', () => ({
   CollectionStickyHeader: () => null,
 }));
-jest.mock('../PlaylistHeader', () => ({PlaylistHeader: () => null}));
+jest.mock('@/components/collection/CollectionScreenHeader', () => ({
+  CollectionScreenHeader: () => null,
+}));
+jest.mock('@/components/collection/CollectionArt', () => ({
+  SurahCover: () => null,
+}));
+jest.mock('@/components/collection/CollectionPanel', () => ({
+  PANEL_ART_SIZE: 48,
+  PANEL_ART_RADIUS: 8,
+  PanelRow: ({children}: {children: React.ReactNode}) => children,
+}));
+jest.mock('@/components/Icons', () => ({
+  PlayIcon: () => null,
+  ShuffleIcon: () => null,
+}));
 jest.mock('react-native-actions-sheet', () => ({
   SheetManager: {show: jest.fn()},
 }));

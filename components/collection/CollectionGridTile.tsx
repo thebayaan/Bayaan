@@ -6,7 +6,7 @@ import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 
 /** Side padding and gap of the Collection grids. */
-export const GRID_PADDING = moderateScale(20);
+export const GRID_PADDING = moderateScale(16); // iOS list margin, same as the panels
 export const GRID_GAP = moderateScale(12);
 
 /** The width of one tile when `columns` tiles share the screen. */

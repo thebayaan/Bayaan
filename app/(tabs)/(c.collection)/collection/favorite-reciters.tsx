@@ -315,6 +315,7 @@ export default function FavoriteRecitersScreen() {
         first={index === 0}
         last={index === filteredReciters.length - 1}>
         <ReciterItem
+          inPanel
           item={item}
           onPress={reciter => handleReciterPress(reciter.id)}
           onOptionsPress={handleReciterOptions}

@@ -6,6 +6,12 @@ import {Theme} from '@/utils/themeUtils';
 import {MaterialIcons, Feather} from '@expo/vector-icons';
 import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
+import {
+  PANEL_ART_GAP,
+  PANEL_ART_SIZE,
+  PANEL_ROW_PADDING,
+  PANEL_ROW_VERTICAL,
+} from '@/components/collection/CollectionPanel'; // @ai
 import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
@@ -23,6 +29,8 @@ interface ReciterItemProps {
   optionsMenu?: React.ReactNode;
   onLongPress?: (item: Reciter) => void;
   showFollowAlong?: boolean;
+  /** iOS list metrics, for rows inside a Collection panel. @ai */
+  inPanel?: boolean;
 }
 
 // @ai-start
@@ -36,6 +44,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     optionsMenu,
     onLongPress,
     showFollowAlong,
+    inPanel,
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation('home');
@@ -48,18 +57,23 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
 
     return (
       <Pressable
-        style={[styles.reciterItem, isSelected && styles.selectedReciterItem]}
+        style={[
+          styles.reciterItem,
+          inPanel && styles.panelItem, // @ai
+          isSelected && styles.selectedReciterItem,
+        ]}
         onPress={handlePress}
         onLongPress={onLongPress ? handleLongPress : undefined}>
         <View
           style={[
             styles.imageContainer,
+            inPanel && styles.panelImage, // @ai
             isSelected && styles.selectedImageContainer,
           ]}>
           <ReciterImage
             imageUrl={item.image_url || undefined}
             reciterName={item.name}
-            style={styles.reciterImage}
+            style={[styles.reciterImage, inPanel && styles.panelImage]}
             profileIconSize={moderateScale(20)}
           />
         </View>
@@ -130,6 +144,16 @@ const createStyles = (theme: Theme) =>
     reciterImage: {
       width: moderateScale(50),
       height: moderateScale(50),
+    },
+    panelItem: {
+      paddingVertical: PANEL_ROW_VERTICAL,
+      paddingStart: PANEL_ROW_PADDING,
+      paddingEnd: moderateScale(4),
+    },
+    panelImage: {
+      width: PANEL_ART_SIZE,
+      height: PANEL_ART_SIZE,
+      marginEnd: PANEL_ART_GAP,
     },
     reciterInfo: {
       flex: 1,
