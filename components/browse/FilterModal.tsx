@@ -35,6 +35,13 @@ interface FilterModalProps {
   onApplyFilters: (filters: FilterOptions) => void;
   theme: Theme;
   initialFilters?: FilterOptions;
+  // @ai-start
+  /**
+   * Draws only the panel, for a sheet that hosts it (the iPhone native
+   * sheet, ReciterFiltersSheet), with this much space under the buttons.
+   */
+  embedded?: {footerBottomPadding: number};
+  // @ai-end
 }
 
 export interface FilterOptions {
@@ -239,6 +246,7 @@ export default function FilterModal({
   onApplyFilters,
   theme,
   initialFilters,
+  embedded, // @ai
 }: FilterModalProps) {
   const modalVisible = useVisibleAfterNativeSheets(visible); // @ai
   const insets = useSafeAreaInsets();
@@ -402,9 +410,11 @@ export default function FilterModal({
           style={[
             styles.footerContainer,
             {
-              paddingBottom: isTablet
-                ? moderateScale(20)
-                : insets.bottom + moderateScale(30),
+              paddingBottom: embedded
+                ? embedded.footerBottomPadding // @ai
+                : isTablet
+                  ? moderateScale(20)
+                  : insets.bottom + moderateScale(30),
             },
           ]}>
           <View style={styles.footer}>
@@ -429,6 +439,8 @@ export default function FilterModal({
       </View>
     </View>
   );
+
+  if (embedded) return panel; // @ai
 
   // iPad: a centered card that fades in, not a full-width panel from the
   // bottom edge.

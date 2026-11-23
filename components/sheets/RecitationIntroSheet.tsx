@@ -12,6 +12,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {formatNumber} from '@/i18n/format';
 import {Theme} from '@/utils/themeUtils';
 import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 interface IntroPoint {
   icon: React.ComponentProps<typeof Feather>['name'];
@@ -27,6 +28,8 @@ export const RecitationIntroSheet = (
 ): React.JSX.Element => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation('sheets');
   const points: readonly IntroPoint[] = [
     {icon: 'book-open', text: t('recitationIntro.follows')},
@@ -53,7 +56,7 @@ export const RecitationIntroSheet = (
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('recitationIntro.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         {points.map(point => (
           <View key={point.icon} style={styles.point}>
             <Feather

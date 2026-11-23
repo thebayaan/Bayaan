@@ -41,6 +41,7 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 // Which ayah?: listens and names the ayah being recited, by the reader or
 // anyone nearby, then offers to open or play it. Opened from "Recite to
@@ -75,6 +76,8 @@ export const WhichAyahSheet = (
 ): React.JSX.Element => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation(['sheets', 'common']);
   // null while checking whether the model is on the phone.
   const [askFirst, setAskFirst] = useState<boolean | null>(null);
@@ -148,7 +151,7 @@ export const WhichAyahSheet = (
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('whichAyah.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         {askFirst === true ? (
           <Intro
             styles={styles}

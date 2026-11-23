@@ -53,6 +53,11 @@ jest.mock('../BrowseGrid', () => ({
   },
 }));
 jest.mock('../FilterModal', () => ({__esModule: true, default: () => null}));
+// @ai: the filters open as a native sheet only on iPhone (not here).
+jest.mock('@/components/sheets/sheetControl', () => ({
+  presentsNatively: () => false,
+  showSheet: jest.fn(),
+}));
 jest.mock('@/components/SearchInput', () => ({SearchInput: () => null}));
 jest.mock('@/components/Header', () => ({
   __esModule: true,
@@ -102,7 +107,7 @@ const reciter = (id: string) =>
     id,
     name: `Reciter ${id}`,
     rewayat: [{id: `${id}-hafs`, name: '', style: 'murattal'}],
-  } as unknown as Reciter);
+  }) as unknown as Reciter;
 
 function renderForSurah() {
   act(() => {

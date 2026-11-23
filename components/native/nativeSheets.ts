@@ -8,14 +8,6 @@ import type {ReactNode} from 'react';
 export type NativeSheetDetent = 'medium' | 'large' | {height: number};
 export type NativeSheetSizing = NativeSheetDetent[] | 'fit';
 
-/**
- * Sheets presented as SwiftUI sheets on iPhone (detents, the system grabber,
- * the page behind kept live up to the medium detent). Off: every sheet stays
- * on react-native-actions-sheet. `sheetControl` decides which sheets go
- * native.
- */
-export const nativeSheetsEnabled = false;
-
 /** One presented sheet. A sheet shown over another stacks a level. */
 export interface NativeSheetLevel {
   key: number;

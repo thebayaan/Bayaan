@@ -20,6 +20,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 import {recitationMarkRef} from './recitationMarkRef';
 import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 // After a take: the ayat recited, the words marked while reciting (and the
 // ones corrected), and the possible slips worth checking, each with Show and
@@ -56,6 +57,8 @@ export const RecitationSummarySheet = (
 ): React.JSX.Element | null => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation(['sheets', 'common']);
   const summary = props.payload?.summary;
   const [flags, setFlags] = useState<readonly ShownFlag[]>(
@@ -132,7 +135,10 @@ export const RecitationSummarySheet = (
       </View>
       <SheetScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.container}>
+        contentContainerStyle={[
+          styles.container,
+          {paddingBottom: sheetBottomPadding},
+        ]}>
         {flags.length === 0 && marks.length === 0 ? (
           <Text style={styles.nothing}>{t('recitationSummary.nothing')}</Text>
         ) : null}

@@ -27,6 +27,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 import {recitationMarkRef} from './recitationMarkRef';
 import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 // A word marked while reciting, tapped on the page: what may have happened,
 // the word as it is written, and its ayah. The recitation is held while the
@@ -69,6 +70,8 @@ export const RecitationMistakeSheet = (
 ): React.JSX.Element | null => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation(['sheets', 'common']);
   const mark = props.payload?.mark;
 
@@ -116,7 +119,7 @@ export const RecitationMistakeSheet = (
         <Text style={styles.headerTitle}>{message}</Text>
         <Text style={styles.ref}>{t(where.key, where.values)}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <MarkedText
           mark={mark}
           verseKey={verseKey}

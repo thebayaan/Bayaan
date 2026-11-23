@@ -12,7 +12,6 @@ import {
   hasNativeSheet,
   hideNativeSheet,
   isNativeSheetPresented,
-  nativeSheetsEnabled,
   nativeSheetsSettled,
   presentNativeSheet,
   type NativeSheetSizing,
@@ -54,17 +53,25 @@ export function registerNativeSheet<Id extends SheetId>(
 }
 
 function nativeSheetFor(id: string) {
-  if (!nativeSheetsEnabled || Platform.OS !== 'ios' || Platform.isPad) {
+  // Every sheet is a SwiftUI sheet on iPhone (detents, the system grabber,
+  // the page behind kept live up to the medium detent). iPad keeps its
+  // centered cards and Android its bottom sheets.
+  if (Platform.OS !== 'ios' || Platform.isPad) {
     return undefined;
   }
   return nativeSheets.get(id);
 }
 
+/** Whether `showSheet(id)` presents a SwiftUI sheet here (iPhone). */
+export function presentsNatively(id: SheetId): boolean {
+  return nativeSheetFor(id) !== undefined;
+}
+
 /**
  * `SheetManager.show` that presents registered sheets as SwiftUI sheets on
- * iPhone (with `nativeSheetsEnabled`). A sheet opened while a native one is
- * up stacks on it, as react-native-actions-sheet sheets do. Resolves with
- * the value the sheet is hidden with.
+ * iPhone. A sheet opened while a native one is up stacks on it, as
+ * react-native-actions-sheet sheets do. Resolves with the value the sheet
+ * is hidden with.
  */
 export function showSheet<Id extends SheetId>(
   id: Id,

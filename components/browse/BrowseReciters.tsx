@@ -48,6 +48,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {useReciterProfilePathname} from '@/hooks/useTabReciterPath'; // @ai
 import {useResponsive} from '@/hooks/useResponsive'; // @ai
+import {presentsNatively, showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
@@ -370,6 +371,17 @@ export default function BrowseReciters({
   ]);
 
   const handleFilterModalPress = () => {
+    // @ai-start: a native sheet on iPhone; iPad and Android keep the modal.
+    if (presentsNatively('reciter-filters')) {
+      Keyboard.dismiss();
+      showSheet('reciter-filters', {
+        payload: {initialFilters: advancedFilters},
+      }).then(filters => {
+        if (filters) setAdvancedFilters(filters);
+      });
+      return;
+    }
+    // @ai-end
     setIsFilterModalVisible(true);
   };
 
