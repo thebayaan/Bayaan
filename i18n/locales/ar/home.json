@@ -313,12 +313,6 @@
     "start": "ابدأ",
     "open": "افتح {{title}}",
     "openHint": "يعرض ما تشغّله هذه البطاقة",
-    "withSleepTimer_zero": "{{reciter}} · مؤقت النوم",
-    "withSleepTimer_one": "{{reciter}} · مؤقت النوم دقيقة واحدة",
-    "withSleepTimer_two": "{{reciter}} · مؤقت النوم دقيقتان",
-    "withSleepTimer_few": "{{reciter}} · مؤقت النوم {{formatted}} دقائق",
-    "withSleepTimer_many": "{{reciter}} · مؤقت النوم {{formatted}} دقيقة",
-    "withSleepTimer_other": "{{reciter}} · مؤقت النوم {{formatted}} دقيقة",
     "fridaySurah": "{{reciter}} · من سنن يوم الجمعة",
     "upNextSurah": "{{reciter}} · بعد السورة التي أتممتها",
     "adhkar": {
@@ -333,7 +327,13 @@
     "playlistLine_two": "قائمة · سورتان",
     "playlistLine_few": "قائمة · {{formatted}} سور",
     "playlistLine_many": "قائمة · {{formatted}} سورة",
-    "playlistLine_other": "قائمة · {{formatted}} سورة"
+    "playlistLine_other": "قائمة · {{formatted}} سورة",
+    "sleepTimer_zero": "مؤقت النوم",
+    "sleepTimer_one": "مؤقت نوم دقيقة واحدة",
+    "sleepTimer_two": "مؤقت نوم دقيقتين",
+    "sleepTimer_few": "مؤقت نوم {{formatted}} دقائق",
+    "sleepTimer_many": "مؤقت نوم {{formatted}} دقيقة",
+    "sleepTimer_other": "مؤقت نوم {{formatted}} دقيقة"
   },
   "jump": {
     "title": "تابع من حيث توقفت",

@@ -18,6 +18,7 @@ import {usePlaylists} from '@/hooks/usePlaylists';
 import {PlaylistCard} from '@/components/cards/PlaylistCard';
 import {useTimestampStore} from '@/store/timestampStore';
 import type {HomeRowId} from '@/config/branding';
+import type {Reciter} from '@/data/reciterData';
 import {
   PANEL_ART_GAP,
   PANEL_ROW_PADDING,
@@ -50,6 +51,12 @@ function Shelf({children}: {children: React.ReactNode}) {
       {children}
     </ScrollView>
   );
+}
+
+/** Two faces for a collection, preferring reciters with a photo. */
+function facesFor(list: Reciter[]): Reciter[] {
+  const withPhoto = list.filter(r => !!r.image_url);
+  return (withPhoto.length >= 2 ? withPhoto : list).slice(0, 2);
 }
 
 export function AdhkarShelf() {
@@ -176,7 +183,7 @@ export function CollectionsPanel({enabled}: {enabled: ReadonlySet<HomeRowId>}) {
               style={styles.collectionRow}>
               <View style={styles.faces}>
                 <ReciterFaces
-                  reciters={c.list.slice(0, 2)}
+                  reciters={facesFor(c.list)}
                   size={FACE}
                   ring={panel}
                 />

@@ -277,8 +277,6 @@
     "start": "Start",
     "open": "Open {{title}}",
     "openHint": "Shows what this card plays",
-    "withSleepTimer_one": "{{reciter}} · sleep timer {{formatted}} minute",
-    "withSleepTimer_other": "{{reciter}} · sleep timer {{formatted}} minutes",
     "fridaySurah": "{{reciter}} · the Friday surah",
     "upNextSurah": "{{reciter}} · after the one you finished",
     "adhkar": {
@@ -289,7 +287,9 @@
     },
     "adhkarLine": "Listen, or read along",
     "playlistLine_one": "Playlist · {{formatted}} surah",
-    "playlistLine_other": "Playlist · {{formatted}} surahs"
+    "playlistLine_other": "Playlist · {{formatted}} surahs",
+    "sleepTimer_one": "{{formatted}} min sleep timer",
+    "sleepTimer_other": "{{formatted}} min sleep timer"
   },
   "jump": {
     "title": "Jump back in",

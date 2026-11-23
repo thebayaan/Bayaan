@@ -69,6 +69,8 @@ export interface MomentView {
   subtitle: string;
   palette: MeshPalette;
   art: MomentArt;
+  /** A short note shown as a chip under the title (the sleep timer). */
+  badge: string | null;
   /** The large faint mark behind the hero: a surah's name or a symbol. */
   watermark: {glyphSurahId: number} | {symbol: HomeSymbolName};
   playLabel: string;
@@ -185,6 +187,7 @@ export function useMomentView(moment: NowMoment): MomentView {
 
   let title = '';
   let subtitle = '';
+  let badge: string | null = null;
   let art: MomentArt;
   let watermark: MomentView['watermark'];
 
@@ -195,13 +198,15 @@ export function useMomentView(moment: NowMoment): MomentView {
       const reciter = RECITERS.find(r => r.id === moment.reciterId);
       title = surah ? getSurahDisplayName(surah) : '';
       const name = reciter ? getReciterDisplayName(reciter) : '';
+      if (moment.kind === 'bedtime') {
+        badge = t('now.sleepTimer', {
+          count: moment.sleepMinutes,
+          formatted: localizeDigits(moment.sleepMinutes),
+        });
+      }
       subtitle =
         moment.kind === 'bedtime'
-          ? t('now.withSleepTimer', {
-              reciter: name,
-              count: moment.sleepMinutes,
-              formatted: localizeDigits(moment.sleepMinutes),
-            })
+          ? name
           : moment.reason === 'friday'
             ? t('now.fridaySurah', {reciter: name})
             : moment.reason === 'upNext'
@@ -241,6 +246,7 @@ export function useMomentView(moment: NowMoment): MomentView {
     reason,
     title,
     subtitle,
+    badge,
     palette,
     art,
     watermark,

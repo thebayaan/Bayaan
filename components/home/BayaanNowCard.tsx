@@ -117,10 +117,13 @@ function Art({
   art,
   size,
   radius,
+  palette,
 }: {
   art: MomentArt;
   size: number;
   radius: number;
+  /** On a plain panel a symbol sits on its moment's colours, not glass. */
+  palette?: MomentView['palette'];
 }) {
   const {theme} = useTheme();
   switch (art.kind) {
@@ -131,6 +134,33 @@ function Art({
         <SurahMosaic surahIds={art.surahIds} size={size} radius={radius} />
       );
     case 'symbol':
+      if (palette) {
+        return (
+          <View
+            style={[
+              styles.symbolTile,
+              {
+                width: size,
+                height: size,
+                borderRadius: radius,
+                backgroundColor: Color(theme.colors.text).alpha(0.05).string(),
+              },
+            ]}>
+            <SurahGradientMesh
+              palette={palette}
+              isDark={theme.isDarkMode}
+              viewBoxWidth={120}
+              viewBoxHeight={120}
+              intensity={theme.isDarkMode ? 3.2 : 4.5}
+            />
+            <HomeSymbol
+              name={art.symbol}
+              size={size * 0.46}
+              color={theme.colors.text}
+            />
+          </View>
+        );
+      }
       return (
         <GlassSurface
           style={{
@@ -227,6 +257,18 @@ function Hero({moment}: {moment: NowMoment}) {
                 numberOfLines={2}>
                 {view.subtitle}
               </Text>
+              {view.badge ? (
+                <GlassSurface style={styles.badge}>
+                  <HomeSymbol
+                    name="timer"
+                    size={moderateScale(12)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={[styles.badgeText, {color: theme.colors.text}]}>
+                    {view.badge}
+                  </Text>
+                </GlassSurface>
+              ) : null}
             </View>
           </View>
 
@@ -286,6 +328,7 @@ function SecondRow({moment}: {moment: NowMoment}) {
             art={view.art}
             size={PANEL_ART_SIZE}
             radius={moderateScale(12)}
+            palette={view.palette}
           />
         </View>
         <View style={styles.rowText}>
@@ -456,6 +499,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: moderateScale(10),
     marginTop: moderateScale(20),
+  },
+  symbolTile: {
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: moderateScale(5),
+    marginTop: moderateScale(9),
+    paddingHorizontal: moderateScale(9),
+    paddingVertical: moderateScale(4),
+    borderRadius: moderateScale(999),
+  },
+  badgeText: {
+    fontFamily: 'Manrope-Bold',
+    fontSize: moderateScale(12),
   },
   playPill: {
     flex: 1,
