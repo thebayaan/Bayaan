@@ -1,5 +1,5 @@
 // @ai-generated
-import React, {useMemo} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {
   Platform,
   Pressable,
@@ -313,6 +313,17 @@ export function CollectionSearchField({
   const {theme} = useTheme();
   const {t} = useTranslation('common');
   const styles = useMemo(() => createStyles(theme), [theme]);
+  // The field keeps its own text so fast typing never waits on the screen
+  // re-rendering (a late `value` would move the cursor and mix letters).
+  // A change from outside, such as Clear, still comes through.
+  const [text, setText] = useState(value);
+  useEffect(() => {
+    setText(current => (current === value ? current : value));
+  }, [value]);
+  const change = (next: string) => {
+    setText(next);
+    onChangeText(next);
+  };
   return (
     <View style={style}>
       <View style={styles.searchRow}>
@@ -324,8 +335,8 @@ export function CollectionSearchField({
           />
           <TextInput
             autoFocus={Boolean(onCancel)}
-            value={value}
-            onChangeText={onChangeText}
+            value={text}
+            onChangeText={change}
             placeholder={placeholder}
             placeholderTextColor={theme.colors.textSecondary}
             style={styles.input}
@@ -335,9 +346,9 @@ export function CollectionSearchField({
             clearButtonMode="never"
             accessibilityLabel={placeholder}
           />
-          {value.length > 0 ? (
+          {text.length > 0 ? (
             <Pressable
-              onPress={() => onChangeText('')}
+              onPress={() => change('')}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={t('actions.clear')}>
@@ -460,6 +471,8 @@ const createStyles = (theme: Theme) =>
       paddingVertical: 0,
     },
     cancel: {
+      // Arabic's Cancel sits tight to the field on gap alone.
+      paddingStart: '4@ms',
       fontSize: '15@ms',
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,

@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useDeferredValue, useState} from 'react';
 import {View, ScrollView} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -24,6 +24,7 @@ import {useFocusEffect} from 'expo-router';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -66,6 +67,9 @@ export default function CollectionScreen() {
   const [latestNote, setLatestNote] = useState<VerseNote | null>(null);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
+  // Results follow the typing a beat behind, so the field stays quick.
+  const deferredQuery = useDeferredValue(query);
+  const [scrolled, setScrolled] = useState(false);
   const previews = useCollectionPreviews();
 
   useFocusEffect(
@@ -287,6 +291,11 @@ export default function CollectionScreen() {
       <ScrollView
         style={styles.content}
         scrollEventThrottle={16}
+        onScroll={e => {
+          const past =
+            e.nativeEvent.contentOffset.y + (USE_GLASS ? insets.top : 0) > 4;
+          if (past !== scrolled) setScrolled(past);
+        }}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
         keyboardShouldPersistTaps="handled"
@@ -313,9 +322,17 @@ export default function CollectionScreen() {
               placeholder={t('collectionScreen.search.placeholder')}
             />
           }
-          results={<CollectionSearchResults query={query} />}
+          results={<CollectionSearchResults query={deferredQuery} />}
         />
       </ScrollView>
+      {/* Once the list moves, frost the strip under the clock so the
+          search pill doesn't slide under it. */}
+      {scrolled ? (
+        <FrostedView
+          pointerEvents="none"
+          style={[styles.statusBarScrim, {height: insets.top}]}
+        />
+      ) : null}
     </View>
   );
 }
@@ -378,6 +395,12 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flex: 1,
+    },
+    statusBarScrim: {
+      position: 'absolute',
+      top: 0,
+      start: 0,
+      end: 0,
     },
     addBar: {
       flexDirection: 'row',
