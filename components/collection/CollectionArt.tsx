@@ -113,8 +113,16 @@ export function SurahMosaic({
   if (surahIds.length <= 1) {
     return <SurahCover surahId={surahIds[0] ?? 1} size={size} radius={r} />;
   }
-  const ids = [0, 1, 2, 3].map(i => surahIds[i % surahIds.length]);
-  const half = size / 2;
+  // Two surahs sit on a diagonal; with three, the last square stays empty
+  // instead of repeating the first surah.
+  const ids: Array<number | null> =
+    surahIds.length === 2
+      ? [surahIds[0], surahIds[1], surahIds[1], surahIds[0]]
+      : [0, 1, 2, 3].map(i => surahIds[i] ?? null);
+  // A hairline between the four squares keeps two surahs that share a
+  // colour from merging into one block.
+  const gap = Math.max(1, Math.round(size * 0.025));
+  const half = Math.floor((size - gap) / 2);
   const showGlyphs = size >= 80;
   return (
     <View
@@ -125,6 +133,8 @@ export function SurahMosaic({
         overflow: 'hidden',
         flexDirection: 'row',
         flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        alignContent: 'space-between',
       }}>
       {ids.map((id, i) => (
         <View
@@ -132,12 +142,13 @@ export function SurahMosaic({
           style={{
             width: half,
             height: half,
-            backgroundColor: coverColor(id),
+            backgroundColor:
+              id === null ? 'rgba(127,127,127,0.18)' : coverColor(id),
             alignItems: 'center',
             justifyContent: 'center',
             paddingHorizontal: half * 0.1,
           }}>
-          {showGlyphs ? (
+          {showGlyphs && id !== null ? (
             <Text
               style={{
                 fontFamily: 'SurahNames',
@@ -200,6 +211,8 @@ export function GlassIcon({
         width: size,
         height: size,
         borderRadius: Math.round(size * 0.3),
+        // A solid fill under the gradient lets iOS draw the shadow cheaply.
+        backgroundColor: color,
         shadowColor: color,
         shadowOpacity: 0.45,
         shadowRadius: size * 0.12,
@@ -336,8 +349,11 @@ export function CollectionPreview({
           <Text
             style={{
               fontFamily: theme.fonts.extraBold,
-              fontSize: size * 0.4,
-              lineHeight: size * 0.34,
+              fontSize: size * 0.55,
+              // A line as tall as the font keeps the mark from being clipped;
+              // the negative margin pulls the lines back up under it.
+              lineHeight: size * 0.55,
+              marginBottom: -size * 0.24,
               color,
             }}>
             “
