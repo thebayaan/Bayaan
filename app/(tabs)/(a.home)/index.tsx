@@ -8,6 +8,10 @@ import {useRouter, useNavigation} from 'expo-router';
 import RecitersView from '@/components/RecitersView';
 import {Reciter} from '@/data/reciterData';
 import {HomeHeldContext} from '@/hooks/readerRestoreState'; // @ai
+// @ai-start
+import {HomeView} from '@/components/home/HomeView';
+import {useResponsive} from '@/hooks/useResponsive';
+// @ai-end
 
 function HomeScreen() {
   const router = useRouter();
@@ -17,6 +21,8 @@ function HomeScreen() {
   // work competes with the reader's first page. So it stays empty until the
   // restore of the root layout lets it render.
   const waitingForReader = useContext(HomeHeldContext);
+  // Phones get the new Home; iPad keeps its shelves for now.
+  const {isTablet} = useResponsive();
   // @ai-end
 
   useLayoutEffect(() => {
@@ -35,6 +41,7 @@ function HomeScreen() {
 
   if (waitingForReader) return <View style={{flex: 1}} />; // @ai
 
+  if (!isTablet) return <HomeView />; // @ai
   return <RecitersView onReciterPress={handleReciterPress} />;
 }
 

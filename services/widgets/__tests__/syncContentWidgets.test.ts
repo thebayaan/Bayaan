@@ -70,6 +70,16 @@ jest.mock('@/data/reciterCollections', () => ({
   ],
   getBayaanOriginalsReciters: () => [],
   getTrendingReciters: () => [],
+  // @ai The widget reads the spotlight through this, shared with Home.
+  getSpotlightReciters: () => [
+    {
+      id: 'r-basfar',
+      name: 'Albaraa Basfar',
+      date: null,
+      image_url: null,
+      rewayat: [],
+    },
+  ],
 }));
 jest.mock('@/services/dataService', () => ({
   getReciterByIdSync: (id: string) => ({id, name: `Name ${id}`, rewayat: []}),

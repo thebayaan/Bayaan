@@ -28,7 +28,6 @@ export const PANEL_ART_RADIUS = moderateScale(8);
 export const PANEL_ART_GAP = moderateScale(12);
 /** Top and bottom padding of a row, so an art row is 64pt tall. */
 export const PANEL_ROW_VERTICAL = moderateScale(8);
-const SEPARATOR_INSET = PANEL_ROW_PADDING + PANEL_ART_SIZE + PANEL_ART_GAP;
 
 export function usePanelColor(): string {
   const {theme} = useTheme();
@@ -39,10 +38,13 @@ export function PanelRow({
   first,
   last,
   children,
+  artWidth = PANEL_ART_SIZE, // @ai
 }: {
   first: boolean;
   last: boolean;
   children: React.ReactNode;
+  /** Width of the row's artwork, so the hairline starts under the text. @ai */
+  artWidth?: number;
 }) {
   const {theme} = useTheme();
   const panel = usePanelColor();
@@ -64,7 +66,7 @@ export function PanelRow({
           style={{
             position: 'absolute',
             bottom: 0,
-            start: SEPARATOR_INSET,
+            start: PANEL_ROW_PADDING + artWidth + PANEL_ART_GAP, // @ai
             end: PANEL_ROW_PADDING,
             height: StyleSheet.hairlineWidth,
             backgroundColor: groupedSeparatorColor(theme),

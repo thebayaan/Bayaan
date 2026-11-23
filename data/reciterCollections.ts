@@ -185,6 +185,20 @@ export function getFollowAlongReciters(count?: number): Reciter[] {
   return count ? reciters.slice(0, count) : reciters;
 }
 
+// @ai-start
+/**
+ * The Reciter Spotlight widget's list. The widget and the Home tab's
+ * Reciter of the day both show one of these per local day.
+ */
+export function getSpotlightReciters(): Reciter[] {
+  return [
+    ...getFeaturedReciters(),
+    ...getBayaanOriginalsReciters(),
+    ...getTrendingReciters(),
+  ];
+}
+// @ai-end
+
 /**
  * Gets reciters for a specific collection by name
  */

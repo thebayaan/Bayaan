@@ -65,6 +65,29 @@ function HomeLayout() {
         }}
       />
       <Stack.Screen name="adhkar" options={{headerShown: false}} />
+      {/* @ai-start */}
+      <Stack.Screen
+        name="reciters/[collection]"
+        options={{
+          title: '',
+          // Glass headers float over the list; elsewhere the header is
+          // opaque so the list starts below it.
+          headerTransparent: USE_GLASS,
+        }}
+      />
+      <Stack.Screen
+        name="system-playlist/[id]"
+        options={
+          USE_GLASS
+            ? {
+                headerTitle: '',
+                headerBackButtonDisplayMode: 'minimal',
+                fullScreenGestureEnabled: false,
+              }
+            : {headerShown: false}
+        }
+      />
+      {/* @ai-end */}
       <Stack.Screen
         name="browse-all"
         options={{

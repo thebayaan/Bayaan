@@ -258,5 +258,72 @@
     "160": "Tafsir Ibn Kathir",
     "818": "Tazkir ul Quran",
     "159": "Bayan ul Quran"
+  },
+  "seeAll": "See all",
+  "now": {
+    "label": "Bayaan Now",
+    "reason": {
+      "friday": "Friday",
+      "morning": "This morning",
+      "midday": "This afternoon",
+      "evening": "This evening",
+      "bedtime": "Before sleep",
+      "upNext": "Up next",
+      "occasion": "Today"
+    },
+    "play": "Play",
+    "pause": "Pause",
+    "resume": "Resume",
+    "start": "Start",
+    "open": "Open {{title}}",
+    "openHint": "Shows what this card plays",
+    "withSleepTimer_one": "{{reciter}} · sleep timer {{formatted}} minute",
+    "withSleepTimer_other": "{{reciter}} · sleep timer {{formatted}} minutes",
+    "fridaySurah": "{{reciter}} · the Friday surah",
+    "upNextSurah": "{{reciter}} · after the one you finished",
+    "adhkar": {
+      "morning": "Morning adhkar",
+      "evening": "Evening adhkar",
+      "sleep": "Adhkar before sleep",
+      "generic": "Adhkar"
+    },
+    "adhkarLine": "Listen, or read along",
+    "playlistLine_one": "Playlist · {{formatted}} surah",
+    "playlistLine_other": "Playlist · {{formatted}} surahs"
+  },
+  "jump": {
+    "title": "Jump back in",
+    "finished": "Finished",
+    "minutesLeft_one": "{{formatted}} min left",
+    "minutesLeft_other": "{{formatted}} min left",
+    "resumeLabel": "Resume {{surah}} by {{reciter}}",
+    "mushafPage": "Mushaf · page {{page}}",
+    "continueReading": "Continue reading {{surah}}",
+    "continueReadingPlain": "Continue reading"
+  },
+  "reciters": {
+    "title": "Your reciters",
+    "emptyHeading": "Keep your reciters close",
+    "emptyMessage": "Star a reciter and they’ll be here, one tap away.",
+    "emptyLink": "Browse all reciters"
+  },
+  "find": {
+    "title": "Find something new",
+    "allReciters": "All reciters",
+    "reciterCount_one": "{{formatted}} reciter",
+    "reciterCount_other": "{{formatted}} reciters",
+    "everyVoice": "Every voice in one place",
+    "surprise": "Surprise me",
+    "surpriseLine": "Any surah, any reciter",
+    "reciterOfTheDay": "Reciter of the day",
+    "playSurah": "Play {{surah}}"
+  },
+  "collections": {
+    "title": "Collections",
+    "newToQuran": "New to Quran",
+    "reciterCount_one": "{{formatted}} reciter",
+    "reciterCount_other": "{{formatted}} reciters",
+    "rewayatCount_one": "{{formatted}} rewayah",
+    "rewayatCount_other": "{{formatted}} rewayat"
   }
 }

@@ -17,6 +17,13 @@ jest.mock('@/components/RecitersView', () => ({
     return null;
   },
 }));
+// Phones draw the new Home; it is held the same way. @ai
+jest.mock('@/components/home/HomeView', () => ({
+  HomeView: () => {
+    mockReciters.renders += 1;
+    return null;
+  },
+}));
 jest.mock('expo-router', () => ({
   useRouter: () => ({push: jest.fn()}),
   useNavigation: () => ({setOptions: jest.fn()}),

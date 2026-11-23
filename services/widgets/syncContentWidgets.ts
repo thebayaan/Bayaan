@@ -12,11 +12,8 @@ import {
   writeContent,
   WidgetContent,
 } from 'bayaan-widgets';
-import type {Reciter} from '@/data/reciterData';
 import {
-  getBayaanOriginalsReciters,
-  getFeaturedReciters,
-  getTrendingReciters,
+  getSpotlightReciters, // @ai
 } from '@/data/reciterCollections';
 import type {DownloadedSurah} from '@/services/player/store/downloadStore';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
@@ -64,13 +61,8 @@ export function resetContentSync(): void {
   artworkFailures.clear();
 }
 
-export function spotlightReciters(): Reciter[] {
-  return [
-    ...getFeaturedReciters(),
-    ...getBayaanOriginalsReciters(),
-    ...getTrendingReciters(),
-  ];
-}
+// @ai The Home tab's Reciter of the day reads the same list and day index.
+export const spotlightReciters = getSpotlightReciters; // @ai
 
 export function contentArtworkJobs(
   content: WidgetContent,
