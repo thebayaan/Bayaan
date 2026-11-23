@@ -1,10 +1,17 @@
-import React, {useState, useMemo, useCallback, useEffect} from 'react';
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef, // @ai
+} from 'react';
 import {View, Text, TextInput, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter, SheetScrollView} from './SheetGestures';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
@@ -185,8 +192,9 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     }
   }, [verseKey, noteId]);
 
-  const handleSave = useCallback(async () => {
-    if (!noteText.trim()) return;
+  // @ai Resolves true once the note is saved and the sheet is closing.
+  const saveNote = useCallback(async (): Promise<boolean> => {
+    if (!noteText.trim()) return false; // @ai
 
     if (isEditMode && noteId) {
       await verseAnnotationService.updateNote(noteId, noteText.trim());
@@ -209,11 +217,12 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       // Another rewayah: stored by its verses' Hafs anchors (verse-units
       // contract section 3), verse_keys = every anchor of a range.
       const ready = await requireSelection('saved');
-      if (!ready || ready.anchors.length === 0) return;
+      if (!ready || ready.anchors.length === 0) return false; // @ai
       await addSelectionNote(ready, noteText.trim());
       // @ai-end
     }
     SheetManager.hideAll();
+    return true; // @ai
   }, [
     verseKey,
     verseKeys,
@@ -228,6 +237,24 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     noteRewayah, // @ai
     requireSelection, // @ai
   ]);
+
+  // @ai-start
+  // One save at a time. The button stays tappable while the write runs and
+  // for the ~200 ms the sheet takes to slide away, and every extra tap used
+  // to insert the note again. Stays locked after a successful save (the
+  // sheet is closing); unlocks if nothing was saved so Save can be retried.
+  const savingRef = useRef(false);
+  const handleSave = useCallback(async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    let saved = false;
+    try {
+      saved = await saveNote();
+    } finally {
+      if (!saved) savingRef.current = false;
+    }
+  }, [saveNote]);
+  // @ai-end
 
   const handleDelete = useCallback(async () => {
     if (!noteId) return;
@@ -248,7 +275,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <ScrollView
+      <SheetScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -289,35 +316,41 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
           autoFocus
         />
 
-        <Pressable
-          style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={!canSave}>
-          <Feather
-            name="save"
-            size={moderateScale(18)}
-            color={canSave ? theme.colors.text : theme.colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.saveButtonText,
-              !canSave && styles.saveButtonTextDisabled,
-            ]}>
-            {isEditMode ? t('note.update') : t('note.save')}
-          </Text>
-        </Pressable>
+        {/* Save and Delete sit in SheetFooters: a tap that wobbles never
+            turns into a drag of the sheet. */}
+        <SheetFooter>
+          <Pressable
+            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={!canSave}>
+            <Feather
+              name="save"
+              size={moderateScale(18)}
+              color={canSave ? theme.colors.text : theme.colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.saveButtonText,
+                !canSave && styles.saveButtonTextDisabled,
+              ]}>
+              {isEditMode ? t('note.update') : t('note.save')}
+            </Text>
+          </Pressable>
+        </SheetFooter>
 
         {isEditMode && noteId ? (
-          <Pressable style={styles.deleteButton} onPress={handleDelete}>
-            <Feather
-              name="minus-circle"
-              size={moderateScale(18)}
-              color="#ff4444"
-            />
-            <Text style={styles.deleteButtonText}>{t('note.delete')}</Text>
-          </Pressable>
+          <SheetFooter>
+            <Pressable style={styles.deleteButton} onPress={handleDelete}>
+              <Feather
+                name="minus-circle"
+                size={moderateScale(18)}
+                color="#ff4444"
+              />
+              <Text style={styles.deleteButtonText}>{t('note.delete')}</Text>
+            </Pressable>
+          </SheetFooter>
         ) : null}
-      </ScrollView>
+      </SheetScrollView>
     </ActionSheet>
   );
 };

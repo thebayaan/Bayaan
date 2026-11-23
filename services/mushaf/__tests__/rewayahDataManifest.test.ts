@@ -251,6 +251,42 @@ describe('rewayahDataManifest (contract C4)', () => {
       },
     );
 
+    it('does not count the readings index as a source of the tables', () => {
+      const service = path.join(
+        root,
+        'services',
+        'mushaf',
+        'DigitalKhattDataService.ts',
+      );
+      const requireOf = (file: string) =>
+        `'${file}': require('../../data/mushaf/digitalkhatt/${file}')`;
+      // An auxiliary DB, read only through readAuxDb: bundled and in the
+      // manifest, but the tables are not made from it.
+      writeFileSync(path.join(assetDir, 'dk_readings.db'), 'the readings');
+      writeFileSync(
+        service,
+        `const DK = {${requireOf('a.db')}, ${requireOf('dk_readings.db')}};\n`,
+      );
+      expect(run().status).toBe(0);
+      expect(run('--check').status).toBe(0);
+      expect(
+        readFileSync(
+          path.join(root, 'services', 'mushaf', 'rewayahDataManifest.ts'),
+          'utf8',
+        ),
+      ).toContain("'dk_readings.db'");
+
+      // Any other new DB still has to be one the tables name.
+      writeFileSync(path.join(assetDir, 'b.db'), 'another words DB');
+      writeFileSync(
+        service,
+        `const DK = {${requireOf('a.db')}, ${requireOf('b.db')}};\n`,
+      );
+      const other = run('--check');
+      expect(other.status).toBe(1);
+      expect(other.stderr).toContain('was generated from other DBs');
+    });
+
     it('keeps the key when a DB changes but the tables do not', () => {
       expect(run().status).toBe(0);
       const key = tablesKey();

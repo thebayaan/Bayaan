@@ -139,6 +139,9 @@ jest.mock('react-native-actions-sheet', () => ({
 }));
 const mockSelectVerse = jest.fn();
 jest.mock('@/store/mushafVerseSelectionStore', () => ({
+  // The reader's verse flash ends through flashedSelectionClearer.
+  SELECTION_FLASH_MS: 3000,
+  flashedSelectionClearer: () => () => undefined,
   useMushafVerseSelectionStore: {
     getState: () => ({
       selectVerse: mockSelectVerse,

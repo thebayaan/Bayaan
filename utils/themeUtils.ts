@@ -5,6 +5,7 @@ import {
   PrimaryColor,
 } from '@/styles/colorSchemes';
 import {Dimensions, ColorSchemeName, Appearance} from 'react-native';
+import Color from 'color';
 import {PHONE_SCALE_CAP} from '@/utils/responsive';
 
 const {width} = Dimensions.get('window');
@@ -62,3 +63,46 @@ export const createTheme = (
 };
 
 export type Theme = ReturnType<typeof createTheme>;
+
+/** WCAG AA for text under 18pt (ipad-standards §12). */
+const TEXT_CONTRAST = 4.5;
+/** The accent moves toward the text colour in steps of 1/ACCENT_STEPS. */
+const ACCENT_STEPS = 20;
+
+/**
+ * The opaque colour that `color` at `alpha` over the theme background makes:
+ * a surface such as the 4% text fill of a card, for contrast checks.
+ */
+export function overBackground(
+  theme: Theme,
+  color: string,
+  alpha: number,
+): string {
+  return Color(theme.colors.background).mix(Color(color), alpha).hex();
+}
+
+/**
+ * The accent colour (theme.colors.primary) for text drawn in it: as it is
+ * when it reaches `contrast` on every one of `backgrounds` (opaque colours,
+ * the theme background by default), otherwise mixed toward the text colour
+ * a step at a time until it does. Many accents are too light on the light
+ * background (Blue, Amber, Lime) or too dark on the dark one (Purple,
+ * Indigo) to read as text. Pass 3 for an icon.
+ */
+export function readableAccent(
+  theme: Theme,
+  backgrounds: readonly string[] = [theme.colors.background],
+  contrast = TEXT_CONTRAST,
+): string {
+  const grounds = backgrounds.map(background => Color(background));
+  const reads = (color: string) =>
+    grounds.every(ground => Color(color).contrast(ground) >= contrast);
+  if (reads(theme.colors.primary)) return theme.colors.primary;
+  const accent = Color(theme.colors.primary);
+  const text = Color(theme.colors.text);
+  for (let step = 1; step < ACCENT_STEPS; step++) {
+    const mixed = accent.mix(text, step / ACCENT_STEPS).hex();
+    if (reads(mixed)) return mixed;
+  }
+  return theme.colors.text;
+}

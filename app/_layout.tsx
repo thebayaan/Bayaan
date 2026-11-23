@@ -2,12 +2,14 @@
 import i18n from '@/i18n';
 import {uiFontFiles} from '@/i18n/fonts';
 import {bootstrapDirection} from '@/i18n/language';
+import {restartIfDirectionMismatched} from '@/i18n/restart';
 import {appDirection, appLayoutDirection, isRTL} from '@/utils/rtl';
 // @ai-end
 import React, {
   useEffect,
   useState,
   useRef,
+  useCallback,
   useMemo,
   useReducer, // @ai
 } from 'react';
@@ -51,6 +53,7 @@ import {
 import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {bootApp} from '@/services/appBoot';
 import {NetworkStatusMonitor} from '@/components/NetworkStatusMonitor';
+import {PlaybackFailureNotice} from '@/components/PlaybackFailureNotice'; // @ai
 import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
 import {PostHogProvider, usePostHog} from 'posthog-react-native';
 import {startWidgetSync} from '@/services/widgets/syncWidgets';
@@ -167,11 +170,42 @@ function AnalyticsConnector(): null {
   return null;
 }
 
+// How long a launch that has asked Android to relaunch it waits for the kill
+// before it boots after all. ProcessPhoenix kills the old process from a
+// process of its own, usually within a second or two.
+const RELAUNCH_WAIT_MS = 5000;
+
 // @ai-start
 function RootLayout() {
+  // Set while Android relaunches this process (below). Nothing boots in it
+  // meanwhile (audio session, catalogue, databases, session restore), and the
+  // splash stays up. If the kill has not come in time, the launch goes on.
+  const relaunchingRef = useRef(false);
   // Start reloads after the root has mounted, when native reload listeners are
   // ready, rather than as a side effect of importing translation resources.
-  useEffect(bootstrapDirection, []);
+  useEffect(() => {
+    bootstrapDirection();
+    // @ai-start
+    // Android: a launch whose native direction disagrees with its language
+    // runs half mirrored, so restart once into the right one. This runs
+    // before anything below has mounted. Not while audio is going: the car
+    // or a widget may have started this process and be playing already.
+    const {state} = usePlayerStore.getState().playback;
+    const audioGoing =
+      state === 'playing' || state === 'buffering' || state === 'loading';
+    if (audioGoing || !restartIfDirectionMismatched()) return;
+    relaunchingRef.current = true;
+    const timer = setTimeout(() => {
+      relaunchingRef.current = false;
+      // Runs the boot effect below again, this time to the end.
+      setBootAttempt(attempt => attempt + 1);
+    }, RELAUNCH_WAIT_MS);
+    return () => {
+      clearTimeout(timer);
+      relaunchingRef.current = false;
+    };
+    // @ai-end
+  }, []);
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   // @ai-start
@@ -270,11 +304,24 @@ function RootLayout() {
     });
   }, []);
 
+  // @ai-start
+  // "Try again" on the setup error screen. bootApp() starts over after a
+  // failure, so running the effect below once more is a full retry.
+  const [bootAttempt, setBootAttempt] = useState(0);
+  const retryBoot = useCallback(() => {
+    setSetupError(null);
+    usePlayerStore.getState().setError('system', null);
+    setBootAttempt(attempt => attempt + 1);
+  }, []);
+  // @ai-end
+
   // Initialize app with expo-audio
   useEffect(() => {
     if (initializationRef.current) {
       return;
     }
+    // This process is being relaunched (see the direction check above).
+    if (relaunchingRef.current) return;
 
     async function prepare() {
       try {
@@ -305,7 +352,7 @@ function RootLayout() {
     }
 
     prepare();
-  }, []);
+  }, [bootAttempt]); // @ai
 
   // Set native root view background + configure Android navigation bar to match theme
   useEffect(() => {
@@ -335,8 +382,19 @@ function RootLayout() {
   }, [theme.colors.background, isDarkMode]);
 
   // Handle share intent (uploads from other apps)
+  // @ai-start
+  // One import per share. This effect re-runs on every render while a share
+  // is pending (resetShareIntent is a new function each render, and iOS
+  // re-sends the share when the app becomes active), and each run started
+  // another import of the same file: two uploads and two toasts.
+  const shareImportRunningRef = useRef(false);
+  // @ai-end
   useEffect(() => {
     if (!hasShareIntent || !appIsReady || !isPlayerReady) return;
+    // @ai-start
+    if (shareImportRunningRef.current) return;
+    shareImportRunningRef.current = true;
+    // @ai-end
 
     const handleShareIntent = async () => {
       try {
@@ -378,12 +436,17 @@ function RootLayout() {
           resetShareIntent();
           await hideSplash();
           showToast(i18n.t('app.filesImported', {count: audioFiles.length}));
-          router.push('/collection/uploads');
+          // With the anchor, a Collection tab not opened yet (phone tabs are
+          // lazy) gets its home under Uploads. Without it Uploads was the
+          // first screen of that stack and showed no back arrow.
+          router.push('/collection/uploads', {withAnchor: true});
         }
       } catch (error) {
         console.error('[ShareIntent] Import failed:', error);
         resetShareIntent();
         await hideSplash();
+      } finally {
+        shareImportRunningRef.current = false; // @ai
       }
     };
 
@@ -454,6 +517,7 @@ function RootLayout() {
     return (
       <AppErrorScreen
         message={i18n.t('app.initError', {message: setupError.message})}
+        onRetry={retryBoot}
       />
     );
     // @ai-end
@@ -493,6 +557,7 @@ function RootLayout() {
                   onTouchStart={recordTouch} // @ai
                 >
                   <NetworkStatusMonitor />
+                  <PlaybackFailureNotice />
                   <ConfirmationDialogHost /* @ai: iPad confirmations */ />
                   <SheetProvider>
                     {/* @ai-start */}
@@ -527,9 +592,17 @@ function RootLayout() {
                               headerTitle: '',
                               headerTitleAlign: 'center',
                               headerBackButtonDisplayMode: 'minimal',
-                              animation: isRTL
-                                ? 'slide_from_left'
-                                : 'slide_from_right',
+                              // @ai-start
+                              // iOS mirrors the push by itself in a
+                              // right-to-left app, so asking for
+                              // slide_from_left there mirrored it twice: the
+                              // Mushaf came in from the right, as in English.
+                              // Android has no mirrored variant.
+                              animation:
+                                isRTL && Platform.OS === 'android'
+                                  ? 'slide_from_left'
+                                  : 'slide_from_right',
+                              // @ai-end
                               fullScreenGestureEnabled: false,
                             }}
                           />

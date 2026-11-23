@@ -30,6 +30,12 @@ interface AdhkarState {
   // Tasbeeh counts by count key (plain dhikr id, or `<superId>:<dhikrId>`
   // for the morning and evening lists; see dhikrCountKey)
   dhikrCounts: Record<string, number>;
+  // @ai-start
+  // The local day dhikrCounts are for (Date#toDateString, the way the
+  // database tells days apart): the day they were loaded or last reloaded.
+  // null until they are loaded.
+  dhikrCountsDay: string | null;
+  // @ai-end
 
   // Loading states
   loading: boolean;
@@ -50,6 +56,12 @@ interface AdhkarState {
   loadSaved: () => Promise<void>;
 
   // Tasbeeh
+  // @ai-start
+  // Loads today's counts unless the ones held are already today's (the
+  // local day changed, or nothing was loaded yet). Resolves true when it
+  // loaded them.
+  refreshCountsForToday: (now?: Date) => Promise<boolean>;
+  // @ai-end
   incrementCount: (countKey: string) => Promise<number>;
   resetCount: (countKey: string) => Promise<void>;
   getCount: (countKey: string) => number;
@@ -97,6 +109,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
   currentDhikrIndex: 0,
   savedIds: new Set<string>(),
   dhikrCounts: {},
+  dhikrCountsDay: null, // @ai
   categoryTitlesMap: {},
   loading: true, // Start as loading to indicate we haven't loaded yet
   categoriesLoaded: false,
@@ -124,6 +137,8 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
       const savedIds = new Set(saved.map((s: SavedDhikr) => s.dhikrId));
 
       // Load counts (this can be slow, so we do it after categories are loaded)
+      // @ai: the day is taken first, so a load across midnight reloads later
+      const countsDay = new Date().toDateString();
       const counts = await adhkarService.getAllCounts();
 
       set({
@@ -131,6 +146,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
         groupedCategories,
         savedIds,
         dhikrCounts: counts,
+        dhikrCountsDay: countsDay, // @ai
         loading: false,
         categoriesLoaded: true,
         isLoading: false,
@@ -275,11 +291,26 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
     }
   },
 
+  // @ai-start
+  // The counts are loaded once, at launch, and the app can stay in memory
+  // over midnight. Yesterday's numbers must go before today's are added to
+  // them or shown as today's (the Tasbeeh widget showed 0 after syncing a
+  // day that ended on the same total as the day before).
+  refreshCountsForToday: async (now: Date = new Date()) => {
+    const today = now.toDateString();
+    if (get().dhikrCountsDay === today) return false;
+    const counts = await adhkarService.getAllCounts();
+    set({dhikrCounts: counts, dhikrCountsDay: today});
+    return true;
+  },
+  // @ai-end
+
   // Increment tasbeeh count for a dhikr
   incrementCount: async (countKey: string) => {
     try {
       set({error: null});
 
+      await get().refreshCountsForToday(); // @ai
       const newCount = await adhkarService.incrementDhikrCount(countKey);
 
       // Update counts immutably
@@ -304,6 +335,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
     try {
       set({error: null});
 
+      await get().refreshCountsForToday(); // @ai
       await adhkarService.resetDhikrCount(countKey);
 
       // Update counts immutably
@@ -360,6 +392,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
       currentDhikrIndex: 0,
       savedIds: new Set<string>(),
       dhikrCounts: {},
+      dhikrCountsDay: null, // @ai
       categoryTitlesMap: {},
       loading: true,
       categoriesLoaded: false,

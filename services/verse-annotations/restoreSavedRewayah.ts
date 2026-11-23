@@ -15,6 +15,7 @@ import {
 } from '@/store/mushafSettingsStore';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {showToast} from '@/utils/toastUtils';
+import i18n from '@/i18n';
 
 /**
  * Switches to the rewayah a bookmark was saved in before it opens, keeping
@@ -37,8 +38,10 @@ export async function restoreSavedRewayah(
   const savedLabel = getRewayahShortLabel(savedRewayah);
   if (!hasTextData(savedRewayah)) {
     showToast(
-      `${savedLabel} text is not available`,
-      `Opening in ${getRewayahShortLabel(settings.rewayah)}.`,
+      i18n.t('reader:savedRewayah.unavailable', {rewayah: savedLabel}),
+      i18n.t('reader:savedRewayah.openingInstead', {
+        rewayah: getRewayahShortLabel(settings.rewayah),
+      }),
       'error',
     );
     return;
@@ -59,8 +62,10 @@ export async function restoreSavedRewayah(
         );
     }
     showToast(
-      `Couldn't open in ${savedLabel}`,
-      `Showing ${getRewayahShortLabel(settings.rewayah)} instead.`,
+      i18n.t('reader:savedRewayah.switchFailed', {rewayah: savedLabel}),
+      i18n.t('reader:savedRewayah.showingInstead', {
+        rewayah: getRewayahShortLabel(settings.rewayah),
+      }),
       'error',
     );
     return;
@@ -70,10 +75,12 @@ export async function restoreSavedRewayah(
   useMushafSettingsStore.getState().setRewayah(savedRewayah);
   if (useMushafSettingsStore.getState().mushafRenderer !== rendererBefore) {
     showToast(
-      `Opening in ${savedLabel}`,
-      `IndoPak shows Hafs only, so the font is now ${REWAYAH_FALLBACK_RENDERER_LABEL}.`,
+      i18n.t('reader:savedRewayah.opening', {rewayah: savedLabel}),
+      i18n.t('reader:savedRewayah.fontChanged', {
+        font: REWAYAH_FALLBACK_RENDERER_LABEL,
+      }),
     );
   } else {
-    showToast('Opening in', savedLabel);
+    showToast(i18n.t('reader:savedRewayah.openingIn'), savedLabel);
   }
 }

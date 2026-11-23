@@ -9,6 +9,10 @@
  *
  * F3 and F4 come from the review of the step 5 PR: every page in the pager
  * window reported, and a spread counted reports, not pages.
+ *
+ * The last block checks the header after a request of the navigation store
+ * (a link to the open reader): on a page where two surahs start, it names
+ * the surah the request asked for.
  */
 import React, {act} from 'react';
 import {View} from 'react-native';
@@ -35,6 +39,9 @@ const mockLayout = {
   screenWidth: 400,
 };
 const mockListItems = {count: 1};
+const mockGlass = {on: true};
+// Page 591 starts At-Tariq (86) and Al-A'la (87); pageToSurah names the last.
+const mockPageToSurah: Record<number, number> = {591: 87};
 
 function mockSurface(record: (props: MockSurfaceProps) => void) {
   return {
@@ -66,7 +73,8 @@ jest.mock('../RecitationMicButton', () => ({
 }));
 
 // Renders the first items only, as the pager does at its first commit,
-// starting at initialScrollIndex as React Native does.
+// starting at initialScrollIndex as React Native does. A scroll to an index
+// shows that item at once.
 jest.mock('react-native-gesture-handler', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
   return {
@@ -76,10 +84,19 @@ jest.mock('react-native-gesture-handler', () => {
           data: unknown[];
           initialScrollIndex?: number;
           renderItem: (info: {item: unknown; index: number}) => React.ReactNode;
+          onViewableItemsChanged?: (info: {
+            viewableItems: {item: unknown}[];
+          }) => void;
         },
-        _ref: unknown,
-      ) =>
-        ReactActual.createElement(
+        ref: React.Ref<{scrollToIndex: (params: {index: number}) => void}>,
+      ) => {
+        ReactActual.useImperativeHandle(ref, () => ({
+          scrollToIndex: ({index}) =>
+            props.onViewableItemsChanged?.({
+              viewableItems: [{item: props.data[index]}],
+            }),
+        }));
+        return ReactActual.createElement(
           ReactActual.Fragment,
           null,
           props.data
@@ -94,7 +111,8 @@ jest.mock('react-native-gesture-handler', () => {
                 props.renderItem({item, index}),
               ),
             ),
-        ),
+        );
+      },
     ),
   };
 });
@@ -156,7 +174,9 @@ jest.mock('@/hooks/useResponsive', () => ({
   useResponsive: () => ({isTablet: false}),
 }));
 jest.mock('@/hooks/useGlassProps', () => ({
-  USE_GLASS: true,
+  get USE_GLASS() {
+    return mockGlass.on;
+  },
   useGlassColorScheme: () => 'light',
 }));
 jest.mock('@/hooks/useMushafAutoPageTurn', () => ({
@@ -231,13 +251,18 @@ jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
     initialized: true,
     rewayah: 'hafs',
     getPageLines: () => [],
-    getPageToSurah: () => ({}),
+    getPageToSurah: () => mockPageToSurah,
     getSurahStartPages: () => ({}),
     subscribeCacheChanges: () => () => undefined,
   },
 }));
 jest.mock('@/services/mushaf/MushafSessionStore', () => ({
-  mushafSessionStore: {setLastReadPage: jest.fn()},
+  mushafSessionStore: {
+    setLastRead: jest.fn(),
+    setLastReadPage: jest.fn(),
+    getLastReadPage: () => null,
+    getLastReadSurahId: () => null,
+  },
 }));
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
   followShownRewayah: () => () => undefined,
@@ -265,10 +290,6 @@ jest.mock('@/store/mushafVerseSelectionStore', () => {
   const {create} = jest.requireActual('zustand');
   return {useMushafVerseSelectionStore: create(() => ({}))};
 });
-jest.mock('@/store/mushafNavigationStore', () => {
-  const {create} = jest.requireActual('zustand');
-  return {useMushafNavigationStore: create(() => ({requestId: 0}))};
-});
 jest.mock('@/store/mushafSettingsStore', () => {
   const {create} = jest.requireActual('zustand');
   return {
@@ -282,6 +303,7 @@ jest.mock('@/store/mushafSettingsStore', () => {
       chains: [],
       activeChainIndex: 0,
       updateActiveChain: () => undefined,
+      startNewChain: () => undefined,
     })),
   };
 });
@@ -294,12 +316,13 @@ jest.mock('@/i18n', () => ({
   default: {t: (key: string) => key},
 }));
 jest.mock('@/i18n/format', () => ({
-  getSurahDisplayName: () => 'Al-Fatihah',
+  getSurahDisplayName: (surah: {name: string}) => surah.name,
   localizeDigits: (value: unknown) => String(value),
 }));
 
 import MushafViewer from '../main';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -307,10 +330,10 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
 let renderer: TestRenderer.ReactTestRenderer | null = null;
 let errorSpy: jest.SpyInstance;
 
-function renderViewer(): void {
+function renderViewer(pageNumber = 3): void {
   act(() => {
     renderer = TestRenderer.create(
-      <MushafViewer pageNumber={3} onFirstContent={mockReport} />,
+      <MushafViewer pageNumber={pageNumber} onFirstContent={mockReport} />,
     );
   });
 }
@@ -338,6 +361,7 @@ beforeEach(() => {
   mockLayout.pageWidth = 400;
   mockLayout.screenWidth = 400;
   mockListItems.count = 1;
+  mockGlass.on = true;
   useMushafSettingsStore.setState({
     viewMode: 'mushaf',
     scrollDirection: 'horizontal',
@@ -495,5 +519,37 @@ describe('the reading views', () => {
     renderViewer();
     act(() => mockSurfaces.continuousList[0].onFirstContent?.());
     expect(mockReport).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the header after a navigation request', () => {
+  /** The surah name in the header (the in-tree header, without glass). */
+  function headerSurahName(): unknown {
+    if (!renderer) throw new Error('not rendered');
+    const title = renderer.root.find(
+      node =>
+        typeof node.type === 'string' &&
+        node.props.accessibilityLabel === 'Search surahs',
+    );
+    const [name] = title.findAll(node => (node.type as unknown) === 'Text');
+    return name.props.children;
+  }
+
+  beforeEach(() => {
+    mockGlass.on = false;
+  });
+
+  it("names the surah the request asks for on page 591 (At-Tariq, not Al-A'la)", () => {
+    renderViewer(50);
+    act(() =>
+      useMushafNavigationStore.getState().navigateTo({page: 591, surahId: 86}),
+    );
+    expect(headerSurahName()).toBe('At-Tariq');
+  });
+
+  it('names the last surah to start on the page when the request names none', () => {
+    renderViewer(50);
+    act(() => useMushafNavigationStore.getState().navigateTo({page: 591}));
+    expect(headerSurahName()).toBe("Al-A'la");
   });
 });

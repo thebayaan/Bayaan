@@ -19,6 +19,7 @@ import {useTranslation} from 'react-i18next';
 import {MushafSettingsContent} from '@/components/MushafSettingsContent';
 import {ReadingThemeContent} from '@/components/ReadingThemeContent';
 import {flipX} from '@/utils/rtl';
+import {SheetNoDrag} from './SheetGestures';
 
 type ActiveScreen = 'theme' | null;
 export type MushafLayoutContext = 'mushaf' | 'player';
@@ -88,8 +89,13 @@ export function MushafLayoutPanel({
         <View style={styles.backRowSpacer} />
       </View>
 
-      {/* Theme picker content */}
-      {activeScreen === 'theme' && <ReadingThemeContent onBack={handleBack} />}
+      {/* Theme picker content. It scrolls in React Native's own ScrollView,
+          so its touches are kept from dragging the sheet. */}
+      {activeScreen === 'theme' && (
+        <SheetNoDrag style={styles.subScreenContent}>
+          <ReadingThemeContent onBack={handleBack} />
+        </SheetNoDrag>
+      )}
     </View>
   );
 }
@@ -119,6 +125,9 @@ export const createStyles = (theme: Theme, windowHeight: number) =>
       paddingBottom: moderateScale(40),
     },
     subScreenContainer: {
+      flex: 1,
+    },
+    subScreenContent: {
       flex: 1,
     },
     backRowContainer: {

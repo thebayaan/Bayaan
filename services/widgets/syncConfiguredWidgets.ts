@@ -122,8 +122,18 @@ export async function consumeTasbeehIncrements(
   consuming = true;
   let applied = false;
   try {
-    const ops = planTasbeehOps(takePendingTasbeeh(), localDayKey(now));
     const store = useAdhkarStore.getState();
+    // @ai-start
+    // First open of a new day with the app still in memory: the store holds
+    // yesterday's counts. Reload before today's taps are added, and write
+    // the snapshot even when there are none.
+    try {
+      if (await store.refreshCountsForToday(now)) applied = true;
+    } catch (error) {
+      console.error('[WidgetSync] Failed to reload tasbeeh counts:', error);
+    }
+    // @ai-end
+    const ops = planTasbeehOps(takePendingTasbeeh(), localDayKey(now));
     // takePendingTasbeeh clears the native queue, so apply each op on its own
     // and keep going when one fails.
     for (const [dhikrId, op] of Object.entries(ops)) {

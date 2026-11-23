@@ -28,6 +28,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {
   formatPlaybackInfo, // @ai
   getPlayerBarNotice, // @ai
+  isRetryablePlaybackError, // @ai
   useMushafPlayerStore,
 } from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
@@ -88,7 +89,8 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   // @ai-start
   // Refusals and "Verse tracking unavailable" are shown inline below; a
   // requested start verse that was skipped (the surah plays from its
-  // beginning without verse tracking) needs a notice.
+  // beginning without verse tracking) needs a notice, and so does an error
+  // that playing again may clear.
   useEffect(
     () =>
       useMushafPlayerStore.subscribe((state, prev) => {
@@ -106,6 +108,14 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 
   const handlePlayPress = useCallback(() => {
     const store = useMushafPlayerStore.getState();
+    // @ai-start
+    // Play means the page on screen. A range left by a start that failed, or
+    // a start verse left by a play options sheet that was closed, used to
+    // win over the page: playback began at that old verse and the reader was
+    // turned back to it.
+    store.clearRange();
+    store.setPendingStart(null);
+    // @ai-end
     if (store.rewayatId) {
       // Reset repeat settings so previous loop mode doesn't carry over
       store.setVerseRepeatCount(1);
@@ -135,11 +145,11 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   }, []);
 
   const handlePrevAyah = useCallback(() => {
-    mushafAudioService.seekToPreviousAyah();
+    useMushafPlayerStore.getState().previousVerse(); // @ai
   }, []);
 
   const handleNextAyah = useCallback(() => {
-    mushafAudioService.seekToNextAyah();
+    useMushafPlayerStore.getState().nextVerse(); // @ai
   }, []);
 
   const handleOptions = useCallback(() => {
@@ -238,7 +248,9 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   }
 
   // ── Error state: show message + change reciter button ────
-  if (isIdle && timestampError) {
+  // @ai Not for an error that playing again may clear (no connection): that
+  // one is a notice, and the bar below keeps its Play button to retry with.
+  if (isIdle && timestampError && !isRetryablePlaybackError(timestampError)) {
     return (
       <View style={styles.errorContainer}>
         <Text

@@ -14,8 +14,21 @@ export type ReadingPageItem =
 
 // Cache results per page number (604 entries max)
 const pageItemsCache = new Map<number, ReadingPageItem[]>();
+// @ai-start
+// The verse arrays the cached items were taken from. Applying another
+// translation (rebuildEnhancedVerses) replaces every surah's array; items
+// cached before that hold the old translation and are dropped. Without this
+// every page already visited kept the previous translation's text.
+let cachedContent: EnhancedVerse[] | undefined;
+// @ai-end
 
 export function getReadingPageItems(pageNumber: number): ReadingPageItem[] {
+  // @ai-start
+  if (cachedContent !== enhancedVersesBySurah[1]) {
+    pageItemsCache.clear();
+    cachedContent = enhancedVersesBySurah[1];
+  }
+  // @ai-end
   const cached = pageItemsCache.get(pageNumber);
   if (cached) return cached;
 

@@ -14,6 +14,7 @@ import {
   playbackBandUnits,
   rowIndexForHafsReference,
   unitVerseActionsPayload,
+  unnumberedWordStudyPayload, // @ai
   UNNUMBERED_BASMALA_ROW_KEY,
   wordByWordNotice,
   type VerseUnitRow,
@@ -414,6 +415,43 @@ describe('references and sheet payloads', () => {
     });
     expect(unitVerseActionsPayload(rows[0], 'player')).toBeNull();
   });
+
+  // @ai-start
+  it("a basmala word opens Word Study alone, over Hafs 1:1, in the row's rewayah", () => {
+    expect(rows[0].verse_key).toBe(UNNUMBERED_BASMALA_ROW_KEY);
+    expect(
+      unnumberedWordStudyPayload(
+        rows[0],
+        {hafsKey: '1:1', position: 3},
+        'mushaf',
+      ),
+    ).toEqual({
+      verseKey: '1:1',
+      surahNumber: 1,
+      ayahNumber: 1,
+      source: 'mushaf',
+      rewayah: 'warsh',
+      initialScreen: 'words',
+      word: {verseKey: '1:1', position: 3},
+      wordStudyOnly: true,
+    });
+    // A word of no Hafs verse the row holds, and a verse row: none.
+    expect(
+      unnumberedWordStudyPayload(
+        rows[0],
+        {hafsKey: '1:2', position: 1},
+        'player',
+      ),
+    ).toBeNull();
+    expect(
+      unnumberedWordStudyPayload(
+        byKey(rows, '1:1'),
+        {hafsKey: '1:2', position: 1},
+        'player',
+      ),
+    ).toBeNull();
+  });
+  // @ai-end
 
   it('names the Hafs verse over a word-by-word grid unless it is the same verse', () => {
     expect(wordByWordNotice(rows[0], rows[0].parts[0])).toBe(

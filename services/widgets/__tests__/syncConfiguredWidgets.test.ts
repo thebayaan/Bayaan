@@ -19,6 +19,7 @@ const mockReadyListeners: (() => void)[] = [];
 const mockFlush = jest.fn();
 const mockIncrement = jest.fn<Promise<number>, [string]>();
 const mockReset = jest.fn<Promise<void>, [string]>();
+const mockRefreshCounts = jest.fn<Promise<boolean>, [Date]>(); // @ai
 const mockReciters: Reciter[] = [];
 const mockUnsubs: jest.Mock[] = [];
 const mockAppStateRemove = jest.fn();
@@ -65,7 +66,13 @@ jest.mock('react-native', () => {
 jest.mock('@/data/reciterData', () => ({RECITERS: mockReciters}));
 jest.mock('@/store/adhkarStore', () => ({
   useAdhkarStore: {
-    getState: () => ({incrementCount: mockIncrement, resetCount: mockReset}),
+    // @ai-start
+    getState: () => ({
+      incrementCount: mockIncrement,
+      resetCount: mockReset,
+      refreshCountsForToday: mockRefreshCounts,
+    }),
+    // @ai-end
     subscribe: () => mockSubscribe(),
   },
 }));
@@ -122,6 +129,10 @@ beforeEach(() => {
   mockIncrement.mockResolvedValue(1);
   mockReset.mockReset();
   mockReset.mockResolvedValue(undefined);
+  // @ai-start
+  mockRefreshCounts.mockReset();
+  mockRefreshCounts.mockResolvedValue(false);
+  // @ai-end
   mockReciters.length = 0;
   mockUnsubs.length = 0;
   mockAppStateRemove.mockReset();
@@ -246,6 +257,39 @@ describe('consumeTasbeehIncrements', () => {
     await sync.consumeTasbeehIncrements(new Date(2026, 9, 10, 12));
     expect(mockFlush).not.toHaveBeenCalled();
   });
+
+  // @ai-start
+  it("makes the counts today's before it adds the taps", async () => {
+    const sync = loadModule();
+    const now = new Date(2026, 9, 11, 8);
+    mockRefreshCounts.mockResolvedValue(true);
+    mockPending = [{dhikrId: '91', count: 2, day: '2026-10-11'}];
+    await sync.consumeTasbeehIncrements(now);
+    expect(mockRefreshCounts).toHaveBeenCalledWith(now);
+    expect(mockRefreshCounts.mock.invocationCallOrder[0]).toBeLessThan(
+      mockIncrement.mock.invocationCallOrder[0],
+    );
+    expect(mockIncrement).toHaveBeenCalledTimes(2);
+    expect(mockFlush).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes the snapshot on a new day even with no taps to add', async () => {
+    const sync = loadModule();
+    mockRefreshCounts.mockResolvedValue(true);
+    await sync.consumeTasbeehIncrements(new Date(2026, 9, 11, 8));
+    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockFlush).toHaveBeenCalledTimes(1);
+  });
+
+  it('still adds the taps when the counts cannot be reloaded', async () => {
+    const sync = loadModule();
+    mockRefreshCounts.mockRejectedValue(new Error('db'));
+    mockPending = [{dhikrId: '91', count: 2, day: '2026-10-11'}];
+    await sync.consumeTasbeehIncrements(new Date(2026, 9, 11, 8));
+    expect(mockIncrement).toHaveBeenCalledTimes(2);
+    expect(mockFlush).toHaveBeenCalledTimes(1);
+  });
+  // @ai-end
 });
 
 describe('consumeWidgetEvents', () => {

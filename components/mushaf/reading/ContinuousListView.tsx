@@ -26,6 +26,7 @@ import {
   enhancedVersesBySurah,
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
+import {useEnhancedVersesVersion} from '@/utils/enhancedVersesVersion'; // @ai
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
 import {
   useMushafPlayerStore,
@@ -37,7 +38,7 @@ import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/Basmal
 import {getTranslationName} from '@/utils/translationLookup';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {
-  SCREEN_WIDTH,
+  VERTICAL_READER_VIEWABILITY, // @ai
   readingColumnPadding, // @ai
 } from '../constants';
 // @ai-start
@@ -51,6 +52,8 @@ import {usePlaybackBand} from '../skia/playbackBand';
 import {buildUnitListModel, type UnitListModel} from './mushafVerseUnitRows';
 import {VerseUnitsPending} from './VerseUnitsPending';
 import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {selectedRowKeys} from './selectedRowKeys';
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 
@@ -76,9 +79,20 @@ type ContinuousListItem =
 
 // Build the flat list once at module scope
 let cachedItems: ContinuousListItem[] | null = null;
+// @ai-start
+// The verse arrays `cachedItems` was built from. Applying another
+// translation (rebuildEnhancedVerses) replaces every surah's array, and the
+// list is then built again; kept forever, it showed the old translation's
+// text under the new one's name for the rest of the session.
+let cachedContent: EnhancedVerse[] | undefined;
+// @ai-end
 
 function buildContinuousListItems(): ContinuousListItem[] {
-  if (cachedItems) return cachedItems;
+  // @ai-start
+  if (cachedItems && cachedContent === enhancedVersesBySurah[1]) {
+    return cachedItems;
+  }
+  // @ai-end
 
   const items: ContinuousListItem[] = [];
   for (const surah of surahData) {
@@ -97,6 +111,7 @@ function buildContinuousListItems(): ContinuousListItem[] {
   }
 
   cachedItems = items;
+  cachedContent = enhancedVersesBySurah[1]; // @ai
   return items;
 }
 
@@ -161,11 +176,10 @@ interface ContinuousListViewProps {
   onCurrentPageChange?: (page: number) => void;
   // @ai-start
   /**
-   * The list's measured width on iPad, where the text also sits in a centred
-   * reading column. Phones leave it out and keep the launch-time screen
-   * width.
+   * The list's live width. Where it is wider than the reading column (iPad,
+   * a phone in landscape) the text sits in a centred column.
    */
-  width?: number;
+  width: number;
   /** Whether a tap on the status bar scrolls back to the start. Default on. */
   scrollsToTop?: boolean;
   onFirstContent?: () => void;
@@ -225,12 +239,16 @@ const ContinuousListView = forwardRef<
     const unitsRewayah = mushafRewayah === 'hafs' ? null : mushafRewayah;
     const {units: verseUnits, status: verseUnitsStatus} =
       useRewayahVerseUnits(unitsRewayah);
+    // Counts rebuilds of the verse data: the rows are built again when
+    // another translation has been applied.
+    const versesVersion = useEnhancedVersesVersion();
     const unitList = useMemo<UnitListModel | null>(
       () =>
         unitsRewayah && verseUnits?.rewayah === unitsRewayah
           ? buildUnitListModel(verseUnits)
           : null,
-      [unitsRewayah, verseUnits],
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [unitsRewayah, verseUnits, versesVersion],
     );
     // The follow-along band as rows of the rewayah: the band the mushaf
     // pages paint (verse-units contract 4.2), e.g. a Warsh reciter on Warsh
@@ -245,6 +263,25 @@ const ContinuousListView = forwardRef<
             )
           : NO_KEYS,
       [unitList, playbackBand],
+    );
+    // The verse a jump took the reader to (a search result, a bookmark, a
+    // link) is selected in the mushaf's selection store; the rows only read
+    // the verse list's own store, so the list scrolled to it with nothing
+    // lit. Its rows are lit as on the mushaf pages.
+    const selectedVerseKeys = useMushafVerseSelectionStore(
+      s => s.selectedVerseKeys,
+    );
+    const selectedRewayah = useMushafVerseSelectionStore(
+      s => s.selectedRewayah,
+    );
+    const selectedKeys = useMemo(
+      () =>
+        selectedRowKeys(
+          unitList ? shownVerseUnitsOf(unitList.units) : null,
+          selectedRewayah,
+          selectedVerseKeys,
+        ),
+      [unitList, selectedRewayah, selectedVerseKeys],
     );
     // For the stable viewability callback below.
     const unitListRef = useRef(unitList);
@@ -360,13 +397,13 @@ const ContinuousListView = forwardRef<
     const fontMgr = isDK ? subscribedFontMgr : null;
     const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
-    const items = useMemo(() => buildContinuousListItems(), []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const items = useMemo(() => buildContinuousListItems(), [versesVersion]); // @ai
 
-    const sidePadding =
-      width === undefined
-        ? moderateScale(8)
-        : readingColumnPadding(width, moderateScale(8));
-    const contentWidth = (width ?? SCREEN_WIDTH) - sidePadding * 2;
+    // From the live width, never the width the app launched with: in phone
+    // landscape the surah dividers and basmala stayed portrait-sized.
+    const sidePadding = readingColumnPadding(width, moderateScale(8));
+    const contentWidth = width - sidePadding * 2;
 
     // Load annotations for visible surahs
     const loadAnnotationsForSurah = useVerseAnnotationsStore(
@@ -473,6 +510,9 @@ const ContinuousListView = forwardRef<
             wbwShowTransliteration={wbwShowTransliteration}
             // @ai — the row is this rewayah verse (label, text, actions)
             unitRow={isVerseUnitRow(item.verse) ? item.verse : undefined}
+            // @ai — the verse a jump took the reader to; unset otherwise, so
+            // the row's props stay exactly as before (readingViews.hafsGolden)
+            selected={selectedKeys.includes(item.verse.verse_key) || undefined}
           />
         );
       },
@@ -495,6 +535,7 @@ const ContinuousListView = forwardRef<
         playbackVerseKeys, // @ai
         basmalaSurah, // @ai
         bandKeys, // @ai
+        selectedKeys, // @ai
         isPlaying,
         translationName,
         selectedTranslationId,
@@ -538,7 +579,7 @@ const ContinuousListView = forwardRef<
         ref={flashListRef}
         data={unitList ? unitList.items : items} // @ai
         renderItem={renderItem}
-        extraData={`${(unitList ? bandKeys : playbackVerseKeys).join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`} // @ai
+        extraData={`${(unitList ? bandKeys : playbackVerseKeys).join(',')}-${selectedKeys.join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${versesVersion}`} // @ai
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}
@@ -550,7 +591,7 @@ const ContinuousListView = forwardRef<
         showsVerticalScrollIndicator={false}
         scrollsToTop={scrollsToTop}
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        viewabilityConfig={VERTICAL_READER_VIEWABILITY}
         onLoad={handleListLoad} // @ai
       />
     );

@@ -1,4 +1,9 @@
 import {create} from 'zustand';
+import {persist} from 'zustand/middleware'; // @ai
+import {persistStorage} from '@/utils/storage'; // @ai
+import {AppState} from 'react-native'; // @ai
+import {useNetworkStore} from '@/store/networkStore'; // @ai
+import {useReciterStore} from '@/store/reciterStore'; // @ai
 import type {AyahTimestamp, AyahTrackingState} from '@/types/timestamps';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import {timestampFetchService} from '@/services/timestamps/TimestampFetchService'; // @ai
@@ -75,6 +80,27 @@ interface TimestampState {
   toggleFollowAlong: () => void;
 }
 
+// @ai-start
+interface FollowAlongChoice {
+  followAlongEnabled: boolean;
+}
+
+/**
+ * Whether the user has Follow Along on, and the only timestamp state that is
+ * saved. It was not saved at all, so switching it off lasted until the app
+ * was closed. Kept apart from useTimestampStore, which changes with every
+ * verse recited and would be written to storage each time.
+ * Exported for the foreground retry (services/persistedStores); the app
+ * reads the choice through useTimestampStore.
+ */
+export const useFollowAlongChoice = create<FollowAlongChoice>()(
+  persist((): FollowAlongChoice => ({followAlongEnabled: true}), {
+    name: 'follow-along-store',
+    storage: persistStorage(),
+  }),
+);
+// @ai-end
+
 export const useTimestampStore = create<TimestampState>()((set, get) => ({
   currentAyah: null,
   currentSurahTimestamps: null,
@@ -89,7 +115,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
   supportedRewayatIds: new Set<string>(),
   supportedReciterIds: new Set<string>(),
   registryLoaded: false,
-  followAlongEnabled: true,
+  followAlongEnabled: useFollowAlongChoice.getState().followAlongEnabled, // @ai
 
   setIsLocked: isLocked => set({isLocked}),
 
@@ -196,9 +222,67 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
     });
   },
 
-  toggleFollowAlong: () =>
-    set(state => ({followAlongEnabled: !state.followAlongEnabled})),
+  // @ai-start
+  toggleFollowAlong: () => {
+    const followAlongEnabled = !get().followAlongEnabled;
+    set({followAlongEnabled});
+    useFollowAlongChoice.setState({followAlongEnabled}); // saved
+  },
+  // @ai-end
 }));
+
+// @ai-start
+// The saved choice arriving from storage, at launch or on a later retry of a
+// read that failed. Only a change counts: storage with nothing saved also
+// reports back, and must not undo what the store holds.
+useFollowAlongChoice.subscribe(({followAlongEnabled}, previous) => {
+  if (followAlongEnabled === previous.followAlongEnabled) return;
+  if (useTimestampStore.getState().followAlongEnabled !== followAlongEnabled) {
+    useTimestampStore.setState({followAlongEnabled});
+  }
+});
+// @ai-end
+
+// @ai-start
+// The current track's timings failed to load (no connection): they were only
+// tried again on "Play from here" or a track change, so a long surah stayed
+// "Verse tracking unavailable" long after a brief drop. Try again when the
+// connection comes back and when the app returns to the foreground
+// (retryTimestamps does nothing unless the last load failed).
+function retryFailedTimestamps(): void {
+  useTimestampStore
+    .getState()
+    .retryTimestamps()
+    .catch(error => {
+      console.warn('[Timestamps] Retrying the verse timing failed:', error);
+    });
+}
+
+useNetworkStore.subscribe(({isOnline}, previous) => {
+  if (isOnline && !previous.isOnline) retryFailedTimestamps();
+});
+
+// Who has follow-along is worked out from the catalogue at launch, before
+// the catalogue's refresh: reciters whose timings were added since showed no
+// follow-along until the next launch. Work it out again whenever the
+// catalogue is refilled (dataService then tells the reciter store). Guarded:
+// a stand-in reciter store (tests) may only offer getState.
+if (typeof useReciterStore?.subscribe === 'function') {
+  useReciterStore.subscribe(() => {
+    const {registryLoaded, loadFollowAlongRegistry} =
+      useTimestampStore.getState();
+    if (registryLoaded) loadFollowAlongRegistry();
+  });
+}
+
+// Not while known to be offline: it would only fail again, hiding the
+// notice for the moment it takes.
+AppState.addEventListener('change', state => {
+  if (state === 'active' && useNetworkStore.getState().isOnline) {
+    retryFailedTimestamps();
+  }
+});
+// @ai-end
 
 // @ai-start
 /**

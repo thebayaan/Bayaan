@@ -268,11 +268,12 @@ Shortcuts shipped in #447 through a local Expo module, `modules/bayaan-keyboard`
 | ⌘ L | Toggle Follow Along | Full player | Shipped |
 | Space / ⇧Space, ← / → | Next / previous page or spread; the arrows follow the Mushaf's direction, so ← is the next page | Reader (Mushaf menu) | Shipped |
 | ⌥ Space | Play / pause the recitation; opens playback options when nothing is loaded | Reader | Shipped |
+| ← / → | Next / previous word, in the Mushaf's direction; greyed out outside one-word mode | Word Study (Mushaf menu) | Shipped |
 | ⌘D, ⌘,, ⌘+ / ⌘−, ⌘G, ⌘C, ⌘⌥1 / ⌘⌥2 | Bookmark, settings, text size, go to page, copy verse, reader view modes | Reader | Not built |
 
 - **MUST** keep text inputs working with a hardware keyboard: Return submits search, Tab moves focus.
 - **MUST** refuse keys without ⌘ (Space, arrows) while a text field is being edited, so typing a space in Search types a space. `services/keyboard/keyCommands.ts` does this for every binding.
-- **MUST** register shortcuts through the layers in `services/keyboard/keyCommands.ts`. The layer added last wins a key and gives it back when it unmounts; the app-wide layer always sits underneath. The reader and the full player override the app-wide keys this way, the full player beats the reader when it is open over it, and the sidebar's Go keys are off while the reader or another full-screen page is on top.
+- **MUST** register shortcuts through the layers in `services/keyboard/keyCommands.ts`. The layer added last wins a key and gives it back when it unmounts; the app-wide layer always sits underneath. The reader and the full player override the app-wide keys this way, the full player beats the reader when it is open over it, and the sidebar's Go keys are off while the reader or another full-screen page is on top. A layer can also cover keys without binding them (`covers`): the verse actions sheet covers Space, ⇧Space and ← / → while it shows, so they never turn the page or seek the recitation behind it. A cover takes a key only from the screens under it, never from the app-wide table, so over the full player Space still plays and pauses under the sheet.
 - **MUST** give every shortcut a menu title, so it shows in the iPadOS menu bar, and make the menu item do exactly what the key does.
 - **MUST** gate new keyboard UI on `keyCommandsSupported()` (iPad only). Phones and Android register nothing.
 - **MUST** keep the committed `AppDelegate.swift` equal to the output of `plugins/withBayaanKeyboard.js`, so a prebuild keeps the shortcuts; a test checks this.
@@ -373,6 +374,8 @@ Benchmarks: Apple Music and Spotify on iPad. The listening audit, wireframes per
 - **MUST** keep primary actions visible without scrolling.
 
 **Built (#436):** the reciter page spans the pane. Its hero puts the round photo (240pt from 900pt, 200pt below) beside the name, with Play all, Shuffle, and round Favorite and Download buttons. Once the list is at least 720pt wide, surah rows become a table with Revelation and Verses columns under a pinned header; card mode adds columns to fit. Adhkar lists and Saved show two cards per row from 900pt, with the cards in a row sharing their height (#443).
+
+**Built (pinned hero):** when the profile is wide enough for a 448pt hero column and the 720pt table beside it (1168pt of the profile's own measured width, not the window's), the reciter hero is a fixed leading column, with the photo above the name. That is a 13" iPad in landscape with the sidebar collapsed, and larger windows; with the labelled sidebar, and in the Collection column, the hero stays above the table. Only the rewayah tabs and the surahs scroll beside it; the tab bar still pins when the list scrolls. The rule and the column width are in `components/reciter-profile/utils/heroColumn.ts`.
 
 ### 10.3 Mini player
 

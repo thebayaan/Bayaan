@@ -18,6 +18,7 @@ import {
 } from '@/services/adhkar/playback/trackControls';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {startCarAyahTracker} from '@/services/car/carAyah';
+import {getTrackArtistDisplay, getTrackDisplayTitle} from '@/i18n/format'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
   RecentlyPlayedTrack,
@@ -93,9 +94,14 @@ export function toNowPlaying(
   const track = queue.tracks[queue.currentIndex];
   if (!track) return null;
   const surahId = surahNumber(track);
+  // @ai-start
+  // The names as the app shows them (Arabic when the app is in Arabic):
+  // tracks are queued with the English surah and reciter names.
+  const artist = getTrackArtistDisplay(track);
+  // @ai-end
   return {
-    title: track.title,
-    subtitle: ayahLabel ? `${track.artist} · ${ayahLabel}` : track.artist,
+    title: getTrackDisplayTitle(track), // @ai
+    subtitle: ayahLabel ? `${artist} · ${ayahLabel}` : artist, // @ai
     reciterId: track.reciterId || null,
     surahId,
     isPlaying: playback.state === 'playing',
@@ -106,8 +112,8 @@ export function toNowPlaying(
     isLoved,
     artwork: surahId !== null ? {kind: 'surah', surahId} : null,
     queue: queue.tracks.map(t => ({
-      title: t.title,
-      subtitle: t.artist,
+      title: getTrackDisplayTitle(t), // @ai
+      subtitle: getTrackArtistDisplay(t), // @ai
       surahId: surahNumber(t),
     })),
     currentIndex: queue.currentIndex,
@@ -144,6 +150,73 @@ export function carriedProgress(
     duration: recent.duration,
   };
 }
+
+// @ai-start
+/** The same recitation: the same upload, or reciter, rewayah and surah. */
+function sameRecitation(a: Track, b: Track): boolean {
+  if (a.isUserUpload || b.isUserUpload) {
+    return (
+      a.isUserUpload === true &&
+      b.isUserUpload === true &&
+      !!a.userRecitationId &&
+      a.userRecitationId === b.userRecitationId
+    );
+  }
+  return (
+    a.reciterId === b.reciterId &&
+    a.surahId === b.surahId &&
+    (a.rewayatId || null) === (b.rewayatId || null)
+  );
+}
+
+export interface LivePlayback {
+  /** The player's current track. */
+  current: Track | undefined;
+  /** The player's position in it, in seconds. */
+  position: number;
+  /** The recent cards as they are now. */
+  recentTracks: RecentlyPlayedTrack[];
+}
+
+/**
+ * Where a resume really starts, in seconds.
+ *
+ * The plan's position comes from the snapshot the car is showing, which is
+ * only rebuilt when a recent card's progress moves by a tenth of the surah.
+ * Resuming from it jumped back by up to a tenth of the surah: several
+ * minutes, on a long one. The player's own position wins when it already
+ * holds this recitation (the rule the phone's recent cards and the widget
+ * use), then the recent card as it is now, and the plan only when neither
+ * knows it.
+ */
+export function liveResumePosition(
+  first: Track,
+  planPosition: number,
+  live: LivePlayback,
+): number {
+  if (
+    live.current &&
+    sameRecitation(live.current, first) &&
+    Number.isFinite(live.position) &&
+    live.position >= 0
+  ) {
+    return live.position;
+  }
+  const recent = live.recentTracks.find(t =>
+    first.isUserUpload
+      ? t.isUserUpload === true &&
+        !!first.userRecitationId &&
+        t.userRecitationId === first.userRecitationId
+      : !t.isUserUpload &&
+        t.reciter.id === first.reciterId &&
+        String(t.surah.id) === first.surahId &&
+        (t.rewayatId || null) === (first.rewayatId || null),
+  );
+  return recent && recent.duration > 0
+    ? recent.progress * recent.duration
+    : planPosition;
+}
+// @ai-end
 
 async function specToTrack(
   spec: CarPlanTrack,
@@ -199,6 +272,22 @@ export async function executeCarRequest(
   const firstUpload = first?.isUserUpload
     ? uploads.find(u => u.id === first.userRecitationId)
     : undefined;
+  // @ai-start
+  // A resume (the Resume card, a Jump back in row) starts where the
+  // listener really is, not where the snapshot last saw them.
+  const resumes =
+    request.kind === 'resume' ||
+    (request.kind === 'surah' && request.startAt !== undefined);
+  let startPosition = plan.startPosition;
+  if (resumes && first) {
+    const {queue, playback} = usePlayerStore.getState();
+    startPosition = liveResumePosition(first, plan.startPosition, {
+      current: queue.tracks[queue.currentIndex],
+      position: playback.position,
+      recentTracks: useRecentlyPlayedStore.getState().recentTracks,
+    });
+  }
+  // @ai-end
   if (
     plan.chain === 'new' &&
     !first?.isUserUpload &&
@@ -210,7 +299,7 @@ export async function executeCarRequest(
       ctx.recentTracks,
       reciter.id,
       surah.id,
-      plan.startPosition,
+      startPosition, // @ai
     );
     useRecentlyPlayedStore
       .getState()
@@ -230,7 +319,7 @@ export async function executeCarRequest(
   // not overwrite it or swap the audio under it.
   markCarReplacedQueue();
   const player = usePlayerStore.getState();
-  await player.updateQueue(ordered, startIndex, plan.startPosition);
+  await player.updateQueue(ordered, startIndex, startPosition); // @ai
   await player.play();
   // The phone's Uploads screen records the upload after it starts playing.
   if (plan.chain === 'new' && firstUpload) {
@@ -241,15 +330,40 @@ export async function executeCarRequest(
 // "Ayah 12 of 110" while a car is connected and the reciter has timestamps.
 let currentAyahLabel: string | null = null;
 
+/** What the loved store is asked about one recitation. */
+type LovedArgs = [
+  reciterId: string,
+  surahId: string,
+  rewayatId: string,
+  userRecitationId?: string,
+];
+
+/**
+ * The car's heart asks about a track the way the player's heart does: an
+ * upload by its own id (it is saved without a rewayah), anything else by
+ * reciter, surah and rewayah. Asked by reciter, surah and rewayah, a loved
+ * upload showed as not loved and the love button loved the catalogue
+ * recording of that surah instead. Null when the track cannot be loved.
+ */
+function lovedArgs(track: Track | undefined): LovedArgs | null {
+  if (!track?.surahId) return null;
+  if (track.userRecitationId) {
+    return track.reciterId
+      ? [track.reciterId, track.surahId, '', track.userRecitationId]
+      : null;
+  }
+  return track.rewayatId
+    ? [track.reciterId, track.surahId, track.rewayatId]
+    : null;
+}
+
 function pushNowPlaying(): void {
   const player = usePlayerStore.getState();
   const track = player.queue.tracks[player.queue.currentIndex];
-  const isLoved =
-    track?.surahId && track.rewayatId
-      ? useLovedStore
-          .getState()
-          .isLovedWithRewayat(track.reciterId, track.surahId, track.rewayatId)
-      : false;
+  const loved = lovedArgs(track);
+  const isLoved = loved
+    ? useLovedStore.getState().isLovedWithRewayat(...loved)
+    : false;
   BayaanCar.setNowPlaying(
     toNowPlaying(
       player.queue,
@@ -280,9 +394,12 @@ async function handleTransport(transport: CarTransport): Promise<void> {
   switch (transport.kind) {
     case 'next':
       if (adhkarTookTrackTransport('next')) return;
+      // @ai Verse audio from the Mushaf holds Now Playing: move by verse.
+      if (lockScreenService.skipMushafVerseIfHeld(true)) return; // @ai
       return player.skipToNext();
     case 'previous':
       if (adhkarTookTrackTransport('previous')) return;
+      if (lockScreenService.skipMushafVerseIfHeld(false)) return; // @ai
       return player.skipToPrevious();
     case 'play':
       return player.play();
@@ -304,11 +421,8 @@ async function handleTransport(transport: CarTransport): Promise<void> {
       if (transport.index >= player.queue.tracks.length) return;
       return player.updateQueue(player.queue.tracks, transport.index);
     case 'toggleLove': {
-      const track = player.queue.tracks[player.queue.currentIndex];
-      if (!track?.surahId || !track.rewayatId) return;
-      useLovedStore
-        .getState()
-        .toggleLoved(track.reciterId, track.surahId, track.rewayatId);
+      const loved = lovedArgs(player.queue.tracks[player.queue.currentIndex]);
+      if (loved) useLovedStore.getState().toggleLoved(...loved);
       return;
     }
   }

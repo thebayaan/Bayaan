@@ -300,9 +300,13 @@ const TabletSheet = forwardRef<ActionSheetRef, TabletSheetProps>(
 TabletSheet.displayName = 'TabletSheet';
 
 /**
- * `ActionSheet` that phones get unchanged. On iPad it never spans the
- * window: it shows as a centered card at most `SHEET_MAX_WIDTH` wide, or as
- * a menu beside its button when `tabletPresentation` is `menu`.
+ * `ActionSheet` as phones get it. On iPad it never spans the window: it
+ * shows as a centered card at most `SHEET_MAX_WIDTH` wide, or as a menu
+ * beside its button when `tabletPresentation` is `menu`.
+ *
+ * Phone sheets do not stretch up when dragged up (overdraw). At the top of
+ * a `SheetScrollView` the sheet's drag runs along with the scroll, and an
+ * upward drag that scrolls the content would otherwise lift the sheet too.
  */
 const AdaptiveActionSheet = forwardRef<
   ActionSheetRef,
@@ -314,7 +318,7 @@ const AdaptiveActionSheet = forwardRef<
       <TabletSheet ref={ref} presentation={tabletPresentation} {...props} />
     );
   }
-  return <ActionSheet ref={ref} {...props} />;
+  return <ActionSheet ref={ref} overdrawEnabled={false} {...props} />;
 });
 AdaptiveActionSheet.displayName = 'AdaptiveActionSheet';
 

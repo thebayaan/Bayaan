@@ -757,4 +757,54 @@ describe("the intro before verse 1 (isti'adha / basmala)", () => {
     expect(intro()).toBeNull();
   });
 });
+
+// The verse last published used to stay highlighted for the rest of the
+// surah after Follow Along was switched off.
+describe('Follow Along switched off', () => {
+  const setFollowAlong = async (enabled: boolean) => {
+    await act(async () => {
+      useTimestampStore.setState({followAlongEnabled: enabled});
+    });
+  };
+
+  beforeEach(() => useTimestampStore.setState({followAlongEnabled: true}));
+  afterEach(() => useTimestampStore.setState({followAlongEnabled: true}));
+
+  it('drops the verse being recited, and tracks again when switched on', async () => {
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(t[4].timestampFrom + 50);
+    expect(current()?.verseKey).toBe('2:5');
+
+    await setFollowAlong(false);
+    expect(current()).toBeNull();
+    // the reciter moves on: nothing is published
+    await tickAt(t[6].timestampFrom + 50);
+    expect(current()).toBeNull();
+
+    await setFollowAlong(true);
+    await tickAt(t[6].timestampFrom + 60);
+    expect(current()?.verseKey).toBe('2:7');
+  });
+
+  it('drops a verse written while it is off ("Play from here")', async () => {
+    await startTrack('hafs-clean', 2);
+    await setFollowAlong(false);
+    const target = getPlayFromHereTarget(timings(), '2:50');
+    if (target.status !== 'ready') throw new Error(target.status);
+    await act(async () => {
+      useTimestampStore.getState().setCurrentAyah(target.tracking);
+    });
+    expect(current()).toBeNull();
+  });
+
+  it('starting with it off: nothing is highlighted', async () => {
+    useTimestampStore.setState({followAlongEnabled: false});
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(t[4].timestampFrom + 50);
+    expect(current()).toBeNull();
+    expect(useTimestampStore.getState().basmalaIntroSurah).toBeNull();
+  });
+});
 // @ai-end
