@@ -24,6 +24,7 @@ import {
   useGlassTint,
 } from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
+import {useFloatingPillStyle} from '@/hooks/useFloatingPillStyle'; // @ai
 // @ai-start
 import {appDirection} from '@/utils/rtl';
 // @ai-end
@@ -81,8 +82,13 @@ const TabItem = React.memo(function TabItem({
     : Color(theme.colors.text).alpha(0.5).toString();
 
   return (
-    <Pressable onPress={onPress} style={styles.tabButton}>
-      {getIcon(routeName, isFocused, theme, iconSize)}
+    <Pressable
+      onPress={onPress}
+      style={({pressed}) => [styles.tabButton, pressed && styles.pressed]}>
+      {/* @ai: a fixed box, so the larger Surahs icon can't push its label down */}
+      <View style={[styles.iconBox, {height: iconSize}]}>
+        {getIcon(routeName, isFocused, theme, iconSize)}
+      </View>
       <Text
         style={[
           styles.tabText,
@@ -108,26 +114,17 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
   const glassTint = useGlassTint(); // @ai
   const insets = useSafeAreaInsets();
   const iconSize = moderateScale(22, 0.2);
+  const pillStyle = useFloatingPillStyle(); // @ai
 
   const containerStyle = useMemo(
     () => ({
+      ...pillStyle,
       position: 'absolute' as const,
       bottom: insets.bottom + FLOATING_TAB_BAR_BOTTOM_MARGIN,
       left: FLOATING_UI_HORIZONTAL_MARGIN,
       right: FLOATING_UI_HORIZONTAL_MARGIN,
-      borderRadius: moderateScale(100),
-      overflow: 'hidden' as const,
-      borderWidth: USE_GLASS ? 0 : 1,
-      borderColor: USE_GLASS
-        ? undefined
-        : Color(theme.colors.text).alpha(0.1).toString(),
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 8,
     }),
-    [theme.colors.text, insets.bottom],
+    [pillStyle, insets.bottom],
   );
 
   const handleTabPress = useCallback(
@@ -200,6 +197,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: moderateScale(7),
+  },
+  iconBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.6,
   },
   tabText: {
     fontSize: moderateScale(10, 0.2),

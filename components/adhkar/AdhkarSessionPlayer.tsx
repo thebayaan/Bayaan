@@ -3,7 +3,7 @@
 // same border, shadow, spacing, type and button sizes) but sits in the
 // screen's content instead of floating over the tab bar. Tapping the body
 // opens the playing dhikr; the close button ends the session.
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigationContainerRef} from 'expo-router';
 import Color from 'color';
@@ -14,6 +14,7 @@ import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
+import {useFloatingPillStyle} from '@/hooks/useFloatingPillStyle'; // @ai
 import {PauseIcon, PlayIcon} from '@/components/Icons';
 import {AdhkarSessionArtwork} from '@/components/adhkar/AdhkarSessionArtwork';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
@@ -42,22 +43,7 @@ export function AdhkarSessionPlayer({
   }, [navigation]);
 
   // FloatingPlayer's container, without the absolute positioning.
-  const containerStyle = useMemo(
-    () => ({
-      borderRadius: moderateScale(100),
-      overflow: 'hidden' as const,
-      borderWidth: USE_GLASS ? 0 : 1,
-      borderColor: USE_GLASS
-        ? undefined
-        : Color(theme.colors.text).alpha(0.1).toString(),
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 8,
-    }),
-    [theme.colors.text],
-  );
+  const containerStyle = useFloatingPillStyle(); // @ai
 
   const textColor = Color(theme.colors.text).alpha(0.85).toString();
   const subtitleColor = Color(theme.colors.textSecondary)
@@ -79,8 +65,8 @@ export function AdhkarSessionPlayer({
         <Pressable
           testID="adhkar-now-playing-open"
           onPress={handleOpen}
-          style={styles.body}
-          android_ripple={{color: 'rgba(0, 0, 0, 0.1)', borderless: false}}
+          // @ai: an opacity dip, not the Android ripple
+          style={({pressed}) => [styles.body, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel={`${session.listTitle}, ${position}`}
           accessibilityHint={t('adhkar.openPlaying')}>
@@ -149,6 +135,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(14, 0.2),
     paddingVertical: moderateScale(7, 0.2),
     gap: moderateScale(10, 0.2),
+  },
+  pressed: {
+    opacity: 0.6,
   },
   body: {
     flex: 1,
