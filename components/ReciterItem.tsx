@@ -73,7 +73,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
           <ReciterImage
             imageUrl={item.image_url || undefined}
             reciterName={item.name}
-            style={[styles.reciterImage, inPanel && styles.panelImage]}
+            style={[styles.reciterImage, inPanel && styles.panelImageFill]}
             profileIconSize={moderateScale(20)}
           />
         </View>
@@ -150,10 +150,18 @@ const createStyles = (theme: Theme) =>
       paddingStart: PANEL_ROW_PADDING,
       paddingEnd: moderateScale(4),
     },
+    // The round frame in a panel row: no border, so the photo fills it.
     panelImage: {
       width: PANEL_ART_SIZE,
       height: PANEL_ART_SIZE,
+      borderRadius: PANEL_ART_SIZE / 2,
+      borderWidth: 0,
       marginEnd: PANEL_ART_GAP,
+    },
+    // The photo inside it: same size, no margin of its own.
+    panelImageFill: {
+      width: PANEL_ART_SIZE,
+      height: PANEL_ART_SIZE,
     },
     reciterInfo: {
       flex: 1,

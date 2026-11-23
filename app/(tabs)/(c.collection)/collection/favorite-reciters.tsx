@@ -39,7 +39,6 @@ import {
   CollectionSearchField,
 } from '@/components/collection/CollectionScreenHeader';
 import {GRID_PADDING} from '@/components/collection/CollectionGridTile';
-import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
 import {useCollectionViewPref} from '@/store/collectionViewStore';
 // @ai-end
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
@@ -68,7 +67,6 @@ export default function FavoriteRecitersScreen() {
 
   // @ai-start
   const {sort} = useCollectionViewPref('reciters');
-  const previews = useCollectionPreviews();
   const renderHeaderRight = useCallback(
     () =>
       showSearch ? null : (
@@ -396,7 +394,7 @@ export default function FavoriteRecitersScreen() {
     return (
       <CollectionScreenHeader
         category="reciters"
-        preview={previews.reciters}
+        preview={null}
         title={t('favoriteRecitersScreen.title')}
         meta={t('common:counts.reciters', {count: favoriteReciters.length})}
         primary={{

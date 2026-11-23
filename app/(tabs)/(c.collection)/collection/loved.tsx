@@ -74,7 +74,6 @@ import {
   GRID_PADDING,
   useGridTileWidth,
 } from '@/components/collection/CollectionGridTile';
-import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
 import {useCollectionViewPref} from '@/store/collectionViewStore';
 import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
 import {matchesQuery} from '@/utils/collectionSearch';
@@ -214,7 +213,6 @@ const LovedScreen = () => {
         : lovedData,
     [lovedData, searching, query],
   );
-  const previews = useCollectionPreviews();
   const tileWidth = useGridTileWidth(3);
   const reciterCount = useMemo(
     () => new Set(lovedData.map(d => d.track.reciterId)).size,
@@ -753,7 +751,7 @@ const LovedScreen = () => {
     return (
       <CollectionScreenHeader
         category="loved"
-        preview={previews.loved}
+        preview={null}
         title={t('collectionScreen.loved')}
         meta={t('collectionScreen.meta.pair', {
           a: t('common:counts.tracks', {count: lovedData.length}),
@@ -800,7 +798,6 @@ const LovedScreen = () => {
     searching,
     query,
     visibleData.length,
-    previews.loved,
     lovedData.length,
     reciterCount,
     downloadState,

@@ -24,7 +24,6 @@ import {useFocusEffect} from 'expo-router';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset';
 import {USE_GLASS} from '@/hooks/useGlassProps';
-import {LinearGradient} from 'expo-linear-gradient';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -319,22 +318,6 @@ export default function CollectionScreen() {
           results={<CollectionSearchResults query={deferredQuery} />}
         />
       </ScrollView>
-      {/* A soft fade from the background under the clock, so the list
-          melts away there instead of running under the status bar. It
-          matches the background, so at rest it can't be seen. */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          theme.colors.background,
-          theme.colors.background,
-          Color(theme.colors.background).alpha(0).string(),
-        ]}
-        locations={[0, 0.55, 1]}
-        style={[
-          styles.statusBarScrim,
-          {height: insets.top + moderateScale(20)},
-        ]}
-      />
     </View>
   );
 }
@@ -397,12 +380,6 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flex: 1,
-    },
-    statusBarScrim: {
-      position: 'absolute',
-      top: 0,
-      start: 0,
-      end: 0,
     },
     addBar: {
       flexDirection: 'row',
