@@ -76,7 +76,7 @@ function BreathingMesh({view}: {view: MomentView}) {
         isDark={theme.isDarkMode}
         viewBoxWidth={360}
         viewBoxHeight={260}
-        intensity={theme.isDarkMode ? 2.6 : 3.4}
+        intensity={theme.isDarkMode ? 4.2 : 3.4}
       />
     </Animated.View>
   );
@@ -265,6 +265,10 @@ function Hero({moment}: {moment: NowMoment}) {
   );
 }
 
+function sameWords(a: string, b: string): boolean {
+  return a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+}
+
 function SecondRow({moment}: {moment: NowMoment}) {
   const {theme} = useTheme();
   const view = useMomentView(moment);
@@ -285,19 +289,22 @@ function SecondRow({moment}: {moment: NowMoment}) {
           />
         </View>
         <View style={styles.rowText}>
-          <Text
-            style={[
-              styles.rowReason,
-              {
-                // The pastel palettes need depth to read on a white panel.
-                color: theme.isDarkMode
-                  ? view.palette[0]
-                  : Color(view.palette[0]).darken(0.45).string(),
-              },
-            ]}
-            numberOfLines={1}>
-            {view.reason}
-          </Text>
+          {/* "Before sleep" over "Before Sleep" says it twice. */}
+          {sameWords(view.reason, view.title) ? null : (
+            <Text
+              style={[
+                styles.rowReason,
+                {
+                  // The pastel palettes need depth to read on a white panel.
+                  color: theme.isDarkMode
+                    ? view.palette[0]
+                    : Color(view.palette[0]).darken(0.45).string(),
+                },
+              ]}
+              numberOfLines={1}>
+              {view.reason}
+            </Text>
+          )}
           <Text
             style={[styles.rowTitle, {color: theme.colors.text}]}
             numberOfLines={1}>

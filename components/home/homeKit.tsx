@@ -212,6 +212,8 @@ export function ignoreHaptics(): void {
 
 const PRESS_SPRING = {damping: 18, stiffness: 420, mass: 0.5};
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 /** A Pressable that settles in a little while it is held. */
 export function PressScale({
   style,
@@ -228,8 +230,9 @@ export function PressScale({
     transform: [{scale: scale.value}],
   }));
   return (
-    <Pressable
+    <AnimatedPressable
       {...rest}
+      style={[style, animated]}
       onPressIn={e => {
         scale.value = withSpring(scaleTo, PRESS_SPRING);
         rest.onPressIn?.(e);
@@ -238,8 +241,8 @@ export function PressScale({
         scale.value = withSpring(1, PRESS_SPRING);
         rest.onPressOut?.(e);
       }}>
-      <Animated.View style={[style, animated]}>{children}</Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }
 
