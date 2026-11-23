@@ -91,6 +91,53 @@ function expectedBytes(
   return Number.isFinite(length) && length > 0 ? length : null;
 }
 
+/**
+ * iOS: the files of downloads that a killed launch left behind.
+ *
+ * A download runs in a background URLSession, and expo-file-system gives that
+ * session a new identifier at each launch. When the app is killed during a
+ * download, iOS still finishes it, but no later launch opens a session with
+ * the old identifier, so nothing ever claims the file. It stays at
+ * Library/Caches/com.apple.nsurlsessiond/Downloads/<bundle id>/
+ * CFNetworkDownload_*.tmp, one full surah file for each kill, and "Clear
+ * cache" leaves that folder alone because live downloads use it too.
+ *
+ * The sweep runs once in each launch, and every download waits for it, so it
+ * can never delete the file of a download of this launch. A failed sweep
+ * never stops a download.
+ */
+const SESSION_DOWNLOADS_DIR = 'com.apple.nsurlsessiond/Downloads/';
+const ORPHANED_DOWNLOAD = /^CFNetworkDownload_.*\.tmp$/;
+let orphanSweep: Promise<void> | null = null;
+
+export function sweepOrphanedDownloads(): Promise<void> {
+  orphanSweep ??= deleteOrphanedDownloads();
+  return orphanSweep;
+}
+
+async function deleteOrphanedDownloads(): Promise<void> {
+  if (Platform.OS !== 'ios' || !FileSystem.cacheDirectory) return;
+  const root = `${FileSystem.cacheDirectory}${SESSION_DOWNLOADS_DIR}`;
+  try {
+    const info = await FileSystem.getInfoAsync(root);
+    if (!info.exists || !info.isDirectory) return;
+    // One folder for each bundle id; the app's own is the only one in its
+    // container, but the name is not ours to guess.
+    for (const folder of await FileSystem.readDirectoryAsync(root)) {
+      const dir = `${root}${folder}/`;
+      const entries = await FileSystem.readDirectoryAsync(dir).catch(
+        () => [] as string[],
+      );
+      for (const entry of entries) {
+        if (!ORPHANED_DOWNLOAD.test(entry)) continue;
+        await FileSystem.deleteAsync(`${dir}${entry}`, {idempotent: true});
+      }
+    }
+  } catch (error) {
+    console.error('[DownloadService] Orphaned download sweep failed:', error);
+  }
+}
+
 /** A download under way, and the way to stop it. */
 interface Transfer {
   done: Promise<number>;
@@ -128,6 +175,7 @@ function startTransfer(
   };
 
   const run = async (): Promise<number> => {
+    await sweepOrphanedDownloads();
     // A killed app or an earlier failure can leave a partial file behind.
     await FileSystem.deleteAsync(partPath, {idempotent: true});
 

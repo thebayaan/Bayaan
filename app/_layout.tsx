@@ -68,6 +68,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
+import {sweepOrphanedDownloads} from '@/services/downloadService'; // @ai
 // @ai-start
 import {
   HomeHeldContext,
@@ -293,6 +294,11 @@ function RootLayout() {
   // restored reader, a link) starts it itself.
   useEffect(() => {
     whenSplashHidden().then(() => mushafPreloadService.startIfIdle());
+  }, []);
+  // iOS: free the files of downloads that a killed launch left behind (see
+  // downloadService). A download that starts sooner waits for this sweep.
+  useEffect(() => {
+    whenSplashHidden().then(() => sweepOrphanedDownloads());
   }, []);
   // @ai-end
 
