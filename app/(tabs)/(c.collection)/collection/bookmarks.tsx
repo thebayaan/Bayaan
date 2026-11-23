@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useRef} from 'react';
+import React, {useState, useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {useLocalSearchParams} from 'expo-router'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -21,7 +22,6 @@ import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {BookmarkItem} from '@/components/collection/BookmarkItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
-import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseBookmark} from '@/types/verse-annotations';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -45,6 +45,17 @@ import {
 } from '@/components/sheets/options/collectionOptions';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+// @ai-start
+import {
+  CollectionHeaderActions,
+  CollectionScreenHeader,
+  CollectionSearchField,
+} from '@/components/collection/CollectionScreenHeader';
+import {GRID_PADDING} from '@/components/collection/CollectionGridTile';
+import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
+import {useCollectionViewPref} from '@/store/collectionViewStore';
+import {matchesQuery, matchesVerseRef} from '@/utils/collectionSearch';
+// @ai-end
 // @ai-end
 
 interface BookmarkData {
@@ -72,11 +83,61 @@ const BookmarksScreen = () => {
   // load would start a competing switch.
   const openingRef = useRef(false); // @ai
 
+  // @ai-start
+  const {sort} = useCollectionViewPref('bookmarks');
+  // @ai A search typed on the Collection tab arrives as `q`.
+  const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
+  const [searching, setSearching] = useState(Boolean(initialQuery));
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const previews = useCollectionPreviews();
+  const visibleBookmarks = useMemo(() => {
+    const list = [...bookmarks];
+    if (sort === 'oldest') {
+      list.sort((a, b) => a.bookmark.createdAt - b.bookmark.createdAt);
+    } else if (sort === 'surah') {
+      list.sort(
+        (a, b) =>
+          a.bookmark.surahNumber - b.bookmark.surahNumber ||
+          a.bookmark.ayahNumber - b.bookmark.ayahNumber,
+      );
+    } else {
+      list.sort((a, b) => b.bookmark.createdAt - a.bookmark.createdAt);
+    }
+    if (!searching || !query.trim()) return list;
+    return list.filter(b => {
+      const surah = getSurahById(b.bookmark.surahNumber);
+      return (
+        matchesVerseRef(query, b.bookmark.surahNumber, b.bookmark.ayahNumber) ||
+        matchesQuery(query, [
+          b.surahName,
+          surah?.name,
+          surah?.translated_name_english,
+        ])
+      );
+    });
+  }, [bookmarks, sort, searching, query]);
+  const surahCount = useMemo(
+    () => new Set(bookmarks.map(b => b.bookmark.surahNumber)).size,
+    [bookmarks],
+  );
+  const renderHeaderRight = useCallback(
+    () =>
+      searching ? null : (
+        <CollectionHeaderActions
+          screen="bookmarks"
+          onSearch={() => setSearching(true)}
+        />
+      ),
+    [searching],
+  );
+
   useCollectionNativeHeader({
     title: t('common:terms.bookmarks'),
     scrollY,
     hasContent: bookmarks.length > 0 && !loading,
+    headerRight: bookmarks.length > 0 ? renderHeaderRight : undefined,
   });
+  // @ai-end
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -160,39 +221,44 @@ const BookmarksScreen = () => {
   );
   // @ai-end
 
-  const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
-  const heroInnerBg = Color(theme.colors.textSecondary).alpha(0.08).toString();
-
-  const ListHeaderComponent = useCallback(() => {
-    return (
-      <View style={styles.headerContainer}>
-        <View style={{paddingTop: USE_GLASS ? 0 : insets.top}} />
-        <View style={styles.headerContent}>
-          <View
-            style={[styles.heroIconContainer, {backgroundColor: heroOuterBg}]}>
-            <View
-              style={[styles.heroIconInner, {backgroundColor: heroInnerBg}]}>
-              <Feather
-                name="bookmark"
-                size={moderateScale(30)}
-                color={theme.colors.text}
-              />
-            </View>
-          </View>
-          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            {t('common:terms.bookmarks')}
-          </Text>
-          <Text
-            style={[
-              styles.headerSubtitle,
-              {color: theme.colors.textSecondary},
-            ]}>
-            {t('bookmarksScreen.count', {count: bookmarks.length})}
-          </Text>
-        </View>
-      </View>
-    );
-  }, [bookmarks.length, insets.top, theme, heroOuterBg, heroInnerBg, t]);
+  // @ai-start
+  const listHeader = searching ? (
+    <CollectionSearchField
+      value={query}
+      onChangeText={setQuery}
+      onCancel={() => {
+        setSearching(false);
+        setQuery('');
+      }}
+      placeholder={t('collectionScreen.search.placeholderIn', {
+        name: t('common:terms.bookmarks'),
+      })}
+      resultLabel={
+        query.trim()
+          ? t('collectionScreen.search.matches', {
+              count: visibleBookmarks.length,
+            })
+          : undefined
+      }
+      style={{
+        paddingHorizontal: GRID_PADDING,
+        paddingTop: USE_GLASS ? moderateScale(8) : insets.top + 8,
+        paddingBottom: moderateScale(12),
+      }}
+    />
+  ) : (
+    <CollectionScreenHeader
+      category="bookmarks"
+      preview={previews.bookmarks}
+      title={t('common:terms.bookmarks')}
+      meta={t('collectionScreen.meta.inSurahs', {
+        ayahs: t('common:counts.ayahs', {count: bookmarks.length}),
+        surahs: t('common:counts.surahs', {count: surahCount}),
+      })}
+      actions={renderHeaderRight()}
+    />
+  );
+  // @ai-end
 
   const renderItem: ListRenderItem<BookmarkData> = ({item}) => (
     <BookmarkItem
@@ -335,10 +401,12 @@ const BookmarksScreen = () => {
       )}
 
       <RNAnimated.FlatList
-        data={bookmarks}
+        data={visibleBookmarks} // @ai
         renderItem={renderItem}
         keyExtractor={getItemKey}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={listHeader} // @ai
+        keyboardShouldPersistTaps="handled" // @ai
+        keyboardDismissMode="on-drag" // @ai
         contentContainerStyle={[
           styles.listContentContainer,
           {paddingBottom: listBottomPadding}, // @ai

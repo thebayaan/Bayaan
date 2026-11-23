@@ -10,12 +10,18 @@ import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
 import {flipX} from '@/utils/rtl';
 import type {CollectionCategory} from '@/components/collection/TabletCollectionHome';
+import {
+  CollectionPreview,
+  type CollectionCategoryId,
+  type CollectionPreviewData,
+} from '@/components/collection/CollectionArt';
 
 /** A category row on the phone Collection tab: the shared category plus a
- *  live summary of what's inside and an optional small preview. */
+ *  live summary of what's inside and the newest thing in it, drawn in
+ *  place of an icon. */
 export interface CollectionHomeCategory extends CollectionCategory {
   summary?: string;
-  preview?: React.ReactNode;
+  previewData?: CollectionPreviewData;
 }
 
 /** How the rows are grouped, in the same way as the Reading sheet's sections. */
@@ -28,6 +34,10 @@ const GROUPS: Array<{key: 'listening' | 'reading' | 'yours'; ids: string[]}> = [
 interface CollectionHomeListProps {
   categories: CollectionHomeCategory[];
   onAdd: () => void;
+  /** The search field under the title. */
+  search?: React.ReactNode;
+  /** Shown instead of the categories while there's a query. */
+  results?: React.ReactNode;
 }
 
 /**
@@ -39,6 +49,8 @@ interface CollectionHomeListProps {
 export function CollectionHomeList({
   categories,
   onAdd,
+  search,
+  results,
 }: CollectionHomeListProps) {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -70,70 +82,66 @@ export function CollectionHomeList({
         </Pressable>
       </View>
 
-      {GROUPS.map(group => {
-        const rows = group.ids
-          .map(id => byId.get(id))
-          .filter((c): c is CollectionHomeCategory => Boolean(c));
-        if (rows.length === 0) return null;
-        return (
-          <View key={group.key} style={styles.section}>
-            <Text style={styles.sectionLabel} accessibilityRole="header">
-              {t(`collectionScreen.groups.${group.key}`)}
-            </Text>
-            <View style={styles.card}>
-              {rows.map((category, index) => {
-                const isEmpty = category.count === 0;
-                const subtitle = isEmpty
-                  ? category.emptyText
-                  : (category.summary ??
-                    t('collectionScreen.itemsCount', {count: category.count}));
-                return (
-                  <View key={category.id}>
-                    {index > 0 ? <View style={styles.separator} /> : null}
-                    <Pressable
-                      onPress={() => router.push(category.route as never)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${category.label}, ${subtitle}`}
-                      style={({pressed}) => [
-                        styles.row,
-                        pressed && styles.rowPressed,
-                      ]}>
-                      <View
-                        style={[
-                          styles.icon,
-                          {
-                            backgroundColor: Color(category.color)
-                              .alpha(0.15)
-                              .string(),
-                          },
+      {search}
+
+      {results ??
+        GROUPS.map(group => {
+          const rows = group.ids
+            .map(id => byId.get(id))
+            .filter((c): c is CollectionHomeCategory => Boolean(c));
+          if (rows.length === 0) return null;
+          return (
+            <View key={group.key} style={styles.section}>
+              <Text style={styles.sectionLabel} accessibilityRole="header">
+                {t(`collectionScreen.groups.${group.key}`)}
+              </Text>
+              <View style={styles.card}>
+                {rows.map((category, index) => {
+                  const isEmpty = category.count === 0;
+                  const subtitle = isEmpty
+                    ? category.emptyText
+                    : (category.summary ??
+                      t('collectionScreen.itemsCount', {
+                        count: category.count,
+                      }));
+                  return (
+                    <View key={category.id}>
+                      {index > 0 ? <View style={styles.separator} /> : null}
+                      <Pressable
+                        onPress={() => router.push(category.route as never)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${category.label}, ${subtitle}`}
+                        style={({pressed}) => [
+                          styles.row,
+                          pressed && styles.rowPressed,
                         ]}>
-                        {category.icon}
-                      </View>
-                      <View style={styles.text}>
-                        <Text style={styles.label} numberOfLines={1}>
-                          {category.label}
-                        </Text>
-                        <Text style={styles.subtitle} numberOfLines={1}>
-                          {subtitle}
-                        </Text>
-                      </View>
-                      {!isEmpty && category.preview ? (
-                        <View style={styles.preview}>{category.preview}</View>
-                      ) : null}
-                      <Feather
-                        name="chevron-right"
-                        size={moderateScale(17)}
-                        color={theme.colors.textSecondary}
-                        style={flipX}
-                      />
-                    </Pressable>
-                  </View>
-                );
-              })}
+                        <CollectionPreview
+                          category={category.id as CollectionCategoryId}
+                          data={isEmpty ? null : (category.previewData ?? null)}
+                          size={moderateScale(38)}
+                        />
+                        <View style={styles.text}>
+                          <Text style={styles.label} numberOfLines={1}>
+                            {category.label}
+                          </Text>
+                          <Text style={styles.subtitle} numberOfLines={1}>
+                            {subtitle}
+                          </Text>
+                        </View>
+                        <Feather
+                          name="chevron-right"
+                          size={moderateScale(17)}
+                          color={theme.colors.textSecondary}
+                          style={flipX}
+                        />
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
             </View>
-          </View>
-        );
-      })}
+          );
+        })}
     </View>
   );
 }
@@ -190,13 +198,6 @@ const createStyles = (theme: Theme) =>
     rowPressed: {
       backgroundColor: Color(theme.colors.text).alpha(0.06).string(),
     },
-    icon: {
-      width: '38@ms',
-      height: '38@ms',
-      borderRadius: '10@ms',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     text: {flex: 1, minWidth: 0},
     label: {
       fontFamily: theme.fonts.semiBold,
@@ -209,7 +210,6 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       marginTop: '1@ms',
     },
-    preview: {flexDirection: 'row', alignItems: 'center'},
     separator: {
       height: 1,
       marginStart: '64@ms',

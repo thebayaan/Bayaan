@@ -31,6 +31,51 @@
       "separator": ", ",
       "firstAndMoreReciters_one": "{{a}} and {{count}} more",
       "firstAndMoreReciters_other": "{{a}} and {{count}} more"
+    },
+    "view": {
+      "grid": "Grid",
+      "list": "List",
+      "sortBy": "Sort by",
+      "menuLabel": "View and sort"
+    },
+    "sort": {
+      "dateLoved": "Date loved",
+      "dateDownloaded": "Date downloaded",
+      "dateAdded": "Date added",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "surahOrder": "Surah order",
+      "reciter": "Reciter",
+      "title": "Title",
+      "updated": "Last updated",
+      "dateCreated": "Date created",
+      "size": "Size",
+      "name": "Name"
+    },
+    "search": {
+      "placeholder": "Search your collection",
+      "placeholderIn": "Search {{name}}",
+      "matches_one": "{{count}} match",
+      "matches_other": "{{count}} matches",
+      "noResults": "Nothing matches “{{query}}”",
+      "hint": "Try a surah, a reciter, a verse like 2:255, or words from your notes",
+      "includes": "Includes {{name}}",
+      "all": "All",
+      "seeAll": "See all {{total}} in {{name}}"
+    },
+    "meta": {
+      "pair": "{{a}} · {{b}}",
+      "inSurahs": "{{ayahs}} in {{surahs}}",
+      "notes_one": "{{count}} note",
+      "notes_other": "{{count}} notes"
+    },
+    "actions": {
+      "playAll": "Play all"
+    },
+    "downloads": {
+      "byReciter": "By reciter",
+      "allSurahs": "All surahs",
+      "groupingLabel": "Show downloads"
     }
   },
   "bookmarksScreen": {

@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {View, ScrollView, Text} from 'react-native';
+import {View, ScrollView} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale, ScaledSheet} from '@/utils/scale';
@@ -32,21 +32,19 @@ import {
   CollectionHomeList,
   type CollectionHomeCategory,
 } from '@/components/collection/CollectionHomeList';
-import {ReciterImage} from '@/components/ReciterImage';
 import {getSurahById} from '@/services/dataService';
 import {
   getReciterDisplayName,
   getSurahDisplayName,
   localizeDigits,
 } from '@/i18n/format';
-import {surahGlyphMap} from '@/utils/surahGlyphMap';
+import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
+import {CollectionSearchField} from '@/components/collection/CollectionScreenHeader';
+import {CollectionSearchResults} from '@/components/collection/CollectionSearchResults';
 import type {VerseBookmark, VerseNote} from '@/types/verse-annotations';
 // @ai-end
 
 type CategoryItem = CollectionHomeCategory;
-
-/** Muted squares behind the surah-name glyphs in the Loved preview. */
-const COVER_COLORS = ['#2F5D50', '#7A5A3E', '#3D4E6B', '#5C4470', '#8A4F4F'];
 
 // @ai-start
 export default function CollectionScreen() {
@@ -66,6 +64,8 @@ export default function CollectionScreen() {
   const [noteCount, setNoteCount] = useState(0);
   const [recentBookmarks, setRecentBookmarks] = useState<VerseBookmark[]>([]);
   const [latestNote, setLatestNote] = useState<VerseNote | null>(null);
+  const [query, setQuery] = useState('');
+  const previews = useCollectionPreviews();
 
   useFocusEffect(
     useCallback(() => {
@@ -128,34 +128,6 @@ export default function CollectionScreen() {
     const name = surah ? getSurahDisplayName(surah) : track.surahId;
     if (!lovedNames.includes(name)) lovedNames.push(name);
   });
-  const lovedPreview =
-    lovedNewest.length > 0 ? (
-      <View style={styles.previewRow}>
-        {lovedNewest.slice(0, 2).map((track, i) => (
-          <View
-            key={`${track.reciterId}-${track.surahId}-${track.rewayatId}`}
-            style={[
-              styles.cover,
-              {
-                backgroundColor:
-                  COVER_COLORS[Number(track.surahId) % COVER_COLORS.length],
-                borderColor: theme.colors.background,
-                marginStart: i === 0 ? 0 : -moderateScale(10),
-                zIndex: 2 - i,
-              },
-            ]}>
-            <Text
-              style={styles.coverGlyph}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.5}>
-              {surahGlyphMap[Number(track.surahId)] ?? ''}
-            </Text>
-          </View>
-        ))}
-      </View>
-    ) : null;
-
   const completedDownloads = downloads.filter(d => d.status === 'completed');
   const downloadBytes = completedDownloads.reduce(
     (sum, d) => sum + (d.fileSize || 0),
@@ -185,31 +157,6 @@ export default function CollectionScreen() {
   const recitersNewest = [...favoriteReciters].sort(
     (x, y) => y.favoritedAt - x.favoritedAt,
   );
-  const recitersPreview =
-    recitersNewest.length > 0 ? (
-      <View style={styles.previewRow}>
-        {recitersNewest.slice(0, 2).map((reciter, i) => (
-          <View
-            key={reciter.id}
-            style={[
-              styles.face,
-              {
-                borderColor: theme.colors.background,
-                marginStart: i === 0 ? 0 : -moderateScale(9),
-                zIndex: 3 - i,
-              },
-            ]}>
-            <ReciterImage
-              imageUrl={reciter.image_url ?? undefined}
-              reciterName={reciter.name}
-              style={styles.faceImage}
-              profileIconSize={moderateScale(12)}
-            />
-          </View>
-        ))}
-      </View>
-    ) : null;
-
   const categories: CategoryItem[] = [
     {
       id: 'playlists',
@@ -219,6 +166,7 @@ export default function CollectionScreen() {
       count: playlists.length,
       emptyText: t('collectionScreen.empty.playlists'),
       route: '/collection/playlists',
+      previewData: previews.playlists,
       summary: summarize(
         playlists.map(p => p.name),
         playlists.length,
@@ -243,7 +191,7 @@ export default function CollectionScreen() {
                 a: getReciterDisplayName(recitersNewest[0]),
                 count: recitersNewest.length - 1,
               }),
-      preview: recitersPreview,
+      previewData: previews.reciters,
     },
     {
       id: 'downloads',
@@ -252,6 +200,7 @@ export default function CollectionScreen() {
       color: '#10AC84',
       emptyText: t('collectionScreen.empty.downloads'),
       route: '/collection/downloads',
+      previewData: previews.downloads,
       count: completedDownloads.length,
       summary: downloadsSummary,
     },
@@ -272,7 +221,7 @@ export default function CollectionScreen() {
               names: lovedNames.join(t('collectionScreen.summary.separator')),
             })
           : undefined,
-      preview: lovedPreview,
+      previewData: previews.loved,
     },
     {
       id: 'bookmarks',
@@ -284,6 +233,7 @@ export default function CollectionScreen() {
       count: bookmarkCount,
       emptyText: t('collectionScreen.empty.bookmarks'),
       route: '/collection/bookmarks',
+      previewData: previews.bookmarks,
       summary: summarize(
         recentBookmarks.map(b => verseLabel(b.surahNumber, b.ayahNumber)),
         bookmarkCount,
@@ -299,6 +249,7 @@ export default function CollectionScreen() {
       count: noteCount,
       emptyText: t('collectionScreen.empty.notes'),
       route: '/collection/notes',
+      previewData: previews.notes,
       summary: latestNote
         ? t('collectionScreen.summary.quote', {
             text: latestNote.content.split('\n')[0],
@@ -313,6 +264,7 @@ export default function CollectionScreen() {
       count: uploadsTotalCount,
       emptyText: t('collectionScreen.empty.uploads'),
       route: '/collection/uploads',
+      previewData: previews.uploads,
       summary: t('uploadsScreen.recitationsCount', {
         count: uploadsTotalCount,
       }),
@@ -337,12 +289,26 @@ export default function CollectionScreen() {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={{
           paddingTop: USE_GLASS
             ? moderateScale(16)
             : insets.top + moderateScale(16),
         }}>
-        <CollectionHomeList categories={categories} onAdd={handleAddPress} />
+        <CollectionHomeList
+          categories={categories}
+          onAdd={handleAddPress}
+          search={
+            <CollectionSearchField
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t('collectionScreen.search.placeholder')}
+            />
+          }
+          results={
+            query.trim() ? <CollectionSearchResults query={query} /> : null
+          }
+        />
 
         <View style={{height: bottomInset}} />
       </ScrollView>

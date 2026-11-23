@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useMemo} from 'react'; // @ai
+import React, {useCallback, useRef, useMemo, useState} from 'react'; // @ai
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {useLocalSearchParams} from 'expo-router'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -32,7 +33,6 @@ import {getReciterArtwork} from '@/utils/artworkUtils';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
 import {HeartIcon, CheckIcon} from '@/components/Icons';
 import {
   useDownloadActions,
@@ -57,6 +57,23 @@ import {
   CollectionOptionsMenu,
   type CollectionOptionsPayload,
 } from '@/components/sheets/options/collectionOptions';
+import {
+  CollectionHeaderActions,
+  CollectionScreenHeader,
+  CollectionSearchField,
+} from '@/components/collection/CollectionScreenHeader';
+import {SurahCover} from '@/components/collection/CollectionArt';
+import {
+  CollectionGridTile,
+  GRID_GAP,
+  GRID_PADDING,
+  useGridTileWidth,
+} from '@/components/collection/CollectionGridTile';
+import {useCollectionPreviews} from '@/hooks/useCollectionPreviews';
+import {useCollectionViewPref} from '@/store/collectionViewStore';
+import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
+import {matchesQuery} from '@/utils/collectionSearch';
+import {PlayIcon, ShuffleIcon, DownloadIcon} from '@/components/Icons';
 // @ai-end
 
 interface LovedTrack {
@@ -66,6 +83,8 @@ interface LovedTrack {
   surahId: string;
   rewayatId?: string;
   userRecitationId?: string;
+  /** When it was loved. @ai */
+  timestamp: number; // @ai
 }
 
 interface LovedTrackData {
@@ -112,7 +131,7 @@ const LovedScreen = () => {
   // file. "Download all" used to save such a surah under an empty rewayah
   // that playback never looks up: the row showed as downloaded and then
   // failed to play offline. An upload keeps no rewayah; it is its own file.
-  const lovedData = useMemo<LovedTrackData[]>(
+  const lovedDataUnsorted = useMemo<LovedTrackData[]>(
     () =>
       lovedTracks.map(track => {
         const reciter = getReciterByIdSync(track.reciterId) ?? null;
@@ -130,6 +149,7 @@ const LovedScreen = () => {
               ? track.rewayatId
               : track.rewayatId || reciter?.rewayat[0]?.id,
             userRecitationId: track.userRecitationId,
+            timestamp: track.timestamp,
           },
           reciter,
           surah: getSurahById(parseInt(track.surahId, 10)) ?? null,
@@ -137,6 +157,65 @@ const LovedScreen = () => {
       }),
     [lovedTracks],
   );
+  // @ai-start
+  // The order picked in the view and sort menu. Playing follows it too.
+  const {view, sort} = useCollectionViewPref('loved');
+  const lovedData = useMemo(() => {
+    const list = [...lovedDataUnsorted];
+    const surahName = (d: LovedTrackData) =>
+      d.surah ? getSurahDisplayName(d.surah) : '';
+    const reciterName = (d: LovedTrackData) =>
+      d.reciter ? getReciterDisplayName(d.reciter) : '';
+    switch (sort) {
+      case 'surah':
+        list.sort(
+          (a, b) =>
+            Number(a.track.surahId) - Number(b.track.surahId) ||
+            reciterName(a).localeCompare(reciterName(b)),
+        );
+        break;
+      case 'reciter':
+        list.sort(
+          (a, b) =>
+            reciterName(a).localeCompare(reciterName(b)) ||
+            Number(a.track.surahId) - Number(b.track.surahId),
+        );
+        break;
+      case 'title':
+        list.sort((a, b) => surahName(a).localeCompare(surahName(b)));
+        break;
+      default:
+        list.sort((a, b) => b.track.timestamp - a.track.timestamp);
+    }
+    return list;
+  }, [lovedDataUnsorted, sort]);
+  // @ai A search typed on the Collection tab arrives as `q`.
+  const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
+  const [searching, setSearching] = useState(Boolean(initialQuery));
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const visibleData = useMemo(
+    () =>
+      searching && query.trim()
+        ? lovedData.filter(d =>
+            matchesQuery(query, [
+              d.surah ? getSurahDisplayName(d.surah) : '',
+              d.surah?.name,
+              d.surah?.translated_name_english,
+              d.reciter ? getReciterDisplayName(d.reciter) : '',
+              d.reciter?.name,
+              d.track.surahId,
+            ]),
+          )
+        : lovedData,
+    [lovedData, searching, query],
+  );
+  const previews = useCollectionPreviews();
+  const tileWidth = useGridTileWidth(3);
+  const reciterCount = useMemo(
+    () => new Set(lovedData.map(d => d.track.reciterId)).size,
+    [lovedData],
+  );
+  // @ai-end
   // What "Download all" is about. Uploads are files on the device already;
   // downloading one fetched the catalogue recording of its surah instead.
   const downloadableLoved = useMemo(
@@ -161,6 +240,13 @@ const LovedScreen = () => {
     listItem: {
       marginVertical: moderateScale(2),
     },
+    // @ai-start
+    gridRow: {
+      gap: GRID_GAP,
+      paddingHorizontal: GRID_PADDING,
+      marginBottom: moderateScale(16),
+    },
+    // @ai-end
     fixedBackButton: {
       position: 'absolute',
       top: insets.top + moderateScale(10),
@@ -542,18 +628,25 @@ const LovedScreen = () => {
   }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
-    () => (
-      <CollectionOptionsMenu payload={optionsPayload}>
-        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-          <Feather
-            name="more-horizontal"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </CollectionOptionsMenu>
-    ),
-    [optionsPayload, handleOptionsMenu, theme.colors.text],
+    () =>
+      searching ? null : (
+        <CollectionHeaderActions
+          screen="loved"
+          onSearch={() => setSearching(true)}
+          extra={
+            <CollectionOptionsMenu payload={optionsPayload}>
+              <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+                <Feather
+                  name="more-horizontal"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+            </CollectionOptionsMenu>
+          }
+        />
+      ),
+    [optionsPayload, handleOptionsMenu, theme.colors.text, searching],
   );
   // @ai-end
 
@@ -621,25 +714,92 @@ const LovedScreen = () => {
   // @ai-end
 
   const ListHeaderComponent = useCallback(() => {
+    if (searching) {
+      return (
+        <CollectionSearchField
+          value={query}
+          onChangeText={setQuery}
+          onCancel={() => {
+            setSearching(false);
+            setQuery('');
+          }}
+          placeholder={t('collectionScreen.search.placeholderIn', {
+            name: t('collectionScreen.loved'),
+          })}
+          resultLabel={
+            query.trim()
+              ? t('collectionScreen.search.matches', {
+                  count: visibleData.length,
+                })
+              : undefined
+          }
+          style={{
+            paddingHorizontal: GRID_PADDING,
+            paddingTop: USE_GLASS ? moderateScale(8) : insets.top + 8,
+            paddingBottom: moderateScale(12),
+          }}
+        />
+      );
+    }
     return (
-      <LovedHeader
+      <CollectionScreenHeader
+        category="loved"
+        preview={previews.loved}
         title={t('collectionScreen.loved')}
-        subtitle={t('common:counts.surahs', {count: lovedData.length})}
-        onPlayPress={handlePlayAll}
-        onShufflePress={handleShuffle}
-        onOptionsPress={USE_GLASS ? undefined : handleOptionsMenu}
-        optionsMenu={
-          <CollectionOptionsMenu payload={optionsPayload} layout="overlay" />
-        }
-        theme={theme}
+        meta={t('collectionScreen.meta.pair', {
+          a: t('common:counts.tracks', {count: lovedData.length}),
+          b: t('common:counts.reciters', {count: reciterCount}),
+        })}
+        primary={{
+          label: t('collectionScreen.actions.playAll'),
+          icon: (
+            <PlayIcon
+              color={theme.colors.background}
+              size={moderateScale(15)}
+            />
+          ),
+          onPress: handlePlayAll,
+        }}
+        secondary={[
+          {
+            label: t('common:actions.shuffle'),
+            icon: (
+              <ShuffleIcon color={theme.colors.text} size={moderateScale(15)} />
+            ),
+            onPress: handleShuffle,
+          },
+          {
+            label: downloadState.allDownloaded
+              ? t('lovedScreen.allDownloaded')
+              : t('lovedScreen.downloadAll'),
+            icon: downloadState.allDownloaded ? (
+              <CheckIcon color={theme.colors.text} size={moderateScale(15)} />
+            ) : (
+              <DownloadIcon
+                color={theme.colors.text}
+                size={moderateScale(15)}
+              />
+            ),
+            onPress: handleBulkDownload,
+            disabled: downloadState.allDownloaded || downloadState.hasNoTracks,
+          },
+        ]}
+        actions={renderHeaderRight()}
       />
     );
   }, [
+    searching,
+    query,
+    visibleData.length,
+    previews.loved,
     lovedData.length,
+    reciterCount,
+    downloadState,
     handlePlayAll,
     handleShuffle,
-    handleOptionsMenu,
-    optionsPayload,
+    handleBulkDownload,
+    renderHeaderRight,
+    insets.top,
     theme,
     t,
   ]);
@@ -650,6 +810,27 @@ const LovedScreen = () => {
     if (!reciter || !surah) {
       return null;
     }
+
+    // @ai-start
+    if (view === 'grid') {
+      return (
+        <CollectionGridTile
+          width={tileWidth}
+          art={
+            <SurahCover
+              surahId={surah.id}
+              size={tileWidth}
+              radius={moderateScale(14)}
+            />
+          }
+          title={getSurahDisplayName(surah)}
+          subtitle={getReciterDisplayName(reciter)}
+          onPress={() => handleSurahPress(track, reciter, surah)}
+          onLongPress={() => handleShowOptions(track, reciter, surah)}
+        />
+      );
+    }
+    // @ai-end
 
     return (
       <View style={styles.listItem}>
@@ -747,10 +928,17 @@ const LovedScreen = () => {
       {/* @ai-start */}
       <SurahOptionsProvider build={buildOptions}>
         <RNAnimated.FlatList
-          data={lovedData}
+          key={view} // @ai a FlatList can't change its columns in place
+          data={visibleData} // @ai
           renderItem={renderItem}
           keyExtractor={getItemKey}
-          ListHeaderComponent={ListHeaderComponent}
+          ListHeaderComponent={ListHeaderComponent()} // @ai an element, so typing keeps focus
+          numColumns={view === 'grid' ? 3 : 1} // @ai
+          columnWrapperStyle={
+            view === 'grid' ? styles.gridRow : undefined // @ai
+          }
+          keyboardShouldPersistTaps="handled" // @ai
+          keyboardDismissMode="on-drag" // @ai
           contentContainerStyle={[
             styles.listContentContainer,
             {paddingBottom: listBottomPadding}, // @ai

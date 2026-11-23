@@ -43,6 +43,59 @@
       "firstAndMoreReciters_few": "{{a}} و{{count}} آخرون",
       "firstAndMoreReciters_many": "{{a}} و{{count}} آخرين",
       "firstAndMoreReciters_other": "{{a}} و{{count}} آخرين"
+    },
+    "view": {
+      "grid": "شبكة",
+      "list": "قائمة",
+      "sortBy": "ترتيب حسب",
+      "menuLabel": "العرض والترتيب"
+    },
+    "sort": {
+      "dateLoved": "تاريخ الإعجاب",
+      "dateDownloaded": "تاريخ التنزيل",
+      "dateAdded": "تاريخ الإضافة",
+      "newest": "الأحدث",
+      "oldest": "الأقدم",
+      "surahOrder": "ترتيب المصحف",
+      "reciter": "القارئ",
+      "title": "العنوان",
+      "updated": "آخر تعديل",
+      "dateCreated": "تاريخ الإنشاء",
+      "size": "الحجم",
+      "name": "الاسم"
+    },
+    "search": {
+      "placeholder": "ابحث في مجموعتك",
+      "placeholderIn": "ابحث في {{name}}",
+      "matches_zero": "لا نتائج",
+      "matches_one": "نتيجة واحدة",
+      "matches_two": "نتيجتان",
+      "matches_few": "{{count}} نتائج",
+      "matches_many": "{{count}} نتيجة",
+      "matches_other": "{{count}} نتيجة",
+      "noResults": "لا شيء يطابق «{{query}}»",
+      "hint": "جرّب اسم سورة أو قارئ، أو آية مثل 2:255، أو كلمات من ملاحظاتك",
+      "includes": "تتضمن {{name}}",
+      "all": "الكل",
+      "seeAll": "عرض الكل في {{name}} ({{total}})"
+    },
+    "meta": {
+      "pair": "{{a}} · {{b}}",
+      "inSurahs": "{{ayahs}} في {{surahs}}",
+      "notes_zero": "لا ملاحظات",
+      "notes_one": "ملاحظة واحدة",
+      "notes_two": "ملاحظتان",
+      "notes_few": "{{count}} ملاحظات",
+      "notes_many": "{{count}} ملاحظة",
+      "notes_other": "{{count}} ملاحظة"
+    },
+    "actions": {
+      "playAll": "تشغيل الكل"
+    },
+    "downloads": {
+      "byReciter": "حسب القارئ",
+      "allSurahs": "كل السور",
+      "groupingLabel": "عرض التنزيلات"
     }
   },
   "bookmarksScreen": {
