@@ -341,12 +341,14 @@ it('leaves the phone menu as it was', async () => {
   expect(containerStyle().paddingBottom).toBeGreaterThan(0);
 });
 
-it('gives the iPad screens back the padding the menu drops', async () => {
+it('lets the iPad screens shrink to the card, with the phone padding', async () => {
   await openSheet();
   press('Translation');
-  // Set outright, not left out: a key left out can keep the menu's value.
+  // Shrinks so its footer stays in the card even when the container keeps
+  // the menu's measured height as its flex basis.
   expect(containerStyle()).toMatchObject({
-    flexShrink: 0,
+    flex: 1,
+    flexShrink: 1,
     paddingBottom: moderateScale(30), // the phone sheet's
     marginBottom: 0,
   });

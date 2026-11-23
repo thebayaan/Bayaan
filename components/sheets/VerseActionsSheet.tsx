@@ -1001,8 +1001,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       <View
         style={[
           styles.container,
-          // @ai: both states set the same keys, so a switch resets them
-          isTablet && (activeScreen ? styles.tabletScreen : styles.tabletMenu),
+          isTablet && (activeScreen ? styles.tabletScreen : styles.tabletMenu), // @ai
           activeScreen && {flex: 1},
         ]}>
         {/* @ai-start: Word Study only names no verse: no header, no menu */}
@@ -1575,10 +1574,13 @@ const createStyles = (theme: Theme) =>
       paddingBottom: 0,
       marginBottom: -CARD_BOTTOM_PADDING,
     },
-    // A screen keeps the phone sheet's padding. The keys are repeated so the
-    // menu's values go when the reader opens a screen.
+    // A screen fills the card's fixed height and keeps the phone sheet's
+    // padding. It may also shrink: switching from the menu, the container
+    // keeps the height it measured for the menu as its flex basis (seen on
+    // the iPad simulator, Fabric), which without shrinking ran the screens'
+    // Prev / Next footers past the card's bottom edge.
     tabletScreen: {
-      flexShrink: 0,
+      flexShrink: 1,
       paddingBottom: moderateScale(30),
       marginBottom: 0,
     },
