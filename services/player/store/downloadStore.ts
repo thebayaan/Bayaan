@@ -7,6 +7,7 @@ import {
   extractFilename,
 } from '@/services/downloadService';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+import {RECITERS} from '@/data/reciterData';
 
 // Throttle utility to prevent excessive state updates during downloads
 const throttleMap = new Map<
@@ -74,6 +75,22 @@ export interface DownloadedSurah {
   status: 'downloading' | 'completed' | 'error';
 }
 
+/**
+ * The rewayat whose completed download plays a recitation, in the order
+ * findDownloadForPlayback (utils/audioUtils) looks them up. A download
+ * recorded without a rewayah ('') fetched the reciter's first rewayah in
+ * catalogue order, so it also plays for that rewayah, and for no other.
+ * With no rewayah, only such a download plays.
+ */
+export function downloadRewayatForPlayback(
+  reciterId: string,
+  rewayatId?: string,
+): string[] {
+  if (!rewayatId) return [''];
+  const reciter = RECITERS.find(r => r.id === reciterId);
+  return rewayatId === reciter?.rewayat[0]?.id ? [rewayatId, ''] : [rewayatId];
+}
+
 interface Playlist {
   id: string;
   name: string;
@@ -110,6 +127,17 @@ interface DownloadStoreState {
     reciterId: string,
     surahId: string,
     rewayatId: string,
+  ) => boolean;
+  /**
+   * Whether playing this recitation uses a downloaded file. Unlike
+   * isDownloadedWithRewayat, the reciter's first rewayah also counts a
+   * download recorded without a rewayah, which older versions saved for
+   * Loved surahs that had none and which playback uses for that rewayah.
+   */
+  isDownloadedForPlayback: (
+    reciterId: string,
+    surahId: string,
+    rewayatId?: string,
   ) => boolean;
   isDownloading: (reciterId: string, surahId: string) => boolean;
   isDownloadingWithRewayat: (
@@ -351,6 +379,20 @@ export const useDownloadStore = create<DownloadStoreState>()(
             d.surahId === surahId &&
             d.rewayatId === rewayatId &&
             d.status === 'completed',
+        );
+      },
+
+      isDownloadedForPlayback: (
+        reciterId: string,
+        surahId: string,
+        rewayatId?: string,
+      ) => {
+        const {isDownloaded, isDownloadedWithRewayat} = get();
+        return downloadRewayatForPlayback(reciterId, rewayatId).some(
+          downloadRewayatId =>
+            downloadRewayatId
+              ? isDownloadedWithRewayat(reciterId, surahId, downloadRewayatId)
+              : isDownloaded(reciterId, surahId),
         );
       },
 

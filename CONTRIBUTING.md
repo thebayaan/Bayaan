@@ -195,6 +195,7 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 - Avoid `useEffect`/`useState` when possible — prefer Zustand stores and context
 - Use `usePlayerActions` for audio controls, not the deprecated `useUnifiedPlayer`
 - Name variables/functions camelCase, components PascalCase, directories lowercase-with-hyphens
+- Import size helpers from `@/utils/scale`, not `react-native-size-matters` (which inflates the UI about 2× on iPad), and choose layouts from the window width class. See [docs/design/ipad-standards.md](docs/design/ipad-standards.md)
 - Put all UI text through `t()` and add it to every shipped language; never branch on a language code. See [docs/i18n/README.md](docs/i18n/README.md)
 
 ### Scripts: common pitfalls
@@ -223,6 +224,8 @@ For streaming use cases, prefer the async `spawn` with an explicit `child.stdin.
 ---
 
 ## Design system
+
+**Read [docs/design/](docs/design/README.md) before building or changing UI.** It holds the full design system reference, the iPad and large-screen standards (width classes, type ramp, spacing, sheets, orientation, accessibility), and the review checklist every UI PR must pass. The summary below covers color only.
 
 The app uses an alpha-based color system derived from `theme.colors.text` and `theme.colors.textSecondary`. Do not use `theme.colors.primary` or accent colors for UI chrome.
 

@@ -13,6 +13,7 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
@@ -321,23 +322,18 @@ export default function TranslationsContent({
 
   const handleDelete = useCallback(
     (meta: DownloadedTranslationMeta) => {
-      Alert.alert(
-        t('translations.deleteTranslationTitle'),
-        t('translations.deleteMessage', {name: meta.englishName}),
-        [
-          {text: t('common:actions.cancel'), style: 'cancel'},
-          {
-            text: t('common:actions.delete'),
-            style: 'destructive',
-            onPress: async () => {
-              if (selectedTranslationId === meta.identifier) {
-                setSelectedTranslationId('saheeh');
-              }
-              await deleteTranslation(meta.identifier);
-            },
-          },
-        ],
-      );
+      confirmDestructive({
+        title: t('translations.deleteTranslationTitle'),
+        message: t('translations.deleteMessage', {name: meta.englishName}),
+        confirmText: t('common:actions.delete'),
+        cancelText: t('common:actions.cancel'),
+        onConfirm: async () => {
+          if (selectedTranslationId === meta.identifier) {
+            setSelectedTranslationId('saheeh');
+          }
+          await deleteTranslation(meta.identifier);
+        },
+      });
     },
     [deleteTranslation, selectedTranslationId, setSelectedTranslationId, t],
   );
@@ -375,20 +371,17 @@ export default function TranslationsContent({
 
   const handleDeleteTafseer = useCallback(
     (meta: DownloadedTafseerMeta) => {
-      Alert.alert(
-        t('translations.deleteTafseerTitle'),
-        t('translations.deleteMessage', {name: getTafseerDisplayName(meta)}),
-        [
-          {text: t('common:actions.cancel'), style: 'cancel'},
-          {
-            text: t('common:actions.delete'),
-            style: 'destructive',
-            onPress: async () => {
-              await deleteTafseer(meta.identifier);
-            },
-          },
-        ],
-      );
+      confirmDestructive({
+        title: t('translations.deleteTafseerTitle'),
+        message: t('translations.deleteMessage', {
+          name: getTafseerDisplayName(meta),
+        }),
+        confirmText: t('common:actions.delete'),
+        cancelText: t('common:actions.cancel'),
+        onConfirm: async () => {
+          await deleteTafseer(meta.identifier);
+        },
+      });
     },
     [deleteTafseer, t],
   );
@@ -1069,7 +1062,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'left',
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
     },
@@ -1086,14 +1079,14 @@ const createStyles = (theme: Theme) =>
     langHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
     },
     langCount: {
       fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.35).toString(),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textTertiary,
     },
 
     // Active card
@@ -1120,7 +1113,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'left',
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: moderateScale(2),
     },
     activeBadge: {
@@ -1132,7 +1125,7 @@ const createStyles = (theme: Theme) =>
     activeBadgeText: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.55).toString(),
+      color: theme.colors.textSecondary,
       letterSpacing: latinLetterSpacing(0.3),
     },
 
@@ -1205,7 +1198,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'left',
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginTop: moderateScale(1),
     },
 
@@ -1226,14 +1219,14 @@ const createStyles = (theme: Theme) =>
     progressText: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
 
     // Empty
     emptyText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
       paddingVertical: moderateScale(20),
     },

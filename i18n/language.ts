@@ -72,8 +72,10 @@ export const currentLanguage: AppLanguage = resolveLanguage();
 export const currentLanguageConfig = getLanguageConfig(currentLanguage);
 
 /**
- * Initial reading-aid preference only. Persisted user choices take precedence
- * and remain available in every interface language.
+ * Whether the English reading aids start on in this session's language: off
+ * where readers understand Arabic. Each interface language keeps the reader's
+ * own choices apart (store/readingAidsByLanguage), so this applies until the
+ * reader makes one in this language.
  */
 export const defaultShowEnglishReadingAids =
   !currentLanguageConfig.understandsArabic;
@@ -167,12 +169,50 @@ export function setLanguagePreference(preference: LanguagePreference): boolean {
   return languageChangeRequiresRestart(preference);
 }
 
+// The direction an Android launch last restarted itself into (see below).
+const DIRECTION_RESTART_KEY = 'direction_restart';
+
+/**
+ * Android: whether this launch should restart once because its native layout
+ * direction disagrees with its language. React Native reads the direction
+ * when the process starts, so after the device language flips (language =
+ * System) or on a fresh install on a phone in an RTL language the app does
+ * not ship, the first launch would otherwise run half mirrored: Arabic text
+ * with unmirrored margins, and pagers that land on blank pages.
+ *
+ * At most one restart per needed direction: the direction is recorded before
+ * restarting, and a launch that still disagrees with it recorded does not
+ * restart again (the native flag did not take). The record is cleared once a
+ * launch agrees, so a later language change can restart again.
+ */
+export function claimDirectionRestart(): boolean {
+  if (languageFollowsSystemSettings) {
+    return false;
+  }
+  try {
+    if (!directionDiffers(currentLanguage)) {
+      storage.remove(DIRECTION_RESTART_KEY);
+      return false;
+    }
+    const direction = isRTLLanguage(currentLanguage) ? 'rtl' : 'ltr';
+    if (storage.getString(DIRECTION_RESTART_KEY) === direction) {
+      return false;
+    }
+    storage.set(DIRECTION_RESTART_KEY, direction);
+    // Restart only if the record holds; without it nothing stops a loop.
+    return storage.getString(DIRECTION_RESTART_KEY) === direction;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Called once at startup. Keeps the persisted native direction in step with
  * the resolved language (e.g. System after the device language changed). A
  * mismatch is corrected on the next launch; JS layout already follows
- * `currentLanguage` through utils/rtl. On iOS it also hands a language picked
- * in the app to iOS Settings.
+ * `currentLanguage` through utils/rtl. On Android the root layout then
+ * restarts once instead of running this launch mismatched (i18n/restart).
+ * On iOS it also hands a language picked in the app to iOS Settings.
  */
 export function bootstrapDirection(): void {
   if (languageFollowsSystemSettings) {

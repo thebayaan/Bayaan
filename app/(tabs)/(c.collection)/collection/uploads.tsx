@@ -49,6 +49,18 @@ import {
   localizeDigits,
 } from '@/i18n/format';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
+import {
+  UploadOptionsMenu,
+  type UploadOptionsPayload,
+} from '@/components/sheets/options/uploadOptions';
+// @ai-end
 // @ai-end
 
 // @ai-start
@@ -139,11 +151,16 @@ interface UploadListItemProps {
   index: number;
   onPlay: (item: UploadedRecitation, index: number) => void;
   onShowOptions: (item: UploadedRecitation, index: number) => void;
+  /** Builds the ••• native menu on tablets. @ai */
+  renderOptionsMenu?: (
+    item: UploadedRecitation,
+    index: number,
+  ) => React.ReactNode;
 }
 
 // @ai-start
 const UploadListItem: React.FC<UploadListItemProps> = React.memo(
-  ({item, index, onPlay, onShowOptions}) => {
+  ({item, index, onPlay, onShowOptions, renderOptionsMenu}) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -270,6 +287,7 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
               color={theme.colors.text}
             />
           )}
+          {renderOptionsMenu?.(item, index)}
         </Pressable>
       </View>
     );
@@ -285,6 +303,10 @@ export default function UploadsScreen() {
   const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The iPad sidebar opens this as the first screen of the Collection stack.
+  // Back then has nothing to pop and used to switch to the Home tab, so the
+  // arrow is left out there, as the system header does on iPadOS 26. @ai
+  const isStackRoot = useIsStackRoot(); // @ai
   const {t} = useTranslation(['collection', 'common']);
   const {
     recitations,
@@ -305,37 +327,42 @@ export default function UploadsScreen() {
     loadRecitations();
   }, [loadRecitations]);
 
+  // @ai-start
+  const optionsPayload = useMemo<CollectionOptionsPayload>(
+    () => ({
+      title: t('common:terms.uploads'),
+      subtitle: t('uploadsScreen.recitationsCount', {count: totalCount}),
+      options: [
+        {
+          label: t('uploadsScreen.removeAll'),
+          icon: 'trash-2',
+          destructive: true,
+          onPress: () => confirmRemoveAllUploads(deleteAllRecitations),
+        },
+      ],
+    }),
+    [totalCount, deleteAllRecitations, t],
+  );
+
   const handleOptionsMenu = useCallback(() => {
-    SheetManager.show('collection-options', {
-      payload: {
-        title: t('common:terms.uploads'),
-        subtitle: t('uploadsScreen.recitationsCount', {count: totalCount}),
-        options: [
-          {
-            label: t('uploadsScreen.removeAll'),
-            icon: 'trash-2',
-            destructive: true,
-            // @ai-start
-            onPress: () => confirmRemoveAllUploads(deleteAllRecitations),
-            // @ai-end
-          },
-        ],
-      },
-    });
-  }, [totalCount, deleteAllRecitations, t]);
+    SheetManager.show('collection-options', {payload: optionsPayload});
+  }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
     () => (
-      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-        <Feather
-          name="more-horizontal"
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
-      </Pressable>
+      <CollectionOptionsMenu payload={optionsPayload}>
+        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+          <Feather
+            name="more-horizontal"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </CollectionOptionsMenu>
     ),
-    [handleOptionsMenu, theme.colors.text],
+    [optionsPayload, handleOptionsMenu, theme.colors.text],
   );
+  // @ai-end
 
   useCollectionNativeHeader({
     title: t('common:terms.uploads'),
@@ -404,22 +431,36 @@ export default function UploadsScreen() {
     [recitations, updateQueue, play],
   );
 
-  const handleShowOptions = useCallback(
-    (item: UploadedRecitation, index: number) => {
-      const track = createUserUploadTrack(item);
-      SheetManager.show('upload-options', {
-        payload: {
-          recitation: item,
-          reciterId: item.reciterId || '',
-          onPlay: () => handlePlayRecitation(item, index),
-          onAddToQueue: () => {
-            addToQueue([track]);
-          },
-        },
-      });
-    },
+  // @ai-start
+  const buildUploadOptions = useCallback(
+    (item: UploadedRecitation, index: number): UploadOptionsPayload => ({
+      recitation: item,
+      reciterId: item.reciterId || '',
+      onPlay: () => handlePlayRecitation(item, index),
+      onAddToQueue: () => {
+        addToQueue([createUserUploadTrack(item)]);
+      },
+    }),
     [handlePlayRecitation, addToQueue],
   );
+
+  const handleShowOptions = useCallback(
+    (item: UploadedRecitation, index: number) => {
+      SheetManager.show('upload-options', {
+        payload: buildUploadOptions(item, index),
+      });
+    },
+    [buildUploadOptions],
+  );
+
+  const nativeMenus = useNativeOptionsMenu();
+  const renderOptionsMenu = useCallback(
+    (item: UploadedRecitation, index: number) => (
+      <UploadOptionsMenu payload={buildUploadOptions(item, index)} />
+    ),
+    [buildUploadOptions],
+  );
+  // @ai-end
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const hasRecitations = recitations.length > 0;
@@ -431,9 +472,10 @@ export default function UploadsScreen() {
         index={index}
         onPlay={handlePlayRecitation}
         onShowOptions={handleShowOptions}
+        renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
       />
     ),
-    [handlePlayRecitation, handleShowOptions],
+    [handlePlayRecitation, handleShowOptions, nativeMenus, renderOptionsMenu],
   );
 
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
@@ -443,17 +485,23 @@ export default function UploadsScreen() {
       <View style={styles.container}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={styles.emptyHeaderTitle}>
               {t('common:terms.uploads')}
             </Text>
@@ -544,6 +592,12 @@ export default function UploadsScreen() {
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
+              {hasRecitations && (
+                <CollectionOptionsMenu
+                  payload={optionsPayload}
+                  layout="overlay"
+                />
+              )}
             </Pressable>
           )}
           <Pressable
@@ -601,7 +655,8 @@ export default function UploadsScreen() {
 
   return (
     <View style={styles.container}>
-      {!USE_GLASS && (
+      {/* Not at the stack root: nothing to go back to. @ai */}
+      {!USE_GLASS && !isStackRoot && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,

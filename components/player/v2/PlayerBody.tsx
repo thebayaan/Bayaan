@@ -1,5 +1,5 @@
 // @ai-generated
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useMemo} from 'react';
 import {SheetManager} from 'react-native-actions-sheet';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -8,10 +8,18 @@ import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {useTimestampStore} from '@/store/timestampStore';
 import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
 import {useResponsive} from '@/hooks/useResponsive';
+import {useSleepTimerRemaining} from '@/hooks/useSleepTimerRemaining';
 import {PlayerKeyCommands} from '@/components/keyboard/PlayerKeyCommands';
 import {keyCommandsSupported} from '@/services/keyboard/keyCommands';
 import PlayerContent from './PlayerContent';
 import {TabletPlayerLayout} from './tablet/TabletPlayerLayout';
+// @ai-start
+import {nativeMenusAvailable} from '@/components/native/nativeMenus';
+import {
+  PlayerOptionsMenu,
+  type PlayerOptionsPayload,
+} from '@/components/sheets/options/playerOptions';
+// @ai-end
 
 /**
  * The full player's contents and the handlers its controls open (speed, sleep
@@ -20,48 +28,12 @@ import {TabletPlayerLayout} from './tablet/TabletPlayerLayout';
  */
 export const PlayerBody = () => {
   const {isTablet} = useResponsive();
-  const [remainingTime, setRemainingTime] = useState<number | null>(null);
+  const remainingTime = useSleepTimerRemaining();
   const {navigateToReciterProfile} = useReciterNavigation();
 
   const {setSheetMode, setRate, updateSettings} = usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
   const playbackRate = usePlayerStore(s => s.playback.rate);
-  const settings = usePlayerStore(s => s.settings);
-
-  // Effect to handle sleep timer remaining time
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (settings.sleepTimerEnd) {
-      interval = setInterval(() => {
-        // Calculate remaining time based on the end timestamp
-        const now = Date.now();
-        const timeRemaining = settings.sleepTimerEnd
-          ? settings.sleepTimerEnd - now
-          : 0;
-
-        if (timeRemaining > 0) {
-          // For very short timers (less than 1 minute), display seconds
-          if (timeRemaining < 60 * 1000) {
-            const remainingSeconds = Math.ceil(timeRemaining / 1000);
-            setRemainingTime(remainingSeconds / 60); // Convert to fractional minutes
-          } else {
-            const remainingMinutes = Math.ceil(timeRemaining / (60 * 1000));
-            setRemainingTime(remainingMinutes);
-          }
-        } else {
-          setRemainingTime(null);
-        }
-      }, 500); // Update more frequently for short timers
-    } else {
-      setRemainingTime(null);
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [settings.sleepTimerEnd]);
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
 
@@ -145,9 +117,11 @@ export const PlayerBody = () => {
     }
   }, [followAlongAvailable]);
 
-  const handleShowOptionsSheet = useCallback(() => {
-    if (!currentTrack) return;
-
+  // @ai-start
+  // The options for the current track: the sheet on phones, and a native
+  // menu on the iPad player's ••• buttons.
+  const optionsPayload = useMemo<PlayerOptionsPayload | null>(() => {
+    if (!currentTrack) return null;
     const surahNumber = currentTrack.surahId
       ? parseInt(currentTrack.surahId, 10)
       : undefined;
@@ -155,33 +129,39 @@ export const PlayerBody = () => {
       ? SURAHS.find(s => s.id === surahNumber)
       : undefined;
 
-    // Upload tracks — always show options
+    // Upload tracks always have options.
     if (currentTrack.isUserUpload) {
-      SheetManager.show('player-options', {
-        payload: {
-          surah: currentSurahData,
-          reciterId: currentTrack.reciterId || undefined,
-          rewayatId: currentTrack.rewayatId,
-          onGoToReciter: currentTrack.reciterId ? handleGoToReciter : undefined,
-          isUserUpload: true,
-          userRecitationId: currentTrack.userRecitationId,
-        },
-      });
-      return;
+      return {
+        surah: currentSurahData,
+        reciterId: currentTrack.reciterId || undefined,
+        rewayatId: currentTrack.rewayatId,
+        onGoToReciter: currentTrack.reciterId ? handleGoToReciter : undefined,
+        isUserUpload: true,
+        userRecitationId: currentTrack.userRecitationId,
+      };
     }
-
-    // System tracks — existing behavior
     if (currentSurahData && currentTrack.reciterId) {
-      SheetManager.show('player-options', {
-        payload: {
-          surah: currentSurahData,
-          reciterId: currentTrack.reciterId,
-          rewayatId: currentTrack.rewayatId,
-          onGoToReciter: handleGoToReciter,
-        },
-      });
+      return {
+        surah: currentSurahData,
+        reciterId: currentTrack.reciterId,
+        rewayatId: currentTrack.rewayatId,
+        onGoToReciter: handleGoToReciter,
+      };
     }
+    return null;
   }, [currentTrack, handleGoToReciter]);
+
+  const handleShowOptionsSheet = useCallback(() => {
+    if (optionsPayload) {
+      SheetManager.show('player-options', {payload: optionsPayload});
+    }
+  }, [optionsPayload]);
+
+  const optionsMenu =
+    isTablet && nativeMenusAvailable && optionsPayload ? (
+      <PlayerOptionsMenu payload={optionsPayload} layout="overlay" />
+    ) : null;
+  // @ai-end
 
   const handlers = {
     onSpeedPress: handleShowSpeedSheet,
@@ -196,7 +176,7 @@ export const PlayerBody = () => {
   // Not keyed on sheetMode: the layout would switch while the surface is
   // still shrinking on close. Closed, the surface is off-screen anyway.
   const body = isTablet ? (
-    <TabletPlayerLayout {...handlers} />
+    <TabletPlayerLayout {...handlers} optionsMenu={optionsMenu} />
   ) : (
     <PlayerContent {...handlers} />
   );

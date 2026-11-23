@@ -87,14 +87,15 @@ running `develop` at `ad520313`. Captures and notes: [screenshots/](screenshots/
 | P-14: portrait player squeezes the verses | Fixed. 13" portrait uses two panes; 11" portrait is one column with a floating control card |
 | Play button circle on iPad (not in the audit) | Removed in #463 to match the phone |
 
-New issues seen in the captures, not yet fixed:
+New issues seen in the captures:
 
-- Browse All lists "Yasser Salamah" twice (13", end of list).
-- On 11" portrait, Loved and playlist rows run to the right screen edge with no margin.
-- Library screens in landscape sit in a column capped near 600pt, leaving wide empty sides on 13" (L-13 is only partly addressed).
+- Browse All lists "Yasser Salamah" twice (13", end of list). Fixed in #465.
+- On 11" portrait, Loved and playlist rows run to the right screen edge with no margin. Fixed in #464 (rows inset 24pt, 32pt from 900pt).
+- Not fixed yet: Library screens in landscape sit in a column capped near 600pt, leaving wide empty sides on 13" (L-13 is only partly addressed).
 
 Not yet captured: the speed, options and sleep-timer popovers, and Split View
-or Stage Manager windows.
+or Stage Manager windows. Other open issues from the build, across all areas,
+are in [ipad-standards.md §14](../ipad-standards.md#14-known-open-issues).
 
 ## Bugs found during the audit
 

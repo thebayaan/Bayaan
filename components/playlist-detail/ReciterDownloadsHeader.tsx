@@ -23,6 +23,8 @@ interface ReciterDownloadsHeaderProps {
   onPlayPress: () => void;
   onShufflePress: () => void;
   onOptionsPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
   theme: Theme;
 }
 // @ai-end
@@ -37,6 +39,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
   onPlayPress,
   onShufflePress,
   onOptionsPress,
+  optionsMenu,
   theme,
 }) => {
   const insets = useSafeAreaInsets();
@@ -97,6 +100,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
               size={moderateScale(20)}
               color={theme.colors.text}
             />
+            {optionsMenu}
           </Pressable>
         )}
         <Pressable

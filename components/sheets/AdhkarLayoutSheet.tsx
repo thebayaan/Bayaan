@@ -1,17 +1,12 @@
 import React, {useMemo} from 'react';
-import {
-  View,
-  Text,
-  Dimensions,
-  Switch,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import {View, Text, Dimensions, Pressable, StyleSheet} from 'react-native';
+import {NativeSwitch} from '@/components/native/NativeSwitch'; // @ai
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {
@@ -148,18 +143,13 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
     setTransliterationFontSize,
   } = useAdhkarSettingsStore();
 
-  const trackColor = {
-    false: Color(theme.colors.text).alpha(0.1).toString(),
-    true: Color(theme.colors.text).alpha(0.65).toString(),
-  };
-
   return (
     <ActionSheet
       id={props.sheetId}
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <ScrollView
+      <SheetScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
@@ -193,10 +183,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
                 <Text style={styles.optionLabel}>
                   {t('adhkarLayout.showTranslation')}
                 </Text>
-                <Switch
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={trackColor.false}
+                <NativeSwitch
                   onValueChange={toggleTranslation}
                   value={showTranslation}
                   style={styles.switchStyle}
@@ -226,10 +213,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
                 <Text style={styles.optionLabel}>
                   {t('adhkarLayout.showTransliteration')}
                 </Text>
-                <Switch
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={trackColor.false}
+                <NativeSwitch
                   onValueChange={toggleTransliteration}
                   value={showTransliteration}
                   style={styles.switchStyle}
@@ -251,7 +235,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
             </View>
           </>
         </View>
-      </ScrollView>
+      </SheetScrollView>
     </ActionSheet>
   );
 };
@@ -295,7 +279,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(4),
       letterSpacing: latinLetterSpacing(1.2),

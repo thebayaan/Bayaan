@@ -1,20 +1,15 @@
 import React, {useCallback, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Dimensions,
-  Alert,
-} from 'react-native';
+import {View, Text, Pressable, StyleSheet, Dimensions} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {Feather} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import Color from 'color';
@@ -58,9 +53,10 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
   const width = useSheetWidth(); // @ai
-  const [showSurahInfo, setShowSurahInfo] = useState(false);
-
   const payload = props.payload;
+  // A native menu's "Learn about this surah" opens the sheet on the info. @ai
+  const [showSurahInfo, setShowSurahInfo] = useState(!!payload?.showInfo);
+
   const download = payload?.download;
   const surah = payload?.surah;
   const reciterId = payload?.reciterId;
@@ -145,21 +141,16 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
   const handleRemoveDownload = useCallback(() => {
     if (!download) return;
-    Alert.alert(
-      t('downloadOptions.removeTitle'),
-      t('downloadOptions.removeMessage'),
-      [
-        {text: t('common:actions.cancel'), style: 'cancel'},
-        {
-          text: t('common:actions.remove'),
-          style: 'destructive',
-          onPress: () => {
-            handleClose();
-            onRemoveDownload?.();
-          },
-        },
-      ],
-    );
+    confirmDestructive({
+      title: t('downloadOptions.removeTitle'),
+      message: t('downloadOptions.removeMessage'),
+      confirmText: t('common:actions.remove'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: () => {
+        handleClose();
+        onRemoveDownload?.();
+      },
+    });
   }, [download, handleClose, onRemoveDownload, t]);
 
   const handleSheetChange = useCallback((index: number) => {
@@ -193,10 +184,9 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
               {t('options.aboutSurah', {surah: surahName})}
             </Text>
           </View>
-          <ScrollView
+          <SheetScrollView
             style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            bounces={true}>
+            showsVerticalScrollIndicator={false}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>{surahName}</Text>
@@ -215,7 +205,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                 />
               )}
             </View>
-          </ScrollView>
+          </SheetScrollView>
         </>
       ) : (
         <View style={styles.container}>
@@ -385,7 +375,7 @@ const createStyles = (theme: Theme) =>
     surahTranslation: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
     },
     card: {

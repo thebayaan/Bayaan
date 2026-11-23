@@ -11,6 +11,8 @@ import TestRenderer from 'react-test-renderer';
 
 const mockSimilarProps: Array<Record<string, unknown>> = [];
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../verse-actions/sheetGestures');
 jest.mock('../verse-actions/SimilarVersesContent', () => ({
   SimilarVersesContent: (props: Record<string, unknown>) => {
     mockSimilarProps.push(props);
@@ -22,6 +24,9 @@ jest.mock('../verse-actions/HighlightContent', () => ({
   HighlightContent: () => null,
 }));
 jest.mock('../verse-actions/NoteContent', () => ({NoteContent: () => null}));
+jest.mock('@/components/search/quran/RootResults', () => ({
+  RootResults: () => null,
+}));
 jest.mock('../verse-actions/ShareContent', () => ({ShareContent: () => null}));
 jest.mock('../verse-actions/TranslationContent', () => {
   const {Text} = jest.requireActual('react-native');
@@ -33,6 +38,9 @@ jest.mock('../verse-actions/TafseerContent', () => {
 });
 jest.mock('../verse-actions/ThemeContent', () => ({ThemeContent: () => null}));
 jest.mock('../verse-actions/WBWContent', () => ({WBWContent: () => null}));
+jest.mock('../verse-actions/WordStudyContent', () => ({
+  WordStudyContent: () => null,
+}));
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: () => null,
 }));

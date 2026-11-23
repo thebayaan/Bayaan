@@ -33,10 +33,18 @@ import i18n from '@/i18n';
 import {getSurahDisplayName} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 // @ai-start
-import {savedVerseOpenParams} from '@/services/verse-annotations/openSavedVerse';
 import {describeSavedVerseNow} from '@/hooks/useSavedVerseDescription';
-import {savedVerseSubtitle} from '@/services/verse-annotations/unitAnnotations';
+import {
+  savedVerseRouteParams,
+  savedVerseSubtitle,
+} from '@/services/verse-annotations/unitAnnotations';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
 // @ai-end
 
 interface BookmarkData {
@@ -50,7 +58,12 @@ const BookmarksScreen = () => {
   const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The iPad sidebar opens this as the first screen of the Collection stack.
+  // Back then has nothing to pop and used to switch to the Home tab, so the
+  // arrow is left out there, as the system header does on iPadOS 26. @ai
+  const isStackRoot = useIsStackRoot(); // @ai
   const {t} = useTranslation(['collection', 'common']);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
 
   const [bookmarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +80,9 @@ const BookmarksScreen = () => {
 
   const loadBookmarks = useCallback(async () => {
     try {
-      setLoading(true);
+      // @ai `loading` starts true and is not raised again: coming back from
+      // the mushaf refreshes the list in place instead of blanking it to
+      // "Loading…" and losing the scroll position.
       const allBookmarks = await verseAnnotationService.getAllBookmarks();
       const enriched = allBookmarks.map(bookmark => {
         const surah = getSurahById(bookmark.surahNumber);
@@ -90,6 +105,7 @@ const BookmarksScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      openingRef.current = false; // @ai: ignores taps after one opened the reader
       loadBookmarks();
     }, [loadBookmarks]),
   );
@@ -102,46 +118,47 @@ const BookmarksScreen = () => {
 
   // @ai-start
   const handleOpenBookmark = useCallback(
-    async (bookmark: VerseBookmark) => {
+    (bookmark: VerseBookmark) => {
       if (openingRef.current) return;
       openingRef.current = true;
-      try {
-        router.push({
-          pathname: '/mushaf',
-          params: await savedVerseOpenParams(bookmark),
-        });
-      } finally {
-        openingRef.current = false;
-      }
+      router.push({
+        pathname: '/mushaf',
+        params: savedVerseRouteParams(bookmark),
+      });
     },
     [router],
   );
   // @ai-end
 
-  const handleOptionsPress = useCallback(
-    (item: BookmarkData) => {
-      SheetManager.show('collection-options', {
-        payload: {
-          title: item.surahName,
-          // @ai: the ayah in the numbering of the rewayah it was saved in
-          subtitle: savedVerseSubtitle(
-            describeSavedVerseNow(item.bookmark),
-            item.bookmark.ayahNumber,
-            number => t('common:labels.ayahNumber', {number}),
-          ),
-          options: [
-            {
-              label: t('bookmarksScreen.removeBookmark'),
-              icon: 'minus-circle',
-              destructive: true,
-              onPress: () => handleRemoveBookmark(item.bookmark),
-            },
-          ],
+  // @ai-start
+  const buildOptions = useCallback(
+    (item: BookmarkData): CollectionOptionsPayload => ({
+      title: item.surahName,
+      // @ai: the ayah in the numbering of the rewayah it was saved in
+      subtitle: savedVerseSubtitle(
+        describeSavedVerseNow(item.bookmark),
+        item.bookmark.ayahNumber,
+        number => t('common:labels.ayahNumber', {number}),
+      ),
+      options: [
+        {
+          label: t('bookmarksScreen.removeBookmark'),
+          icon: 'minus-circle',
+          destructive: true,
+          onPress: () => handleRemoveBookmark(item.bookmark),
         },
-      });
-    },
+      ],
+    }),
     [handleRemoveBookmark, t],
   );
+
+  const handleOptionsPress = useCallback(
+    (item: BookmarkData) => {
+      SheetManager.show('collection-options', {payload: buildOptions(item)});
+    },
+    [buildOptions],
+  );
+  // @ai-end
 
   const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
   const heroInnerBg = Color(theme.colors.textSecondary).alpha(0.08).toString();
@@ -186,6 +203,14 @@ const BookmarksScreen = () => {
       rewayahId={item.bookmark.rewayahId}
       onPress={() => handleOpenBookmark(item.bookmark)} // @ai
       onOptionsPress={() => handleOptionsPress(item)}
+      optionsMenu={
+        nativeMenus ? (
+          <CollectionOptionsMenu
+            payload={buildOptions(item)}
+            layout="overlay"
+          />
+        ) : undefined
+      }
     />
   );
 
@@ -197,17 +222,23 @@ const BookmarksScreen = () => {
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
               {t('common:terms.bookmarks')}
             </Text>
@@ -230,17 +261,23 @@ const BookmarksScreen = () => {
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
               {t('common:terms.bookmarks')}
             </Text>
@@ -272,7 +309,8 @@ const BookmarksScreen = () => {
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <StatusBar barStyle="default" />
 
-      {!USE_GLASS && (
+      {/* Not at the stack root: nothing to go back to. @ai */}
+      {!USE_GLASS && !isStackRoot && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,

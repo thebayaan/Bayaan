@@ -23,6 +23,8 @@ function mockRecord(name: string, props: Record<string, unknown>) {
   mockLog.push([name, props]);
   return null;
 }
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('@/components/share/SkiaVersePreview', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => mockRecord('preview', props),
@@ -85,6 +87,7 @@ jest.mock('@/utils/translationLookup', () => ({
   getTranslationText: (key: string, id: string) => `<b>T</b>(${key},${id})`,
   getTranslationTextRaw: (key: string, id: string) => `T(${key},${id})`,
   getTranslationName: (id: string) => `Name-${id}`,
+  getTranslationDisplayName: (id: string) => `Name-${id}`,
   isBundledTranslation: () => true,
 }));
 jest.mock('@/services/translation/TranslationDbService', () => ({
@@ -117,7 +120,7 @@ jest.mock('@/hooks/useMushafFontMgr', () => ({
   useMushafFontMgr: () => ({fake: 'fontMgr'}),
 }));
 jest.mock('@/store/mushafNavigationStore', () => ({
-  useMushafNavigationStore: {getState: () => ({navigateToVerse: jest.fn()})},
+  useMushafNavigationStore: {getState: () => ({navigateTo: jest.fn()})},
 }));
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {

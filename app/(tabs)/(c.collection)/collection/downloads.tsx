@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import React, {useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
   useDownloadActions,
   useDownloads,
 } from '@/services/player/store/downloadSelectors';
-import {getReciterById, getSurahById} from '@/services/dataService';
+import {getReciterByIdSync, getSurahById} from '@/services/dataService'; // @ai
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -39,6 +39,18 @@ import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getReciterDisplayName} from '@/i18n/format';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
+import {
+  DownloadOptionsMenu,
+  type DownloadOptionsPayload,
+} from '@/components/sheets/options/downloadOptions';
+// @ai-end
 // @ai-end
 
 interface DownloadDataItem {
@@ -60,6 +72,10 @@ export default function DownloadsScreen() {
   const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The iPad sidebar opens this as the first screen of the Collection stack.
+  // Back then has nothing to pop and used to switch to the Home tab, so the
+  // arrow is left out there, as the system header does on iPadOS 26. @ai
+  const isStackRoot = useIsStackRoot(); // @ai
   const {t} = useTranslation(['collection', 'common']);
   const downloads = useDownloads();
   const {removeDownload, clearAllDownloads} = useDownloadActions();
@@ -67,48 +83,70 @@ export default function DownloadsScreen() {
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
-  const [downloadData, setDownloadData] = useState<DownloadDataItem[]>([]);
+  // @ai-start
+  // Each download with its reciter and surah, read from the catalogue in
+  // memory. This was an async lookup per row with no cancellation: every
+  // row reloaded the whole catalogue, and an older run could finish last
+  // and put a removed row back.
+  const downloadData = useMemo<DownloadDataItem[]>(
+    () =>
+      downloads.map(download => ({
+        download,
+        reciter: getReciterByIdSync(download.reciterId) ?? null,
+        surah: getSurahById(parseInt(download.surahId, 10)) ?? null,
+      })),
+    [downloads],
+  );
+  // @ai-end
+  const nativeMenus = useNativeOptionsMenu(); // @ai
+
+  // @ai-start
+  const optionsPayload = useMemo<CollectionOptionsPayload>(
+    () => ({
+      title: t('common:terms.downloads'),
+      subtitle: t('downloadsScreen.surahsDownloaded', {
+        count: downloads.length,
+      }),
+      options: [
+        {
+          label: t('downloadsScreen.removeAll'),
+          icon: 'trash-2',
+          destructive: true,
+          // @ai-start
+          onPress: () =>
+            confirmDestructive({
+              title: t('downloadsScreen.removeAllTitle'),
+              message: t('downloadsScreen.removeAllConfirm'),
+              confirmText: t('common:actions.remove'),
+              cancelText: t('common:actions.cancel'),
+              onConfirm: clearAllDownloads,
+            }),
+          // @ai-end
+        },
+      ],
+    }),
+    [downloads.length, clearAllDownloads, t],
+  );
 
   const handleOptionsMenu = useCallback(() => {
-    SheetManager.show('collection-options', {
-      payload: {
-        title: t('common:terms.downloads'),
-        subtitle: t('downloadsScreen.surahsDownloaded', {
-          count: downloads.length,
-        }),
-        options: [
-          {
-            label: t('downloadsScreen.removeAll'),
-            icon: 'trash-2',
-            destructive: true,
-            // @ai-start
-            onPress: () =>
-              confirmDestructive({
-                title: t('downloadsScreen.removeAllTitle'),
-                message: t('downloadsScreen.removeAllConfirm'),
-                confirmText: t('common:actions.remove'),
-                cancelText: t('common:actions.cancel'),
-                onConfirm: clearAllDownloads,
-              }),
-            // @ai-end
-          },
-        ],
-      },
-    });
-  }, [downloads.length, clearAllDownloads, t]);
+    SheetManager.show('collection-options', {payload: optionsPayload});
+  }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
     () => (
-      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-        <Feather
-          name="more-horizontal"
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
-      </Pressable>
+      <CollectionOptionsMenu payload={optionsPayload}>
+        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+          <Feather
+            name="more-horizontal"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </CollectionOptionsMenu>
     ),
-    [handleOptionsMenu, theme.colors.text],
+    [optionsPayload, handleOptionsMenu, theme.colors.text],
   );
+  // @ai-end
 
   useCollectionNativeHeader({
     title: t('common:terms.downloads'),
@@ -267,31 +305,6 @@ export default function DownloadsScreen() {
     [theme, insets.top],
   );
 
-  useEffect(() => {
-    const loadDownloadData = async () => {
-      const data = await Promise.all(
-        downloads.map(async download => {
-          const [reciter, surah] = await Promise.all([
-            getReciterById(download.reciterId),
-            getSurahById(parseInt(download.surahId, 10)),
-          ]);
-          return {
-            download,
-            reciter: reciter || null,
-            surah: surah || null,
-          };
-        }),
-      );
-      setDownloadData(data);
-    };
-
-    if (downloads.length > 0) {
-      loadDownloadData();
-    } else {
-      setDownloadData([]);
-    }
-  }, [downloads]);
-
   const groupedItems = useMemo(() => {
     const byReciter: Record<string, DownloadDataItem[]> = {};
     for (const item of downloadData) {
@@ -351,34 +364,45 @@ export default function DownloadsScreen() {
     [removeDownload],
   );
 
-  const handleShowOptions = useCallback(
-    (download: DownloadedSurah, reciter: Reciter, surah: Surah) => {
-      const track = createDownloadedTrack(
-        reciter,
-        surah,
-        download.filePath,
-        download.rewayatId,
-      );
-
-      SheetManager.show('download-options', {
-        payload: {
-          download,
-          surah,
-          reciterId: download.reciterId,
-          rewayatId: download.rewayatId,
-          onPlay: () => handleSurahPress(download, reciter, surah),
-          onAddToQueue: () => {
-            addToQueue([track]);
-          },
-          onRemoveDownload: () => handleRemoveDownload(download),
-        },
-      });
-    },
+  // @ai-start
+  const buildDownloadOptions = useCallback(
+    (
+      download: DownloadedSurah,
+      reciter: Reciter,
+      surah: Surah,
+    ): DownloadOptionsPayload => ({
+      download,
+      surah,
+      reciterId: download.reciterId,
+      rewayatId: download.rewayatId,
+      onPlay: () => handleSurahPress(download, reciter, surah),
+      onAddToQueue: () => {
+        addToQueue([
+          createDownloadedTrack(
+            reciter,
+            surah,
+            download.filePath,
+            download.rewayatId,
+          ),
+        ]);
+      },
+      onRemoveDownload: () => handleRemoveDownload(download),
+    }),
     [handleSurahPress, addToQueue, handleRemoveDownload],
   );
 
-  const handleReciterGroupOptions = useCallback(
-    (reciterId: string) => {
+  const handleShowOptions = useCallback(
+    (download: DownloadedSurah, reciter: Reciter, surah: Surah) => {
+      SheetManager.show('download-options', {
+        payload: buildDownloadOptions(download, reciter, surah),
+      });
+    },
+    [buildDownloadOptions],
+  );
+  // @ai-end
+
+  const buildReciterGroupOptions = useCallback(
+    (reciterId: string): CollectionOptionsPayload => {
       const reciterDownloads = downloadData.filter(
         item => item.download.reciterId === reciterId,
       );
@@ -387,66 +411,73 @@ export default function DownloadsScreen() {
         ? getReciterDisplayName(firstReciter)
         : t('common:terms.reciter');
 
-      SheetManager.show('collection-options', {
-        payload: {
-          title: reciterName,
-          subtitle: t('downloadsScreen.surahsDownloaded', {
-            count: reciterDownloads.length,
-          }),
-          options: [
-            {
-              label: t('downloadsScreen.playAll'),
-              icon: 'play',
-              customIcon: (
-                <PlayIcon color={theme.colors.text} size={moderateScale(20)} />
-              ),
-              onPress: async () => {
-                const tracks = reciterDownloads
-                  .filter(item => item.reciter && item.surah)
-                  .map(item =>
-                    createDownloadedTrack(
-                      item.reciter!,
-                      item.surah!,
-                      item.download.filePath,
-                      item.download.rewayatId,
-                    ),
-                  );
-                if (tracks.length > 0) {
-                  await updateQueue(tracks, 0);
-                  await play();
-                }
-              },
+      return {
+        title: reciterName,
+        subtitle: t('downloadsScreen.surahsDownloaded', {
+          count: reciterDownloads.length,
+        }),
+        options: [
+          {
+            label: t('downloadsScreen.playAll'),
+            icon: 'play',
+            customIcon: (
+              <PlayIcon color={theme.colors.text} size={moderateScale(20)} />
+            ),
+            onPress: async () => {
+              const tracks = reciterDownloads
+                .filter(item => item.reciter && item.surah)
+                .map(item =>
+                  createDownloadedTrack(
+                    item.reciter!,
+                    item.surah!,
+                    item.download.filePath,
+                    item.download.rewayatId,
+                  ),
+                );
+              if (tracks.length > 0) {
+                await updateQueue(tracks, 0);
+                await play();
+              }
             },
-            {
-              label: t('downloadsScreen.removeAll'),
-              icon: 'trash-2',
-              destructive: true,
-              // @ai-start
-              onPress: () =>
-                confirmDestructive({
-                  title: t('downloadsScreen.removeAllTitle'),
-                  message: t('downloadsScreen.removeReciterConfirm', {
-                    reciter: reciterName,
-                  }),
-                  confirmText: t('common:actions.remove'),
-                  cancelText: t('common:actions.cancel'),
-                  onConfirm: async () => {
-                    for (const item of reciterDownloads) {
-                      await removeDownload(
-                        item.download.reciterId,
-                        item.download.surahId,
-                        item.download.rewayatId || undefined,
-                      );
-                    }
-                  },
+          },
+          {
+            label: t('downloadsScreen.removeAll'),
+            icon: 'trash-2',
+            destructive: true,
+            // @ai-start
+            onPress: () =>
+              confirmDestructive({
+                title: t('downloadsScreen.removeAllTitle'),
+                message: t('downloadsScreen.removeReciterConfirm', {
+                  reciter: reciterName,
                 }),
-              // @ai-end
-            },
-          ],
-        },
-      });
+                confirmText: t('common:actions.remove'),
+                cancelText: t('common:actions.cancel'),
+                onConfirm: async () => {
+                  for (const item of reciterDownloads) {
+                    await removeDownload(
+                      item.download.reciterId,
+                      item.download.surahId,
+                      item.download.rewayatId || undefined,
+                    );
+                  }
+                },
+              }),
+            // @ai-end
+          },
+        ],
+      };
     },
     [downloadData, updateQueue, play, removeDownload, theme.colors.text, t],
+  );
+
+  const handleReciterGroupOptions = useCallback(
+    (reciterId: string) => {
+      SheetManager.show('collection-options', {
+        payload: buildReciterGroupOptions(reciterId),
+      });
+    },
+    [buildReciterGroupOptions],
   );
 
   const handlePlayAll = useCallback(async () => {
@@ -509,17 +540,23 @@ export default function DownloadsScreen() {
       <View style={styles.container}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={styles.emptyHeaderTitle}>
               {t('common:terms.downloads')}
             </Text>
@@ -580,6 +617,12 @@ export default function DownloadsScreen() {
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
+              {hasDownloads && (
+                <CollectionOptionsMenu
+                  payload={optionsPayload}
+                  layout="overlay"
+                />
+              )}
             </Pressable>
           )}
           <Pressable
@@ -622,6 +665,14 @@ export default function DownloadsScreen() {
           }
           onOptionsPress={() => handleReciterGroupOptions(item.reciterId)}
           onLongPress={() => handleReciterGroupOptions(item.reciterId)}
+          optionsMenu={
+            nativeMenus ? (
+              <CollectionOptionsMenu
+                payload={buildReciterGroupOptions(item.reciterId)}
+                layout="overlay"
+              />
+            ) : undefined
+          }
         />
       );
     }
@@ -641,13 +692,21 @@ export default function DownloadsScreen() {
         onPlayPress={() => handleSurahPress(download, reciter, surah)}
         onOptionsPress={() => handleShowOptions(download, reciter, surah)}
         onLongPress={() => handleShowOptions(download, reciter, surah)}
+        optionsMenu={
+          nativeMenus ? (
+            <DownloadOptionsMenu
+              payload={buildDownloadOptions(download, reciter, surah)}
+            />
+          ) : undefined
+        }
       />
     );
   };
 
   return (
     <View style={styles.container}>
-      {!USE_GLASS && (
+      {/* Not at the stack root: nothing to go back to. @ai */}
+      {!USE_GLASS && !isStackRoot && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,

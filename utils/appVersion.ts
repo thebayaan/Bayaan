@@ -38,6 +38,37 @@ export const APP_VERSION: AppVersionInfo = {
   buildTime: Constants.expoConfig?.extra?.version?.buildTime,
 };
 
+// @ai-start
+/** The build's version, as scripts/generate-version.js writes it. */
+export interface BuildVersionInfo {
+  semanticVersion: string;
+  buildNumber: string | number;
+  gitHash?: string;
+}
+
+/**
+ * Reads expoConfig.extra.version, which is typed `any`. Undefined when it is
+ * missing or has no semanticVersion or buildNumber.
+ */
+export function readVersionInfo(): BuildVersionInfo | undefined {
+  const value: unknown = Constants.expoConfig?.extra?.version;
+  if (value == null || typeof value !== 'object') return undefined;
+  const {semanticVersion, buildNumber, gitHash} = value as Record<
+    string,
+    unknown
+  >;
+  if (typeof semanticVersion !== 'string') return undefined;
+  if (typeof buildNumber !== 'string' && typeof buildNumber !== 'number') {
+    return undefined;
+  }
+  return {
+    semanticVersion,
+    buildNumber,
+    gitHash: typeof gitHash === 'string' ? gitHash : undefined,
+  };
+}
+// @ai-end
+
 /**
  * Formatted version string (e.g., "1.0.2")
  */

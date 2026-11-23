@@ -47,6 +47,21 @@ jest.mock('@/services/timestamps/TimestampFetchService', () => ({
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
   mushafVerseMapService: {getOrderedVerseKeysForPage: () => []},
 }));
+jest.mock('@/services/recitation/RecitationTrackingService', () => ({
+  stopRecitationTracking: jest.fn(),
+}));
+jest.mock('@/components/mushaf/RecitationMicButton', () => ({
+  RecitationMicButton: () => null,
+  useRecitationFollowAlong: jest.fn(),
+  useRecitationStatusText: () => null,
+  useRecitationMic: () => ({
+    enabled: false,
+    status: 'off',
+    progress: 0,
+    busy: false,
+    toggle: jest.fn(),
+  }),
+}));
 
 import {MushafPlayerBar} from '@/components/mushaf/MushafPlayerBar';
 import {

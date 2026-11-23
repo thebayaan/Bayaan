@@ -1,20 +1,15 @@
 import React, {useCallback, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Alert,
-  Dimensions,
-} from 'react-native';
+import {View, Text, Pressable, StyleSheet, Dimensions} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon, ProfileIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
@@ -42,6 +37,7 @@ import {
   getSurahMeaning,
   localizeDigits,
 } from '@/i18n/format';
+import {getUploadDisplayTitle} from './options/uploadOptions';
 // @ai-end
 
 const surahInfo = require('@/data/surahInfo.json');
@@ -67,22 +63,7 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
   },
 };
 
-function stripExtension(filename: string): string {
-  return filename.replace(/\.[^/.]+$/, '');
-}
-
-// @ai-start
-function getDisplayTitle(item: UploadedRecitation): string {
-  if (item.type === 'surah' && item.surahNumber) {
-    const surah = getSurahById(item.surahNumber);
-    if (surah) return getSurahDisplayName(surah);
-  }
-  if (item.type === 'other' && item.title) {
-    return item.title;
-  }
-  return stripExtension(item.originalFilename);
-}
-// @ai-end
+const getDisplayTitle = getUploadDisplayTitle; // @ai
 
 // @ai-start
 function getDisplaySubtitle(item: UploadedRecitation): string {
@@ -147,7 +128,8 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
   const width = useSheetWidth(); // @ai
-  const [showSurahInfo, setShowSurahInfo] = useState(false);
+  // A native menu's "Learn about this surah" opens the sheet on the info. @ai
+  const [showSurahInfo, setShowSurahInfo] = useState(!!props.payload?.showInfo);
 
   const {deleteRecitation} = useUploadsStore();
   const {isLovedWithRewayat, toggleLoved} = useLoved();
@@ -168,7 +150,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
 
   const isLovedState =
     hasSurah && hasReciter
-      ? isLovedWithRewayat(reciterId!, surahId, '')
+      ? isLovedWithRewayat(reciterId!, surahId, '', recitation?.id) // @ai
       : false;
 
   const tagsStyles = useMemo(
@@ -256,17 +238,16 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   const handleDelete = useCallback(() => {
     if (!recitation) return;
     const title = getDisplayTitle(recitation);
-    Alert.alert(t('uploads.deleteTitle'), t('uploads.deleteMessage', {title}), [
-      {text: t('common:actions.cancel'), style: 'cancel'},
-      {
-        text: t('common:actions.delete'),
-        style: 'destructive',
-        onPress: () => {
-          handleClose();
-          deleteRecitation(recitation.id);
-        },
+    confirmDestructive({
+      title: t('uploads.deleteTitle'),
+      message: t('uploads.deleteMessage', {title}),
+      confirmText: t('common:actions.delete'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: () => {
+        handleClose();
+        deleteRecitation(recitation.id);
       },
-    ]);
+    });
   }, [recitation, handleClose, deleteRecitation, t]);
 
   const handleSheetChange = useCallback((index: number) => {
@@ -437,10 +418,9 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
               })}
             </Text>
           </View>
-          <ScrollView
+          <SheetScrollView
             style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            bounces={true}>
+            showsVerticalScrollIndicator={false}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>
@@ -461,7 +441,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
                 />
               )}
             </View>
-          </ScrollView>
+          </SheetScrollView>
         </>
       ) : (
         <View style={styles.container}>
@@ -548,7 +528,7 @@ const createStyles = (theme: Theme) =>
     subtitle: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
     },
     card: {

@@ -47,6 +47,34 @@
     "available": "Available Rewayat",
     "explanation": "A Rewayah (رواية, plural: Rewayat رِوَايَات) is a specific method of reciting the Quran that represents a particular transmission route within a larger Qira'at (قِرَاءَة, plural: Qira'at قِرَاءَات) tradition.\n\nWhile Qira'at are the major schools of Quranic recitation attributed to famous reciters, Rewayat are the specific ways these recitations were transmitted through chains of narrators back to the Prophet Muhammad ﷺ.\n\n\"The Quran was revealed in seven ahruf (styles). So recite what is easier for you from it.\"\n- Sahih al-Bukhari 2419, Sahih Muslim 818\n\nThe most widely used Rewayah today is Hafs 'an Assem (حَفْص عَن عَاصِم), which is considered the standard version used in most printed Qurans and is instantly recognizable to most Muslims worldwide.\n\nEach Rewayah may have slight variations in pronunciation, elongation, or articulation points. These differences are purely phonetic and never alter the meaning of the Quranic text, as they all represent authentic ways of reciting the Quran that have been meticulously preserved."
   },
+  "wordReadings": {
+    "title": "Readings",
+    "alike": "Read the same way in all 8 rewayat",
+    "alikeWithSilah": "Read the same way in all 8 rewayat; silah in {{names}}",
+    "differs": "Read differently across the rewayat",
+    "narrators": "{{narrators}} ({{reader}})",
+    "listSeparator": ", ",
+    "clusterSeparator": " · ",
+    "differsFromHafs": "Differs from Hafs",
+    "notRead": "Not read",
+    "current": "Current",
+    "readTogetherNext": "Read together with the next word",
+    "readTogetherPrevious": "Read together with the previous word",
+    "writtenJoined": "Written as one word in {{names}}",
+    "writtenApart": "Written as two words in {{names}}",
+    "verseEndHere": "Verse {{verse}} ends after this word in {{names}}",
+    "noVerseEndHere": "No verse ends after this word in {{names}}",
+    "basmalaUnnumbered": "Bismillah is not counted as a verse of al-Fatiha in {{names}}",
+    "contextNotCovered": "{{rewayah}} is not one of the 8 rewayat covered",
+    "scope": "Covers 8 rewayat from 4 of the 10 readers. Most differences in pronunciation rules, such as madd length and tashil, are not listed.",
+    "source": "Text of each rewayah from the KFGQPC riwayah editions.",
+    "loadFailed": "Couldn't load the readings.",
+    "groupA11y": "{{text}}, read by {{narrators}}",
+    "groupA11yCurrent": "{{text}}, read by {{narrators}}, including the current rewayah",
+    "notReadA11y": "Not read by {{narrators}}",
+    "notReadA11yCurrent": "Not read by {{narrators}}, including the current rewayah",
+    "memberA11y": "{{name}}: {{text}}"
+  },
   "addToCollection": {
     "title": "Add to Collection",
     "uploadRecitation": "Upload Recitation",
@@ -58,7 +86,9 @@
     "useDefault": "Use Default Reciter",
     "random": "Random Reciter",
     "browseAll": "Browse All Reciters",
-    "askEveryTime": "Ask every time"
+    "askEveryTime": "Ask every time",
+    "surahUnavailable": "{{reciter}} has not recorded {{surah}}",
+    "surahUnavailableHint": "Choose another reciter for it."
   },
   "copy": {
     "optionsTitle": "Copy Options",
@@ -76,9 +106,6 @@
     "previewName": "Your Playlist",
     "nameLabel": "Playlist Name",
     "namePlaceholder": "e.g., Morning Recitations"
-  },
-  "wordDetail": {
-    "context": "Verse {{ref}} · Word {{position}} of {{total}}"
   },
   "favoriteReciters": {
     "title": "Favorite Reciters",
@@ -131,7 +158,10 @@
     "downloaded": "Downloaded",
     "shareListen": "Listen to Surah {{surah}} on {{appName}}",
     "shareListenSurah": "Listen to {{surah}} on {{appName}}",
-    "removeFromPlaylist": "Remove from Playlist"
+    "removeFromPlaylist": "Remove from Playlist",
+    "downloadFailedTitle": "Couldn't download {{surah}}",
+    "downloadFailedHint": "Check your internet connection and try again.",
+    "downloadOfflineHint": "You're offline. Connect to the internet and try again."
   },
   "uploads": {
     "untagged": "Untagged",
@@ -188,7 +218,10 @@
     "communityReflections": "Community Reflections",
     "unnumbered": "Not a numbered verse in {{rewayah}}.",
     "loadFailed": "Couldn't load the {{rewayah}} text.",
-    "loadingText": "Loading the {{rewayah}} text"
+    "loadingText": "Loading the {{rewayah}} text",
+    "irab": "I'rab",
+    "wordStudy": "Word Study",
+    "rootSearch": "Root search"
   },
   "mushafPlayer": {
     "title": "Playback Settings",
@@ -214,6 +247,8 @@
     "completeMessage_other": "Successfully downloaded {{count}} items from \"{{name}}\".",
     "failedTitle": "Download Failed",
     "failedMessage": "An error occurred while downloading the playlist. Please try again.",
+    "partialTitle": "Download Incomplete",
+    "partialMessage": "Downloaded {{downloaded}} of {{total}} from \"{{name}}\". Try again to download the rest.",
     "downloadingPlaylist": "Downloading playlist...",
     "itemsProgress_one": "{{current}} of {{count}} item",
     "itemsProgress_other": "{{current}} of {{count}} items"
@@ -238,7 +273,11 @@
   "translationContent": {
     "notAvailable": "Translation not available",
     "switch": "Switch",
-    "prev": "Prev"
+    "prev": "Prev",
+    "names": {
+      "saheeh": "Saheeh International",
+      "clearQuran": "The Clear Quran"
+    }
   },
   "repeat": {
     "title": "Repeat Settings",
@@ -312,5 +351,162 @@
     "nothingToCopy": "Nothing to copy",
     "nothingToShare": "Nothing to share",
     "noOwnText": "In {{rewayah}}, this selection is read as part of a neighboring verse."
+  },
+  "whichAyah": {
+    "title": "Which ayah?",
+    "intro": {
+      "onDevice": "Recognition runs on your phone. Audio is never uploaded, and it works offline.",
+      "download": "Needs the microphone and a one-time {{size}} MB download.",
+      "hafs": "Recognises Hafs recitation. It names the ayah; it does not check tajweed.",
+      "start": "Allow microphone and download",
+      "notNow": "Not now"
+    },
+    "downloading": "Downloading the recognition model… {{percent}}%",
+    "loading": "Getting ready…",
+    "listening": "Listening…",
+    "listeningHint": "Recite, or hold your phone near the reciter.",
+    "paused": "Paused until the call or audio ends…",
+    "following": "Following the recitation",
+    "ayahHeading": "{{surah}} · Ayah {{ayah}}",
+    "twinsTitle": "The same words are also at",
+    "twinsMore": "+{{n}}",
+    "openMushaf": "Open in mushaf",
+    "listenAgain": "Listen again",
+    "notFound": "Couldn't place that recitation.",
+    "notFoundHint": "Try closer to the reciter, with less noise around.",
+    "openSettings": "Open Settings",
+    "errors": {
+      "permission": "Allow microphone access for Bayaan in Settings.",
+      "download": "The recognition model didn't download. Check your connection and try again.",
+      "mic": "The microphone stopped.",
+      "interrupted": "Listening stopped because another app used audio.",
+      "other": "Something went wrong while starting to listen."
+    },
+    "stopped": "Listening stopped."
+  },
+  "recitationIntro": {
+    "title": "Follow my recitation",
+    "follows": "Recite and the page follows you, ayah by ayah and word by word, turning pages as you go.",
+    "private": "Recognition runs on your phone. Your voice is never uploaded, and it works offline.",
+    "download": "Needs the microphone and a one-time {{size}} MB download.",
+    "hafs": "Follows Hafs recitation. It finds your place; it does not check tajweed.",
+    "start": "Allow microphone and download",
+    "notNow": "Not now"
+  },
+  "recitationSummary": {
+    "title": "After your recitation",
+    "rangeOneSurah": "{{surah}} · ayat {{from}}–{{to}}",
+    "rangeOneAyah": "{{surah}} · ayah {{ayah}}",
+    "rangeSurahs": "{{fromSurah}} {{from}} – {{toSurah}} {{to}}",
+    "nothing": "Nothing to check this time.",
+    "worthChecking": "Worth checking",
+    "flagRef": "{{surah}} · ayah {{ayah}}",
+    "kinds": {
+      "skippedAyah": "You may have skipped this ayah.",
+      "skippedWord": "A word here may have been skipped.",
+      "similarAyah": "This may have turned into a similar ayah.",
+      "differentWord": "A word here may have been different."
+    },
+    "addedRef": "{{surah}} · ayah {{ayah}} · before word {{word}}",
+    "wordRef": "{{surah}} · ayah {{ayah}} · word {{word}}",
+    "markKinds": {
+      "missed": "You may have missed this word.",
+      "wrong": "You may have said a different word here.",
+      "added": "An extra word may have been heard here.",
+      "corrected": "You went back and recited it correctly."
+    },
+    "show": "Show",
+    "retry": "Retry",
+    "readCorrectly": "I read it correctly",
+    "footnote": "These are possible slips the phone heard. It does not check tajweed or harakat; a teacher does."
+  },
+  "recitationMistake": {
+    "listen": "Listen to this ayah",
+    "listenNote": "Listening ends this recitation. Tap the mic to start again.",
+    "continue": "Continue"
+  },
+  "practice": {
+    "title": "Practice",
+    "reciteFromMemory": "Recite from memory",
+    "showAyah": "Show the ayah",
+    "hideAyah": "Hide the ayah",
+    "verdict": {
+      "clean": "Clean this time.",
+      "flagged": "Still worth checking:",
+      "partial": "You stopped before the end.",
+      "other": "That sounded like a different ayah.",
+      "nothing": "Bayaan didn't hear the ayah."
+    },
+    "flagLine": "{{ref}}: {{message}}"
+  },
+  "irab": {
+    "tabBooks": "I'rab books",
+    "showAll": "Whole verse",
+    "showWord": "One word",
+    "wordOf": "Word {{n}} of {{total}}",
+    "wordN": "word {{n}}",
+    "otherVerseRef": "{{word}} ({{verse}})",
+    "hafsVerse": "Hafs {{verse}}",
+    "implied": "Implied",
+    "agreed": "Confirmed by two independent analyses",
+    "loadFailed": "Couldn't load the i'rab.",
+    "sources": "Word i'rab generated from The Quranic Treebank (built on the Quranic Arabic Corpus, University of Leeds) and cross-checked word by word against MASAQ (University of Jordan). Where the two read a word differently, the other reading is shown as «وجه آخر». Morphology (root, pattern, verb form, number and gender) is from the same corpus; occurrence counts are over the whole Quran. Shown for the Hafs text.",
+    "booksNote": "Each passage is the page of the book that discusses this verse, so it can also cover the verses around it.",
+    "noBooks": "These books have no passage for this verse.",
+    "passageRef": "Vol. {{part}}, p. {{page}}",
+    "readMore": "Read more",
+    "readLess": "Show less",
+    "booksSources": "Text from Quranpedia (quranpedia.net).",
+    "morphology": "Morphology (ṣarf)"
+  },
+  "wordStudy": {
+    "gharib": {
+      "title": "Arabic meaning",
+      "sources": "Text from {{source}}."
+    },
+    "rasm": {
+      "title": "Rasm",
+      "uthmani": "Mushaf",
+      "imlaei": "Standard",
+      "kind": {
+        "hadhf": "Omitted (ḥadhf)",
+        "ziyada": "Added (ziyādah)",
+        "badal": "Substituted (badal)",
+        "hamz": "Hamza (hamz)",
+        "wasl": "Joined (waṣl)",
+        "fasl": "Separated (faṣl)"
+      },
+      "note": {
+        "hadhf": "{{letter}} is not written in the mushaf.",
+        "ziyada": "The mushaf writes an extra {{letter}}.",
+        "badal": "{{standard}} is written as {{mushaf}} in the mushaf.",
+        "hamz": "The hamza is written {{mushaf}} in the mushaf and {{standard}} in the standard spelling.",
+        "wasl": "Written as one word in the mushaf; the standard spelling separates it.",
+        "fasl": "Written apart in the mushaf; the standard spelling joins the words."
+      },
+      "sources": "Standard spelling from {{source}}. The differences come from comparing it letter by letter with the mushaf's spelling; only those that the mushaf's own signs, a known spelling rule or a review confirm are shown. Shown for the Hafs text."
+    }
+  },
+  "wordView": {
+    "tabWords": "Words",
+    "tapWord": "Tap a word to study it",
+    "previous": "Previous",
+    "next": "Next",
+    "previousWord": "Previous word",
+    "nextWord": "Next word",
+    "announce": "{{word}}, word {{n}} of {{total}}",
+    "gridLabel": "Words of {{verse}}",
+    "gridHint": "Use Previous and Next to move between words",
+    "loadFailed": "Couldn't load the words.",
+    "noWords": "Word data isn't available for this verse.",
+    "wordRef": "{{verse}} · word {{n}}",
+    "hafsNote": "Meanings, audio, i'rab, morphology and rasm are for Hafs.",
+    "hafsNoteReadings": "Meanings, audio, i'rab, morphology and rasm are for Hafs. Readings shows how {{rewayah}} reads it.",
+    "playWord": "Play the word",
+    "audioFailed": "Couldn't play",
+    "studyWord": "Study {{word}}",
+    "morphology": {
+      "searchRoot": "Search the root {{root}}"
+    }
   }
 }

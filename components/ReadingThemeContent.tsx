@@ -5,13 +5,11 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  useColorScheme,
-  Platform,
   ActivityIndicator,
   type ScrollViewProps,
 } from 'react-native';
 import {moderateScale, verticalScale} from '@/utils/scale';
-import SegmentedControl from '@react-native-segmented-control/segmented-control';
+import {NativeSegmentedControl} from '@/components/native/NativeSegmentedControl'; // @ai
 import {
   Canvas,
   Paragraph,
@@ -97,15 +95,12 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
   );
   const {lightThemeId, darkThemeId, setReadingTheme, mushafRenderer} =
     useMushafSettingsStore();
-  const systemColorScheme = useColorScheme();
 
-  // Resolve the effective mode (for system, use device appearance)
-  const effectiveMode = useMemo(() => {
-    if (themeMode === 'system') {
-      return systemColorScheme === 'dark' ? 'dark' : 'light';
-    }
-    return themeMode;
-  }, [themeMode, systemColorScheme]);
+  // The mode the app is drawn in right now, taken from the app's own theme.
+  // Asking the device instead could disagree with it (in System mode it read
+  // as light inside a dark app), and then the chips listed, and the one a
+  // tap saved, belonged to the mode the mushaf was not using.
+  const effectiveMode = theme.isDarkMode ? 'dark' : 'light';
 
   // Determine which chips to show
   const visibleThemes = useMemo(() => {
@@ -135,12 +130,9 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
   // Position-based auto-pairing when the effective mode changes
   const autoPairAndSwitchMode = useCallback(
     (newMode: ThemeMode) => {
-      const newEffectiveMode =
-        newMode === 'system'
-          ? systemColorScheme === 'dark'
-            ? 'dark'
-            : 'light'
-          : newMode;
+      // Going to System keeps the current look until the device's scheme
+      // arrives (see themeStore), so there is no new mode to pair with yet.
+      const newEffectiveMode = newMode === 'system' ? effectiveMode : newMode;
 
       if (newEffectiveMode !== effectiveMode) {
         // Find current position in the old mode's list
@@ -165,33 +157,18 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
 
       setThemeMode(newMode);
     },
-    [
-      setThemeMode,
-      setReadingTheme,
-      effectiveMode,
-      lightThemeId,
-      darkThemeId,
-      systemColorScheme,
-    ],
+    [setThemeMode, setReadingTheme, effectiveMode, lightThemeId, darkThemeId],
   );
 
   // Segment changes the whole app's theme mode
+  // @ai-start
   const handleSegmentChange = useCallback(
-    (event: {nativeEvent: {selectedSegmentIndex: number}}) => {
-      autoPairAndSwitchMode(
-        SEGMENT_MODES[event.nativeEvent.selectedSegmentIndex],
-      );
+    (index: number) => {
+      autoPairAndSwitchMode(SEGMENT_MODES[index]);
     },
     [autoPairAndSwitchMode],
   );
-
-  // Android fallback for segment press
-  const handleSegmentPress = useCallback(
-    (seg: ThemeMode) => {
-      autoPairAndSwitchMode(seg);
-    },
-    [autoPairAndSwitchMode],
-  );
+  // @ai-end
 
   // Skia font setup for the preview
   const dkFontFamily =
@@ -228,20 +205,12 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
 
       {/* Segmented control: System | Light | Dark */}
       <Text style={styles.disclosureText}>{t('readingTheme.disclosure')}</Text>
-      {Platform.OS === 'ios' ? (
-        <SegmentedControl
-          values={segmentLabels}
-          selectedIndex={MODE_TO_INDEX[themeMode]}
-          onChange={handleSegmentChange}
-          style={styles.segmentedControl}
-        />
-      ) : (
-        <AndroidSegment
-          themeMode={themeMode}
-          onPress={handleSegmentPress}
-          theme={theme}
-        />
-      )}
+      <NativeSegmentedControl
+        values={segmentLabels}
+        selectedIndex={MODE_TO_INDEX[themeMode]}
+        onChange={handleSegmentChange}
+        style={styles.segmentedControl}
+      />
 
       {/* Color chips grid */}
       <View style={styles.chipGrid}>
@@ -292,70 +261,6 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
   );
 };
 // @ai-end
-
-// --- Android Segment Fallback ---
-
-// @ai-start
-const AndroidSegment: React.FC<{
-  themeMode: ThemeMode;
-  onPress: (mode: ThemeMode) => void;
-  theme: Theme;
-}> = ({themeMode, onPress, theme}) => {
-  const {t} = useTranslation('settings');
-  const segBg = Color(theme.colors.text).alpha(0.06).toString();
-  const segActiveBg = Color(theme.colors.text).alpha(0.12).toString();
-  const segActiveText = theme.colors.text;
-  const segInactiveText = Color(theme.colors.text).alpha(0.4).toString();
-
-  return (
-    <View style={[androidStyles.segmentContainer, {backgroundColor: segBg}]}>
-      {SEGMENT_MODES.map(seg => {
-        const isActive = themeMode === seg;
-        return (
-          <Pressable
-            key={seg}
-            style={[
-              androidStyles.segmentButton,
-              isActive && {backgroundColor: segActiveBg},
-            ]}
-            onPress={() => onPress(seg)}
-            accessibilityRole="tab" // @ai
-            accessibilityState={{selected: isActive}} // @ai
-          >
-            <Text
-              style={[
-                androidStyles.segmentText,
-                {color: isActive ? segActiveText : segInactiveText},
-              ]}>
-              {t(`readingTheme.${seg}`)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-};
-// @ai-end
-
-const androidStyles = StyleSheet.create({
-  segmentContainer: {
-    flexDirection: 'row',
-    borderRadius: moderateScale(10),
-    padding: moderateScale(3),
-    gap: moderateScale(2),
-    marginBottom: moderateScale(16),
-  },
-  segmentButton: {
-    flex: 1,
-    paddingVertical: moderateScale(7),
-    borderRadius: moderateScale(8),
-    alignItems: 'center',
-  },
-  segmentText: {
-    fontSize: moderateScale(12),
-    fontFamily: 'Manrope-SemiBold',
-  },
-});
 
 // --- Miniature Preview ---
 
@@ -666,7 +571,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       marginBottom: moderateScale(8),
     },
     segmentedControl: {

@@ -7,6 +7,7 @@
 
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
+import {AppState, type AppStateStatus} from 'react-native'; // @ai
 
 const mockPosition = {sec: 0};
 
@@ -69,7 +70,19 @@ jest.mock('@/services/timestamps/TimestampService', () => ({
 }));
 
 jest.mock('@/services/timestamps/TimestampFetchService', () => ({
-  timestampFetchService: {hasSurah: () => true, hasSource: () => true},
+  timestampFetchService: {
+    hasSurah: () => true,
+    hasSource: () => true,
+    // @ai-start
+    // Every fixture rewayah has a source, as hasSource says.
+    rewayatWithSource: () =>
+      jest
+        .requireMock('@/data/reciterData')
+        .RECITERS.flatMap((reciter: {rewayat: unknown[]}) =>
+          reciter.rewayat.map(rewayat => ({reciter, rewayat})),
+        ),
+    // @ai-end
+  },
 }));
 
 jest.mock('@/services/audio/ExpoAudioService', () => ({
@@ -494,6 +507,35 @@ describe('useAyahTracker', () => {
   });
   // @ai-end
 
+  // @ai-start
+  it('runs no interval in the background; the first tick on return publishes the verse recited', async () => {
+    const appState = AppState as unknown as {currentState: AppStateStatus};
+    const changeAppState = async (next: AppStateStatus) => {
+      await act(async () => {
+        appState.currentState = next;
+        (AppState.addEventListener as jest.Mock).mock.calls
+          .filter(([type]) => type === 'change')
+          .forEach(([, listener]) => listener(next));
+      });
+    };
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(t[3].timestampFrom + 50);
+    expect(current()?.verseKey).toBe('2:4');
+    await changeAppState('background');
+    const published = jest.fn();
+    const unsubscribe = useTimestampStore.subscribe(published);
+    for (const e of t.slice(4, 20)) await tickAt(e.timestampFrom + 50);
+    expect(published).not.toHaveBeenCalled();
+    expect(current()?.verseKey).toBe('2:4');
+    await changeAppState('active');
+    expect(current()?.verseKey).toBe('2:4'); // nothing before the first tick
+    await tickAt(t[19].timestampFrom + 60);
+    expect(current()?.verseKey).toBe('2:20');
+    unsubscribe();
+  });
+  // @ai-end
+
   it('Hafs recitations are unchanged', async () => {
     await startTrack('hafs-clean', 2);
     for (const e of loadTimings('hafs-clean', 2)!.slice(0, 40)) {
@@ -713,6 +755,56 @@ describe("the intro before verse 1 (isti'adha / basmala)", () => {
       useTimestampStore.getState().clearCurrentTimestamps();
     });
     expect(intro()).toBeNull();
+  });
+});
+
+// The verse last published used to stay highlighted for the rest of the
+// surah after Follow Along was switched off.
+describe('Follow Along switched off', () => {
+  const setFollowAlong = async (enabled: boolean) => {
+    await act(async () => {
+      useTimestampStore.setState({followAlongEnabled: enabled});
+    });
+  };
+
+  beforeEach(() => useTimestampStore.setState({followAlongEnabled: true}));
+  afterEach(() => useTimestampStore.setState({followAlongEnabled: true}));
+
+  it('drops the verse being recited, and tracks again when switched on', async () => {
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(t[4].timestampFrom + 50);
+    expect(current()?.verseKey).toBe('2:5');
+
+    await setFollowAlong(false);
+    expect(current()).toBeNull();
+    // the reciter moves on: nothing is published
+    await tickAt(t[6].timestampFrom + 50);
+    expect(current()).toBeNull();
+
+    await setFollowAlong(true);
+    await tickAt(t[6].timestampFrom + 60);
+    expect(current()?.verseKey).toBe('2:7');
+  });
+
+  it('drops a verse written while it is off ("Play from here")', async () => {
+    await startTrack('hafs-clean', 2);
+    await setFollowAlong(false);
+    const target = getPlayFromHereTarget(timings(), '2:50');
+    if (target.status !== 'ready') throw new Error(target.status);
+    await act(async () => {
+      useTimestampStore.getState().setCurrentAyah(target.tracking);
+    });
+    expect(current()).toBeNull();
+  });
+
+  it('starting with it off: nothing is highlighted', async () => {
+    useTimestampStore.setState({followAlongEnabled: false});
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(t[4].timestampFrom + 50);
+    expect(current()).toBeNull();
+    expect(useTimestampStore.getState().basmalaIntroSurah).toBeNull();
   });
 });
 // @ai-end

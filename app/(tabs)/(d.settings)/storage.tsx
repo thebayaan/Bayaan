@@ -1,5 +1,6 @@
 import React, {useState, useMemo} from 'react';
 import {View, Text, ScrollView, Pressable, Alert} from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {Theme} from '@/utils/themeUtils';
@@ -7,6 +8,7 @@ import Color from 'color';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
+import {clearCacheDirectory} from '@/services/storageService'; // @ai
 import {Feather} from '@expo/vector-icons';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
@@ -84,101 +86,118 @@ export default function StorageScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [isClearing, setIsClearing] = useState(false);
 
-  const {free, downloads, cache, otherApps, loading, error, rawData, refresh} =
-    useStorageBreakdown();
+  const {
+    free,
+    downloads,
+    uploads,
+    cache,
+    otherApps,
+    loading,
+    error,
+    rawData,
+    refresh,
+  } = useStorageBreakdown();
 
   const handleClearAllDownloads = () => {
     if (isClearing) return;
-    Alert.alert(
-      t('storage.removeDownloadsTitle'),
-      t('storage.removeDownloadsConfirm'),
-      [
-        {text: t('common:actions.cancel'), style: 'cancel'},
-        {
-          text: t('common:actions.remove'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsClearing(true);
-              await useDownloadStore.getState().clearAllDownloads();
-              refresh();
-              Alert.alert(
-                t('storage.success'),
-                t('storage.removeDownloadsSuccess'),
-              );
-            } catch (downloadError) {
-              Alert.alert(
-                t('storage.error'),
-                t('storage.removeDownloadsError'),
-              );
-            } finally {
-              setIsClearing(false);
-            }
-          },
-        },
-      ],
-    );
+    confirmDestructive({
+      title: t('storage.removeDownloadsTitle'),
+      message: t('storage.removeDownloadsConfirm'),
+      confirmText: t('common:actions.remove'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: async () => {
+        try {
+          setIsClearing(true);
+          await useDownloadStore.getState().clearAllDownloads();
+          refresh();
+          Alert.alert(
+            t('storage.success'),
+            t('storage.removeDownloadsSuccess'),
+          );
+        } catch (downloadError) {
+          Alert.alert(t('storage.error'), t('storage.removeDownloadsError'));
+        } finally {
+          setIsClearing(false);
+        }
+      },
+    });
   };
 
   const handleClearCache = () => {
     if (isClearing) return;
-    Alert.alert(t('storage.clearCacheTitle'), t('storage.clearCacheConfirm'), [
-      {text: t('common:actions.cancel'), style: 'cancel'},
-      {
-        text: t('common:actions.clear'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setIsClearing(true);
-            await clearPlayerCache();
-            refresh();
-            Alert.alert(t('storage.success'), t('storage.clearCacheSuccess'));
-          } catch (cacheError) {
-            Alert.alert(t('storage.error'), t('storage.clearCacheError'));
-          } finally {
-            setIsClearing(false);
-          }
-        },
+    confirmDestructive({
+      title: t('storage.clearCacheTitle'),
+      message: t('storage.clearCacheConfirm'),
+      confirmText: t('common:actions.clear'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: async () => {
+        try {
+          setIsClearing(true);
+          await clearPlayerCache();
+          // "Clear cache" only reset the player: the cache folder, which is
+          // what the Cache figure above measures, was never emptied, so the
+          // figure did not move. The player is stopped first so nothing is
+          // reading from the folder while it is emptied.
+          await clearCacheDirectory();
+          refresh();
+          Alert.alert(t('storage.success'), t('storage.clearCacheSuccess'));
+        } catch (cacheError) {
+          Alert.alert(t('storage.error'), t('storage.clearCacheError'));
+        } finally {
+          setIsClearing(false);
+        }
       },
-    ]);
+    });
   };
 
   const totalRaw = rawData.total || 1;
   let otherAppsPercentage = (rawData.otherApps / totalRaw) * 100;
   let downloadsPercentage = (rawData.downloads / totalRaw) * 100;
+  let uploadsPercentage = (rawData.uploads / totalRaw) * 100;
   let cachePercentage = (rawData.cache / totalRaw) * 100;
   let freePercentage = (rawData.free / totalRaw) * 100;
 
   const MIN_PERCENTAGE = 2;
+  // A sliver too thin to see is widened, and "Other apps" gives up the room.
+  const restForOtherApps = () =>
+    Math.max(
+      0,
+      100 -
+        downloadsPercentage -
+        uploadsPercentage -
+        cachePercentage -
+        freePercentage,
+    );
   if (downloadsPercentage > 0 && downloadsPercentage < MIN_PERCENTAGE) {
     downloadsPercentage = MIN_PERCENTAGE;
-    otherAppsPercentage = Math.max(
-      0,
-      100 - downloadsPercentage - cachePercentage - freePercentage,
-    );
+    otherAppsPercentage = restForOtherApps();
+  }
+  if (uploadsPercentage > 0 && uploadsPercentage < MIN_PERCENTAGE) {
+    uploadsPercentage = MIN_PERCENTAGE;
+    otherAppsPercentage = restForOtherApps();
   }
   if (cachePercentage > 0 && cachePercentage < MIN_PERCENTAGE) {
     cachePercentage = MIN_PERCENTAGE;
-    otherAppsPercentage = Math.max(
-      0,
-      100 - downloadsPercentage - cachePercentage - freePercentage,
-    );
+    otherAppsPercentage = restForOtherApps();
   }
   const totalPercentage =
     otherAppsPercentage +
     downloadsPercentage +
+    uploadsPercentage +
     cachePercentage +
     freePercentage;
   if (totalPercentage > 100) {
     const scale = 100 / totalPercentage;
     otherAppsPercentage *= scale;
     downloadsPercentage *= scale;
+    uploadsPercentage *= scale;
     cachePercentage *= scale;
     freePercentage *= scale;
   }
 
   const colors = {
     downloads: '#34C759',
+    uploads: '#FF9500',
     cache: '#8E8E93',
     otherApps: '#007AFF',
     free: '#E5E5EA',
@@ -236,6 +255,15 @@ export default function StorageScreen() {
                   style={[
                     styles.progressSegment,
                     {
+                      width: `${uploadsPercentage}%`,
+                      backgroundColor: colors.uploads,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.progressSegment,
+                    {
                       width: `${cachePercentage}%`,
                       backgroundColor: colors.cache,
                     },
@@ -264,6 +292,12 @@ export default function StorageScreen() {
                 color={colors.downloads}
                 label={t('storage.downloads')}
                 size={downloads}
+                styles={styles}
+              />
+              <StorageCategory
+                color={colors.uploads}
+                label={t('common:terms.uploads')}
+                size={uploads}
                 styles={styles}
               />
               <StorageCategory
@@ -335,7 +369,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       letterSpacing: latinLetterSpacing(1.2),
       textTransform: 'uppercase',
       marginBottom: moderateScale(10),
@@ -349,7 +383,7 @@ const createStyles = (theme: Theme) =>
     loadingText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
     },
     errorContainer: {
       alignItems: 'center',
@@ -423,7 +457,7 @@ const createStyles = (theme: Theme) =>
     actionDescription: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textTertiary,
       lineHeight: moderateScale(17),
     },
     actionButton: {

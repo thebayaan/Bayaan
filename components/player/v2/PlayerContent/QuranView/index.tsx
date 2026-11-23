@@ -53,6 +53,7 @@ import {
   rebuildEnhancedVerses,
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
+import {useEnhancedVersesVersion} from '@/utils/enhancedVersesVersion'; // @ai
 import {getTranslationName} from '@/utils/translationLookup';
 import {useCurrentTrackRewayah} from '@/hooks/useCurrentTrackRewayah';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -373,6 +374,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   // Counter to force re-render when enhanced verses are rebuilt (async)
   const [rebuildCounter, setRebuildCounter] = useState(0); // @ai
+  // @ai-start
+  // The same data is also rebuilt outside this view: at startup and on every
+  // translation change (services/translation/selectedTranslation), whether
+  // or not the player is open. Follow those rebuilds too: this view's own
+  // request below then finds the work already done and reports nothing.
+  const versesVersion = useEnhancedVersesVersion();
+  // @ai-end
 
   // Measured ListHeaderComponent height (SurahDivider + BasmalaHeader). Used
   // as a negative `viewOffset` on imperative scrollToIndex calls so the
@@ -438,7 +446,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // change on every render (was a pre-existing react-hooks/exhaustive-deps warning).
   const verses = useMemo(
     () => enhancedVersesBySurah[currentSurah] ?? [],
-    [currentSurah],
+    // versesVersion: a rebuild replaces the arrays. @ai
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentSurah, versesVersion], // @ai
   );
 
   // @ai-start
@@ -458,7 +468,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
     );
     // rebuildCounter: the enhanced verses were rebuilt with a new translation
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unitsRewayah, verseUnits, currentSurah, rebuildCounter]);
+  }, [unitsRewayah, verseUnits, currentSurah, rebuildCounter, versesVersion]); // @ai
   // What the list shows: the rewayah's verse rows, or the Hafs verses.
   const listData: EnhancedVerse[] = unitRows ?? verses;
   // The row the list follows: the tracked Hafs verse, or the first verse of

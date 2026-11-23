@@ -4,6 +4,7 @@
 // screen and tells the reader; a switch overtaken by a newer tap is silent;
 // choosing Hafs after a startup fallback makes Hafs the saved rewayah.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import i18n from 'i18next';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {
   chooseMushafRewayah,
@@ -180,17 +181,28 @@ describe('selectMushafRewayah', () => {
     expect(dk.rewayah).toBe('warsh');
   });
 
-  it('refuses Mushaf 1440 and rewayat without bundled text', async () => {
-    useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
-    await expect(selectMushafRewayah('warsh')).resolves.toEqual({
-      kind: 'unchanged',
-    });
+  it('refuses rewayat without bundled text', async () => {
     useMushafSettingsStore.setState({mushafRenderer: 'dk_v2'});
     await expect(selectMushafRewayah('hisham')).resolves.toEqual({
       kind: 'unchanged',
     });
     expect(service.switchRewayah).not.toHaveBeenCalled();
   });
+
+  // @ai-start
+  it('switches the rewayah under Mushaf 1440 too, keeping the font', async () => {
+    useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
+    await expect(selectMushafRewayah('warsh')).resolves.toEqual({
+      kind: 'switched',
+      rewayah: 'warsh',
+    });
+    expect(service.switchRewayah).toHaveBeenCalledWith('warsh');
+    expect(useMushafSettingsStore.getState()).toMatchObject({
+      rewayah: 'warsh',
+      mushafRenderer: 'qcf_v2',
+    });
+  });
+  // @ai-end
 
   it('reports that nothing is shown when the data service never loaded', async () => {
     dk.initialized = false;
@@ -271,6 +283,27 @@ describe('chooseMushafRewayah', () => {
     await chooseMushafRewayah('warsh');
     await chooseMushafRewayah('hafs');
     expect(showToast).not.toHaveBeenCalled();
+  });
+
+  // The announcements used to be English whatever the app language.
+  describe('in Arabic', () => {
+    beforeEach(() => i18n.changeLanguage('ar'));
+    afterEach(() => i18n.changeLanguage('en'));
+
+    it('announces a switch', async () => {
+      await chooseMushafRewayah('warsh');
+      expect(showToast).toHaveBeenCalledWith('الرواية الحالية', 'ورش');
+    });
+
+    it('announces a failure with the rewayah still shown', async () => {
+      dk.outcome = 'fail';
+      await chooseMushafRewayah('warsh');
+      expect(showToast).toHaveBeenCalledWith(
+        'تعذّر تحميل رواية ورش',
+        'ما زالت رواية حفص معروضة.',
+        'error',
+      );
+    });
   });
 });
 

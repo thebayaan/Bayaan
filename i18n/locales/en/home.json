@@ -33,13 +33,15 @@
     "searchSurahs": "Search surahs..."
   },
   "search": {
-    "placeholder": "Search surahs or reciters",
+    "placeholder": "Search surahs, reciters or ayahs",
     "recentSearches": "Recent searches",
     "noRecent": "No recent searches",
     "noRecentHint": "Your search history will appear here",
     "noResultsHint": "Try different keywords or check the spelling",
     "all": "All",
-    "topResult": "Top result"
+    "topResult": "Top result",
+    "reciteToSearch": "Recite to search",
+    "reciteToSearchHint": "Recite a few words and Bayaan finds the ayah."
   },
   "systemPlaylist": {
     "invalidId": "Invalid playlist ID",
@@ -175,7 +177,8 @@
     "backendUnreachable": "Backend unreachable"
   },
   "errorBoundary": {
-    "message": "Sorry.. there was an error"
+    "message": "{{appName}} hit an unexpected error on this screen. Your downloads and saved items are safe.",
+    "repeat": "{{appName}} keeps hitting errors. Please close the app fully and open it again."
   },
   "input": {
     "characterCount": "{{current}}/{{max}} characters"

@@ -143,8 +143,9 @@ export default function BrowseReciters({
   const router = useRouter();
   const profilePathname = useReciterProfilePathname(); // @ai
   const {t} = useTranslation('home');
-  const {updateQueue, play} = usePlayerActions();
-  const {startNewChain} = useRecentlyPlayedStore();
+  const {updateQueue} = usePlayerActions();
+  const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
+  const pickingRef = useRef(false);
   const {setReciterPreference} = useSettings();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
@@ -477,11 +478,15 @@ export default function BrowseReciters({
       }
 
       if (surahId) {
+        // @ai-start
+        // One pick closes this screen once. Going back used to wait for the
+        // audio to load, so the screen sat there for seconds on a slow
+        // connection; a second tap, or the user's own Back, then popped an
+        // extra screen when the late back() fired.
+        if (pickingRef.current) return;
+        pickingRef.current = true;
         try {
-          const surah = await getSurahById(surahId);
-          if (!surah) return;
-
-          // @ai-start
+          const surah = getSurahById(surahId);
           const rewayatId = pickRewayatId(
             reciter.rewayat,
             [
@@ -490,8 +495,10 @@ export default function BrowseReciters({
             ],
             surahId,
           );
-          if (!rewayatId) return;
-          // @ai-end
+          if (!surah || !rewayatId) {
+            pickingRef.current = false;
+            return;
+          }
 
           const tracks = await createTracksForReciter(
             reciter,
@@ -499,15 +506,18 @@ export default function BrowseReciters({
             rewayatId,
           );
 
-          await updateQueue(tracks, 0);
-          await play();
-
-          await startNewChain(reciter, surah, 0, 0, rewayatId);
-
+          startNewChain(reciter, surah, 0, 0, rewayatId);
           router.back();
+          // Not awaited: it starts playback itself once the audio has
+          // loaded and reports a failed load on its own.
+          updateQueue(tracks, 0).catch(error => {
+            console.error('Error playing surah:', error);
+          });
         } catch (error) {
+          pickingRef.current = false;
           console.error('Error playing surah:', error);
         }
+        // @ai-end
       } else {
         router.push({
           pathname: profilePathname, // @ai
@@ -522,7 +532,6 @@ export default function BrowseReciters({
       setReciterPreference,
       surahId,
       updateQueue,
-      play,
       router,
       startNewChain,
       profilePathname,
@@ -880,7 +889,7 @@ const createStyles = (theme: Theme) =>
     filterChipText: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
     filterChipTextActive: {
       color: theme.colors.text,
@@ -896,7 +905,7 @@ const createStyles = (theme: Theme) =>
     activeFiltersText: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
     },
     clearFiltersButton: {
       paddingHorizontal: moderateScale(8),
@@ -919,7 +928,7 @@ const createStyles = (theme: Theme) =>
     separatorChipText: {
       fontSize: moderateScale(14),
       fontFamily: 'Amiri-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textTertiary,
       fontStyle: 'italic',
     },
     // @ai-start

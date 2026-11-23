@@ -22,7 +22,6 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "**/*.json",
     "scripts/**/*",
     "types/**/*"
   ],

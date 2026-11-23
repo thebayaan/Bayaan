@@ -38,6 +38,11 @@ import {
 import {latinLetterSpacing} from '@/utils/rtl';
 import type {Track} from '@/types/audio';
 import {useRowDisplay} from '../PlayerContent/QueueList';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  CollectionOptionsMenu,
+  type CollectionOptionsPayload,
+} from '@/components/sheets/options/collectionOptions';
 
 const EMPTY_TRACKS: Track[] = [];
 
@@ -85,6 +90,8 @@ interface QueueRowProps {
   section: RowSection;
   onPress: (index: number) => void;
   onMore?: (track: Track, index: number) => void;
+  /** The row's ••• as a native menu (iPad and Android tablets). */
+  renderMenu?: (track: Track, index: number) => React.ReactNode;
   /** Starts a drag; only Up Next rows have a handle. */
   drag?: () => void;
   /**
@@ -107,6 +114,7 @@ const QueueRow = React.memo(function QueueRow({
   section,
   onPress,
   onMore,
+  renderMenu,
   drag,
   onHandleTouch,
   isDragging = false,
@@ -123,6 +131,12 @@ const QueueRow = React.memo(function QueueRow({
       isCurrent &&
       (s.playback.state === 'playing' || s.playback.state === 'buffering'),
   );
+  // Once the queue has ended, its last track sits at 0:00 with nothing
+  // playing: a tap loses no place, and plays it again.
+  const queueEnded = usePlayerStore(
+    s => isCurrent && s.playback.state === 'ended',
+  );
+  const inert = isCurrent && !queueEnded;
   const subtle = Color(colors.text).alpha(0.06).toString();
   const showArtwork =
     !!track.reciterName && track.reciterName !== 'My Recitations';
@@ -147,11 +161,14 @@ const QueueRow = React.memo(function QueueRow({
       <Pressable
         style={({pressed}) => [
           styles.rowBody,
-          pressed && !isCurrent && {opacity: 0.6},
+          pressed && !inert && {opacity: 0.6},
         ]}
-        onPress={() => onPress(index)}
+        // The row of the track that is playing does nothing on a tap, as its
+        // missing pressed state suggests. It used to load the track again,
+        // which sent a 40-minute surah back to 0:00.
+        onPress={inert ? undefined : () => onPress(index)}
         onLongPress={onMore ? () => onMore(track, index) : undefined}
-        accessibilityRole="button"
+        accessibilityRole={inert ? undefined : 'button'}
         accessibilityLabel={`${display.title}, ${display.subtitle}`}
         accessibilityActions={actions}
         onAccessibilityAction={handleAction}>
@@ -206,6 +223,7 @@ const QueueRow = React.memo(function QueueRow({
             size={18}
             color={colors.textSecondary}
           />
+          {renderMenu?.(track, index)}
         </Pressable>
       ) : null}
       {drag ? (
@@ -345,8 +363,8 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
     [moveInQueue],
   );
 
-  const openMenu = useCallback(
-    (track: Track, index: number) => {
+  const buildMenu = useCallback(
+    (track: Track, index: number): CollectionOptionsPayload => {
       const nextSlot = index > currentIndex ? currentIndex + 1 : currentIndex;
       const options = [
         {
@@ -379,13 +397,11 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
           onPress: () => removeFromQueue([index]),
         },
       ];
-      SheetManager.show('collection-options', {
-        payload: {
-          title: getTrackDisplayTitle(track),
-          subtitle: getTrackArtistDisplay(track),
-          options,
-        },
-      });
+      return {
+        title: getTrackDisplayTitle(track),
+        subtitle: getTrackArtistDisplay(track),
+        options,
+      };
     },
     [
       currentIndex,
@@ -396,6 +412,30 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
       removeFromQueue,
     ],
   );
+
+  const openMenu = useCallback(
+    (track: Track, index: number) => {
+      SheetManager.show('collection-options', {
+        payload: buildMenu(track, index),
+      });
+    },
+    [buildMenu],
+  );
+
+  const nativeMenus = useNativeOptionsMenu();
+  const renderMenu = useCallback(
+    (track: Track, index: number) => (
+      <CollectionOptionsMenu
+        payload={buildMenu(track, index)}
+        layout="overlay"
+        accessibilityLabel={t('queue.moreFor', {
+          title: getTrackDisplayTitle(track),
+        })}
+      />
+    ),
+    [buildMenu, t],
+  );
+  const rowMenu = nativeMenus ? renderMenu : undefined;
 
   const cycleRepeat = useCallback(() => {
     updateSettings({
@@ -437,6 +477,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
         section="upNext"
         onPress={playAt}
         onMore={openMenu}
+        renderMenu={rowMenu}
         drag={drag}
         onHandleTouch={setHandleTouched}
         isDragging={isActive}
@@ -445,7 +486,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
         canMoveDown={item.index < tracks.length - 1}
       />
     ),
-    [playAt, openMenu, move, currentIndex, tracks.length],
+    [playAt, openMenu, rowMenu, move, currentIndex, tracks.length],
   );
 
   const header = (
@@ -542,6 +583,7 @@ export function QueuePane({bottomInset}: {bottomInset: number}) {
                 section="played"
                 onPress={playAt}
                 onMore={openMenu}
+                renderMenu={rowMenu}
               />
             ))
           : null}

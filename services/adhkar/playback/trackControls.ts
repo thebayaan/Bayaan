@@ -49,7 +49,7 @@ export function adhkarTrackEvent(
   const index = adhkarTrackTarget(session, direction);
   const item = session.items[index];
   if (!item) return null;
-  return {type: 'swipedTo', listId: session.listId, dhikrId: item.dhikrId};
+  return {type: 'trackSkipped', listId: session.listId, dhikrId: item.dhikrId};
 }
 
 /** Moves the current session, if any. */

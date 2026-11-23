@@ -1,6 +1,7 @@
 import {create} from 'zustand';
 import {useEffect, useRef} from 'react';
 import {usePlayerStore} from './playerStore';
+import {useAppForeground} from '@/hooks/useAppForeground'; // @ai
 
 interface ProgressState {
   position: number;
@@ -28,6 +29,43 @@ export const useProgressStore = create<ProgressState>(set => ({
   setSeekPosition: (seekPosition: number | null) => set({seekPosition}),
 }));
 
+// @ai-start
+export interface ShownPlaybackTime {
+  position: number;
+  duration: number;
+}
+
+/**
+ * The player's position and duration, for UI that shows them.
+ *
+ * In the foreground this follows `playerStore.playback`. In the background
+ * it holds the values already shown, so a position tick renders nothing:
+ * Android would queue each update for the first frame on return. On return
+ * it shows the live values. `inactive` (the iOS Control Center) counts as
+ * foreground, so UI that is still on screen keeps updating.
+ *
+ * A component that mounts in the background starts from the live values.
+ */
+export function useShownPlaybackTime(): ShownPlaybackTime {
+  const foreground = useAppForeground();
+  const shownRef = useRef<ShownPlaybackTime | null>(null);
+  const position = usePlayerStore(state =>
+    foreground || !shownRef.current
+      ? state.playback.position
+      : shownRef.current.position,
+  );
+  const duration = usePlayerStore(state =>
+    foreground || !shownRef.current
+      ? state.playback.duration
+      : shownRef.current.duration,
+  );
+  useEffect(() => {
+    shownRef.current = {position, duration};
+  }, [position, duration]);
+  return {position, duration};
+}
+// @ai-end
+
 /**
  * Hook to subscribe to progress updates
  *
@@ -49,14 +87,17 @@ export function useProgress() {
     setSeekPosition,
   } = useProgressStore();
 
-  // Subscribe to playerStore for progress updates
-  const playback = usePlayerStore(state => state.playback);
-
   // Use refs to access latest values without causing effect re-runs
   const isSeekingRef = useRef(isSeeking);
   const seekPositionRef = useRef(seekPosition);
   const positionRef = useRef(position);
   const durationRef = useRef(duration);
+
+  // @ai-start
+  // Held at the shown values in the background (see useShownPlaybackTime).
+  const {position: playbackPosition, duration: playbackDuration} =
+    useShownPlaybackTime();
+  // @ai-end
 
   // Keep refs in sync
   useEffect(() => {
@@ -82,20 +123,20 @@ export function useProgress() {
 
     // Update duration if changed significantly
     if (
-      playback.duration > 0 &&
-      Math.abs(playback.duration - durationRef.current) > 0.5
+      playbackDuration > 0 &&
+      Math.abs(playbackDuration - durationRef.current) > 0.5
     ) {
-      setDuration(playback.duration);
+      setDuration(playbackDuration);
     }
 
     // Update position if not seeking and changed significantly
     if (
       !seekPositionRef.current &&
-      Math.abs(playback.position - positionRef.current) > 0.5
+      Math.abs(playbackPosition - positionRef.current) > 0.5
     ) {
-      setPosition(playback.position);
+      setPosition(playbackPosition);
     }
-  }, [playback.position, playback.duration, setPosition, setDuration]);
+  }, [playbackPosition, playbackDuration, setPosition, setDuration]); // @ai
 
   return {
     position,

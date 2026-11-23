@@ -1,4 +1,3 @@
-import React from 'react';
 import {SheetDefinition, registerSheet} from 'react-native-actions-sheet';
 import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
@@ -32,10 +31,24 @@ import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafReciterPickerSheet} from './MushafReciterPickerSheet'; // @ai
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
-import {WordDetailSheet} from './WordDetailSheet';
+import {RecitationIntroSheet} from './RecitationIntroSheet';
+import {WhichAyahSheet} from './WhichAyahSheet';
+import {RecitationSummarySheet} from './RecitationSummarySheet';
+import {RecitationPracticeSheet} from './RecitationPracticeSheet';
+import {RecitationMistakeSheet} from './RecitationMistakeSheet';
+import type {WordMark} from '@/services/recitation/wordMarks';
+import type {PracticeTarget} from '@/services/recitation/practice/types';
+import type {RecitationSummary} from '@/store/recitationTrackingStore';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
 import {AdhkarSessionOptionsSheet} from './AdhkarSessionOptionsSheet';
 import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
+import type {SurahOptionsPayload} from './options/surahOptions'; // @ai
+import type {PlayerOptionsPayload} from './options/playerOptions'; // @ai
+import type {DownloadOptionsPayload} from './options/downloadOptions'; // @ai
+import type {CollectionOptionsPayload} from './options/collectionOptions'; // @ai
+import type {UploadOptionsPayload} from './options/uploadOptions'; // @ai
+import type {PlaylistOptionsPayload} from './options/playlistOptions'; // @ai
+import type {HomeCardOptionsPayload} from './options/homeCardOptions'; // @ai
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -68,7 +81,15 @@ registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
 registerSheet('mushaf-reciter-picker', MushafReciterPickerSheet); // @ai
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
-registerSheet('word-detail', WordDetailSheet);
+registerSheet('recitation-intro', RecitationIntroSheet);
+registerSheet('which-ayah', WhichAyahSheet);
+registerSheet('recitation-summary', RecitationSummarySheet);
+registerSheet('recitation-practice', RecitationPracticeSheet);
+registerSheet('recitation-mistake', RecitationMistakeSheet);
+// @ai-start
+// The word sheet ('word-detail') was retired: a word long-press opens
+// 'verse-actions' on Word Study at that word.
+// @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);
 
@@ -82,14 +103,7 @@ installRewayahFallbackNotice();
 declare module 'react-native-actions-sheet' {
   interface Sheets {
     'surah-options': SheetDefinition<{
-      payload: {
-        surah: Surah;
-        reciterId?: string;
-        rewayatId?: string;
-        onAddToQueue?: (surah: Surah) => Promise<void>;
-        onRemoveFromPlaylist?: () => void;
-        hideGoToReciter?: boolean;
-      };
+      payload: SurahOptionsPayload; // @ai
     }>;
     'rewayat-info': SheetDefinition<{
       payload: {
@@ -114,13 +128,7 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'playlist-context': SheetDefinition<{
-      payload: {
-        playlistId: string;
-        playlistName: string;
-        playlistColor?: string;
-        onDelete: () => void;
-        onEdit?: () => void;
-      };
+      payload: PlaylistOptionsPayload; // @ai
     }>;
     'create-playlist': SheetDefinition<{
       payload: {
@@ -137,14 +145,7 @@ declare module 'react-native-actions-sheet' {
         | undefined;
     }>;
     'player-options': SheetDefinition<{
-      payload: {
-        surah?: Surah;
-        reciterId?: string;
-        rewayatId?: string;
-        onGoToReciter?: () => void;
-        isUserUpload?: boolean;
-        userRecitationId?: string;
-      };
+      payload: PlayerOptionsPayload; // @ai
     }>;
     'playback-speed': SheetDefinition<{
       payload: {
@@ -178,39 +179,15 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'download-options': SheetDefinition<{
-      payload: {
-        download: import('@/services/player/store/downloadStore').DownloadedSurah;
-        surah: Surah;
-        reciterId: string;
-        rewayatId: string;
-        onPlay: () => void;
-        onAddToQueue: () => void;
-        onRemoveDownload: () => void;
-      };
+      payload: DownloadOptionsPayload; // @ai
     }>;
     'upload-options': SheetDefinition<{
-      payload: {
-        recitation: UploadedRecitation;
-        reciterId: string;
-        onPlay: () => void;
-        onAddToQueue: () => void;
-      };
+      payload: UploadOptionsPayload; // @ai
     }>;
     'add-to-collection': SheetDefinition;
     'ambient-sounds': SheetDefinition;
     'collection-options': SheetDefinition<{
-      payload: {
-        title: string;
-        subtitle?: string;
-        options: Array<{
-          label: string;
-          icon: string;
-          onPress: () => void;
-          destructive?: boolean;
-          disabled?: boolean;
-          customIcon?: React.ReactNode;
-        }>;
-      };
+      payload: CollectionOptionsPayload; // @ai
     }>;
     'verse-actions': SheetDefinition<{
       payload: {
@@ -240,9 +217,28 @@ declare module 'react-native-actions-sheet' {
         // disclosure. Defaults to the mushaf's active rewayah.
         // Required with `unitKeys`: their numbering. @ai
         rewayah?: import('@/store/mushafSettingsStore').RewayahId;
-        // Open on this screen instead of the menu: the card coming back
-        // after the Translations dialog it opened closes. @ai
-        initialScreen?: 'translation' | 'tafseer';
+        // @ai-start
+        /** Open on this screen instead of the action list: Word Study, or
+         *  Translation / Tafsir when the card comes back after the
+         *  Translations dialog it opened closes. */
+        initialScreen?: 'words' | 'translation' | 'tafseer';
+        /** With initialScreen: the word to open on, as a Hafs verse key and
+         *  word-by-word position (the selection's first word when it is not
+         *  one of its words). */
+        word?: {verseKey: string; position: number};
+        /**
+         * Word Study only, for words that are no verse of `rewayah`: the
+         * unnumbered Fatiha basmala of the Madani and Basri counts (Warsh,
+         * Qalun, al-Duri, al-Susi), whose words are Hafs 1:1's. The sheet
+         * opens on Word Study at `word` over the words of the Hafs verse(s)
+         * verseKey / verseKeys name (captioned "Hafs 1:1", as another
+         * rewayah's verse is). It selects no verse, never waits for one
+         * and never shows the verse menu, whose actions act on verses; back
+         * from Word Study closes the sheet (from root search it returns to
+         * Word Study). unitKeys are not read.
+         */
+        wordStudyOnly?: boolean;
+        // @ai-end
       };
     }>;
     'verse-note': SheetDefinition<{
@@ -285,23 +281,19 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'follow-along': SheetDefinition;
-    'word-detail': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        position: number;
-      };
+    'recitation-intro': SheetDefinition<{returnValue: boolean}>;
+    'which-ayah': SheetDefinition;
+    'recitation-summary': SheetDefinition<{
+      payload: {summary: RecitationSummary};
+    }>;
+    'recitation-practice': SheetDefinition<{
+      payload: {target: PracticeTarget};
+    }>;
+    'recitation-mistake': SheetDefinition<{
+      payload: {mark: WordMark};
     }>;
     'home-card-options': SheetDefinition<{
-      payload: {
-        reciterId: string;
-        reciterName: string;
-        surahId?: number;
-        surahName?: string;
-        rewayatId?: string;
-        recentIndex?: number;
-        variant: 'recent' | 'reciter';
-        onContinuePlaying?: () => void;
-      };
+      payload: HomeCardOptionsPayload; // @ai
     }>;
     'adhkar-session-options': SheetDefinition<{
       payload: {

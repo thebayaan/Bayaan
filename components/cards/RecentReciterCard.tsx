@@ -8,11 +8,12 @@ import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
-import {Slider} from '@miblanchard/react-native-slider';
+import {ProgressTrack} from '@/components/ProgressTrack'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {resumeRecent} from '@/services/player/utils/resumeRecent';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useShownPlaybackTime} from '@/services/player/store/progressStore'; // @ai
 import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {useRouter, Link} from 'expo-router';
@@ -20,14 +21,30 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
 import {createStyles} from '@/components/cards/recentCardStyles';
+import {findRecentIndex} from '@/components/cards/recentCardEntry'; // @ai
 // @ai-start
 import {forceLTR} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+// @ai-start
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
+import {
+  HomeCardOptionsMenu,
+  type HomeCardOptionsPayload,
+} from '@/components/sheets/options/homeCardOptions';
+// @ai-end
 // @ai-end
 
 interface RecentReciterCardProps {
   imageUrl?: string;
   reciterName: string;
+  // @ai-start
+  /**
+   * The reciter's catalogue name, which the bundled photos are keyed by.
+   * `reciterName` is what is shown and may be localised; an Arabic name
+   * finds no photo. Falls back to `reciterName`.
+   */
+  imageName?: string;
+  // @ai-end
   surahName: string;
   trackId: string;
   reciterId: string;
@@ -36,7 +53,6 @@ interface RecentReciterCardProps {
   duration: number;
   isRecent?: boolean;
   rewayatId?: string;
-  index: number;
   isUserUpload?: boolean;
   userRecitationId?: string;
   /** Card width. Defaults to RECENT_CARD_WIDTH; iPad shelves pass their own. */
@@ -47,6 +63,7 @@ interface RecentReciterCardProps {
 export const RecentReciterCard = ({
   imageUrl,
   reciterName,
+  imageName = reciterName,
   surahName,
   reciterId,
   surahId,
@@ -54,27 +71,28 @@ export const RecentReciterCard = ({
   duration,
   isRecent = false,
   rewayatId,
-  index,
   isUserUpload,
   userRecitationId,
   width,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
-  const {updateQueue} = usePlayerActions();
+  const {updateQueue, play, pause} = usePlayerActions();
   const router = useRouter();
   // Single consolidated subscription with shallow equality
-  const {playbackStatus, currentIndex, tracks, storePosition, storeDuration} =
-    usePlayerStore(
-      state => ({
-        playbackStatus: state.playback.state,
-        currentIndex: state.queue.currentIndex,
-        tracks: state.queue.tracks,
-        storePosition: state.playback.position,
-        storeDuration: state.playback.duration,
-      }),
-      shallow,
-    );
+  const {playbackStatus, currentIndex, tracks} = usePlayerStore(
+    state => ({
+      playbackStatus: state.playback.state,
+      currentIndex: state.queue.currentIndex,
+      tracks: state.queue.tracks,
+    }),
+    shallow,
+  );
+  // @ai-start
+  // Held at the shown values in the background (see useShownPlaybackTime).
+  const {position: storePosition, duration: storeDuration} =
+    useShownPlaybackTime();
+  // @ai-end
 
   // Check if this specific card represents the currently active track in the player
   const isCurrentlyPlaying = useMemo(() => {
@@ -164,97 +182,121 @@ export const RecentReciterCard = ({
       ? storePosition / storeDuration
       : progress;
 
-  // Resume playback
-  const handlePlayPress = useCallback(async () => {
-    try {
-      // Handle upload tracks
-      if (isUserUpload && userRecitationId) {
-        const recitation = useUploadsStore
-          .getState()
-          .recitations.find(r => r.id === userRecitationId);
-        if (!recitation) {
-          console.error('Could not find uploaded recitation');
+  // Resume playback. A tap on the card may pause; the menu's "Continue
+  // playing" never does.
+  const resume = useCallback(
+    async (pauseIfPlaying: boolean) => {
+      try {
+        // Already in the player: the card plays and pauses it, like the mini
+        // player and the iPad hero. Resuming it again reloaded the stream (an
+        // audible gap) and replaced the queue it was playing from, a playlist
+        // say, with this reciter's whole list.
+        if (isCurrentlyPlaying) {
+          const audible =
+            playbackStatus === 'playing' || playbackStatus === 'buffering';
+          if (!audible) await play();
+          else if (pauseIfPlaying) await pause();
           return;
         }
-        const uploadTrack = createUserUploadTrack(recitation);
-        const startPosition =
-          isCurrentlyPlaying && storePosition >= 0
-            ? storePosition
-            : progress * duration;
-        await updateQueue([uploadTrack], 0, startPosition);
-        useRecentlyPlayedStore.getState().resumeChain(index);
-        return;
-      }
 
-      const startPosition =
-        isCurrentlyPlaying && storePosition >= 0
-          ? storePosition
-          : progress * duration;
+        const startPosition = progress * duration;
 
-      if (__DEV__)
-        console.log('[RecentReciterCard] Resume debug:', {
-          isCurrentlyPlaying,
-          storePosition,
-          progress,
-          duration,
+        // Handle upload tracks
+        if (isUserUpload && userRecitationId) {
+          const recitation = useUploadsStore
+            .getState()
+            .recitations.find(r => r.id === userRecitationId);
+          if (!recitation) {
+            console.error('Could not find uploaded recitation');
+            return;
+          }
+          const uploadTrack = createUserUploadTrack(recitation);
+          await updateQueue([uploadTrack], 0, startPosition);
+          // @ai-start
+          // The entry's place in the full recents list. The card's place on
+          // Home is not it when the list holds an entry Home leaves out.
+          useRecentlyPlayedStore
+            .getState()
+            .resumeChain(findRecentIndex({reciterId, userRecitationId}));
+          // @ai-end
+          return;
+        }
+
+        if (__DEV__)
+          console.log('[RecentReciterCard] Resume debug:', {
+            progress,
+            duration,
+            startPosition,
+          });
+
+        await resumeRecent({
+          reciterId,
+          surahId,
+          rewayatId,
           startPosition,
+          recentIndex: findRecentIndex({reciterId, surahId, rewayatId}), // @ai
+          updateQueue,
         });
-
-      await resumeRecent({
-        reciterId,
-        surahId,
-        rewayatId,
-        startPosition,
-        recentIndex: index,
-        updateQueue,
-      });
-    } catch (error) {
-      console.error('Error playing surah:', error);
-    }
-  }, [
-    reciterId,
-    surahId,
-    isCurrentlyPlaying,
-    storePosition,
-    progress,
-    duration,
-    updateQueue,
-    index,
-    rewayatId,
-    isUserUpload,
-    userRecitationId,
-  ]);
+      } catch (error) {
+        console.error('Error playing surah:', error);
+      }
+    },
+    [
+      reciterId,
+      surahId,
+      isCurrentlyPlaying,
+      playbackStatus,
+      progress,
+      duration,
+      updateQueue,
+      play,
+      pause,
+      rewayatId,
+      isUserUpload,
+      userRecitationId,
+    ],
+  );
+  const handlePlayPress = useCallback(() => resume(true), [resume]);
+  const handleContinuePlaying = useCallback(() => resume(false), [resume]);
 
   // Long press options
+  // @ai-start
+  const optionsPayload = useMemo<HomeCardOptionsPayload>(
+    () => ({
+      reciterId,
+      reciterName,
+      surahId,
+      surahName,
+      rewayatId,
+      userRecitationId: isUserUpload ? userRecitationId : undefined, // @ai
+      variant: 'recent',
+      onContinuePlaying: handleContinuePlaying,
+    }),
+    [
+      reciterId,
+      reciterName,
+      surahId,
+      surahName,
+      rewayatId,
+      isUserUpload,
+      userRecitationId,
+      handleContinuePlaying,
+    ],
+  );
+  // On iPad the card is a context menu (long press or secondary click).
+  const contextMenu = useNativeOptionsMenu('longPress');
   const handleLongPress = useCallback(() => {
-    SheetManager.show('home-card-options', {
-      payload: {
-        reciterId,
-        reciterName,
-        surahId,
-        surahName,
-        rewayatId,
-        recentIndex: index,
-        variant: 'recent',
-        onContinuePlaying: handlePlayPress,
-      },
-    });
-  }, [
-    reciterId,
-    reciterName,
-    surahId,
-    surahName,
-    rewayatId,
-    index,
-    handlePlayPress,
-  ]);
+    SheetManager.show('home-card-options', {payload: optionsPayload});
+  }, [optionsPayload]);
+  const onLongPress = contextMenu ? undefined : handleLongPress;
+  // @ai-end
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
 
   const CardWrapper = USE_GLASS ? GlassView : View;
 
-  return (
+  const card = (
     <CardWrapper
       style={[
         styles.container,
@@ -293,10 +335,10 @@ export const RecentReciterCard = ({
       {/* Image box — matches playback zone spacing */}
       <View style={styles.imageContainer}>
         {isUserUpload ? (
-          <Pressable onPress={handlePlayPress} onLongPress={handleLongPress}>
+          <Pressable onPress={handlePlayPress} onLongPress={onLongPress}>
             <ReciterImage
               imageUrl={imageUrl}
-              reciterName={reciterName}
+              reciterName={imageName}
               style={styles.image}
               profileIconSize={moderateScale(40)}
             />
@@ -308,12 +350,12 @@ export const RecentReciterCard = ({
               params: {id: reciterId},
             }}
             asChild>
-            <Pressable onLongPress={handleLongPress}>
+            <Pressable onLongPress={onLongPress}>
               {USE_GLASS ? (
                 <Link.AppleZoom>
                   <ReciterImage
                     imageUrl={imageUrl}
-                    reciterName={reciterName}
+                    reciterName={imageName}
                     style={styles.image}
                     profileIconSize={moderateScale(40)}
                   />
@@ -321,7 +363,7 @@ export const RecentReciterCard = ({
               ) : (
                 <ReciterImage
                   imageUrl={imageUrl}
-                  reciterName={reciterName}
+                  reciterName={imageName}
                   style={styles.image}
                   profileIconSize={moderateScale(40)}
                 />
@@ -339,7 +381,7 @@ export const RecentReciterCard = ({
       {/* Bottom zone: Playback controls — resumes audio */}
       <Pressable
         onPress={handlePlayPress}
-        onLongPress={handleLongPress}
+        onLongPress={onLongPress}
         style={({pressed}) => [
           styles.playbackZone,
           pressed && styles.playbackZonePressed,
@@ -368,26 +410,28 @@ export const RecentReciterCard = ({
               />
             )}
           </View>
-          <Slider
+          <ProgressTrack
             value={currentSliderProgress}
-            disabled={true}
-            minimumTrackTintColor={Color(theme.colors.text)
-              .alpha(0.35)
-              .toString()}
-            maximumTrackTintColor={Color(theme.colors.text)
-              .alpha(0.08)
-              .toString()}
-            trackStyle={{
-              height: moderateScale(3),
-              borderRadius: moderateScale(2),
-            }}
-            thumbStyle={{height: 0, width: 0}}
-            containerStyle={styles.sliderContainer}
+            fillColor={Color(theme.colors.text).alpha(0.35).toString()}
+            trackColor={Color(theme.colors.text).alpha(0.08).toString()}
+            style={styles.sliderContainer}
           />
           <Text style={styles.timeRemaining}>{timeRemaining}</Text>
         </View>
       </Pressable>
     </CardWrapper>
   );
+
+  // @ai-start
+  return contextMenu ? (
+    <HomeCardOptionsMenu
+      payload={optionsPayload}
+      style={width != null ? {width} : undefined}>
+      {card}
+    </HomeCardOptionsMenu>
+  ) : (
+    card
+  );
+  // @ai-end
 };
 // @ai-end

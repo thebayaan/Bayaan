@@ -18,6 +18,8 @@ interface PlaylistHeaderProps {
   onPlayPress: () => void;
   onShufflePress: () => void;
   onOptionsPress?: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
   theme: Theme;
 }
 
@@ -28,6 +30,7 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
   onPlayPress,
   onShufflePress,
   onOptionsPress,
+  optionsMenu,
   theme,
 }) => {
   const insets = useSafeAreaInsets();
@@ -79,6 +82,7 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
               size={moderateScale(20)}
               color={theme.colors.text}
             />
+            {optionsMenu}
           </Pressable>
         )}
         <Pressable

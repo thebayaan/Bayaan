@@ -15,6 +15,8 @@ import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
 import {Share} from 'react-native';
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('@shopify/react-native-skia', () => ({
   useCanvasRef: () => ({current: null}),
 }));
@@ -101,6 +103,7 @@ import {ShareContent} from '../ShareContent';
 import {shareUrl} from '@/utils/shareUtils';
 import {showToast} from '@/utils/toastUtils';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import branding from '@/config/branding'; // @ai
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {
   buildRewayahVerseUnits,
@@ -111,7 +114,7 @@ import {
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
-const BASE = 'https://app.thebayaan.com';
+const BASE = branding.shareBaseUrl; // @ai: the host shareUrl() reads (RFC-007)
 
 const fixture =
   require('@/services/mushaf/__fixtures__/verseUnitsFixture.json') as {

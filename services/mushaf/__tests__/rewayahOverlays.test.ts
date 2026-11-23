@@ -86,6 +86,7 @@ import {
   computeVerseDiffRanges,
 } from '@/components/player/v2/PlayerContent/QuranView/verseOverlays';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {slotTajweedSegments} from '@/utils/quranWordPositions';
 
 const dk = digitalKhattDataService as unknown as FakeDKService;
 const tajweed = fixture.tajweed;
@@ -301,11 +302,9 @@ describe('TajweedMappingService.getLineTajweedMap (Hafs QPC data)', () => {
         for (const {info, offset} of legacyLineWords(page, lineIndex)) {
           const words = tajweed[info.verseKey];
           if (!words) continue;
-          const tw = words.find(
-            w => Number(w.location.split(':')[2]) === info.wordPositionInVerse,
-          );
-          const rules = tw
-            ? alignWordTajweed(info.text, tw.segments)
+          const segments = slotTajweedSegments(words, info.wordPositionInVerse);
+          const rules = segments
+            ? alignWordTajweed(info.text, segments)
             : detectWordTafkhim(info.text);
           rules?.forEach((rule, i) => old.set(offset + i, rule));
         }
@@ -315,6 +314,46 @@ describe('TajweedMappingService.getLineTajweedMap (Hafs QPC data)', () => {
       }
     }
     expect(colored).toBeGreaterThan(1000);
+  });
+
+  it('colours «إِلْ يَاسِينَ» (37:130), one slot for two QPC words, from both', () => {
+    dk.load('hafs');
+    clearVerseTajweedCache();
+    const word =
+      dk.getVerseWords('37:130').find(w => w.wordPositionInVerse === 3)?.text ??
+      '';
+    expect(word.split(' ')).toHaveLength(2);
+    // QPC word 4, يَاسِينَ, marks ِي after يَاس as madda_permissible.
+    const madd = word.indexOf('يَاس') + 'يَاس'.length;
+    // Offsets in the word of the madd rules painted inside it.
+    const maddIn = (text: string, map: Map<number, string> | null) => {
+      const start = text.indexOf(word);
+      expect(start).toBeGreaterThanOrEqual(0);
+      return [...(map ?? new Map<number, string>())]
+        .filter(
+          ([i, rule]) =>
+            rule === 'madda_permissible' &&
+            i >= start &&
+            i < start + word.length,
+        )
+        .map(([i]) => i - start)
+        .sort((a, b) => a - b);
+    };
+    const verseText = layoutWords(dk.getVerseWords('37:130')).text;
+    expect(maddIn(verseText, getVerseTajweedMap('37:130', tajweed))).toEqual([
+      madd,
+      madd + 1,
+    ]);
+    const page = findPage(451);
+    const lineIndex =
+      ayahLines(page).find(i => lineText(page, i).includes(word)) ?? -1;
+    expect(lineIndex).toBeGreaterThanOrEqual(0);
+    expect(
+      maddIn(
+        lineText(page, lineIndex),
+        getLineTajweedMap(page.page, lineIndex, tajweed),
+      ),
+    ).toEqual([madd, madd + 1]);
   });
 
   it('never paints Hafs tajweed on non-Hafs text', () => {
@@ -342,12 +381,12 @@ describe('DigitalKhattVerseTajweedService.getVerseTajweedMap', () => {
       // same rules as aligning each word at its span start
       const expected = new Map<number, string>();
       for (const span of layoutWords(words).spans) {
-        const tw = tajweed[verseKey].find(
-          w =>
-            Number(w.location.split(':')[2]) === span.item.wordPositionInVerse,
+        const segments = slotTajweedSegments(
+          tajweed[verseKey],
+          span.item.wordPositionInVerse,
         );
-        const rules = tw
-          ? alignWordTajweed(span.text, tw.segments)
+        const rules = segments
+          ? alignWordTajweed(span.text, segments)
           : detectWordTafkhim(span.text);
         rules?.forEach((rule, i) => expected.set(span.start + i, rule));
       }

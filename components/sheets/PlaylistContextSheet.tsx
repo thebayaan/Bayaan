@@ -7,13 +7,17 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlaylistsStore} from '@/store/playlistsStore';
-import {downloadSurah} from '@/services/downloadService';
+// @ai-start
+import {downloadFailureReason, downloadSurah} from '@/services/downloadService';
+import {useNetworkStore} from '@/store/networkStore';
+// @ai-end
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {CheckIcon} from '@/components/Icons';
 import {Ionicons} from '@expo/vector-icons';
@@ -85,6 +89,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
         reciterId: string;
         surahId: string;
         rewayatId?: string;
+        userRecitationId?: string;
       };
     }>
   >([]);
@@ -100,6 +105,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
           reciterId: item.reciterId,
           surahId: item.surahId,
           rewayatId: item.rewayatId,
+          userRecitationId: item.userRecitationId,
         },
       }));
       setPlaylistData(transformedData);
@@ -124,26 +130,18 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   }, [onEdit, handleClose]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
-      t('playlistContext.deleteTitle'),
-      t('playlistContext.deleteMessage', {name: playlistName}),
-      [
-        {
-          text: t('common:actions.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('common:actions.delete'),
-          style: 'destructive',
-          onPress: () => {
-            if (onDelete) {
-              onDelete();
-            }
-            handleClose();
-          },
-        },
-      ],
-    );
+    confirmDestructive({
+      title: t('playlistContext.deleteTitle'),
+      message: t('playlistContext.deleteMessage', {name: playlistName}),
+      confirmText: t('common:actions.delete'),
+      cancelText: t('common:actions.cancel'),
+      onConfirm: () => {
+        if (onDelete) {
+          onDelete();
+        }
+        handleClose();
+      },
+    });
   }, [playlistName, onDelete, handleClose, t]);
 
   const handleDownloadPlaylist = useCallback(async () => {
@@ -175,6 +173,10 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
       }
 
       const itemsToDownload = playlistItems.filter(item => {
+        // The user's own uploads are already on the device. Downloading
+        // "their" surah fetched the tagged reciter's catalogue recording
+        // instead, a file the playlist never plays.
+        if (item.userRecitationId) return false;
         if (item.rewayatId) {
           return !isDownloadedWithRewayat(
             item.reciterId,
@@ -206,6 +208,10 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
         setDownloadProgressState(progress);
       }
 
+      let downloadedCount = 0;
+      let failedCount = 0;
+      let lastFailure: unknown;
+
       const downloadItem = async (
         item: (typeof itemsToDownload)[0],
         index: number,
@@ -224,6 +230,19 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
           : isDownloading(item.reciterId, item.surahId);
 
         if (isCurrentlyDownloading) {
+          return;
+        }
+
+        // A playlist can hold the same recitation twice. Its first copy has
+        // just been downloaded; do not fetch the file again for the second.
+        const alreadyDownloaded = item.rewayatId
+          ? isDownloadedWithRewayat(
+              item.reciterId,
+              item.surahId,
+              item.rewayatId,
+            )
+          : isDownloaded(item.reciterId, item.surahId);
+        if (alreadyDownloaded) {
           return;
         }
 
@@ -276,6 +295,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
             downloadDate: Date.now(),
             status: 'completed',
           });
+          downloadedCount += 1;
 
           clearDownloading(downloadId);
 
@@ -291,6 +311,8 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
         } catch (error) {
           console.error(`Failed to download surah ${surahId}:`, error);
           clearDownloading(downloadId);
+          failedCount += 1;
+          lastFailure = error;
         }
       };
 
@@ -322,13 +344,39 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
               total: 0,
               percentage: 0,
             });
-            Alert.alert(
-              t('playlistContext.completeTitle'),
-              t('playlistContext.completeMessage', {
-                count: itemsToDownload.length,
-                name: playlistName,
-              }),
-            );
+            // Say what really happened. This used to announce "Successfully
+            // downloaded N items" whatever the outcome, also when every
+            // item had failed (for instance offline).
+            if (failedCount === 0) {
+              if (downloadedCount > 0) {
+                Alert.alert(
+                  t('playlistContext.completeTitle'),
+                  t('playlistContext.completeMessage', {
+                    count: downloadedCount,
+                    name: playlistName,
+                  }),
+                );
+              }
+            } else if (downloadedCount > 0) {
+              Alert.alert(
+                t('playlistContext.partialTitle'),
+                t('playlistContext.partialMessage', {
+                  downloaded: downloadedCount,
+                  total: downloadedCount + failedCount,
+                  name: playlistName,
+                }),
+              );
+            } else {
+              const offline =
+                downloadFailureReason(lastFailure) === 'offline' ||
+                !useNetworkStore.getState().isOnline;
+              Alert.alert(
+                t('playlistContext.failedTitle'),
+                offline
+                  ? t('options.downloadOfflineHint')
+                  : t('playlistContext.failedMessage'),
+              );
+            }
           }
         }, 500);
       } else {
@@ -365,6 +413,17 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
     isDownloading,
     isDownloadingWithRewayat,
   ]);
+
+  // @ai-start
+  // "Download" in a tablet's native menu opens this sheet to show progress.
+  const startDownload = !!payload?.startDownload;
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!startDownload || startedRef.current) return;
+    startedRef.current = true;
+    handleDownloadPlaylist();
+  }, [startDownload, handleDownloadPlaylist]);
+  // @ai-end
 
   if (!playlistId) {
     return null;

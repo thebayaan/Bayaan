@@ -92,7 +92,7 @@ it('round-trips through AsyncStorage and clears on null', async () => {
 it('restores as paused at the saved dhikr', async () => {
   jest.spyOn(Date, 'now').mockReturnValue(at(11));
   await saveSession(live);
-  await restoreSavedSession(async () => items);
+  await restoreSavedSession(async () => ({items, title: 'Morning Adhkar'})); // @ai
   expect(useAdhkarSessionStore.getState().session).toMatchObject({
     index: 1,
     status: 'paused',
@@ -101,18 +101,61 @@ it('restores as paused at the saved dhikr', async () => {
   });
 });
 
+// @ai-start
+it('keeps the clip length with the position across a restart', async () => {
+  jest.spyOn(Date, 'now').mockReturnValue(at(11));
+  await saveSession({...live, positionSec: 30, durationSec: 40});
+  expect(await loadSavedSession()).toMatchObject({
+    positionSec: 30,
+    durationSec: 40,
+  });
+  await restoreSavedSession(async () => ({items, title: 'Morning Adhkar'})); // @ai
+  expect(useAdhkarSessionStore.getState().session).toMatchObject({
+    status: 'paused',
+    positionSec: 30,
+    durationSec: 40,
+  });
+});
+
+it('rejects a saved session whose clip length is not a number', async () => {
+  await AsyncStorage.setItem(
+    'adhkar-session-v1',
+    JSON.stringify({...saved(), durationSec: 'long'}),
+  );
+  expect(await loadSavedSession()).toBeNull();
+});
+// @ai-end
+
 it('drops a saved session whose dhikr no longer exists', async () => {
   jest.spyOn(Date, 'now').mockReturnValue(at(11));
   await saveSession(live);
-  await restoreSavedSession(async () => [items[0]]);
+  // @ai-start
+  await restoreSavedSession(async () => ({
+    items: [items[0]],
+    title: 'Morning Adhkar',
+  }));
+  // @ai-end
   expect(useAdhkarSessionStore.getState().session).toBeNull();
   expect(await loadSavedSession()).toBeNull();
 });
 
+// @ai-start
+// The title is saved in the language the app was in then. Restored after a
+// switch to Arabic, the player kept the English title.
+it("restores with the list's title in the current language", async () => {
+  jest.spyOn(Date, 'now').mockReturnValue(at(11));
+  await saveSession(live);
+  await restoreSavedSession(async () => ({items, title: 'أذكار الصباح'}));
+  expect(useAdhkarSessionStore.getState().session?.listTitle).toBe(
+    'أذكار الصباح',
+  );
+});
+// @ai-end
+
 it('drops a stale saved session', async () => {
   jest.spyOn(Date, 'now').mockReturnValue(at(16));
   await saveSession(live);
-  await restoreSavedSession(async () => items);
+  await restoreSavedSession(async () => ({items, title: 'Morning Adhkar'})); // @ai
   expect(useAdhkarSessionStore.getState().session).toBeNull();
 });
 

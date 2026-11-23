@@ -18,6 +18,8 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useReciterStore} from '@/store/reciterStore';
 import {useThemeStore} from '@/store/themeStore';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService'; // @ai
+import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore'; // @ai
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
 import {getReciterByIdSync} from '@/services/dataService';
 import {getReciterArtwork} from '@/utils/artworkUtils';
@@ -152,6 +154,15 @@ export function flushWidgetSnapshot(forceContinueListening = false): void {
       JSON.stringify(prev?.adhkar ?? null) !== JSON.stringify(next.adhkar); // @ai
     if (kinds.length === 0 && !adhkarChanged) return; // @ai
     writeSnapshot(next);
+    // @ai-start
+    // A snapshot taken before the Mushaf data loads shows this line again.
+    if (changed.includes('ContinueReading') && next.lastRead?.openingText) {
+      mushafSessionStore.setLastOpeningText(
+        next.lastRead.page,
+        next.lastRead.openingText,
+      );
+    }
+    // @ai-end
     reloadWidgets(enabledKinds(kinds));
     lastSnapshot = next;
     notifySnapshotListeners(prev, next);
@@ -245,6 +256,9 @@ export function startWidgetSync(): () => void {
     useRecentlyPlayedStore.subscribe(schedule),
     useReciterStore.subscribe(schedule),
     useThemeStore.subscribe(schedule),
+    // The Mushaf data loads after the splash, so the first snapshot can have no
+    // verse text, and no store changes when it is ready. @ai
+    digitalKhattDataService.subscribeCacheChanges(schedule),
     useAdhkarSessionStore.subscribe(schedule), // @ai
   ];
   const appState = AppState.addEventListener('change', state => {

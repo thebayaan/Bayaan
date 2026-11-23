@@ -61,8 +61,10 @@ interface DefaultReciterPick {
 /**
  * The user's pick, and the only reciter state that is saved. It changes only
  * when the user picks, so loading the catalog can never write over it.
+ * Exported for the foreground retry (services/persistedStores); the app reads
+ * the pick through useReciterStore.
  */
-const useDefaultReciterPick = create<DefaultReciterPick>()(
+export const useDefaultReciterPick = create<DefaultReciterPick>()(
   persist((): DefaultReciterPick => ({defaultReciterId: null}), {
     name: 'reciter-storage',
     storage: persistStorage(),

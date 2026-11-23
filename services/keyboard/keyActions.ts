@@ -1,5 +1,6 @@
 // @ai-generated
 import {SheetManager, getSheetStack} from 'react-native-actions-sheet';
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying'; // @ai
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
@@ -35,7 +36,8 @@ function ready() {
 export function togglePlayback(): void {
   const player = ready();
   if (!player) return;
-  if (player.playback.state === 'playing') player.pause();
+  // @ai As the play button: a stalled stream ('buffering') is playing.
+  if (isActivelyPlaying(player.playback.state)) player.pause();
   else player.play();
 }
 
@@ -52,7 +54,11 @@ export function skipTrack(direction: 1 | -1): void {
   if (!player) return;
   if (direction === -1) {
     player.skipToPrevious();
-  } else if (player.queue.currentIndex < player.queue.tracks.length - 1) {
+  } else if (
+    player.queue.currentIndex < player.queue.tracks.length - 1 ||
+    // @ai Repeat All goes round to the first track, as the next button does.
+    player.settings.repeatMode === 'queue'
+  ) {
     player.skipToNext();
   }
 }

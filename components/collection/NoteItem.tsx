@@ -25,6 +25,8 @@ interface NoteItemProps {
   rewayahId?: RewayahId;
   onPress: () => void;
   onOptionsPress: () => void;
+  /** A native menu laid over the ••• button on tablets. @ai */
+  optionsMenu?: React.ReactNode;
 }
 
 // @ai-start
@@ -39,6 +41,7 @@ export const NoteItem = memo<NoteItemProps>(
     rewayahId,
     onPress,
     onOptionsPress,
+    optionsMenu,
   }) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -108,6 +111,7 @@ export const NoteItem = memo<NoteItemProps>(
               size={moderateScale(18)}
               color={theme.colors.textSecondary}
             />
+            {optionsMenu}
           </Pressable>
         </View>
 

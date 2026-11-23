@@ -107,6 +107,32 @@ jest.mock('@/utils/skiaTextWeight', () => ({
   createTextStrokePaint: () => undefined,
 }));
 
+// The line-fit store of services/mushaf/lineFitCache.ts, which keeps fits
+// across launches, counting each fit read.
+const mockStore = {data: new Map<string, unknown>(), fitReads: 0};
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    get length() {
+      return mockStore.data.size;
+    },
+    getString: (key: string) => {
+      if (key !== '#version') mockStore.fitReads += 1;
+      const value = mockStore.data.get(key);
+      return typeof value === 'string' ? value : undefined;
+    },
+    set: (key: string, value: unknown) => {
+      mockStore.data.set(key, value);
+    },
+    clearAll: () => {
+      mockStore.data.clear();
+    },
+  }),
+}));
+jest.mock('expo-updates', () => ({
+  __esModule: true,
+  updateId: 'aaaaaaaa-0000-4000-8000-000000000000',
+}));
+
 // One line of four tokens (the third a verse marker): two simple spaces, then
 // an aya space. 11 letters: 110 px in the mock.
 const LINE = 'ابت جحخ ۝١ دذر';
@@ -143,10 +169,10 @@ jest.mock('@/services/mushaf/QuranTextService', () => {
 });
 
 import SkiaLine from '../SkiaLine';
+import {clearLineFits, openLineFitCache} from '@/services/mushaf/lineFitCache';
 import {
   clampBandToSlot,
   clampRectToBand,
-  clearLineFits,
   fitWordSize,
   isNaturalWidthLine,
   naturalJustification,
@@ -197,8 +223,19 @@ function renderLine(
 const spaceSizes = (b: MockBuilt) =>
   b.chunks.filter(c => c.text === ' ').map(c => c.style.fontSize);
 
+beforeAll(() => {
+  // The store is on in release and preview builds only.
+  const devFlag = globalThis as unknown as {__DEV__: boolean};
+  const devAtStart = devFlag.__DEV__;
+  devFlag.__DEV__ = false;
+  openLineFitCache();
+  devFlag.__DEV__ = devAtStart;
+});
+
 beforeEach(() => {
   clearLineFits();
+  mockStore.data.clear();
+  mockStore.fitReads = 0;
   mockSkia.built = [];
   mockSkia.shapingLoss = 0;
   mockSkia.rectsForRange = () => [];
@@ -399,11 +436,12 @@ describe('SkiaLine justified spaces', () => {
     expect(mockSkia.built[1].width).toBeCloseTo(122);
   });
 
-  it('builds a line that fits once', () => {
+  it('builds a line that fits once, and does not store its fit', () => {
     mockSkia.shapingLoss = 0.2; // within the quarter-pixel tolerance
     renderLine(WIDENED);
 
     expect(mockSkia.built).toHaveLength(1);
+    expect(mockStore.data.size).toBe(0);
   });
 
   it('keeps a shrunk line that fits at the words size and spacing', () => {
@@ -507,6 +545,37 @@ describe('SkiaLine justified spaces', () => {
     });
     expect(mockSkia.built).toHaveLength(3);
     expect(mockSkia.built[2].width).toBeCloseTo(122);
+  });
+
+  it('builds a line once on the launch after it was fitted, and reads the store once', () => {
+    mockSkia.shapingLoss = 4;
+    renderLine(WIDENED);
+    expect(mockSkia.built).toHaveLength(2); // measured, then fitted
+    const fitted = mockSkia.built[1];
+
+    // The next launch: the session map is empty, the stored fit stays.
+    clearLineFits();
+    mockSkia.built = [];
+    mockStore.fitReads = 0;
+    const tree = renderLine(WIDENED);
+    expect(mockSkia.built).toHaveLength(1);
+    expect(spaceSizes(mockSkia.built[0])).toEqual(spaceSizes(fitted));
+
+    // Three colour changes, as verse highlights during playback do.
+    for (const textColor of ['#111111', '#222222', '#333333']) {
+      act(() => {
+        tree.update(
+          <SkiaLine
+            {...baseProps}
+            textColor={textColor}
+            justResult={{fontFeatures: new Map(), ...WIDENED}}
+          />,
+        );
+      });
+    }
+    expect(mockSkia.built).toHaveLength(4);
+    for (const b of mockSkia.built) expect(b.width).toBeCloseTo(122);
+    expect(mockStore.fitReads).toBe(1);
   });
 
   it('fits again when the width the line fills changes', () => {

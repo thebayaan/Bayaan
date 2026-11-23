@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useSyncExternalStore,
 } from 'react';
-import {View, Platform} from 'react-native';
+import {View} from 'react-native';
 import {
   Canvas,
   Skia,
@@ -14,8 +14,7 @@ import {
   type SkTypefaceFontProvider, // @ai
 } from '@shopify/react-native-skia';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
-import {Gesture, GestureDetector} from 'react-native-gesture-handler';
-import {runOnJS} from 'react-native-worklets';
+import {GestureDetector} from 'react-native-gesture-handler';
 import {
   quranTextService,
   PAGE_WIDTH,
@@ -64,8 +63,13 @@ import {
   computeUnitPageHighlightLayers,
 } from './verseHighlightLayers';
 import {usePlaybackBand} from './playbackBand';
+import {useRecitationLineHighlights} from './useRecitationLineHighlights';
+import {useWordFlashHighlights} from './useWordFlashHighlights'; // @ai
+import {useRecitationHiddenText} from './useRecitationHiddenText';
+import {useRecitationMarkColors} from './useRecitationMarkColors';
 import {usePlaybackBasmalaSurah} from '@/store/mushafPlayerStore'; // @ai
-import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
+import {usePageTextGestures, type PageTextLayout} from './usePageTextGestures';
+import {usePageHighlightColors} from './usePageHighlightColors';
 // @ai-end
 import {
   SCREEN_WIDTH as DEFAULT_SCREEN_WIDTH,
@@ -78,11 +82,6 @@ import {
   calculateLineYPositions,
   canvasBottomOverflow, // @ai
 } from '../constants';
-
-interface ParagraphInfo {
-  paragraph: SkParagraph;
-  xPos: number;
-}
 
 // @ai-start
 /** A page layout and the key of the text, font and size it belongs to. */
@@ -149,6 +148,8 @@ interface SkiaPageProps {
   baseLineHeight?: number;
   paddingHorizontal?: number;
   paddingTop?: number;
+  /** @ai `centerShortPages` of the layout metrics from `getMushafLayout`. */
+  centerShortPages?: boolean;
 }
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
@@ -165,6 +166,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   baseLineHeight: propBaseLineHeight,
   paddingHorizontal: propPaddingHorizontal,
   paddingTop: propPaddingTop,
+  centerShortPages = true, // @ai
 }) => {
   const SCREEN_WIDTH = propScreenWidth ?? DEFAULT_SCREEN_WIDTH;
   const SCREEN_HEIGHT = propScreenHeight ?? DEFAULT_SCREEN_HEIGHT;
@@ -302,9 +304,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // first verse): its basmallah line is painted as a recited verse is.
   const basmalaSurah = usePlaybackBasmalaSurah();
 
-  // Paragraph references for hit testing
-  const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
-
   // onReady tracking; refs keep handleParagraphReady callback stable
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -394,8 +393,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         pageNumber,
         CONTENT_HEIGHT,
         BASE_LINE_HEIGHT,
+        centerShortPages, // @ai
       ),
-    [pageLines, pageNumber, CONTENT_HEIGHT, BASE_LINE_HEIGHT],
+    [pageLines, pageNumber, CONTENT_HEIGHT, BASE_LINE_HEIGHT, centerShortPages],
   );
 
   // Tajweed char-to-rule maps per line (Hafs text only; see pageOverlays).
@@ -490,9 +490,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const expectedLineCountRef = useRef(expectedLineCount);
   expectedLineCountRef.current = expectedLineCount;
 
-  // Clear paragraph map and reset ready state when page changes
+  // Reset ready state when page changes (the hit test's paragraphs start
+  // empty too: usePageTextGestures)
   useEffect(() => {
-    paragraphMapRef.current.clear();
     readyFiredRef.current = false;
   }, [pageNumber]);
 
@@ -509,33 +509,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     }
   }, [expectedLineCount, fontMgr, justResults]);
 
-  // Callback for SkiaLine to register its paragraph
-  const handleParagraphReady = useCallback(
-    (lineIndex: number, paragraph: SkParagraph, xPos: number) => {
-      paragraphMapRef.current.set(lineIndex, {paragraph, xPos});
-
-      // Fire onReady once all expected paragraphs have reported in
-      if (
-        !readyFiredRef.current &&
-        paragraphMapRef.current.size >= expectedLineCountRef.current
-      ) {
-        readyFiredRef.current = true;
-        onReadyRef.current?.();
-      }
-    },
-    [],
-  );
-
-  // Callback for SkiaLine to evict its paragraph from the hit-test map right
-  // before it disposes the native memory. Without this, a line that recomputes
-  // to null or unmounts (page still mounted) would leave a freed pointer in the
-  // map, since the map is otherwise only cleared on a pageNumber change. The
-  // recompute-to-new-paragraph case re-registers via handleParagraphReady in
-  // the same commit (effects flush after cleanups), so it stays consistent.
-  const handleParagraphDisposed = useCallback((lineIndex: number) => {
-    paragraphMapRef.current.delete(lineIndex);
-  }, []);
-
   // Find which line a Y coordinate falls within
   const findLineAtY = useCallback(
     (canvasY: number): number => {
@@ -551,121 +524,61 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       }
       return -1;
     },
-    [lineYPositions],
-  );
-
-  // @ai — the line and character under a touch point (this renderer's
-  // paragraph metrics); which verse unit that is: useVerseUnitDragSelect.
-  const charAtPoint = useCallback(
-    (eventX: number, eventY: number): LineCharHit | null => {
-      const canvasX = eventX - (contentMarginLeft ?? PAGE_PADDING_HORIZONTAL);
-      const canvasY = eventY - PAGE_PADDING_TOP;
-
-      if (
-        canvasX < 0 ||
-        canvasX > CONTENT_WIDTH ||
-        canvasY < 0 ||
-        canvasY > CONTENT_HEIGHT
-      ) {
-        return null;
-      }
-
-      const lineIndex = findLineAtY(canvasY);
-      if (lineIndex < 0) return null;
-
-      const line = pageLines[lineIndex];
-      if (!line || line.line_type === 'surah_name') return null;
-
-      const paragraphInfo = paragraphMapRef.current.get(lineIndex);
-      if (!paragraphInfo) return null;
-
-      const paragraphX = canvasX - paragraphInfo.xPos;
-      const paragraphY = canvasY - lineYPositions[lineIndex];
-
-      const charIndex = paragraphInfo.paragraph.getGlyphPositionAtCoordinate(
-        paragraphX,
-        paragraphY,
-      );
-
-      return {lineIndex, charIndex};
-    },
-    [pageLines, lineYPositions, findLineAtY, contentMarginLeft],
+    [lineYPositions, CONTENT_HEIGHT], // @ai
   );
 
   // @ai-start
-  // Long-press / iOS drag-select in verse units of the shown text, and the
-  // verse actions on release (shared with ContinuousMushafView).
+  // The text canvas sits at the page padding (or contentMarginLeft), and its
+  // lines at lineYPositions. The hit test, the long-press / drag-select and
+  // the tap are shared with MushafPageContent.
+  const textLayout = useMemo<PageTextLayout>(
+    () => ({
+      originX: contentMarginLeft ?? PAGE_PADDING_HORIZONTAL,
+      originY: PAGE_PADDING_TOP,
+      width: CONTENT_WIDTH,
+      height: CONTENT_HEIGHT,
+      lineAt: findLineAtY,
+      lineTop: lineIndex => lineYPositions[lineIndex],
+    }),
+    [
+      contentMarginLeft,
+      PAGE_PADDING_HORIZONTAL,
+      PAGE_PADDING_TOP,
+      CONTENT_WIDTH,
+      CONTENT_HEIGHT,
+      findLineAtY,
+      lineYPositions,
+    ],
+  );
   const {
-    onDragStart: handleDragStart,
-    onDragUpdate: handleDragUpdate,
-    onDragEnd: handleDragEnd,
-  } = useVerseUnitDragSelect(pageNumber, charAtPoint);
-  // @ai-end
+    gesture,
+    handleParagraphReady: registerParagraph,
+    handleParagraphDisposed,
+    paragraphCount,
+  } = usePageTextGestures(pageNumber, pageLines, textLayout, onTap);
 
-  const longPressDragGesture = useMemo(
-    () =>
-      Platform.OS === 'android'
-        ? // Android: use a true LongPress gesture (requires finger to stay still)
-          Gesture.LongPress()
-            .minDuration(400)
-            .maxDistance(20)
-            .onStart(event => {
-              'worklet';
-              runOnJS(handleDragStart)(event.x, event.y);
-            })
-            .onEnd(() => {
-              'worklet';
-              runOnJS(handleDragEnd)();
-            })
-        : // iOS: Pan with long press delay allows drag-to-select range
-          Gesture.Pan()
-            .activateAfterLongPress(400)
-            .minDistance(0)
-            .onStart(event => {
-              'worklet';
-              runOnJS(handleDragStart)(event.x, event.y);
-            })
-            .onUpdate(event => {
-              'worklet';
-              runOnJS(handleDragUpdate)(event.x, event.y);
-            })
-            .onEnd(() => {
-              'worklet';
-              runOnJS(handleDragEnd)();
-            }),
-    [handleDragStart, handleDragUpdate, handleDragEnd],
-  );
-
-  const tapGesture = useMemo(
-    () =>
-      Gesture.Tap().onEnd(() => {
-        'worklet';
-        if (onTap) runOnJS(onTap)();
-      }),
-    [onTap],
-  );
-
-  const composedGesture = useMemo(
-    () => Gesture.Exclusive(longPressDragGesture, tapGesture),
-    [longPressDragGesture, tapGesture],
+  // SkiaLine's onParagraphReady: register the paragraph, and fire onReady
+  // once all expected paragraphs have reported in.
+  const handleParagraphReady = useCallback(
+    (lineIndex: number, paragraph: SkParagraph, xPos: number) => {
+      registerParagraph(lineIndex, paragraph, xPos);
+      if (
+        !readyFiredRef.current &&
+        paragraphCount() >= expectedLineCountRef.current
+      ) {
+        readyFiredRef.current = true;
+        onReadyRef.current?.();
+      }
+    },
+    [registerParagraph, paragraphCount],
   );
 
   // Compute per-line background highlight arrays for all highlight types
-  const playbackBgColor = useMemo(
-    () =>
-      Color(textColor)
-        .alpha(isDarkMode ? 0.1 : 0.12)
-        .toString(),
-    [textColor, isDarkMode],
+  const {playbackBgColor, selectionBgColor} = usePageHighlightColors(
+    textColor,
+    isDarkMode,
   );
-
-  const selectionBgColor = useMemo(
-    () =>
-      Color(textColor)
-        .alpha(isDarkMode ? 0.15 : 0.18)
-        .toString(),
-    [textColor, isDarkMode],
-  );
+  // @ai-end
 
   const EMPTY_BG_MAP = useMemo(
     () => new Map<number, Array<{start: number; end: number; color: string}>>(),
@@ -749,6 +662,33 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     verseUnitsVersion, // @ai
   ]);
 
+  // Memorisation: words not yet recited are ghosted while hiding is on.
+  // Live mistakes are drawn in the mistake colour, hidden or not.
+  const lineCharColors = useRecitationMarkColors(
+    pageLines,
+    useRecitationHiddenText(pageLines, lineAllahNameColorMaps),
+    isDarkMode,
+  );
+
+  // Recitation follow-along: recited ayat and the word being recited.
+  const recitationHighlights = useRecitationLineHighlights(
+    pageNumber,
+    pageLines,
+    lineBackgroundHighlightsMap,
+    textColor,
+    isDarkMode,
+  );
+  // @ai-start
+  // The words a Quran search matched, flashed when the reader opens there.
+  const lineHighlights = useWordFlashHighlights(
+    pageNumber,
+    pageLines,
+    recitationHighlights,
+    textColor,
+    isDarkMode,
+  );
+  // @ai-end
+
   const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
 
   if (!fontMgr || !justResults) {
@@ -812,13 +752,13 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               yPos={yPos}
               textColor={textColor}
               charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
-              charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
+              charToColor={lineCharColors?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
               arabicTextWeight={arabicTextWeight}
               textIdentity={textIdentity} // @ai
               onParagraphReady={handleParagraphReady}
               onParagraphDisposed={handleParagraphDisposed}
-              backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
+              backgroundHighlights={lineHighlights.get(lineIndex)}
               lineHeight={
                 lineIndex < lineYPositions.length - 1
                   ? lineYPositions[lineIndex + 1] - lineYPositions[lineIndex]
@@ -831,7 +771,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     </View>
   );
 
-  return <GestureDetector gesture={composedGesture}>{content}</GestureDetector>;
+  return <GestureDetector gesture={gesture}>{content}</GestureDetector>;
 };
 
 export default React.memo(SkiaPage);

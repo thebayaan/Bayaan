@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef} from 'react';
+import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,14 @@ import {
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {TrackItem} from '@/components/TrackItem';
+import {SurahOptionsRow} from '@/components/sheets/options/surahOptions'; // @ai
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu'; // @ai
+import {
+  PlaylistOptionsMenu,
+  type PlaylistOptionsPayload,
+} from '@/components/sheets/options/playlistOptions'; // @ai
 import {usePlaylists} from '@/hooks/usePlaylists';
-import {getReciterById, getSurahById} from '@/services/dataService';
+import {getReciterByIdSync, getSurahById} from '@/services/dataService'; // @ai
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -29,6 +35,8 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {queueFromIndex} from '@/utils/queueFromIndex'; // @ai
+import {showCreatePlaylistSheet} from '@/components/collection/showCreatePlaylistSheet'; // @ai
 // @ai-end
 
 interface PlaylistTrack {
@@ -57,6 +65,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const router = useRouter();
   const {t} = useTranslation(['collection', 'common']);
+  const nativeMenus = useNativeOptionsMenu(); // @ai
   const {
     getPlaylist,
     getPlaylistItems,
@@ -73,6 +82,17 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   const [playlistData, setPlaylistData] = useState<PlaylistDataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const shouldClearPlaylistRef = useRef(true);
+  // @ai-start
+  // The shared store's copy of this playlist. Its count, name and timestamp
+  // change when the playlist is edited from anywhere (another tab, the
+  // player's "Add to collection"), which is the cue to reload this screen.
+  const storePlaylist = playlists.find(p => p.id === id);
+  // Only the newest load may write its result: reloads can overlap.
+  const loadSeqRef = useRef(0);
+  // Set while this screen deletes its own playlist and goes back, so the
+  // "no longer exists" view does not flash during the back animation.
+  const leavingRef = useRef(false);
+  // @ai-end
 
   const styles = StyleSheet.create({
     container: {
@@ -88,55 +108,99 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
       textAlign: 'center',
       marginTop: moderateScale(32),
     },
+    // @ai-start
+    notFound: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: moderateScale(32),
+    },
+    notFoundText: {
+      fontSize: moderateScale(16),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginBottom: moderateScale(20),
+    },
+    notFoundButton: {
+      paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(24),
+      borderRadius: moderateScale(12),
+      backgroundColor: theme.colors.card,
+    },
+    notFoundButtonText: {
+      fontSize: moderateScale(15),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
+    },
+    // @ai-end
   });
 
+  // @ai-start
+  // Reload when the playlist changes in the shared store, not only on mount:
+  // a surah added from another tab used to leave this screen saying "empty"
+  // until it was closed and reopened.
   useEffect(() => {
     loadPlaylistData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [
+    id,
+    storePlaylist?.itemCount,
+    storePlaylist?.updatedAt,
+    storePlaylist?.name,
+  ]);
+  // @ai-end
 
   const loadPlaylistData = useCallback(async () => {
+    // @ai-start
+    if (leavingRef.current) return;
+    const seq = ++loadSeqRef.current;
+    // @ai-end
     try {
-      setLoading(true);
-
+      // @ai `loading` starts true and is not raised again: a reload keeps the
+      // list on screen (and its scroll position) instead of blanking it.
       const playlistInfo = await getPlaylist(id);
-      setPlaylist(playlistInfo);
 
       const playlistItems = await getPlaylistItems(id);
 
-      const enrichedData = await Promise.all(
-        playlistItems.map(async item => {
-          const [reciter, surah] = await Promise.all([
-            getReciterById(item.reciterId),
-            getSurahById(parseInt(item.surahId, 10)),
-          ]);
+      // @ai-start
+      // Reciters come from the catalogue in memory. The async lookup
+      // reloaded the whole catalogue once per row.
+      const enrichedData = playlistItems.map(item => {
+        const reciter = getReciterByIdSync(item.reciterId);
+        const surah = getSurahById(parseInt(item.surahId, 10));
 
-          return {
-            track: {
-              id: item.id,
-              surahId: item.surahId,
-              reciterId: item.reciterId,
-              rewayatId: item.rewayatId,
-              userRecitationId: item.userRecitationId,
-              surah,
-              reciter,
-            },
-            reciter: reciter || null,
-            surah: surah || null,
-          };
-        }),
-      );
+        return {
+          track: {
+            id: item.id,
+            surahId: item.surahId,
+            reciterId: item.reciterId,
+            rewayatId: item.rewayatId,
+            userRecitationId: item.userRecitationId,
+            surah,
+            reciter,
+          },
+          reciter: reciter || null,
+          surah: surah || null,
+        };
+      });
+      // @ai-end
 
+      // @ai-start
+      if (seq !== loadSeqRef.current || leavingRef.current) return;
+      setPlaylist(playlistInfo);
+      // @ai-end
       setPlaylistData(enrichedData);
     } catch (error) {
       console.error('Failed to load playlist:', error);
     } finally {
-      setLoading(false);
+      if (seq === loadSeqRef.current) setLoading(false); // @ai
     }
   }, [id, getPlaylist, getPlaylistItems]);
 
   const handleSurahPress = useCallback(
-    async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
+    // @ai The row is found by its id; the other two are kept for callers.
+    async (track: PlaylistTrack, _reciter: Reciter, _surah: Surah) => {
       try {
         const trackPromises = playlistData.map(async item => {
           if (!item.reciter || !item.surah) return null;
@@ -154,28 +218,28 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
           );
         });
 
-        const validTracks = (await Promise.all(trackPromises)).filter(
-          (vt): vt is NonNullable<typeof vt> => vt !== null,
+        // @ai-start
+        // One entry per row, null where a row cannot be played.
+        const rowTracks = await Promise.all(trackPromises);
+
+        // The tapped row is found by its own id. Matching on reciter and
+        // surah could pick another row of the same recitation.
+        const selectedIndex = playlistData.findIndex(
+          item => item.track.id === track.id,
         );
 
-        if (validTracks.length === 0) return;
+        // Nothing to play for this row (its upload was deleted). Starting
+        // the next row instead would play something the user did not tap.
+        if (selectedIndex === -1 || !rowTracks[selectedIndex]) return;
 
-        const selectedIndex = validTracks.findIndex(
-          vt =>
-            vt.reciterId === reciter.id &&
-            vt.surahId === surah.id.toString() &&
-            (track.rewayatId ? vt.rewayatId === track.rewayatId : true),
-        );
+        // Keep the playlist's order and start at the tapped row. The queue
+        // used to be rotated to put that row first, so Previous could never
+        // reach the rows above it.
+        const queue = queueFromIndex(rowTracks, selectedIndex);
 
-        if (selectedIndex === -1) return;
-
-        const reorderedTracks = [
-          ...validTracks.slice(selectedIndex),
-          ...validTracks.slice(0, selectedIndex),
-        ];
-
-        await updateQueue(reorderedTracks, 0);
+        await updateQueue(queue.tracks, queue.startIndex);
         await play();
+        // @ai-end
       } catch (error) {
         console.error('Error playing track:', error);
       }
@@ -187,12 +251,14 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     async (track: PlaylistTrack) => {
       try {
         await removeFromPlaylist(track.id);
-        await loadPlaylistData();
+        // @ai Drop the row in place. The store's new item count reloads the
+        // list right after, without blanking it.
+        setPlaylistData(prev => prev.filter(i => i.track.id !== track.id));
       } catch (error) {
         console.error('Failed to remove item from playlist:', error);
       }
     },
-    [removeFromPlaylist, loadPlaylistData],
+    [removeFromPlaylist], // @ai
   );
 
   const handlePlayAll = useCallback(async () => {
@@ -267,23 +333,22 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     [playlists],
   );
 
-  const handleOptionsPress = useCallback(() => {
-    if (!playlist) return;
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    shouldClearPlaylistRef.current = true;
+  // @ai-start
+  // Built at render so tablets can show it as a native menu.
+  const playlistOptions = useMemo<PlaylistOptionsPayload | null>(() => {
+    if (!playlist) return null;
 
     const handleEditForThisPlaylist = async () => {
       shouldClearPlaylistRef.current = false;
 
-      const result = await SheetManager.show('create-playlist', {
-        payload: {
-          existingColors: existingPlaylistColors,
-          isEditMode: true,
-          initialName: playlist.name,
-          initialColor: playlist.color || '#6366F1',
-        },
+      // @ai-start
+      const result = await showCreatePlaylistSheet({
+        existingColors: existingPlaylistColors,
+        isEditMode: true,
+        initialName: playlist.name,
+        initialColor: playlist.color || '#6366F1',
       });
+      // @ai-end
 
       if (result?.name && result?.color) {
         try {
@@ -303,23 +368,23 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     };
 
     const handleDeleteForThisPlaylist = async () => {
+      leavingRef.current = true; // @ai
       try {
         await deletePlaylist(playlist.id);
         router.back();
       } catch (error: unknown) {
+        leavingRef.current = false; // @ai
         console.error('Failed to delete playlist:', error);
       }
     };
 
-    SheetManager.show('playlist-context', {
-      payload: {
-        playlistId: playlist.id,
-        playlistName: playlist.name,
-        playlistColor: playlist.color,
-        onDelete: handleDeleteForThisPlaylist,
-        onEdit: handleEditForThisPlaylist,
-      },
-    });
+    return {
+      playlistId: playlist.id,
+      playlistName: playlist.name,
+      playlistColor: playlist.color,
+      onDelete: handleDeleteForThisPlaylist,
+      onEdit: handleEditForThisPlaylist,
+    };
   }, [
     playlist,
     deletePlaylist,
@@ -329,6 +394,15 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     loadPlaylistData,
   ]);
 
+  const handleOptionsPress = useCallback(() => {
+    if (!playlistOptions) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    shouldClearPlaylistRef.current = true;
+    SheetManager.show('playlist-context', {payload: playlistOptions});
+  }, [playlistOptions]);
+  // @ai-end
+
   const renderHeaderRight = useCallback(
     () => (
       <Pressable onPress={handleOptionsPress} hitSlop={8}>
@@ -337,9 +411,12 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
           size={moderateScale(20)}
           color={theme.colors.text}
         />
+        {nativeMenus && playlistOptions && (
+          <PlaylistOptionsMenu payload={playlistOptions} />
+        )}
       </Pressable>
     ),
-    [handleOptionsPress, theme.colors.text],
+    [handleOptionsPress, theme.colors.text, nativeMenus, playlistOptions],
   );
 
   useCollectionNativeHeader({
@@ -349,35 +426,44 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     headerRight: !loading && playlist ? renderHeaderRight : undefined,
   });
 
-  const handleShowTrackOptions = useCallback(
-    async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
-      let audioTrack;
-      if (track.userRecitationId) {
-        const upload = useUploadsStore
-          .getState()
-          .recitations.find(r => r.id === track.userRecitationId);
-        if (upload) audioTrack = createUserUploadTrack(upload);
-      }
-      if (!audioTrack) {
-        audioTrack = await createTrack(reciter, surah, track.rewayatId);
-      }
+  // @ai-start
+  // The options payload for a playlist track, shared by the sheet (phones)
+  // and the row's native menu (tablets). The queue track is built only when
+  // "Add to queue" is chosen.
+  const buildTrackOptions = useCallback(
+    (track: PlaylistTrack, reciter: Reciter, surah: Surah) => ({
+      surah,
+      reciterId: track.reciterId,
+      rewayatId: track.rewayatId,
+      onAddToQueue: async () => {
+        let audioTrack;
+        if (track.userRecitationId) {
+          const upload = useUploadsStore
+            .getState()
+            .recitations.find(r => r.id === track.userRecitationId);
+          if (upload) audioTrack = createUserUploadTrack(upload);
+        }
+        if (!audioTrack) {
+          audioTrack = await createTrack(reciter, surah, track.rewayatId);
+        }
+        if (audioTrack) {
+          await addToQueue([audioTrack]);
+        }
+      },
+      onRemoveFromPlaylist: () => handleRemoveFromPlaylist(track),
+    }),
+    [addToQueue, handleRemoveFromPlaylist],
+  );
 
+  const handleShowTrackOptions = useCallback(
+    (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
       SheetManager.show('surah-options', {
-        payload: {
-          surah,
-          reciterId: track.reciterId,
-          rewayatId: track.rewayatId,
-          onAddToQueue: async (s: Surah) => {
-            if (audioTrack) {
-              await addToQueue([audioTrack]);
-            }
-          },
-          onRemoveFromPlaylist: () => handleRemoveFromPlaylist(track),
-        },
+        payload: buildTrackOptions(track, reciter, surah),
       });
     },
-    [addToQueue],
+    [buildTrackOptions],
   );
+  // @ai-end
 
   const ListHeaderComponent = useCallback(() => {
     if (!playlist) return null;
@@ -389,6 +475,11 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         onOptionsPress={USE_GLASS ? undefined : handleOptionsPress}
+        optionsMenu={
+          nativeMenus && playlistOptions ? (
+            <PlaylistOptionsMenu payload={playlistOptions} />
+          ) : undefined
+        }
         theme={theme}
       />
     );
@@ -398,6 +489,8 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     handlePlayAll,
     handleShuffle,
     handleOptionsPress,
+    nativeMenus,
+    playlistOptions,
     theme,
     t,
   ]);
@@ -410,26 +503,53 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     }
 
     return (
-      <TrackItem
-        reciterId={track.reciterId}
-        surahId={track.surahId}
-        rewayatId={track.rewayatId}
-        userRecitationId={track.userRecitationId}
-        onPress={() => handleSurahPress(track, reciter, surah)}
-        onPlayPress={() => handleSurahPress(track, reciter, surah)}
-        onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
-        onLongPress={() => handleShowTrackOptions(track, reciter, surah)}
-      />
+      <SurahOptionsRow payload={buildTrackOptions(track, reciter, surah)}>
+        <TrackItem
+          reciterId={track.reciterId}
+          surahId={track.surahId}
+          rewayatId={track.rewayatId}
+          userRecitationId={track.userRecitationId}
+          onPress={() => handleSurahPress(track, reciter, surah)}
+          onPlayPress={() => handleSurahPress(track, reciter, surah)}
+          onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
+          onLongPress={() => handleShowTrackOptions(track, reciter, surah)}
+        />
+      </SurahOptionsRow>
     );
   };
 
-  if (loading || !playlist) {
+  if (loading) {
     return (
       <View style={styles.container}>
         <Text style={styles.emptyText}>{t('common:status.loading')}</Text>
       </View>
     );
   }
+
+  // @ai-start
+  // The playlist was deleted from another screen (or the link is stale).
+  // This used to sit on "Loading…" forever, with no back button on devices
+  // without the native header.
+  if (!playlist) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.notFound}>
+          <Text style={styles.notFoundText}>
+            {t('playlistDetail.notFound')}
+          </Text>
+          <Pressable
+            style={styles.notFoundButton}
+            onPress={() => router.back()}
+            accessibilityRole="button">
+            <Text style={styles.notFoundButtonText}>
+              {t('common:actions.back')}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+  // @ai-end
 
   return (
     <View style={styles.container}>

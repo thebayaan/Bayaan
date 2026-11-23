@@ -35,11 +35,11 @@ jest.mock(
   }),
 );
 
-jest.mock('react-native-actions-sheet', () => {
+jest.mock('../sheetGestures', () => {
   const ReactActual = jest.requireActual('react');
   const {View} = jest.requireActual('react-native');
   return {
-    ScrollView: (props: {
+    SheetScrollView: (props: {
       children?: React.ReactNode;
       onLayout?: (e: unknown) => void;
     }) =>
@@ -48,9 +48,11 @@ jest.mock('react-native-actions-sheet', () => {
         {onLayout: props.onLayout, testID: 'similar-scroll'},
         props.children,
       ),
-    SheetManager: {hideAll: jest.fn()},
   };
 });
+jest.mock('react-native-actions-sheet', () => ({
+  SheetManager: {hideAll: jest.fn()},
+}));
 
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 
@@ -78,9 +80,8 @@ jest.mock('@/store/tajweedStore', () => {
   return {useTajweedStore: create(() => ({indexedTajweedData: null}))};
 });
 
-jest.mock('@/store/mushafNavigationStore', () => ({
-  useMushafNavigationStore: {getState: () => ({navigateToVerse: jest.fn()})},
-}));
+// What the sheet does with a tapped result (it opens the verse).
+const mockOpenVerse = jest.fn();
 
 // QUL similar-verse data for the sheet's verse 2:5 (Hafs keys and Hafs word
 // positions, like the bundled QUL data).
@@ -276,6 +277,7 @@ async function render(rewayah: RewayahId, section: 'similar' | 'phrases') {
         section={section}
         rewayah={rewayah}
         onDone={() => undefined}
+        onOpenVerse={mockOpenVerse}
       />,
     );
   });
@@ -473,4 +475,18 @@ describe('a Hafs sheet on a Hafs mushaf: unchanged', () => {
       expect(ensureRewayahLoaded).not.toHaveBeenCalled();
     },
   );
+
+  // @ai-start
+  // The screen hands a tapped result to the sheet, which closes itself and
+  // opens the verse (in the open reader, or by opening the reader).
+  it('"Go to verse" of a shared phrase match asks for that verse and its page', async () => {
+    mockOpenVerse.mockClear();
+    useMushafSettingsStore.setState({rewayah: 'hafs', mushafRenderer: 'dk_v2'});
+    await render('hafs', 'phrases');
+    press('31:5');
+    press('Go to verse');
+    expect(mockOpenVerse).toHaveBeenCalledTimes(1);
+    expect(mockOpenVerse).toHaveBeenCalledWith('31:5', 1);
+  });
+  // @ai-end
 });

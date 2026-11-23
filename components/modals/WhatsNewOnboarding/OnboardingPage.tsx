@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, StyleSheet, Image} from 'react-native';
+import {View, Text, StyleSheet, Image, ScrollView} from 'react-native'; // @ai
 import {moderateScale} from '@/utils/scale';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Ionicons} from '@expo/vector-icons';
@@ -55,17 +55,30 @@ interface OnboardingPageProps {
   page: OnboardingPageType;
   width: number;
   isIntroPage: boolean;
+  /** @ai The height of the page's content, which can be more than its view. */
+  onContentHeight: (id: string, height: number) => void;
 }
 
 function OnboardingPageComponent({
   page,
   width,
   isIntroPage,
+  onContentHeight, // @ai
 }: OnboardingPageProps) {
   const {theme} = useTheme();
 
   return (
-    <View style={[styles.container, {width}]}>
+    // @ai-start
+    // The page scrolls vertically on its own: on a short window the pager is
+    // shorter than a long page, and its last lines would be cut off.
+    <ScrollView
+      style={{width}}
+      contentContainerStyle={styles.container}
+      bounces={false}
+      onContentSizeChange={(_contentWidth, contentHeight) =>
+        onContentHeight(page.id, contentHeight)
+      }>
+      {/* @ai-end */}
       {/* Fixed-position header: icon + title stay at the same Y across all pages */}
       <View style={styles.header}>
         {isIntroPage ? (
@@ -98,7 +111,7 @@ function OnboardingPageComponent({
       <Text style={[styles.description, {color: theme.colors.textSecondary}]}>
         {page.description}
       </Text>
-    </View>
+    </ScrollView> // @ai
   );
 }
 

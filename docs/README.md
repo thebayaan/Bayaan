@@ -17,6 +17,17 @@ New to the project? Start here:
 
 ---
 
+## Design
+
+| Document | Description |
+|----------|-------------|
+| [design/README.md](design/README.md) | Design docs hub: start here before any UI work |
+| [design/design-system.md](design/design-system.md) | The design system as built: themes, color tokens, typography, spacing, scaling, components |
+| [design/ipad-standards.md](design/ipad-standards.md) | **Standard** for iPad and large tablets: width classes, type ramp, layout, sheets, orientation, multitasking, accessibility |
+| [design/ipad-review-checklist.md](design/ipad-review-checklist.md) | Checklist for every PR that touches UI |
+
+---
+
 ## Architecture
 
 | Document | Description |
@@ -44,6 +55,7 @@ New to the project? Start here:
 | [uploads.md](features/uploads.md) | User-uploaded recitations feature |
 | [mushaf-page.md](features/mushaf-page.md) | Mushaf page feature overview (see digital-khatt/ for rendering details) |
 | [digital-khatt-rendering.md](features/digital-khatt-rendering.md) | Digital Khatt rendering overview |
+| [mushaf-1440.md](features/mushaf-1440.md) | Mushaf 1440: the 1441H Madinah print, glyph for glyph (layout, fonts, overlays, rewayat) |
 | [adhkar-feature-plan.md](features/adhkar-feature-plan.md) | Adhkar feature — implementation reference |
 | [rewayat.md](features/rewayat.md) | Multi-qira'at (rewayat) support — 8 KFGQPC readings across mushaf, player, and UGC |
 | [analytics.md](features/analytics.md) | Analytics & listening insights — Phase 1 shipped (PostHog events, local aggregation, Sentry) |
@@ -119,6 +131,7 @@ Deep documentation of the Uthmani Mushaf rendering system:
 | [native-tabs-inset-issues.md](research/native-tabs-inset-issues.md) | NativeTabs safe area issues (SDK 55) |
 | [native-tabs-quick-fixes.md](research/native-tabs-quick-fixes.md) | NativeTabs quick fix workarounds |
 | [download-systems-analysis.md](download-systems-analysis.md) | Download codepath consolidation analysis |
+| [surah-app-feature-gaps.md](research/surah-app-feature-gaps.md) | Surah app vs Bayaan: every Surah feature checked against `develop`, study content first |
 
 ---
 
