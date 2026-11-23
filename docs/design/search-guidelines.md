@@ -109,22 +109,23 @@ It also does not rank. The Surahs tab lists hits in the user's sort order, so `a
   | Search narrows a list that has its own header and actions | Header search button; the header becomes `SearchField` with Cancel, list stays in place | Collection, Surahs tab, **reciter page** |
   | Search is a mode inside a reader or sheet | Inline field, autofocus on open | Mushaf search, verse picker |
 
-- **U3 (MUST)** No-results uses one `SearchEmptyState`: "Nothing matches “{query}”" plus a context hint that shows what this field understands (for example "Try a surah, reciter or 2:255").
+- **U3 (MUST)** Idle, no-recents and no-results use one `SearchEmptyState` (the ghost-row panel style of `CollectionEmptyPanel`). No-results reads "Nothing matches “{query}”" plus a context hint that shows what this field understands (for example "Try a surah, reciter or 2:255").
 - **U4 (SHOULD)** When filtering a known list, show a count under the field ("3 of 24 bookmarks").
-- **U5 (MAY)** Filter pills sit under the field, stay visible while typing, and combine with the query (AND). Today only Browse reciters needs them.
+- **U5 (SHOULD)** A search that returns more than one kind of thing groups results into inset panels with a sentence-case header and a "See all N" row (as `CollectionSearchResults` does), with scope pills (All + one per group) under the field from first focus. Pills use one `SearchScopePills` component: text-colour fill when on.
+- **U5b (MAY)** Attribute filter chips (Browse reciters: teacher, student, rewayah) combine with the query (AND) and stay visible while typing.
 - **U6 (MUST)** Placeholders say what is searched: "Search surahs", "Search reciters", "Search bookmarks". The Search tab may say "Surahs, reciters, verses".
 
 ### 2.4 What may differ, per surface
 
 | Surface | Quran text and roots | References | Recents | Pills | Count |
 |---|---|---|---|---|---|
-| Search tab | Yes | Yes | Yes | No | No |
+| Search tab | Yes | Yes | Yes | Scope | No |
 | Mushaf search | Yes | Yes | Yes | No | No |
 | Verse picker | No | Yes (ranges) | No | No | No |
-| Collection home | No | Yes | No | No | Per section |
+| Collection home | No | Yes | No | Scope | Per section |
 | Collection screens | No | Bookmarks, notes | No | No | Yes |
 | Surahs tab, reciter page, Browse surahs | No | Surah number | No | No | No |
-| Reciter lists and pickers | No | No | Picker only | Browse only | No |
+| Reciter lists and pickers | No | No | Picker only | Attribute chips on Browse | No |
 
 ---
 
@@ -149,7 +150,9 @@ hooks/
   useRecentSearches.ts(surfaceKey)
 components/search/
   SearchField.tsx        one field (grown from CollectionSearchField)
-  SearchEmptyState.tsx   no-results + hint
+  SearchEmptyState.tsx   idle hint, no recents, no-results + hint (ghost-row panel)
+  SearchScopePills.tsx   All + one pill per result group (from CollectionSearchResults)
+  SearchResultGroup.tsx  inset panel, header, "See all N" row
 ```
 
 `SearchInput`, `components/SearchBar.tsx`, `utils/collectionSearch.ts`, the Search tab's Android row and the raw `TextInput`s go away.
