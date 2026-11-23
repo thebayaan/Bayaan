@@ -81,6 +81,8 @@ const APP_DIRS = [
 const NATIVE_SCROLL_VIEWS: Record<string, string> = {
   // @ai: only the body of a native sheet, which has no sheet drag.
   'AdaptiveActionSheet.tsx': 'native sheet only',
+  // @ai: the Reading options' plain ScrollView is for the native sheet only.
+  'MushafLayoutSheet.tsx': 'native sheet only',
   // Only as its ScrollComponent default; the sheet passes SheetScrollView.
   'MushafLayoutPanel.tsx': 'default never used in the sheet',
   // @ai: the rewayah filter and Recent rows scroll sideways.
@@ -197,9 +199,9 @@ it('keeps SheetNoDrag to the lists that scroll inside a sheet', () => {
   // SheetNoDrag holds the drag off only until the finger lifts, which does
   // not save a tap; it keeps a nested list scrolling in either direction.
   const users = sheetFiles.filter(file => /<SheetNoDrag\b/.test(read(file)));
-  expect(users.map(file => path.basename(file)).sort()).toEqual([
-    'MushafLayoutPanel.tsx', // the reading-theme picker
-  ]);
+  // @ai: the Reading options (components/mushaf-options) replaced the old
+  // reading-theme picker, which was the one user.
+  expect(users.map(file => path.basename(file)).sort()).toEqual([]);
   for (const file of users) {
     expect(read(file)).not.toMatch(/<SheetNoDrag[^>]*>\s*<Pressable\b/);
   }

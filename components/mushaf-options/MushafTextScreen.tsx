@@ -1,0 +1,503 @@
+// @ai-generated
+import React, {useCallback, useMemo} from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ScrollViewProps,
+} from 'react-native';
+import {Feather} from '@expo/vector-icons';
+import {useTranslation} from 'react-i18next';
+import {useTheme} from '@/hooks/useTheme';
+import {
+  REWAYAH_FALLBACK_RENDERER_LABEL,
+  getDkFontFamily,
+  useMushafSettingsStore,
+  type MushafRenderer,
+  type RewayahId,
+} from '@/store/mushafSettingsStore';
+import {
+  ALL_REWAYAH_IDS,
+  getLongLabel,
+  hasDiffData,
+  hasTextData,
+  type RewayahWithDiffs,
+} from '@/services/rewayah/RewayahIdentity';
+import {getRewayahDiffLegend} from '@/components/sheets/rewayahDiffLegend';
+import {
+  chooseMushafRenderer,
+  chooseMushafRewayah,
+} from '@/components/sheets/rewayahSelection';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
+import {
+  qcfFontFamilyForPage,
+  qcfFontLoader,
+} from '@/services/mushaf/QCFFontLoader';
+import {qcfDataService} from '@/services/mushaf/QCFDataService';
+import {localizeDigits} from '@/i18n/format';
+import {flipX} from '@/utils/rtl';
+import {moderateScale} from '@/utils/scale';
+import type {Theme} from '@/utils/themeUtils';
+import {Chevron, Separator, SwitchRow} from './OptionRows';
+import {FadeInView} from './motion';
+import {QuranText} from './QuranText';
+import {REWAYAH_GROUPS} from './readingLayout';
+import {
+  ROW_INSET,
+  ROW_MIN_HEIGHT,
+  textAlpha,
+  useOptionStyles,
+} from './optionStyles';
+
+type ScriptKey = 'dkV1' | 'dkV2' | 'indopak' | 'qcfV2';
+const SCRIPTS: readonly {value: MushafRenderer; key: ScriptKey}[] = [
+  {value: 'dk_v1', key: 'dkV1'},
+  {value: 'dk_v2', key: 'dkV2'},
+  {value: 'dk_indopak', key: 'indopak'},
+  {value: 'qcf_v2', key: 'qcfV2'},
+];
+const SCRIPT_KEY: Record<MushafRenderer, ScriptKey> = {
+  dk_v1: 'dkV1',
+  dk_v2: 'dkV2',
+  dk_indopak: 'indopak',
+  qcf_v2: 'qcfV2',
+};
+const COMING_COUNT = ALL_REWAYAH_IDS.filter(id => !hasTextData(id)).length;
+
+/** The row that opens the Mushaf text screen: "script · rewayah". */
+export function MushafTextRow({
+  onPress,
+}: {
+  onPress: () => void;
+}): React.JSX.Element {
+  const styles = useOptionStyles();
+  const {t} = useTranslation(['sheets', 'settings']);
+  const renderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const rewayah = useMushafSettingsStore(s => s.rewayah);
+  const summary = t('sheets:mushafOptions.mushafText.summary', {
+    script: t(`settings:mushafSettings.fonts.${SCRIPT_KEY[renderer]}.label`),
+    rewayah: getRewayahShortLabel(rewayah),
+  });
+  return (
+    <View style={[styles.card, styles.section]}>
+      <Pressable
+        onPress={onPress}
+        style={({pressed}) => [styles.row, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={t('sheets:mushafOptions.mushafText.title')}
+        accessibilityValue={{text: summary}}
+        testID="mushaf-options-mushaf-text">
+        <View style={styles.texts}>
+          <Text style={styles.title}>
+            {t('sheets:mushafOptions.mushafText.title')}
+          </Text>
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {summary}
+          </Text>
+        </View>
+        <Chevron />
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * The pushed Mushaf text screen: the script, each drawn in its own font,
+ * and the rewayah, grouped by qari. Off Hafs it adds Show differences with
+ * its legend; Mushaf 1440 locks the rewayah to Hafs.
+ */
+export function MushafTextScreen({
+  onBack,
+  ScrollComponent,
+  bottomPadding,
+}: {
+  onBack: () => void;
+  ScrollComponent: React.ComponentType<ScrollViewProps>;
+  bottomPadding: number;
+}): React.JSX.Element {
+  const styles = useOptionStyles();
+  const {theme} = useTheme();
+  const local = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'settings']);
+  const renderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const rewayah = useMushafSettingsStore(s => s.rewayah);
+  const showDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
+  const toggleDiffs = useMushafSettingsStore(s => s.toggleRewayahDiffs);
+  const hafs = rewayah === 'hafs';
+  const rewayahName = getRewayahShortLabel(rewayah);
+
+  // chooseMushafRenderer (rewayahSelection.ts) refuses IndoPak for another
+  // rewayah (its row is disabled too); every other script takes any
+  // rewayah, Mushaf 1440 included.
+  const chooseScript = useCallback(async (value: MushafRenderer) => {
+    await chooseMushafRenderer(value);
+  }, []);
+
+  const chooseRewayah = useCallback((value: RewayahId) => {
+    chooseMushafRewayah(value);
+  }, []);
+
+  return (
+    <ScrollComponent
+      style={local.scroll}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={[local.content, {paddingBottom: bottomPadding}]}>
+      <Pressable
+        onPress={onBack}
+        style={({pressed}) => [local.back, pressed && styles.pressed]}
+        accessibilityRole="button"
+        hitSlop={8}
+        testID="mushaf-options-back">
+        <Feather
+          name="chevron-left"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+          style={flipX}
+        />
+        <Text style={local.backText}>
+          {t('sheets:mushafOptions.mushafText.back')}
+        </Text>
+      </Pressable>
+      <Text style={[styles.sheetTitle, local.title]} accessibilityRole="header">
+        {t('sheets:mushafOptions.mushafText.title')}
+      </Text>
+
+      <View style={styles.section}>
+        <Text style={styles.header} accessibilityRole="header">
+          {t('sheets:mushafOptions.mushafText.scriptHeader')}
+        </Text>
+        <View style={styles.card} accessibilityRole="radiogroup">
+          {SCRIPTS.map((script, index) => {
+            const selected = renderer === script.value;
+            // IndoPak's font lacks marks every other rewayah uses.
+            const hafsOnly = script.value === 'dk_indopak' && !hafs;
+            return (
+              <React.Fragment key={script.value}>
+                {index > 0 ? <Separator /> : null}
+                <Pressable
+                  onPress={() => chooseScript(script.value)}
+                  disabled={hafsOnly}
+                  style={({pressed}) => [
+                    styles.row,
+                    pressed && styles.pressed,
+                    hafsOnly && styles.disabled,
+                  ]}
+                  accessibilityRole="radio"
+                  accessibilityLabel={t(
+                    `settings:mushafSettings.fonts.${script.key}.label`,
+                  )}
+                  accessibilityState={{checked: selected, disabled: hafsOnly}}
+                  testID={`mushaf-options-script-${script.value}`}>
+                  <View style={styles.texts}>
+                    <View style={local.nameRow}>
+                      <Text style={styles.title}>
+                        {t(`settings:mushafSettings.fonts.${script.key}.label`)}
+                      </Text>
+                      {script.value === 'qcf_v2' ? (
+                        <Text style={local.badge}>
+                          {t('sheets:mushafOptions.mushafText.beta')}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text style={styles.subtitle}>
+                      {hafsOnly
+                        ? t('settings:mushafSettings.hafsOnlyFont', {
+                            rewayah: rewayahName,
+                          })
+                        : t(
+                            `sheets:mushafOptions.mushafText.scripts.${script.key}`,
+                          )}
+                    </Text>
+                    <ScriptSample renderer={script.value} />
+                  </View>
+                  <Feather
+                    name="check"
+                    size={moderateScale(20)}
+                    color={theme.colors.text}
+                    style={!selected && local.hidden}
+                  />
+                </Pressable>
+              </React.Fragment>
+            );
+          })}
+        </View>
+        {renderer === 'dk_indopak' ? (
+          <Text style={styles.helper}>
+            {t('settings:mushafSettings.indopakHafsOnly', {
+              font: REWAYAH_FALLBACK_RENDERER_LABEL,
+            })}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.header} accessibilityRole="header">
+          {t('sheets:mushafOptions.mushafText.rewayahHeader')}
+        </Text>
+        {renderer === 'qcf_v2' ? (
+          <Text style={styles.subtitle}>
+            {t('settings:mushafSettings.qcfOtherRewayat', {
+              font: t('settings:mushafSettings.fonts.dkV2.label'),
+            })}
+          </Text>
+        ) : null}
+        {hasDiffData(rewayah) ? (
+          <FadeInView style={local.diffCard}>
+            <DifferencesCard
+              rewayah={rewayah}
+              value={showDiffs}
+              onValueChange={toggleDiffs}
+            />
+          </FadeInView>
+        ) : null}
+        <View style={styles.card} accessibilityRole="radiogroup">
+          {REWAYAH_GROUPS.map(group => (
+            <View key={group.qari}>
+              <Text style={local.group}>
+                {t(`sheets:mushafOptions.mushafText.qurra.${group.qari}`)}
+              </Text>
+              {group.rewayat.map(id => {
+                const selected = rewayah === id;
+                return (
+                  <Pressable
+                    key={id}
+                    onPress={() => chooseRewayah(id)}
+                    style={({pressed}) => [
+                      local.option,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="radio"
+                    accessibilityLabel={getLongLabel(id)}
+                    accessibilityState={{checked: selected}}
+                    testID={`mushaf-options-rewayah-${id}`}>
+                    <Text style={[styles.title, local.optionText]}>
+                      {getLongLabel(id)}
+                    </Text>
+                    <Feather
+                      name="check"
+                      size={moderateScale(20)}
+                      color={theme.colors.text}
+                      style={!selected && local.hidden}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </View>
+        <Text style={styles.helper}>
+          {t('sheets:mushafOptions.mushafText.moreComing', {
+            number: localizeDigits(COMING_COUNT),
+          })}
+        </Text>
+        <Text style={styles.helper}>
+          {t('sheets:mushafOptions.mushafText.about')}
+        </Text>
+      </View>
+    </ScrollComponent>
+  );
+}
+
+/** The sample verse: Ar-Rahman 55:4, with the word al-bayan. */
+const SAMPLE_VERSE_KEY = '55:4';
+const SAMPLE_QCF_PAGE = 531;
+
+/** The sample verse's QCF glyphs (its words and end mark), in order. */
+function qcfSampleText(): string {
+  let text = '';
+  for (const line of qcfDataService.getPage(SAMPLE_QCF_PAGE).lines) {
+    for (const word of line.words) {
+      if (word.verseKey === SAMPLE_VERSE_KEY) text += word.code;
+    }
+  }
+  return text;
+}
+
+/**
+ * The sample verse in a script's own face. Mushaf 1440 draws it with its
+ * page's QCF font when the reader has already downloaded and registered
+ * it (the same font manager the Mushaf 1440 pages use).
+ */
+function ScriptSample({
+  renderer,
+}: {
+  renderer: MushafRenderer;
+}): React.JSX.Element {
+  const {theme} = useTheme();
+  const fontMgr = useMushafFontMgr();
+  const fontSize = moderateScale(19);
+  if (renderer === 'qcf_v2') {
+    const family = qcfFontFamilyForPage(SAMPLE_QCF_PAGE, 'v4-mono');
+    const text = qcfSampleText();
+    if (text && fontMgr && qcfFontLoader.isReady(SAMPLE_QCF_PAGE, 'v4-mono')) {
+      return (
+        <QuranText
+          text={text}
+          fontFamily={family}
+          fontSize={fontSize}
+          color={theme.colors.text}
+        />
+      );
+    }
+    // TODO: QCF page fonts are not bundled. They download from GitHub on
+    // first use of a page (~200 MB for all 604), so the sheet does not
+    // fetch the page just for this sample; until the reader has opened it
+    // in Mushaf 1440 it shows the Madani 1421 face, next to the Beta badge.
+  }
+  return (
+    <QuranText
+      verseKey={SAMPLE_VERSE_KEY}
+      rewayah="hafs"
+      fontFamily={getDkFontFamily(renderer, 'hafs')}
+      fontSize={fontSize}
+      color={theme.colors.text}
+    />
+  );
+}
+
+/** Show differences from Hafs, with the colors it uses. */
+function DifferencesCard({
+  rewayah,
+  value,
+  onValueChange,
+}: {
+  rewayah: RewayahWithDiffs;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}): React.JSX.Element {
+  const styles = useOptionStyles();
+  const {theme} = useTheme();
+  const local = useMemo(() => createStyles(theme), [theme]);
+  const {t} = useTranslation(['sheets', 'settings']);
+  const legend = useMemo(() => getRewayahDiffLegend(rewayah), [rewayah]);
+  return (
+    <View style={styles.card}>
+      <SwitchRow
+        title={t('sheets:mushafOptions.mushafText.differences')}
+        subtitle={t(
+          `sheets:mushafOptions.mushafText.differencesHelp.${legend.summaryKey}`,
+        )}
+        value={value}
+        onValueChange={onValueChange}
+        testID="mushaf-options-differences"
+      />
+      {legend.entries.length > 0 ? (
+        <View style={local.diffLegend}>
+          {legend.entries.map(entry => (
+            <View key={entry.key} style={local.diffEntry}>
+              <View
+                style={[
+                  local.diffDot,
+                  entry.isBackground && local.diffBlock,
+                  {backgroundColor: entry.color},
+                ]}
+              />
+              <Text style={local.diffLabel}>
+                {t(`settings:mushafSettings.legendV2.labels.${entry.key}`)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function createStyles(theme: Theme) {
+  const small = theme.typography.smallSize;
+  return StyleSheet.create({
+    scroll: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: moderateScale(16),
+    },
+    back: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: moderateScale(2),
+      minHeight: moderateScale(36),
+      paddingEnd: moderateScale(8),
+      borderRadius: moderateScale(10),
+    },
+    backText: {
+      fontSize: theme.typography.mediumSize,
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    title: {
+      marginTop: moderateScale(6),
+      marginBottom: moderateScale(14),
+      marginStart: moderateScale(6),
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+    },
+    badge: {
+      fontSize: theme.typography.captionSize,
+      fontFamily: 'Manrope-Bold',
+      color: textAlpha(theme, 0.7),
+      backgroundColor: textAlpha(theme, 0.08),
+      borderRadius: moderateScale(6),
+      paddingHorizontal: moderateScale(7),
+      paddingVertical: 2,
+      overflow: 'hidden',
+    },
+    hidden: {
+      opacity: 0,
+    },
+    diffCard: {
+      marginBottom: moderateScale(10),
+    },
+    diffLegend: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: moderateScale(16),
+      paddingHorizontal: ROW_INSET,
+      paddingBottom: moderateScale(14),
+    },
+    diffEntry: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(6),
+    },
+    diffDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    diffBlock: {
+      borderRadius: 3,
+    },
+    diffLabel: {
+      fontSize: small,
+      fontFamily: 'Manrope-Medium',
+      color: textAlpha(theme, 0.8),
+    },
+    group: {
+      textAlign: 'left',
+      fontSize: small,
+      fontFamily: 'Manrope-SemiBold',
+      color: textAlpha(theme, 0.55),
+      paddingHorizontal: ROW_INSET,
+      paddingTop: moderateScale(12),
+      paddingBottom: moderateScale(2),
+    },
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(12),
+      minHeight: ROW_MIN_HEIGHT,
+      paddingHorizontal: ROW_INSET,
+    },
+    optionText: {
+      flex: 1,
+      fontFamily: 'Manrope-Medium',
+    },
+  });
+}

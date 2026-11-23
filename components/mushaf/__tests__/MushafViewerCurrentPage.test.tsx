@@ -125,6 +125,10 @@ jest.mock('@/hooks/useReadingThemeColors', () => ({
 jest.mock('@/hooks/useResponsive', () => ({
   useResponsive: () => ({isTablet: false}),
 }));
+// @ai: the reader's layout transition runs on Reanimated; pass through.
+jest.mock('@/components/mushaf-options/ReaderLayoutTransition', () => ({
+  ReaderLayoutTransition: ({children}: {children: React.ReactNode}) => children,
+}));
 jest.mock('@/hooks/useGlassProps', () => ({
   useGlassTint: () => undefined,
   USE_GLASS: true,
