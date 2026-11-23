@@ -103,7 +103,10 @@ jest.mock('@/hooks/useCollectionNativeHeader', () => ({
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
-jest.mock('expo-router', () => ({useRouter: () => ({back: jest.fn()})}));
+jest.mock('expo-router', () => ({
+  useRouter: () => ({back: jest.fn()}),
+  useLocalSearchParams: () => ({}),
+}));
 jest.mock('@expo/vector-icons', () => ({
   Feather: () => null,
   Ionicons: () => null,
@@ -147,8 +150,14 @@ jest.mock('@/components/GradientText', () => ({GradientText: () => null}));
 jest.mock('@/components/NowPlayingIndicator', () => ({
   NowPlayingIndicator: () => null,
 }));
-jest.mock('@/components/playlist-detail/LovedHeader', () => ({
-  LovedHeader: () => null,
+jest.mock('@/components/collection/CollectionScreenHeader', () => ({
+  CollectionScreenHeader: () => null,
+  CollectionHeaderActions: () => null,
+  CollectionSearchField: () => null,
+}));
+jest.mock('@/hooks/useCollectionPreviews', () => ({
+  useCollectionPreviews: () => ({}),
+  usePlaylistCovers: () => ({}),
 }));
 jest.mock('@/components/collection/CollectionStickyHeader', () => ({
   CollectionStickyHeader: () => null,
@@ -181,7 +190,12 @@ import {
   type SurahOptionsPayload,
 } from '@/components/sheets/options/surahOptions';
 import LovedScreen from '@/app/(tabs)/(c.collection)/collection/loved';
-import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
+import {CollectionScreenHeader} from '@/components/collection/CollectionScreenHeader';
+
+/** Presses the screen's ••• button (drawn in the header's action buttons). */
+function pressMoreButton(header: TestRenderer.ReactTestInstance) {
+  header.props.actions.props.extra.props.children.props.onPress();
+}
 
 // The first render loads React Native's list modules; on a cold transform
 // cache that alone can pass Jest's 5 s default.
@@ -239,9 +253,11 @@ const badges = (tree: TestRenderer.ReactTestRenderer) =>
 
 /** The options of the screen's ••• menu. */
 function screenOptions(tree: TestRenderer.ReactTestRenderer) {
-  const header = tree.root.find(node => (node.type as unknown) === LovedHeader);
+  const header = tree.root.find(
+    node => (node.type as unknown) === CollectionScreenHeader,
+  );
   act(() => {
-    header.props.onOptionsPress();
+    pressMoreButton(header);
   });
   const [, {payload}] = mockShowSheet.mock.calls[
     mockShowSheet.mock.calls.length - 1

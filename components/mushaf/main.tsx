@@ -327,18 +327,18 @@ const DKPageView: React.FC<{
                     borderBottomRightRadius: EDGE_BORDER_RADIUS,
                   }
                 : isRightPage
-                ? {
-                    left: 0,
-                    right: EDGE_HORIZONTAL_INSET,
-                    borderTopRightRadius: EDGE_BORDER_RADIUS,
-                    borderBottomRightRadius: EDGE_BORDER_RADIUS,
-                  }
-                : {
-                    left: EDGE_HORIZONTAL_INSET,
-                    right: 0,
-                    borderTopLeftRadius: EDGE_BORDER_RADIUS,
-                    borderBottomLeftRadius: EDGE_BORDER_RADIUS,
-                  },
+                  ? {
+                      left: 0,
+                      right: EDGE_HORIZONTAL_INSET,
+                      borderTopRightRadius: EDGE_BORDER_RADIUS,
+                      borderBottomRightRadius: EDGE_BORDER_RADIUS,
+                    }
+                  : {
+                      left: EDGE_HORIZONTAL_INSET,
+                      right: 0,
+                      borderTopLeftRadius: EDGE_BORDER_RADIUS,
+                      borderBottomLeftRadius: EDGE_BORDER_RADIUS,
+                    },
             ]}
           />
         </>
@@ -1502,8 +1502,8 @@ export default function MushafViewer({
           backgroundColor: isVertical
             ? readingColors.background
             : isBookLayout
-            ? edgeBg
-            : readingColors.card,
+              ? edgeBg
+              : readingColors.card,
         },
       ]}>
       {/* @ai-start */}

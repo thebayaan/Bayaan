@@ -215,8 +215,8 @@ export function extendRange(
       page === undefined
         ? null
         : kind === 'page'
-        ? pageRange(env, page)
-        : juzRange(env, juzOfPage(page));
+          ? pageRange(env, page)
+          : juzRange(env, juzOfPage(page));
     if (target) end = target.end;
   }
   return compareVerseKeys(end, range.end) > 0

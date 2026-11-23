@@ -57,7 +57,10 @@ jest.mock('@/hooks/useCollectionDownloadState', () => ({
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
-jest.mock('expo-router', () => ({useRouter: () => ({back: jest.fn()})}));
+jest.mock('expo-router', () => ({
+  useRouter: () => ({back: jest.fn()}),
+  useLocalSearchParams: () => ({}),
+}));
 jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
 jest.mock('@/hooks/useLoved', () => ({
   useLoved: () => ({
@@ -140,8 +143,14 @@ jest.mock('@/components/Icons', () => ({
   HeartIcon: () => null,
   CheckIcon: () => null,
 }));
-jest.mock('@/components/playlist-detail/LovedHeader', () => ({
-  LovedHeader: () => null,
+jest.mock('@/components/collection/CollectionScreenHeader', () => ({
+  CollectionScreenHeader: () => null,
+  CollectionHeaderActions: () => null,
+  CollectionSearchField: () => null,
+}));
+jest.mock('@/hooks/useCollectionPreviews', () => ({
+  useCollectionPreviews: () => ({}),
+  usePlaylistCovers: () => ({}),
 }));
 jest.mock('@/components/collection/CollectionStickyHeader', () => ({
   CollectionStickyHeader: () => null,
@@ -161,7 +170,12 @@ jest.mock('react-native-actions-sheet', () => ({
 
 import LovedScreen from '@/app/(tabs)/(c.collection)/collection/loved';
 import {TrackItem} from '@/components/TrackItem';
-import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
+import {CollectionScreenHeader} from '@/components/collection/CollectionScreenHeader';
+
+/** Presses the screen's ••• button (drawn in the header's action buttons). */
+function pressMoreButton(header: TestRenderer.ReactTestInstance) {
+  header.props.actions.props.extra.props.children.props.onPress();
+}
 
 const loved = (surahId: string, over: Partial<Loved> = {}): Loved => ({
   reciterId: 'r1',
@@ -341,10 +355,10 @@ describe('"Download all"', () => {
   /** Opens the screen's ••• menu and chooses "Download All". */
   async function downloadAll(tree: TestRenderer.ReactTestRenderer) {
     const header = tree.root.find(
-      node => (node.type as unknown) === LovedHeader,
+      node => (node.type as unknown) === CollectionScreenHeader,
     );
     act(() => {
-      header.props.onOptionsPress();
+      pressMoreButton(header);
     });
     const payload = mockShowSheet.mock.calls[0][1].payload as {
       options: Array<{label: string; onPress: () => Promise<void>}>;
