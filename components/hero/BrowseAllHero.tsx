@@ -1,4 +1,4 @@
-import React, {useMemo, useEffect, useRef} from 'react';
+import React, {useMemo, useCallback} from 'react';
 import {View, Text, StyleSheet, Pressable} from 'react-native';
 import {runAfterInteractions} from '@/utils/afterInteractions';
 import {Link} from 'expo-router';
@@ -20,6 +20,7 @@ import Color from 'color';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {useScreenFocusEffect} from '@/hooks/useScreenFocusEffect';
 // @ai-end
 
 const TILE_COLORS = [
@@ -132,7 +133,6 @@ const TileColumn = React.memo(
     startOffset: number;
   }) => {
     const scrollY = useSharedValue(startOffset);
-    const mountedRef = useRef(true);
 
     // Generate tiles for this column (doubled for seamless loop)
     const tiles = useMemo(
@@ -146,12 +146,16 @@ const TileColumn = React.memo(
       transform: [{translateY: -(scrollY.value % singleSetHeight)}],
     }));
 
-    useEffect(() => {
+    // @ai-start
+    // Only while the screen is focused: the Home tab stays mounted behind
+    // the other tabs, and 20 endless columns there kept the UI thread busy
+    // on every frame. Each loop moves one set height from where the column
+    // stopped, so the wrap stays seamless after a resume.
+    const animate = useCallback(() => {
       const task = runAfterInteractions(() => {
-        if (!mountedRef.current) return;
-        scrollY.value = startOffset;
+        const from = scrollY.value;
         scrollY.value = withRepeat(
-          withTiming(singleSetHeight + startOffset, {
+          withTiming(from + singleSetHeight, {
             duration: speed,
             easing: Easing.linear,
           }),
@@ -161,11 +165,12 @@ const TileColumn = React.memo(
       });
 
       return () => {
-        mountedRef.current = false;
-        cancelAnimation(scrollY);
         task.cancel();
+        cancelAnimation(scrollY);
       };
-    }, [singleSetHeight, speed, startOffset, scrollY]);
+    }, [singleSetHeight, speed, scrollY]);
+    useScreenFocusEffect(animate);
+    // @ai-end
 
     // Render doubled tiles for seamless wrap
     const allTiles = useMemo(() => [...tiles, ...tiles], [tiles]);
