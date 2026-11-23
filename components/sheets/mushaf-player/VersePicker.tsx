@@ -18,7 +18,10 @@ import {
   StyleSheet,
   type LayoutChangeEvent,
 } from 'react-native';
-import {FlatList} from 'react-native-actions-sheet';
+import {
+  SheetFlatList,
+  SheetScrollView,
+} from '@/components/sheets/SheetGestures'; // @ai
 import {Ionicons} from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import {useTranslation} from 'react-i18next';
@@ -171,7 +174,7 @@ export function VersePicker({
   const [width, setWidth] = useState(0);
   const pillsRef = useRef<RNFlatList<number>>(null);
   // The grid scrolls to this verse once its surah is shown and measured.
-  const listRef = useRef<React.ComponentRef<typeof FlatList>>(null);
+  const listRef = useRef<RNFlatList<string>>(null); // @ai
   const [headerHeight, setHeaderHeight] = useState(0);
   const [scrollKey, setScrollKey] = useState<string | null>(() =>
     target === 'start' ? range.start : range.end,
@@ -628,15 +631,15 @@ export function VersePicker({
     <View style={styles.fill}>
       {pinned}
       {query ? (
-        <RNScrollView
+        <SheetScrollView
           style={styles.fill}
           contentContainerStyle={{paddingBottom: bottomInset + ms(16)}}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           {suggestionsView}
-        </RNScrollView>
+        </SheetScrollView>
       ) : (
-        <FlatList
+        <SheetFlatList
           ref={listRef}
           key={`${mode}-${columns}`}
           data={keys}

@@ -19,6 +19,7 @@ import {NativeSlider} from '@/components/native/NativeSlider';
 import {localizeDigits} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
 import type {RangePreset} from '@/utils/playbackRangeSelection';
+import {SheetFooter} from '@/components/sheets/SheetGestures'; // @ai
 
 export const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 /** Repeat counts the counters step through; 0 plays on a loop. */
@@ -568,25 +569,28 @@ export function FloatingAction({
       {!!note && (
         <Text style={[styles.footerNote, {color: c.secondary}]}>{note}</Text>
       )}
-      <Pressable
-        onPress={onPress}
-        disabled={disabled}
-        accessibilityRole="button"
-        accessibilityState={{disabled}}
-        style={({pressed}) => [
-          styles.playButton,
-          {backgroundColor: c.text, shadowColor: '#000'},
-          pressed && {opacity: 0.85},
-          disabled && {opacity: 0.35},
-        ]}>
-        {icon === 'play' && <Ionicons name="play" size={ms(18)} color={bg} />}
-        {icon === 'refresh' && (
-          <Ionicons name="refresh" size={ms(18)} color={bg} />
-        )}
-        <Text style={[styles.playLabel, {color: bg}]} numberOfLines={1}>
-          {label}
-        </Text>
-      </Pressable>
+      {/* @ai: a tap on Play never drags the sheet. */}
+      <SheetFooter>
+        <Pressable
+          onPress={onPress}
+          disabled={disabled}
+          accessibilityRole="button"
+          accessibilityState={{disabled}}
+          style={({pressed}) => [
+            styles.playButton,
+            {backgroundColor: c.text, shadowColor: '#000'},
+            pressed && {opacity: 0.85},
+            disabled && {opacity: 0.35},
+          ]}>
+          {icon === 'play' && <Ionicons name="play" size={ms(18)} color={bg} />}
+          {icon === 'refresh' && (
+            <Ionicons name="refresh" size={ms(18)} color={bg} />
+          )}
+          <Text style={[styles.playLabel, {color: bg}]} numberOfLines={1}>
+            {label}
+          </Text>
+        </Pressable>
+      </SheetFooter>
     </View>
   );
 }

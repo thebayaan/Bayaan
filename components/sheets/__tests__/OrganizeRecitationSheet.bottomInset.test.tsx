@@ -16,6 +16,8 @@ const mockDevice = {isTablet: false};
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => mockInsets,
+  // @ai: useSheetBottomPadding reads the insets from the context.
+  SafeAreaInsetsContext: jest.requireActual('react').createContext(mockInsets),
 }));
 jest.mock('@/hooks/useResponsive', () => ({
   useResponsive: () => ({isTablet: mockDevice.isTablet}),

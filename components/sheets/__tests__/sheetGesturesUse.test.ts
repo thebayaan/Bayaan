@@ -79,10 +79,12 @@ const APP_DIRS = [
  * safe there.
  */
 const NATIVE_SCROLL_VIEWS: Record<string, string> = {
+  // @ai: only the body of a native sheet, which has no sheet drag.
+  'AdaptiveActionSheet.tsx': 'native sheet only',
   // Only as its ScrollComponent default; the sheet passes SheetScrollView.
   'MushafLayoutPanel.tsx': 'default never used in the sheet',
-  // The accordion's nested list sits in a SheetNoDrag.
-  'MushafPlayerOptionsSheet.tsx': 'inside SheetNoDrag',
+  // @ai: the rewayah filter and Recent rows scroll sideways.
+  'ReciterPickerSheet.tsx': 'horizontal',
   // The rewayah chips scroll sideways, which never drags the sheet.
   'OrganizeRecitationSheet.tsx': 'horizontal',
 };
@@ -131,8 +133,8 @@ it.each(sheetFiles.map(file => [path.basename(file), file]))(
 
 it('finds the pinned footers it checks', () => {
   const withFooter = sheetFiles.filter(file => footerTags(file).length > 0);
+  // @ai: the Listen sheet's Play is ListenParts' FloatingAction (below).
   expect(withFooter.map(file => path.basename(file)).sort()).toEqual([
-    'MushafPlayerOptionsSheet.tsx',
     'MushafRepeatOptionsSheet.tsx',
   ]);
 });
@@ -160,7 +162,7 @@ function pressables(source: string): {text: string; inFooter: boolean}[] {
  */
 const CLOSING_BUTTONS: [string, string][] = [
   ['AdhkarCopyOptionsSheet.tsx', 'styles.copyButton'],
-  ['MushafPlayerOptionsSheet.tsx', 'styles.playButton'],
+  ['mushaf-player/ListenParts.tsx', 'styles.playButton'], // @ai: Listen sheet
   ['MushafRepeatOptionsSheet.tsx', 'styles.playButton'],
   ['OrganizeRecitationSheet.tsx', 'styles.deleteButton'],
   ['RecitationIntroSheet.tsx', 'styles.primaryButton'],
@@ -197,7 +199,6 @@ it('keeps SheetNoDrag to the lists that scroll inside a sheet', () => {
   const users = sheetFiles.filter(file => /<SheetNoDrag\b/.test(read(file)));
   expect(users.map(file => path.basename(file)).sort()).toEqual([
     'MushafLayoutPanel.tsx', // the reading-theme picker
-    'MushafPlayerOptionsSheet.tsx', // the accordion's list
   ]);
   for (const file of users) {
     expect(read(file)).not.toMatch(/<SheetNoDrag[^>]*>\s*<Pressable\b/);

@@ -61,7 +61,13 @@ jest.mock('react-native-reanimated', () => {
 });
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
+  // @ai: useSheetBottomPadding reads the insets from the context.
+  SafeAreaInsetsContext: jest
+    .requireActual('react')
+    .createContext({top: 0, bottom: 0, left: 0, right: 0}),
 }));
+// @ai: the Choose verses view (Skia verse text) is not opened here.
+jest.mock('../mushaf-player/VersePicker', () => ({VersePicker: () => null}));
 jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({
     theme: {
@@ -133,15 +139,17 @@ function close() {
   });
 }
 
-/** The sheet's Play button (it starts playback and hides the sheet). */
+/**
+ * The sheet's Play button (it starts playback and hides the sheet): the
+ * button in its pinned footer. @ai
+ */
+function playButton() {
+  const footer = renderer!.root.find(n => n.props.testID === 'sheet-footer');
+  return footer.findAll(n => typeof n.props.onPress === 'function')[0];
+}
+
 async function pressPlay() {
-  const target = renderer!.root
-    .findAll(
-      n =>
-        typeof n.props.onPress === 'function' &&
-        n.findAll(c => c.props.children === 'Play').length > 0,
-    )
-    .pop();
+  const target = playButton();
   if (!target) throw new Error('no Play button');
   await act(async () => {
     target.props.onPress();
@@ -215,16 +223,6 @@ it('closed by Play: the range it applied stays, also when the start failed', asy
 
 it('keeps the sheet drag off Play', async () => {
   await open();
-  const play = renderer!.root
-    .findAll(
-      n =>
-        typeof n.props.onPress === 'function' &&
-        n.findAll(c => c.props.children === 'Play').length > 0,
-    )
-    .pop();
-  let footer: typeof play | null = play ?? null;
-  while (footer && footer.props.testID !== 'sheet-footer') {
-    footer = footer.parent;
-  }
-  expect(footer).toBeTruthy();
+  // @ai: Play is the button the SheetFooter holds.
+  expect(playButton()).toBeTruthy();
 });
