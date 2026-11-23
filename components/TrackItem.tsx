@@ -259,23 +259,24 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
               </Text>
             )}
           </View>
-          <View style={styles.reciterInfoRow}>
-            {isCurrentlyDownloading ? (
-              <CircularProgress
-                progress={downloadProgress}
-                size={moderateScale(13)}
-                strokeWidth={moderateScale(1.5)}
-                color={theme.colors.textSecondary}
-              />
-            ) : isDownloadedState ? (
-              <Ionicons
-                name="arrow-down-circle"
-                size={moderateScale(13)}
-                color={theme.colors.textSecondary}
-                style={styles.downloadIcon}
-              />
-            ) : null}
-            {hideReciterName ? null : ( // @ai
+          {/* Under its reciter's heading the whole line would repeat. @ai */}
+          {hideReciterName ? null : (
+            <View style={styles.reciterInfoRow}>
+              {isCurrentlyDownloading ? (
+                <CircularProgress
+                  progress={downloadProgress}
+                  size={moderateScale(13)}
+                  strokeWidth={moderateScale(1.5)}
+                  color={theme.colors.textSecondary}
+                />
+              ) : isDownloadedState ? (
+                <Ionicons
+                  name="arrow-down-circle"
+                  size={moderateScale(13)}
+                  color={theme.colors.textSecondary}
+                  style={styles.downloadIcon}
+                />
+              ) : null}
               <Text
                 style={[
                   styles.reciterName,
@@ -283,8 +284,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                 ]}>
                 {getReciterDisplayName(reciter)}
               </Text>
-            )}
-          </View>
+            </View>
+          )}
           {renderRewayatBadge()}
         </View>
       </Pressable>

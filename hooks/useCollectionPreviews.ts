@@ -107,11 +107,20 @@ export function useCollectionPreviews(): Record<
       loved: newestLoved
         ? {kind: 'cover', surahId: Number(newestLoved.surahId)}
         : null,
-      playlists: newestPlaylist
-        ? playlistSurahs.length > 0
-          ? {kind: 'mosaic', surahIds: playlistSurahs}
-          : null
-        : null,
+      // A small mosaic shows its first surah; skip one that Loved already
+      // shows so the two rows don't look the same.
+      playlists:
+        newestPlaylist && playlistSurahs.length > 0
+          ? {
+              kind: 'mosaic',
+              surahIds:
+                newestLoved &&
+                playlistSurahs.length > 1 &&
+                playlistSurahs[0] === Number(newestLoved.surahId)
+                  ? [...playlistSurahs.slice(1), playlistSurahs[0]]
+                  : playlistSurahs,
+            }
+          : null,
       downloads: newestDownload
         ? {
             kind: 'cover',

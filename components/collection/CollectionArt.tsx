@@ -65,7 +65,10 @@ function SurahMeshTile({
 }) {
   const {theme} = useTheme();
   // Small tiles get stronger colour so they still read as distinct.
-  const intensity = Math.min(4, Math.max(1.4, 160 / Math.max(width, 1)));
+  // Light mode needs more, the pastel palettes wash out on a light panel.
+  const boost = theme.isDarkMode ? 1 : 1.6;
+  const intensity =
+    boost * Math.min(4, Math.max(1.4, 160 / Math.max(width, 1)));
   return (
     <View
       style={[
