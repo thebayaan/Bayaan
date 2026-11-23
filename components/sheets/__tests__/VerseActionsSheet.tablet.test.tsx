@@ -1,9 +1,9 @@
 // @ai-generated
 /**
- * On iPad the verse card is a centered card with a max height, and its
- * Translations settings gear opens a dialog over the reader. The card's menu
- * shrinks to the card so it scrolls, and closing the dialog brings the card
- * back on the screen the gear was pressed from. Phones keep today's sheet.
+ * On iPad the verse card is a centered card with a max height. Its menu
+ * shrinks to the card so it scrolls, and the Translation and Tafsir screens'
+ * settings gear opens the translations picker over the card, so closing the
+ * picker leaves the card where it was. Phones keep today's sheet and page.
  */
 
 import React, {act} from 'react';
@@ -43,6 +43,21 @@ jest.mock('../verse-actions/WordStudyContent', () => ({
 }));
 jest.mock('../verse-actions/CommunityReflectionsContent', () => ({
   CommunityReflectionsContent: () => null,
+}));
+// The picker itself is not under test: a close button stands in for it.
+jest.mock('@/components/screens/TranslationsContent', () => {
+  const {Pressable, Text} = jest.requireActual('react-native');
+  return {
+    __esModule: true,
+    default: ({onClose}: {onClose?: () => void}) => (
+      <Pressable onPress={onClose}>
+        <Text>close picker</Text>
+      </Pressable>
+    ),
+  };
+});
+jest.mock('@/components/layout/TabletDialog', () => ({
+  TabletDialog: ({children}: {children: React.ReactNode}) => children,
 }));
 
 jest.mock('react-native-actions-sheet', () => {
@@ -138,11 +153,12 @@ jest.mock('@/store/verseAnnotationsStore', () => {
 jest.mock('@/store/mushafPlayerStore', () => ({
   useMushafPlayerStore: {getState: () => ({}), setState: jest.fn()},
 }));
+const mockSetSheetMode = jest.fn();
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: {
     getState: () => ({
       queue: {tracks: [], currentIndex: 0},
-      setSheetMode: jest.fn(),
+      setSheetMode: mockSetSheetMode,
     }),
   },
 }));
@@ -212,8 +228,9 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
 
 import {StyleSheet} from 'react-native';
 import {SheetManager} from 'react-native-actions-sheet';
+import {router} from 'expo-router';
+import {moderateScale} from '@/utils/scale';
 import {VerseActionsSheet} from '../VerseActionsSheet';
-import {showPendingVerseActions} from '../verse-actions/returnAfterTranslations';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -293,7 +310,6 @@ beforeEach(() => {
 afterEach(() => {
   act(() => renderer?.unmount());
   renderer = null;
-  showPendingVerseActions();
   jest.useRealTimers();
 });
 
@@ -325,56 +341,72 @@ it('leaves the phone menu as it was', async () => {
   expect(containerStyle().paddingBottom).toBeGreaterThan(0);
 });
 
-it('keeps the iPad screens behind the menu as they were', async () => {
-  await openSheet({...basePayload, initialScreen: 'translation'});
-  expect(containerStyle().paddingBottom).toBeGreaterThan(0);
+it('gives the iPad screens back the padding the menu drops', async () => {
+  await openSheet();
+  press('Translation');
+  // Set outright, not left out: a key left out can keep the menu's value.
+  expect(containerStyle()).toMatchObject({
+    flexShrink: 0,
+    paddingBottom: moderateScale(30), // the phone sheet's
+    marginBottom: 0,
+  });
 });
 
-it('opens on the screen its payload names', async () => {
-  await openSheet({...basePayload, initialScreen: 'translation'});
+const pickerOpen = () => texts().includes('close picker');
+
+it('opens the translations picker over the iPad card', async () => {
+  await openSheet();
+  press('Translation');
+  expect(pickerOpen()).toBe(false);
+  pressSettingsGear();
+  act(() => {
+    jest.runAllTimers();
+  });
+  expect(pickerOpen()).toBe(true);
+  // The card stays open under it, on the same screen.
   expect(texts()).toContain('translation screen');
-  expect(texts()).not.toContain('Similar Verses');
+  expect(SheetManager.hide).not.toHaveBeenCalled();
+  expect(router.push).not.toHaveBeenCalled();
 });
 
-it('comes back on Translation when the dialog it opened closes', async () => {
+it('leaves the card on Translation when the picker closes', async () => {
   await openSheet();
   press('Translation');
   pressSettingsGear();
-  expect(SheetManager.hide).toHaveBeenCalledWith('verse-actions');
+  press('close picker');
+  expect(pickerOpen()).toBe(false);
+  expect(texts()).toContain('translation screen');
   expect(SheetManager.show).not.toHaveBeenCalled();
-
-  showPendingVerseActions();
-  expect(SheetManager.show).toHaveBeenCalledWith('verse-actions', {
-    payload: {...basePayload, initialScreen: 'translation'},
-  });
-  // Only once.
-  showPendingVerseActions();
-  expect(SheetManager.show).toHaveBeenCalledTimes(1);
 });
 
-it('comes back on Tafseer when the gear was pressed there', async () => {
+it('leaves the card on Tafseer when the picker closes', async () => {
   await openSheet();
   press('Tafseer');
   pressSettingsGear();
-  showPendingVerseActions();
-  expect(SheetManager.show).toHaveBeenCalledWith('verse-actions', {
-    payload: {...basePayload, initialScreen: 'tafseer'},
-  });
+  expect(pickerOpen()).toBe(true);
+  press('close picker');
+  expect(pickerOpen()).toBe(false);
+  expect(texts()).toContain('tafseer screen');
 });
 
-it('does not come back over the player, which the gear closes', async () => {
+it('keeps the player open under the picker', async () => {
   await openSheet({...basePayload, source: 'player'});
   press('Translation');
   pressSettingsGear();
-  showPendingVerseActions();
-  expect(SheetManager.show).not.toHaveBeenCalled();
+  expect(pickerOpen()).toBe(true);
+  expect(mockSetSheetMode).not.toHaveBeenCalled();
 });
 
-it('leaves phones as they are', async () => {
+it('leaves phones going to the Translations page', async () => {
   mockIsTablet = false;
   await openSheet();
   press('Translation');
   pressSettingsGear();
-  showPendingVerseActions();
-  expect(SheetManager.show).not.toHaveBeenCalled();
+  expect(SheetManager.hide).toHaveBeenCalledWith('verse-actions');
+  expect(mockSetSheetMode).toHaveBeenCalledWith('hidden');
+  act(() => {
+    jest.advanceTimersByTime(300);
+  });
+  expect(router.push).toHaveBeenCalledWith('/translations');
+  expect(pickerOpen()).toBe(false);
 });

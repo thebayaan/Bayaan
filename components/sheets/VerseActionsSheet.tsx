@@ -97,7 +97,7 @@ import {NoteContent} from './verse-actions/NoteContent';
 import {ShareContent} from './verse-actions/ShareContent';
 import {SimilarVersesContent} from './verse-actions/SimilarVersesContent';
 import {TranslationContent} from './verse-actions/TranslationContent';
-import {returnToVerseActionsAfterTranslations} from './verse-actions/returnAfterTranslations'; // @ai
+import {TranslationsDialog} from './verse-actions/TranslationsDialog'; // @ai
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
@@ -268,12 +268,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // actions act on verses) is never shown, and back from Word Study closes
   // the sheet.
   const wordStudyOnly = props.payload?.wordStudyOnly === true;
-  // A word long-press opens the sheet on Word Study at that word, and the
-  // card coming back after the Translations dialog opens on the screen that
-  // opened it. The sheet unmounts when hidden, so this runs on every show.
+  // A word long-press opens the sheet on Word Study at that word. The sheet
+  // unmounts when hidden, so this runs on every show.
   const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(
-    wordStudyOnly ? 'words' : (props.payload?.initialScreen ?? null),
+    props.payload?.initialScreen === 'words' || wordStudyOnly ? 'words' : null,
   );
+  // iPad: the translations picker open over the card (the gear on the
+  // Translation and Tafsir screens). @ai
+  const [translationsOpen, setTranslationsOpen] = useState(false);
   // The word Word Study opens on (Hafs verse + word-by-word position).
   const [wordTarget, setWordTarget] = useState<WordRef | undefined>(
     props.payload?.word,
@@ -999,7 +1001,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       <View
         style={[
           styles.container,
-          isTablet && !activeScreen && styles.tabletMenu, // @ai
+          // @ai: both states set the same keys, so a switch resets them
+          isTablet && (activeScreen ? styles.tabletScreen : styles.tabletMenu),
           activeScreen && {flex: 1},
         ]}>
         {/* @ai-start: Word Study only names no verse: no header, no menu */}
@@ -1043,16 +1046,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   onPress={() => {
                     lightHaptics();
                     // @ai-start
-                    // iPad: closing the dialog brings this card back. Not
-                    // from the player, which this closes too.
-                    if (isTablet && payload.source !== 'player') {
-                      returnToVerseActionsAfterTranslations({
-                        ...payload,
-                        initialScreen:
-                          activeScreen === 'tafseer'
-                            ? 'tafseer'
-                            : 'translation',
-                      });
+                    // iPad: the picker opens over this card, which stays
+                    // on this screen for when it closes.
+                    if (isTablet) {
+                      setTranslationsOpen(true);
+                      return;
                     }
                     // @ai-end
                     hideCurrentSheet();
@@ -1533,6 +1531,13 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           </SheetScrollView>
         )}
       </View>
+      {/* @ai */}
+      {isTablet && (
+        <TranslationsDialog
+          visible={translationsOpen}
+          onClose={() => setTranslationsOpen(false)}
+        />
+      )}
     </ActionSheet>
   );
 };
@@ -1569,6 +1574,13 @@ const createStyles = (theme: Theme) =>
       flexShrink: 1,
       paddingBottom: 0,
       marginBottom: -CARD_BOTTOM_PADDING,
+    },
+    // A screen keeps the phone sheet's padding. The keys are repeated so the
+    // menu's values go when the reader opens a screen.
+    tabletScreen: {
+      flexShrink: 0,
+      paddingBottom: moderateScale(30),
+      marginBottom: 0,
     },
     // @ai-end
     header: {
