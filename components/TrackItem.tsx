@@ -54,6 +54,8 @@ interface TrackItemProps {
   optionsMenu?: React.ReactNode;
   /** Drawn in place of the reciter photo, e.g. a surah cover. @ai */
   art?: React.ReactNode;
+  /** No row background, for rows inside a panel. @ai */
+  transparent?: boolean;
   /** Prefix the title with the surah number (default true). @ai */
   showSurahNumber?: boolean;
 }
@@ -73,6 +75,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     optionsMenu,
     art, // @ai
     showSurahNumber = true, // @ai
+    transparent, // @ai
   }) => {
     const {theme} = useTheme();
     // @ai-start
@@ -283,7 +286,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       <View
         style={[
           styles.trackItem,
-          {backgroundColor: theme.colors.card},
+          {backgroundColor: transparent ? 'transparent' : theme.colors.card}, // @ai
           tabletInset, // @ai
         ]}>
         {/* Play zone */}

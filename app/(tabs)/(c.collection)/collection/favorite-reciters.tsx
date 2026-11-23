@@ -25,6 +25,7 @@ import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
 import {getReciterDisplayName} from '@/i18n/format';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
@@ -309,23 +310,28 @@ export default function FavoriteRecitersScreen() {
   // @ai-end
 
   const renderItem = useCallback(
-    ({item}: {item: Reciter}) => (
-      <ReciterItem
-        item={item}
-        onPress={reciter => handleReciterPress(reciter.id)}
-        onOptionsPress={handleReciterOptions}
-        onLongPress={handleReciterOptions}
-        optionsMenu={
-          nativeMenus ? (
-            <CollectionOptionsMenu
-              payload={buildReciterOptions(item)}
-              layout="overlay"
-            />
-          ) : undefined
-        }
-      />
+    ({item, index}: {item: Reciter; index: number}) => (
+      <PanelRow
+        first={index === 0}
+        last={index === filteredReciters.length - 1}>
+        <ReciterItem
+          item={item}
+          onPress={reciter => handleReciterPress(reciter.id)}
+          onOptionsPress={handleReciterOptions}
+          onLongPress={handleReciterOptions}
+          optionsMenu={
+            nativeMenus ? (
+              <CollectionOptionsMenu
+                payload={buildReciterOptions(item)}
+                layout="overlay"
+              />
+            ) : undefined
+          }
+        />
+      </PanelRow>
     ),
     [
+      filteredReciters.length, // @ai
       handleReciterPress,
       handleReciterOptions,
       nativeMenus,

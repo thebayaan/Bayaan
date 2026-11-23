@@ -31,6 +31,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
 import {
@@ -325,7 +326,7 @@ export default function PlaylistsScreen() {
   }, [existingColors, createPlaylist]);
 
   const renderItem = useCallback(
-    ({item}: {item: (typeof playlists)[0]}) =>
+    ({item, index}: {item: (typeof playlists)[0]; index: number}) =>
       // @ai-start
       view === 'grid' ? (
         <CollectionGridTile
@@ -363,29 +364,33 @@ export default function PlaylistsScreen() {
         />
       ) : (
         // @ai-end
-        <PlaylistItem
-          id={item.id}
-          name={item.name}
-          itemCount={item.itemCount}
-          color={item.color}
-          art={
-            (covers[item.id]?.length ?? 0) > 0 ? ( // @ai
-              <SurahMosaic
-                surahIds={covers[item.id]}
-                size={moderateScale(50)}
-                radius={moderateScale(10)}
-              />
-            ) : undefined
-          }
-          onPress={() => handlePlaylistPress(item.id)}
-          onLongPress={() => handlePlaylistOptions(item)}
-          onOptionsPress={() => handlePlaylistOptions(item)}
-          optionsMenu={
-            nativeMenus ? (
-              <PlaylistOptionsMenu payload={buildPlaylistOptions(item)} />
-            ) : undefined
-          }
-        />
+        <PanelRow
+          first={index === 0}
+          last={index === visiblePlaylists.length - 1}>
+          <PlaylistItem
+            id={item.id}
+            name={item.name}
+            itemCount={item.itemCount}
+            color={item.color}
+            art={
+              (covers[item.id]?.length ?? 0) > 0 ? ( // @ai
+                <SurahMosaic
+                  surahIds={covers[item.id]}
+                  size={moderateScale(50)}
+                  radius={moderateScale(10)}
+                />
+              ) : undefined
+            }
+            onPress={() => handlePlaylistPress(item.id)}
+            onLongPress={() => handlePlaylistOptions(item)}
+            onOptionsPress={() => handlePlaylistOptions(item)}
+            optionsMenu={
+              nativeMenus ? (
+                <PlaylistOptionsMenu payload={buildPlaylistOptions(item)} />
+              ) : undefined
+            }
+          />
+        </PanelRow>
       ), // @ai
     [
       view, // @ai
@@ -396,6 +401,7 @@ export default function PlaylistsScreen() {
       handlePlaylistOptions,
       nativeMenus,
       buildPlaylistOptions,
+      visiblePlaylists.length, // @ai
     ],
   );
 

@@ -49,6 +49,7 @@ import {confirmDestructive} from '@/utils/confirmDestructive';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
 import {flipX} from '@/utils/rtl';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
@@ -808,7 +809,7 @@ const LovedScreen = () => {
     t,
   ]);
 
-  const renderItem: ListRenderItem<LovedTrackData> = ({item}) => {
+  const renderItem: ListRenderItem<LovedTrackData> = ({item, index}) => {
     const {track, reciter, surah} = item;
 
     if (!reciter || !surah) {
@@ -837,8 +838,9 @@ const LovedScreen = () => {
     // @ai-end
 
     return (
-      <View style={styles.listItem}>
+      <PanelRow first={index === 0} last={index === visibleData.length - 1}>
         <TrackItem
+          transparent
           reciterId={track.reciterId}
           surahId={track.surahId}
           rewayatId={track.rewayatId}
@@ -851,7 +853,7 @@ const LovedScreen = () => {
           onOptionsPress={() => handleShowOptions(track, reciter, surah)}
           onLongPress={() => handleShowOptions(track, reciter, surah)}
         />
-      </View>
+      </PanelRow>
     );
   };
 

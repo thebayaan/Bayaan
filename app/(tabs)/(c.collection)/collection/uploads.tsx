@@ -43,6 +43,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
 import i18n from '@/i18n';
 import {
   getReciterDisplayName,
@@ -535,17 +536,22 @@ export default function UploadsScreen() {
 
   const renderItem = useCallback(
     ({item, index}: ListRenderItemInfo<UploadedRecitation>) => (
-      <UploadListItem
-        item={item}
-        // @ai The row's place in the whole sorted list, so a search
-        // result still queues from where it sits among all uploads.
-        index={searching ? recitations.indexOf(item) : index}
-        onPlay={handlePlayRecitation}
-        onShowOptions={handleShowOptions}
-        renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
-      />
+      <PanelRow
+        first={index === 0}
+        last={index === visibleRecitations.length - 1}>
+        <UploadListItem
+          item={item}
+          // @ai The row's place in the whole sorted list, so a search
+          // result still queues from where it sits among all uploads.
+          index={searching ? recitations.indexOf(item) : index}
+          onPlay={handlePlayRecitation}
+          onShowOptions={handleShowOptions}
+          renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
+        />
+      </PanelRow>
     ),
     [
+      visibleRecitations.length, // @ai
       handlePlayRecitation,
       handleShowOptions,
       nativeMenus,
@@ -923,7 +929,6 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
     itemRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.colors.background,
     },
     itemPlayZone: {
       flex: 1,

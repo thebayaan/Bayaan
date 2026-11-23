@@ -37,6 +37,7 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
 import {getReciterDisplayName} from '@/i18n/format';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
@@ -90,7 +91,14 @@ type GroupedItem =
       count: number;
       bytes: number;
     }
-  | {type: 'track'; downloadData: DownloadDataItem; inGroup: boolean};
+  | {
+      type: 'track';
+      downloadData: DownloadDataItem;
+      inGroup: boolean;
+      /** Ends of its rounded panel in the list view. */
+      first: boolean;
+      last: boolean;
+    };
 // @ai-end
 
 // @ai-start
@@ -441,10 +449,12 @@ export default function DownloadsScreen() {
   // @ai-start
   const groupedItems = useMemo<GroupedItem[]>(() => {
     if (grouping === 'surah') {
-      return visibleData.map(downloadData => ({
+      return visibleData.map((downloadData, i) => ({
         type: 'track',
         downloadData,
         inGroup: false,
+        first: i === 0,
+        last: i === visibleData.length - 1,
       }));
     }
     // By reciter: a heading (or tile) for each reciter, its surahs under
@@ -482,9 +492,15 @@ export default function DownloadsScreen() {
         bytes: group.reduce((n, d) => n + (d.download.fileSize || 0), 0),
       });
       if (view === 'list') {
-        for (const downloadData of group) {
-          items.push({type: 'track', downloadData, inGroup: true});
-        }
+        group.forEach((downloadData, i) =>
+          items.push({
+            type: 'track',
+            downloadData,
+            inGroup: true,
+            first: i === 0,
+            last: i === group.length - 1,
+          }),
+        );
       }
     }
     return items;
@@ -904,25 +920,28 @@ export default function DownloadsScreen() {
     }
 
     return (
-      <TrackItem
-        reciterId={download.reciterId}
-        surahId={download.surahId}
-        rewayatId={download.rewayatId}
-        // The cover already says which surah it is. @ai
-        art={<SurahCover surahId={surah.id} size={moderateScale(50)} />}
-        showSurahNumber={false}
-        onPress={() => handleSurahPress(download, reciter, surah)}
-        onPlayPress={() => handleSurahPress(download, reciter, surah)}
-        onOptionsPress={() => handleShowOptions(download, reciter, surah)}
-        onLongPress={() => handleShowOptions(download, reciter, surah)}
-        optionsMenu={
-          nativeMenus ? (
-            <DownloadOptionsMenu
-              payload={buildDownloadOptions(download, reciter, surah)}
-            />
-          ) : undefined
-        }
-      />
+      <PanelRow first={item.first} last={item.last}>
+        <TrackItem
+          transparent
+          reciterId={download.reciterId}
+          surahId={download.surahId}
+          rewayatId={download.rewayatId}
+          // The cover already says which surah it is. @ai
+          art={<SurahCover surahId={surah.id} size={moderateScale(50)} />}
+          showSurahNumber={false}
+          onPress={() => handleSurahPress(download, reciter, surah)}
+          onPlayPress={() => handleSurahPress(download, reciter, surah)}
+          onOptionsPress={() => handleShowOptions(download, reciter, surah)}
+          onLongPress={() => handleShowOptions(download, reciter, surah)}
+          optionsMenu={
+            nativeMenus ? (
+              <DownloadOptionsMenu
+                payload={buildDownloadOptions(download, reciter, surah)}
+              />
+            ) : undefined
+          }
+        />
+      </PanelRow>
     );
   };
   const columns = view === 'grid' ? (grouping === 'reciter' ? 2 : 3) : 1;
