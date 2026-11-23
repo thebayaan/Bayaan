@@ -18,6 +18,11 @@ import {
   PanelRow,
 } from '@/components/collection/CollectionPanel'; // @ai
 import {Surah} from '@/data/surahData';
+import {
+  GROUPED_HEADER_GAP,
+  GROUPED_SECTION_GAP,
+  groupedHeaderStyle,
+} from '@/components/settings/SettingsList'; // @ai
 // @ai-start
 import {getJuzForSurah} from '@/data/juzData';
 import {latinLetterSpacing} from '@/utils/rtl';
@@ -554,13 +559,12 @@ SurahList.displayName = 'SurahList';
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     // @ai-start
+    // @ai: the Settings section header
     panelGroupLabel: {
+      ...groupedHeaderStyle(theme),
       paddingHorizontal: PANEL_MARGIN + PANEL_ROW_PADDING,
-      paddingTop: moderateScale(22),
-      paddingBottom: moderateScale(7),
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textSecondary,
+      paddingTop: GROUPED_SECTION_GAP,
+      paddingBottom: GROUPED_HEADER_GAP,
     },
     panelGroupGap: {height: moderateScale(8)},
     // @ai-end

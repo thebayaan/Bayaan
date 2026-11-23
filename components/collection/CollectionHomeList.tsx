@@ -1,12 +1,22 @@
 // @ai-generated
 import React, {useMemo} from 'react';
-import {Pressable, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useRouter} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, ScaledSheet} from '@/utils/scale';
+// @ai-start
+import {
+  GROUPED_CARD_RADIUS,
+  GROUPED_HEADER_GAP,
+  SETTINGS_ROW_INSET,
+  groupedCardColor,
+  groupedHeaderStyle,
+  groupedSeparatorColor,
+} from '@/components/settings/SettingsList';
+// @ai-end
 import {Theme} from '@/utils/themeUtils';
 import {flipX} from '@/utils/rtl';
 import type {CollectionCategory} from '@/components/collection/TabletCollectionHome';
@@ -159,8 +169,10 @@ export function CollectionHomeList({
                           </View>
                           <Feather
                             name="chevron-right"
-                            size={moderateScale(17)}
-                            color={theme.colors.textSecondary}
+                            size={moderateScale(18)}
+                            color={Color(theme.colors.text)
+                              .alpha(0.35)
+                              .string()}
                             style={flipX}
                           />
                         </Pressable>
@@ -211,27 +223,25 @@ const createStyles = (theme: Theme) =>
       backgroundColor: Color(theme.colors.text).alpha(0.07).string(),
     },
     pressed: {opacity: 0.6},
-    section: {gap: '8@ms'},
+    // @ai-start: the Settings grouped-list look
+    section: {gap: GROUPED_HEADER_GAP},
     sectionLabel: {
-      fontFamily: theme.fonts.semiBold,
-      fontSize: '13@ms',
-      color: theme.colors.textSecondary,
-      marginStart: '16@ms',
+      ...groupedHeaderStyle(theme),
+      marginStart: SETTINGS_ROW_INSET,
     },
     card: {
-      borderRadius: '20@ms',
+      borderRadius: GROUPED_CARD_RADIUS,
       overflow: 'hidden',
-      backgroundColor: Color(theme.colors.text)
-        .alpha(theme.isDarkMode ? 0.07 : 0.045)
-        .string(),
+      backgroundColor: groupedCardColor(theme),
     },
+    // @ai-end
     row: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: '12@ms',
       minHeight: '60@ms',
       paddingVertical: '9@ms',
-      paddingHorizontal: '14@ms',
+      paddingHorizontal: SETTINGS_ROW_INSET, // @ai
     },
     rowPressed: {
       backgroundColor: Color(theme.colors.text).alpha(0.06).string(),
@@ -249,8 +259,9 @@ const createStyles = (theme: Theme) =>
       marginTop: '1@ms',
     },
     separator: {
-      height: 1,
-      marginStart: '64@ms',
-      backgroundColor: Color(theme.colors.text).alpha(0.08).string(),
+      height: StyleSheet.hairlineWidth, // @ai
+      marginStart: '70@ms',
+      marginEnd: SETTINGS_ROW_INSET, // @ai
+      backgroundColor: groupedSeparatorColor(theme), // @ai
     },
   });

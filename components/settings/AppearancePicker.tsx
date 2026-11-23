@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useCallback, useMemo} from 'react';
-import {Appearance, Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Polygon} from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import {useTranslation} from 'react-i18next';
@@ -92,8 +92,9 @@ export function AppearancePicker(): React.JSX.Element {
     (mode: ThemeMode) => {
       if (mode === themeMode) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // @ai: the store pins or unpins the native look itself; pinning here
+      // pinned System to light, so it never followed a dark device.
       setThemeMode(mode);
-      Appearance.setColorScheme(mode === 'dark' ? 'dark' : 'light');
     },
     [themeMode, setThemeMode],
   );

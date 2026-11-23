@@ -1,23 +1,27 @@
 // @ai-generated
 import React from 'react';
-import {View} from 'react-native';
-import Color from 'color';
+import {StyleSheet, View} from 'react-native';
 import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
-import {USE_GLASS} from '@/hooks/useGlassProps';
+import {
+  GROUPED_CARD_RADIUS,
+  SETTINGS_ROW_INSET,
+  groupedCardColor,
+  groupedSeparatorColor,
+} from '@/components/settings/SettingsList';
 
 /**
- * Rows of a Collection list drawn as one inset-grouped panel, with the
- * iOS list metrics: 16pt from the screen edge, the system corner radius
- * (larger on iOS 26), 48pt artwork in 64pt rows, and a hairline that
- * starts where the text starts and runs to the panel's edge.
+ * Rows of a Collection list drawn as one inset-grouped panel in the
+ * Settings look (components/settings/SettingsList): 16pt from the screen
+ * edge, the same card fill and corner radius, 48pt artwork in 64pt rows,
+ * and a hairline from where the text starts to the row's end inset.
  */
 
 /** Side margin of the panel, matching the screen's other content. */
 export const PANEL_MARGIN = moderateScale(16);
-export const PANEL_RADIUS = USE_GLASS ? 26 : 12;
+export const PANEL_RADIUS = GROUPED_CARD_RADIUS;
 /** Leading and trailing padding inside a row. */
-export const PANEL_ROW_PADDING = moderateScale(16);
+export const PANEL_ROW_PADDING = SETTINGS_ROW_INSET;
 /** Row artwork: size, corner radius and the gap before the text. */
 export const PANEL_ART_SIZE = moderateScale(48);
 export const PANEL_ART_RADIUS = moderateScale(8);
@@ -28,9 +32,7 @@ const SEPARATOR_INSET = PANEL_ROW_PADDING + PANEL_ART_SIZE + PANEL_ART_GAP;
 
 export function usePanelColor(): string {
   const {theme} = useTheme();
-  return Color(theme.colors.text)
-    .alpha(theme.isDarkMode ? 0.08 : 0.05)
-    .string();
+  return groupedCardColor(theme);
 }
 
 export function PanelRow({
@@ -63,9 +65,9 @@ export function PanelRow({
             position: 'absolute',
             bottom: 0,
             start: SEPARATOR_INSET,
-            end: 0,
-            height: 0.5,
-            backgroundColor: Color(theme.colors.text).alpha(0.14).string(),
+            end: PANEL_ROW_PADDING,
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: groupedSeparatorColor(theme),
           }}
         />
       ) : null}

@@ -34,6 +34,36 @@ const SECTION_GAP = moderateScale(22);
 /** Header to its card. */
 const HEADER_GAP = moderateScale(8);
 
+// @ai-start
+/**
+ * The grouped-list look Settings sets for the app: Collection panels, the
+ * Collection tab and the reciter page share it.
+ */
+export const GROUPED_CARD_RADIUS = moderateScale(24);
+export const GROUPED_SECTION_GAP = SECTION_GAP;
+export const GROUPED_HEADER_GAP = HEADER_GAP;
+
+/** A grouped card's fill: white in light mode, a soft white wash in dark. */
+export function groupedCardColor(theme: Theme): string {
+  return theme.isDarkMode ? Color('#ffffff').alpha(0.07).toString() : '#ffffff';
+}
+
+/** The hairline between a card's rows. */
+export function groupedSeparatorColor(theme: Theme): string {
+  return Color(theme.colors.text).alpha(0.14).toString();
+}
+
+/** A section header above a card: small, semibold, muted. */
+export function groupedHeaderStyle(theme: Theme) {
+  return {
+    textAlign: 'left' as const,
+    fontSize: theme.typography?.smallSize ?? moderateScale(12),
+    fontFamily: 'Manrope-SemiBold',
+    color: Color(theme.colors.text).alpha(0.55).toString(),
+  };
+}
+// @ai-end
+
 export function useSettingsStyles(): SettingsStyles {
   const {theme} = useTheme();
   return useMemo(() => createStyles(theme), [theme]);
@@ -226,8 +256,6 @@ export function SettingsIntro({text}: {text: string}): React.JSX.Element {
 }
 
 function createStyles(theme: Theme) {
-  const isDark = theme.isDarkMode;
-  const muted = Color(theme.colors.text).alpha(0.55).toString();
   // The theme's sizes are already scaled to the screen.
   const {mediumSize, smallSize} = theme.typography;
   return StyleSheet.create({
@@ -239,10 +267,7 @@ function createStyles(theme: Theme) {
       marginBottom: SECTION_GAP,
     },
     header: {
-      textAlign: 'left',
-      fontSize: smallSize,
-      fontFamily: 'Manrope-SemiBold',
-      color: muted,
+      ...groupedHeaderStyle(theme), // @ai
       marginBottom: HEADER_GAP,
       marginStart: SETTINGS_ROW_INSET,
     },
@@ -265,10 +290,8 @@ function createStyles(theme: Theme) {
       lineHeight: smallSize * 1.4,
     },
     card: {
-      backgroundColor: isDark
-        ? Color('#ffffff').alpha(0.07).toString()
-        : '#ffffff',
-      borderRadius: moderateScale(24),
+      backgroundColor: groupedCardColor(theme), // @ai
+      borderRadius: GROUPED_CARD_RADIUS, // @ai
       overflow: 'hidden',
     },
     row: {
@@ -319,7 +342,7 @@ function createStyles(theme: Theme) {
     },
     separator: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: Color(theme.colors.text).alpha(0.14).toString(),
+      backgroundColor: groupedSeparatorColor(theme), // @ai
       marginEnd: SETTINGS_ROW_INSET,
     },
     separatorIcon: {
