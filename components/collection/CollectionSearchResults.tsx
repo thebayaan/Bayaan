@@ -254,7 +254,12 @@ export function CollectionSearchResults({query}: {query: string}) {
           title:
             u.title ??
             (surah ? getSurahDisplayName(surah) : u.originalFilename),
-          art: art('uploads', {kind: 'wave'}),
+          art: art(
+            'uploads',
+            u.surahNumber
+              ? {kind: 'cover', surahId: u.surahNumber, badge: 'upload'}
+              : null,
+          ),
           onPress: open('/collection/uploads'),
         };
       });

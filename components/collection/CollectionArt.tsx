@@ -1,6 +1,12 @@
 // @ai-generated
 import React from 'react';
-import {Text, View, type StyleProp, type ViewStyle} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
@@ -256,7 +262,7 @@ export function GlassIcon({
 
 /** What a category's preview shows; null falls back to the glass icon. */
 export type CollectionPreviewData =
-  | {kind: 'cover'; surahId: number; badge?: 'download'}
+  | {kind: 'cover'; surahId: number; badge?: 'download' | 'upload'}
   | {kind: 'mosaic'; surahIds: number[]}
   | {kind: 'verse'; surahNumber: number; ayahNumber: number}
   | {kind: 'note'}
@@ -288,7 +294,7 @@ export function CollectionPreview({
       return (
         <View style={{width: size, height: size}}>
           <SurahCover surahId={data.surahId} size={size} radius={radius} />
-          {data.badge === 'download' ? (
+          {data.badge ? (
             <View
               style={{
                 position: 'absolute',
@@ -303,7 +309,11 @@ export function CollectionPreview({
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-              <DownloadIcon color="#FFFFFF" size={size * 0.24} />
+              {data.badge === 'upload' ? (
+                <Feather name="arrow-up" color="#FFFFFF" size={size * 0.26} />
+              ) : (
+                <DownloadIcon color="#FFFFFF" size={size * 0.24} />
+              )}
             </View>
           ) : null}
         </View>
@@ -423,7 +433,9 @@ export function CollectionPreview({
         width: face,
         height: face,
         borderRadius: face / 2,
-        borderWidth: 2,
+        // A hairline in the background colour just separates the two
+        // faces where they overlap.
+        borderWidth: StyleSheet.hairlineWidth,
         borderColor: theme.colors.background,
         overflow: 'hidden' as const,
       };
