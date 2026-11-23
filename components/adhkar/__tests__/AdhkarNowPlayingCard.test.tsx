@@ -31,6 +31,7 @@ jest.mock('@/hooks/useTheme', () => ({
 jest.mock('@/hooks/useGlassProps', () => ({
   USE_GLASS: false,
   useGlassColorScheme: () => 'light',
+  useGlassTint: () => undefined, // @ai
 }));
 
 const mockShowSheet = jest.fn();

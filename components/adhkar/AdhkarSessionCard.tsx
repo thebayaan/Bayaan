@@ -14,7 +14,11 @@ import {useReducedMotion} from 'react-native-reanimated';
 import {useTranslation} from 'react-i18next';
 import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {PauseIcon, PlayIcon} from '@/components/Icons';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {createStyles} from '@/components/cards/recentCardStyles';
@@ -54,6 +58,7 @@ export function AdhkarSessionCard({
   const dispatch = useAdhkarSessionStore(s => s.dispatch);
   const reduceMotion = useReducedMotion();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const active = session.status === 'playing' || session.status === 'loading';
@@ -91,7 +96,11 @@ export function AdhkarSessionCard({
         width != null && {width}, // @ai
       ]}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
+        ? {
+            glassEffectStyle: 'regular',
+            colorScheme: glassColorScheme,
+            tintColor: glassTint,
+          }
         : {})}>
       {/* Background layers (fallback for non-glass), as RecentReciterCard */}
       {!USE_GLASS && (

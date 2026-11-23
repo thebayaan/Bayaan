@@ -12,7 +12,11 @@ import {GlassView} from 'expo-glass-effect';
 import {useTranslation} from 'react-i18next';
 import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {useFloatingPillStyle} from '@/hooks/useFloatingPillStyle'; // @ai
 import {PauseIcon, PlayIcon} from '@/components/Icons';
@@ -30,6 +34,7 @@ export function AdhkarSessionPlayer({
   const {t} = useTranslation('home');
   const navigation = useNavigationContainerRef();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const dispatch = useAdhkarSessionStore(s => s.dispatch);
 
   const active = session.status === 'playing' || session.status === 'loading';
@@ -57,7 +62,11 @@ export function AdhkarSessionPlayer({
       testID="adhkar-session-player"
       style={containerStyle}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular' as const, colorScheme: glassColorScheme}
+        ? {
+            glassEffectStyle: 'regular' as const,
+            colorScheme: glassColorScheme,
+            tintColor: glassTint,
+          }
         : {})}>
       {/* A plain View row, as FloatingPlayer, so each button is focusable on
           its own; the open action lives on the body only. */}

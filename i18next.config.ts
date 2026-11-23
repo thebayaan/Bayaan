@@ -43,10 +43,6 @@ export default defineConfig({
       'title',
     ],
     // Dev-only tools stay in English.
-    ignore: [
-      'components/DevMenu.tsx',
-      'components/GlassTintDial.tsx', // @ai: temporary dev dial
-      'app/recitation-spike.tsx',
-    ],
+    ignore: ['components/DevMenu.tsx', 'app/recitation-spike.tsx'],
   },
 });

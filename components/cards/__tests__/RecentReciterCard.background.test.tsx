@@ -57,6 +57,7 @@ jest.mock('@/hooks/useTheme', () => ({
 jest.mock('@/hooks/useGlassProps', () => ({
   USE_GLASS: false,
   useGlassColorScheme: () => 'light',
+  useGlassTint: () => undefined, // @ai
 }));
 jest.mock('expo-glass-effect', () => ({GlassView: 'GlassView'}));
 jest.mock('expo-linear-gradient', () => ({LinearGradient: 'LinearGradient'}));

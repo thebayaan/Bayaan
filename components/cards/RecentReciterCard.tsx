@@ -7,7 +7,11 @@ import {PlayIcon} from '@/components/Icons';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {ProgressTrack} from '@/components/ProgressTrack'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
@@ -293,6 +297,7 @@ export const RecentReciterCard = ({
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
 
   const CardWrapper = USE_GLASS ? GlassView : View;
 
@@ -304,7 +309,11 @@ export const RecentReciterCard = ({
         width != null && {width},
       ]}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
+        ? {
+            glassEffectStyle: 'regular',
+            colorScheme: glassColorScheme,
+            tintColor: glassTint, // @ai
+          }
         : {})}>
       {/* Background layers (fallback for non-glass) */}
       {!USE_GLASS && (

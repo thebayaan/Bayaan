@@ -137,7 +137,6 @@ jest.mock('@/components/modals/WhatsNewOnboarding', () => ({
   WhatsNewModal: () => null,
 }));
 jest.mock('@/components/DevMenu', () => ({DevMenu: () => null}));
-jest.mock('@/components/GlassTintDial', () => ({GlassTintDial: () => null})); // @ai
 jest.mock('react-native-actions-sheet', () => ({
   SheetProvider: mockChildren,
   SheetManager: {show: jest.fn()},
