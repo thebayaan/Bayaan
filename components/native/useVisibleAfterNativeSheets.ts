@@ -18,6 +18,12 @@ export function useVisibleAfterNativeSheets(visible: boolean): boolean {
       setReady(false);
       return;
     }
+    // No native sheet up or closing (Android, iPad, the flag off, or none
+    // open): show at once, with no frame of delay.
+    if (getNativeSheetLevels().length === 0) {
+      setReady(true);
+      return;
+    }
     let live = true;
     const bottom = getNativeSheetLevels().find(level => level.presented);
     (bottom ? hideNativeSheet(bottom.id) : Promise.resolve())

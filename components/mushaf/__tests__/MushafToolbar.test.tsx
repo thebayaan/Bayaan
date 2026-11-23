@@ -274,7 +274,8 @@ describe('after Stop', () => {
       payload: {currentPage: 300},
     });
     mockShowSheet.mockClear();
-    act(() => button('ellipsis.circle').onPress?.());
+    // @ai: a plain glyph; the toolbar draws the glass circle.
+    act(() => button('ellipsis').onPress?.());
     expect(mockShowSheet).toHaveBeenLastCalledWith('mushaf-player-options', {
       payload: {currentPage: 300},
     });
