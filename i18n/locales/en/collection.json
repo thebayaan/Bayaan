@@ -6,13 +6,13 @@
     "itemsCount_one": "{{count}} item",
     "itemsCount_other": "{{count}} items",
     "empty": {
-      "playlists": "Create your first playlist",
-      "reciters": "No favorites yet",
-      "downloads": "No downloads yet",
-      "loved": "No loved surahs yet",
-      "bookmarks": "No bookmarks yet",
-      "notes": "No notes yet",
-      "uploads": "No uploads yet"
+      "playlists": "Group surahs for a routine",
+      "reciters": "Tap Favorite on a reciter’s page",
+      "downloads": "Download surahs to listen offline",
+      "loved": "Tap the heart on any surah",
+      "bookmarks": "Long-press a verse in the Mushaf",
+      "notes": "Long-press a verse to add a note",
+      "uploads": "Add audio from Files"
     },
     "groups": {
       "listening": "Listening",
