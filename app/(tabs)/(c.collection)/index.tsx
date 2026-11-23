@@ -24,7 +24,7 @@ import {useFocusEffect} from 'expo-router';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset';
 import {USE_GLASS} from '@/hooks/useGlassProps';
-import {FrostedView} from '@/components/FrostedView';
+import {LinearGradient} from 'expo-linear-gradient';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -69,7 +69,6 @@ export default function CollectionScreen() {
   const [searching, setSearching] = useState(false);
   // Results follow the typing a beat behind, so the field stays quick.
   const deferredQuery = useDeferredValue(query);
-  const [scrolled, setScrolled] = useState(false);
   const previews = useCollectionPreviews();
 
   useFocusEffect(
@@ -291,11 +290,6 @@ export default function CollectionScreen() {
       <ScrollView
         style={styles.content}
         scrollEventThrottle={16}
-        onScroll={e => {
-          const past =
-            e.nativeEvent.contentOffset.y + (USE_GLASS ? insets.top : 0) > 4;
-          if (past !== scrolled) setScrolled(past);
-        }}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
         keyboardShouldPersistTaps="handled"
@@ -325,14 +319,22 @@ export default function CollectionScreen() {
           results={<CollectionSearchResults query={deferredQuery} />}
         />
       </ScrollView>
-      {/* Once the list moves, frost the strip under the clock so the
-          search pill doesn't slide under it. */}
-      {scrolled ? (
-        <FrostedView
-          pointerEvents="none"
-          style={[styles.statusBarScrim, {height: insets.top}]}
-        />
-      ) : null}
+      {/* A soft fade from the background under the clock, so the list
+          melts away there instead of running under the status bar. It
+          matches the background, so at rest it can't be seen. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[
+          theme.colors.background,
+          theme.colors.background,
+          Color(theme.colors.background).alpha(0).string(),
+        ]}
+        locations={[0, 0.55, 1]}
+        style={[
+          styles.statusBarScrim,
+          {height: insets.top + moderateScale(20)},
+        ]}
+      />
     </View>
   );
 }
