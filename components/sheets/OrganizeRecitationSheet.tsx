@@ -20,6 +20,7 @@ import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetFooter, SheetScrollView} from './SheetGestures';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {useUploadsStore} from '@/store/uploadsStore';
 import {
   searchSurahs,
@@ -616,8 +617,7 @@ export const OrganizeRecitationSheet = (
             ) : (
               <>
                 <View style={styles.searchInputContainer}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
@@ -794,8 +794,7 @@ export const OrganizeRecitationSheet = (
             ) : (
               <>
                 <View style={styles.searchInputContainer}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />

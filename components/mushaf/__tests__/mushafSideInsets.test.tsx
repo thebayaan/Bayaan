@@ -47,6 +47,7 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
 jest.mock('@/hooks/useGlassProps', () => ({
+  useGlassTint: () => undefined,
   USE_GLASS: false,
   useGlassColorScheme: () => 'light',
 }));

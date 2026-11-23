@@ -35,6 +35,12 @@ jest.mock('@/hooks/useGlassProps', () => ({
   },
 }));
 
+jest.mock('@/components/TintedHeader', () => ({
+  tintedBackOptions: {},
+}));
+jest.mock('@/components/TabBarScrim', () => ({
+  withTabBarScrim: (Layout: unknown) => Layout,
+}));
 jest.mock('@/components/layout/MaxWidthContainer', () => ({
   MaxWidthContainer: ({children}: {children: React.ReactNode}) => children,
   capScreensExcept: () => undefined, // @ai

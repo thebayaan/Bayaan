@@ -1,7 +1,11 @@
 import React, {useState, useCallback, useEffect} from 'react';
 import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import Animated, {
   useSharedValue,
@@ -60,6 +64,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   const {theme} = useTheme();
   const readingColors = useReadingThemeColors();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const [showQueue, setShowQueue] = useState(false);
   const {
     updateQueue,
@@ -269,6 +274,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
               style={styles.cardGlass}
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}
+              tintColor={glassTint}
             />
           ) : (
             <FrostedView style={StyleSheet.absoluteFill} />
@@ -295,6 +301,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
               style={styles.cardGlass}
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}
+              tintColor={glassTint}
             />
           ) : (
             <FrostedView style={StyleSheet.absoluteFill} />

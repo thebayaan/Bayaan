@@ -10,6 +10,7 @@ import ActionSheet, {
 } from '@/components/sheets/AdaptiveActionSheet';
 import {SheetScrollView} from './SheetGestures';
 import {Feather, FontAwesome5, Ionicons} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
@@ -297,11 +298,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             pressed && styles.optionPressed,
           ]}
           onPress={handleShare}>
-          <Feather
-            name="share"
-            size={moderateScale(18)}
-            color={theme.colors.text}
-          />
+          <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
           <Text style={styles.optionText}>{t('common:actions.share')}</Text>
         </Pressable>
       ),

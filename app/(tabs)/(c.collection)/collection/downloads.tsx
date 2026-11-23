@@ -26,6 +26,7 @@ import {createDownloadedTrack} from '@/utils/track';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-start
 import {confirmDestructive} from '@/utils/confirmDestructive';
@@ -948,8 +949,7 @@ export default function DownloadsScreen() {
             },
           ]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}

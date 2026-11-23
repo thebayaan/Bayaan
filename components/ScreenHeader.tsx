@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
-import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {useRouter} from 'expo-router';
@@ -22,8 +22,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({title}) => {
   return (
     <View style={styles.header}>
       <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Feather
-          name="arrow-left"
+        <BackIcon
           size={moderateScale(24)}
           color={theme.colors.text}
           style={flipX}

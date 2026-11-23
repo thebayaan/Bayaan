@@ -43,6 +43,7 @@ import {useCollectionViewPref} from '@/store/collectionViewStore';
 // @ai-end
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 // @ai-end
 
 // @ai-start
@@ -430,8 +431,7 @@ export default function FavoriteRecitersScreen() {
             },
           ]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}

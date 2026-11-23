@@ -16,6 +16,7 @@ import {useRouter} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -684,8 +685,7 @@ export default function UploadsScreen() {
             },
           ]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}

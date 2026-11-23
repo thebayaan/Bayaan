@@ -21,7 +21,7 @@ import {
   type CatalogSearchResult,
 } from '@/utils/search/catalog';
 // @ai-end
-import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {ReciteToSearchRow} from '@/components/search/ReciteToSearchRow';
@@ -792,8 +792,7 @@ export function SearchView({
               </View>
             ) : !recentsLoaded ? null : ( // not "none" while they are being read
               <View style={styles.emptyState}>
-                <Feather
-                  name="search"
+                <SearchIcon
                   size={moderateScale(36)}
                   color={Color(theme.colors.textSecondary)
                     .alpha(0.12)
@@ -868,8 +867,7 @@ export function SearchView({
                 </View>
               ) : searchResults.length === 0 && quranRows.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(36)}
                     color={Color(theme.colors.textSecondary)
                       .alpha(0.12)

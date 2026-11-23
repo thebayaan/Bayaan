@@ -60,6 +60,7 @@ jest.mock('@/hooks/useTheme', () => ({
 
 let mockGlass = false;
 jest.mock('@/hooks/useGlassProps', () => ({
+  useGlassTint: () => undefined,
   get USE_GLASS() {
     return mockGlass;
   },
