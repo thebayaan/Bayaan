@@ -14,6 +14,11 @@ import {moderateScale} from '@/utils/scale';
 
 const LETTER_HEIGHT = moderateScale(14);
 const MIN_LETTER_HEIGHT = moderateScale(9);
+/**
+ * Room the list leaves at its trailing edge while the rail shows, so the
+ * panels end before the letters instead of running under them. @ai
+ */
+export const RAIL_GUTTER = moderateScale(14);
 const RAIL_PADDING = moderateScale(6);
 
 /**

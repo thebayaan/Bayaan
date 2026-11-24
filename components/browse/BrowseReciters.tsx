@@ -25,6 +25,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import type {ViewInstance} from 'react-native';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {Feather, MaterialIcons} from '@expo/vector-icons';
 import {SymbolView} from 'expo-symbols';
@@ -86,7 +87,7 @@ import {
   ReciterPanelRow,
   type ReciterItemProps,
 } from './ReciterBrowseItems';
-import {AlphabetRail} from './AlphabetRail';
+import {AlphabetRail, RAIL_GUTTER} from './AlphabetRail';
 import {
   CHIP_REWAYAT,
   LETTERS_FROM,
@@ -164,7 +165,7 @@ export default function BrowseReciters({
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
   const {isTablet} = useResponsive();
-  const {width: windowWidth} = useWindowDimensions();
+  const {width: windowWidth, height: windowHeight} = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const pickingRef = useRef(false);
   const listRef = useRef<FlashListRef<BrowseItem>>(null);
@@ -691,6 +692,22 @@ export default function BrowseReciters({
     ],
   );
 
+  const railShown = letters.length > 0 && !searching;
+  // @ai-start
+  // The rail is centred between the header and the bars over the bottom of
+  // the list (mini player, tab bar). `bottomInset` counts from the bottom of
+  // the window, but this screen may already end above the tab bar, so only
+  // the part that overlaps it is taken off.
+  const rootRef = useRef<ViewInstance>(null);
+  const [screenBottom, setScreenBottom] = useState<number | null>(null);
+  const measureScreenBottom = useCallback(() => {
+    rootRef.current?.measureInWindow((_x, y, _w, h) => setScreenBottom(y + h));
+  }, []);
+  const railBottom = Math.max(
+    moderateScale(16),
+    bottomInset - (windowHeight - (screenBottom ?? windowHeight)),
+  );
+  // @ai-end
   const renderItem = useCallback(
     ({item}: {item: BrowseItem}) => {
       if (item.type === 'header') {
@@ -703,12 +720,16 @@ export default function BrowseReciters({
         );
       }
       if (item.type === 'row') {
+        // With the A–Z rail showing, the panel ends short of it so the
+        // letters get their own column beside the rows. @ai
         return (
-          <ReciterPanelRow
-            {...itemProps(item.reciter)}
-            first={item.first}
-            last={item.last}
-          />
+          <View style={railShown ? styles.railGutter : undefined}>
+            <ReciterPanelRow
+              {...itemProps(item.reciter)}
+              first={item.first}
+              last={item.last}
+            />
+          </View>
         );
       }
       return (
@@ -723,7 +744,7 @@ export default function BrowseReciters({
         </View>
       );
     },
-    [theme, styles, itemProps, pageMargin, cardWidth],
+    [theme, styles, itemProps, pageMargin, cardWidth, railShown],
   );
 
   const chips = (
@@ -829,7 +850,7 @@ export default function BrowseReciters({
     ) : null;
 
   return (
-    <View style={styles.container}>
+    <View ref={rootRef} style={styles.container} onLayout={measureScreenBottom}>
       {!USE_GLASS ? (
         <Header
           title={screenTitle}
@@ -862,12 +883,12 @@ export default function BrowseReciters({
         }}
         drawDistance={moderateScale(400)}
       />
-      {letters.length > 0 && !searching ? (
+      {railShown ? (
         <AlphabetRail
           letters={letters}
           onLetter={jumpToLetter}
           insetTop={USE_GLASS ? headerHeight : insets.top + moderateScale(56)}
-          insetBottom={Math.max(moderateScale(80), bottomInset)}
+          insetBottom={railBottom}
         />
       ) : null}
     </View>
@@ -969,6 +990,7 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
     },
     chipTextSelected: {color: theme.colors.background},
+    railGutter: {paddingEnd: RAIL_GUTTER},
     sectionHeader: {
       paddingHorizontal: PANEL_MARGIN + PANEL_ROW_PADDING,
       paddingTop: GROUPED_SECTION_GAP,
