@@ -3,7 +3,7 @@
 // CarPlay's "For right now" (the reciter of the last thing played, else the
 // default reciter) and refreshes when the hour's rules change, when the app
 // comes back, and when something new is played.
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useState, useSyncExternalStore} from 'react';
 import {AppState} from 'react-native';
 import {RECITERS} from '@/data/reciterData';
 import {getSystemPlaylists} from '@/data/systemPlaylists';
@@ -26,8 +26,34 @@ import {activeSlots} from '@/services/bayaanNow/occasion';
 import {useCatalogVersion} from '@/components/home/homeKit';
 
 const COMPLETED = 0.95;
-/** The sun and moon move along the sky, and occasions start and end. */
+/** Occasions start and end between the rules' boundaries. */
 const TICK_MS = 10 * 60 * 1000;
+
+let previewAt: Date | null = null;
+const previewListeners = new Set<() => void>();
+
+/**
+ * Developer preview: show Bayaan Now as it would be at another time (a
+ * Friday, Laylat al-Qadr, Eid…), through the real rules and words. Pass
+ * null to go back to now.
+ */
+export function setBayaanNowPreviewTime(at: Date | null): void {
+  previewAt = at;
+  previewListeners.forEach(listener => listener());
+}
+
+function subscribePreview(listener: () => void): () => void {
+  previewListeners.add(listener);
+  return () => previewListeners.delete(listener);
+}
+
+function usePreviewTime(): Date | null {
+  return useSyncExternalStore(
+    subscribePreview,
+    () => previewAt,
+    () => previewAt,
+  );
+}
 
 /** The current time, moved on at each boundary the rules use, and every ten minutes. */
 function useMomentClock(): Date {
@@ -72,7 +98,9 @@ function reciterFor(
 }
 
 export function useBayaanNow(): {moments: NowMoment[]; now: Date} {
-  const now = useMomentClock();
+  const clock = useMomentClock();
+  const preview = usePreviewTime();
+  const now = preview ?? clock;
   const recent = useRecentlyPlayedStore(s =>
     s.recentTracks.find(t => !t.isUserUpload),
   );

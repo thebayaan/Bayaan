@@ -1,6 +1,5 @@
 // @ai-generated
-// How a Bayaan Now card looks and what it does: its words, colours and
-// artwork, whether what it plays is already playing, and where its body
+// How a Bayaan Now card looks and what it does: its words and scene, whether what it plays is already playing, and where its body
 // leads.
 import {useCallback} from 'react';
 import {shallow} from 'zustand/shallow';
@@ -21,61 +20,81 @@ import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {getSuperCategoryDisplayTitle} from '@/utils/adhkarUtils';
 import {
-  MESH_PALETTES,
-  type MeshPalette,
-} from '@/components/hero/SurahGradientMesh';
-import {
   NOW_ADHKAR,
+  sceneFor,
   type NowMoment,
   type NowReason,
 } from '@/services/bayaanNow/moments';
 import {playMoment} from '@/services/bayaanNow/playMoment';
-import {defaultSky, localize, type NowLook} from '@/services/bayaanNow/look';
-import {ignoreHaptics, type HomeSymbolName} from './homeKit';
+import {localize, type NowLook} from '@/services/bayaanNow/look';
+import type {SceneId} from '@/services/bayaanNow/scenes';
+import {ignoreHaptics} from './homeKit';
 
-/** Each moment's colour, from the Surahs cards' palettes. */
-const REASON_PALETTE: Record<NowReason, number> = {
-  morning: 2, // golden hour
-  evening: 5, // twilight
-  bedtime: 1, // ocean depths
-  friday: 4, // emerald
-  midday: 0,
-  upNext: 0,
-  occasion: 3,
+/** The reasons that only say what time it is: their label comes from the scene. */
+const TIME_SCENE_LABEL: Partial<
+  Record<
+    SceneId,
+    | 'now.scene.tahajjud'
+    | 'now.scene.fajr'
+    | 'now.scene.duha'
+    | 'now.scene.afternoon'
+    | 'now.scene.maghrib'
+    | 'now.scene.bedtime'
+  >
+> = {
+  tahajjud: 'now.scene.tahajjud',
+  fajr: 'now.scene.fajr',
+  duha: 'now.scene.duha',
+  afternoon: 'now.scene.afternoon',
+  maghrib: 'now.scene.maghrib',
+  bedtime: 'now.scene.bedtime',
 };
+const TIME_REASONS: ReadonlySet<NowReason> = new Set<NowReason>([
+  'morning',
+  'midday',
+  'evening',
+  'bedtime',
+]);
 
-const ADHKAR_SYMBOL: Record<string, HomeSymbolName> = {
-  [NOW_ADHKAR.morning]: 'sunrise',
-  [NOW_ADHKAR.evening]: 'sunset',
-  [NOW_ADHKAR.sleep]: 'sleep',
+/** Moments whose title says why rather than what plays. */
+const REASON_TITLE: Partial<
+  Record<
+    NowReason,
+    | 'now.title.night'
+    | 'now.title.lastHour'
+    | 'now.title.qadr'
+    | 'now.title.arafah'
+    | 'now.title.ashura'
+  >
+> = {
+  night: 'now.title.night',
+  lastHour: 'now.title.lastHour',
+  qadr: 'now.title.qadr',
+  arafah: 'now.title.arafah',
+  ashura: 'now.title.ashura',
 };
 
 const ADHKAR_TITLE_KEY: Record<
   string,
-  'now.adhkar.morning' | 'now.adhkar.evening' | 'now.adhkar.sleep'
+  | 'now.adhkar.morning'
+  | 'now.adhkar.evening'
+  | 'now.adhkar.sleep'
+  | 'now.adhkar.dua'
 > = {
   [NOW_ADHKAR.morning]: 'now.adhkar.morning',
   [NOW_ADHKAR.evening]: 'now.adhkar.evening',
   [NOW_ADHKAR.sleep]: 'now.adhkar.sleep',
+  [NOW_ADHKAR.dua]: 'now.adhkar.dua',
 };
-
-export type MomentArt =
-  | {kind: 'surah'; surahId: number}
-  | {kind: 'symbol'; symbol: HomeSymbolName}
-  | {kind: 'mosaic'; surahIds: number[]};
 
 export interface MomentView {
   reason: string;
-  /** Its own sky or image, else the sky for the time of day. */
+  /** Its own scene or image, else the one sceneFor picks. */
   look: NowLook;
   title: string;
   subtitle: string;
-  palette: MeshPalette;
-  art: MomentArt;
-  /** A short note shown as a chip under the title (the sleep timer). */
+  /** A short note after the subtitle (the sleep timer). */
   badge: string | null;
-  /** The large faint mark behind the hero: a surah's name or a symbol. */
-  watermark: {glyphSurahId: number} | {symbol: HomeSymbolName};
   playLabel: string;
   status: 'idle' | 'playing' | 'paused';
   /** Plays it, or pauses and resumes it once it is playing. */
@@ -178,11 +197,14 @@ export function useMomentView(moment: NowMoment, now: Date): MomentView {
     }
   }, [moment, router]);
 
-  const palette = MESH_PALETTES[REASON_PALETTE[moment.reason]];
   const language = i18n.language;
   const content = moment.content;
+  const look: NowLook = moment.look ?? {
+    kind: 'scene',
+    scene: sceneFor(moment, now),
+  };
   const reason =
-    localize(content?.label, language) ?? t(`now.reason.${moment.reason}`);
+    localize(content?.label, language) ?? momentLabel(moment, look, t);
   const playLabel =
     status === 'playing'
       ? t('now.pause')
@@ -195,8 +217,6 @@ export function useMomentView(moment: NowMoment, now: Date): MomentView {
   let title = '';
   let subtitle = '';
   let badge: string | null = null;
-  let art: MomentArt;
-  let watermark: MomentView['watermark'];
 
   switch (moment.kind) {
     case 'surah':
@@ -211,68 +231,86 @@ export function useMomentView(moment: NowMoment, now: Date): MomentView {
           formatted: localizeDigits(moment.sleepMinutes),
         });
       }
-      subtitle =
-        moment.kind === 'bedtime'
-          ? name
-          : moment.reason === 'friday'
-            ? t('now.fridaySurah', {reciter: name})
-            : moment.reason === 'upNext'
-              ? t('now.upNextSurah', {reciter: name})
-              : name;
-      art = {kind: 'surah', surahId: moment.surahId};
-      watermark = {glyphSurahId: moment.surahId};
+      const reasonTitle = REASON_TITLE[moment.reason];
+      if (reasonTitle) {
+        // "Stand in the night", with the surah it plays under it.
+        subtitle = t('now.surahLine', {surah: title, reciter: name});
+        title = t(reasonTitle);
+      } else {
+        subtitle =
+          moment.kind === 'bedtime'
+            ? name
+            : moment.reason === 'friday'
+              ? t('now.fridaySurah', {reciter: name})
+              : moment.reason === 'upNext'
+                ? t('now.upNextSurah', {reciter: name})
+                : name;
+      }
       break;
     }
     case 'adhkar': {
-      const symbol = ADHKAR_SYMBOL[moment.superId] ?? 'moon';
       // "Evening adhkar" says more than the category's short "Evening".
       const key = ADHKAR_TITLE_KEY[moment.superId];
-      title = key
-        ? t(key)
-        : superCategory
-          ? getSuperCategoryDisplayTitle(superCategory)
-          : t('now.adhkar.generic');
-      subtitle = t('now.adhkarLine');
-      art = {kind: 'symbol', symbol};
-      watermark = {symbol};
+      const reasonTitle = REASON_TITLE[moment.reason];
+      title = reasonTitle
+        ? t(reasonTitle)
+        : key
+          ? t(key)
+          : superCategory
+            ? getSuperCategoryDisplayTitle(superCategory)
+            : t('now.adhkar.generic');
+      subtitle =
+        moment.superId === NOW_ADHKAR.dua
+          ? t('now.duaLine')
+          : t('now.adhkarLine');
       break;
     }
     case 'playlist': {
       const playlist = getSystemPlaylistById(moment.playlistId);
-      const surahIds = playlist?.items.map(i => i.surahId) ?? [];
+      const count = playlist?.items.length ?? 0;
       title = playlist?.title ?? '';
       subtitle = t('now.playlistLine', {
-        count: surahIds.length,
-        formatted: localizeDigits(surahIds.length),
+        count,
+        formatted: localizeDigits(count),
       });
-      art = {kind: 'mosaic', surahIds: surahIds.slice(0, 4)};
-      watermark = {
-        symbol: moment.reason === 'morning' ? 'sunrise' : 'playlist',
-      };
       break;
     }
   }
 
   title = localize(content?.title, language) ?? title;
   subtitle = localize(content?.subtitle, language) ?? subtitle;
-  const look: NowLook = moment.look ?? {
-    kind: 'sky',
-    preset: defaultSky(moment.reason, now),
-  };
-
   return {
     reason,
     look,
     title,
     subtitle,
     badge,
-    palette,
-    art,
-    watermark,
     playLabel,
     status,
     onPlay,
     onOpen,
     accessibilityLabel: `${reason}. ${title}. ${subtitle}`,
   };
+}
+
+type T = ReturnType<typeof useTranslation<'home'>>['t'];
+
+/** The small label: the special day, else why it is showing, else the hour. */
+function momentLabel(moment: NowMoment, look: NowLook, t: T): string {
+  const day = moment.day;
+  if (day) {
+    switch (day.kind) {
+      case 'ramadan':
+        return t('now.day.ramadan', {formatted: localizeDigits(day.day)});
+      case 'newYear':
+        return t('now.day.newYear', {year: localizeDigits(day.year)});
+      default:
+        return t(`now.day.${day.kind}`);
+    }
+  }
+  if (TIME_REASONS.has(moment.reason) && look.kind === 'scene') {
+    const key = TIME_SCENE_LABEL[look.scene];
+    if (key) return t(key);
+  }
+  return t(`now.reason.${moment.reason}`);
 }

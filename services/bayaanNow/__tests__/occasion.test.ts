@@ -8,7 +8,7 @@ const payload = {
   slots: [
     {
       action: {kind: 'surah', surahId: 97},
-      look: {kind: 'sky', preset: 'ramadan'},
+      look: {kind: 'scene', scene: 'qadr'},
       content: {label: {en: 'Tonight', ar: 'الليلة'}},
     },
     {look: {kind: 'image', uri: 'https://x.test/a.jpg'}},

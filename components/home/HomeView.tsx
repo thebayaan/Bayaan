@@ -18,7 +18,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {useSettings} from '@/hooks/useSettings';
 import branding, {type HomeRow, type HomeRowId} from '@/config/branding';
-import {BayaanNowCard, SKY_HEIGHT} from './BayaanNowCard';
+import {BayaanNowCard, HERO_HEIGHT} from './BayaanNowCard';
 import {JumpBackIn} from './JumpBackIn';
 import {FindSomethingNew, YourReciters} from './DiscoverSections';
 import {
@@ -46,16 +46,16 @@ const ALL_ROWS: readonly HomeRow[] = [
 export function HomeView() {
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
-  // The sky reaches up behind the clock, past the content's top padding.
+  // The cover reaches up behind the clock, past the content's top padding.
   const skyInset = insets.top + moderateScale(8);
-  // While the sky is under the clock, the clock is white.
+  // While the cover is under the clock, the clock is white.
   const [pastSky, setPastSky] = useState(false);
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       // With the glass layout the offset starts at -insets.top.
       const offset =
         e.nativeEvent.contentOffset.y + (USE_GLASS ? insets.top : 0);
-      const past = offset > SKY_HEIGHT * 0.6;
+      const past = offset > HERO_HEIGHT * 0.6;
       setPastSky(prev => (prev === past ? prev : past));
     },
     [insets.top],

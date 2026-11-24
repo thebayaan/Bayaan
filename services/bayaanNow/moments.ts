@@ -4,16 +4,25 @@
 // mirrored in Swift and Kotlin) and the Friday window and surah picks are
 // CarPlay's "For right now" (services/car/snapshot/situational), so the
 // Home screen, the Bayaan Now widget and the car agree on the moment.
-// A backend occasion, when one is live, leads all of them.
+// A backend occasion, when one is live, leads all of them, then the Hijri
+// calendar's nights and days (Laylat al-Qadr, Arafah, Ashura), then the
+// week's (the last hour of Friday, Al-Kahf), then the hour's.
 import {
   ALL_BAYAAN_NOW_CARDS,
   bayaanNowMode,
   type BayaanNowCards,
 } from '@/modules/bayaan-widgets/src/contextRules';
 import type {NowContent, NowLook} from './look';
+import {HIJRI_MONTH, toHijri} from './calendar';
+import {sceneForHour, type SceneId} from './scenes';
 
 export const KAHF = 18;
 export const MULK = 67;
+/** The night prayer's surah, for the last third of the night. */
+export const MUZZAMMIL = 73;
+export const QADR = 97;
+/** Musa and the sea, for Ashura. */
+export const SHUARA = 26;
 export const BEDTIME_SLEEP_MINUTES = 30;
 
 /** Adhkar lists by super category id (services/database/AdhkarDatabaseService). */
@@ -21,6 +30,8 @@ export const NOW_ADHKAR = {
   morning: 'morning-adhkar',
   evening: 'evening-adhkar',
   sleep: 'before-sleep',
+  /** Duas from the Quran: the last hour of Friday, the Day of Arafah. */
+  dua: 'quranic-duas',
 } as const;
 
 /** System playlists by time of day (data/systemPlaylists). */
@@ -38,16 +49,39 @@ export type NowReason =
   | 'evening'
   | 'bedtime'
   | 'upNext'
-  | 'occasion';
+  | 'occasion'
+  /** 2 to 4 AM: the last third of the night. */
+  | 'night'
+  /** Friday from 3 PM to Maghrib. */
+  | 'lastHour'
+  /** The odd nights of Ramadan's last ten. */
+  | 'qadr'
+  | 'arafah'
+  | 'ashura';
+
+/**
+ * A day that only changes how the first card looks and what its label
+ * says, whatever it plays: Ramadan, the Eids, the white days…
+ */
+export type NowDay =
+  | {kind: 'ramadan'; day: number}
+  | {kind: 'eidFitr'}
+  | {kind: 'dhulHijjah'}
+  | {kind: 'eidAdha'}
+  | {kind: 'newYear'; year: number}
+  | {kind: 'whiteDays'}
+  | {kind: 'fasting'};
 
 interface NowBase {
   /** Stable across renders: what the card plays, not where it sits. */
   id: string;
   reason: NowReason;
-  /** Its own sky or image, else the time of day picks a sky. */
+  /** Its own scene or image, else sceneFor picks one. */
   look?: NowLook;
   /** Words that stand in for the ones the rules write. */
   content?: NowContent;
+  /** The special day it is shown on, which sets its label and scene. */
+  day?: NowDay;
 }
 
 export type NowMoment =
@@ -218,8 +252,40 @@ export function bayaanNowMoments(input: NowInput): NowMoment[] {
     return moment ? withSlot(moment, slot) : null;
   });
 
+  const night = toHijri(now);
+  const today = toHijri(now, true);
+  const daylight = hour >= 4 && hour < 19;
+  if (
+    night.month === HIJRI_MONTH.ramadan &&
+    night.day >= 21 &&
+    night.day % 2 === 1 &&
+    (hour >= 18 || hour < 5)
+  ) {
+    candidates.push(surah(topReciter, QADR, 'qadr'));
+  }
+  if (
+    cards.adhkar &&
+    daylight &&
+    today.month === HIJRI_MONTH.dhulHijjah &&
+    today.day === 9
+  ) {
+    candidates.push(adhkar(NOW_ADHKAR.dua, 'arafah'));
+  }
+  if (
+    daylight &&
+    today.month === HIJRI_MONTH.muharram &&
+    (today.day === 9 || today.day === 10)
+  ) {
+    candidates.push(surah(topReciter, SHUARA, 'ashura'));
+  }
+  if (cards.adhkar && now.getDay() === 5 && hour >= 15 && hour < 19) {
+    candidates.push(adhkar(NOW_ADHKAR.dua, 'lastHour'));
+  }
   if (isFridayWindow(now)) {
     candidates.push(surah(topReciter, KAHF, 'friday'));
+  }
+  if (hour >= 2 && hour < 4) {
+    candidates.push(surah(topReciter, MUZZAMMIL, 'night'));
   }
 
   // The widget's modes. Home never switches to "now playing": the mini
@@ -268,15 +334,110 @@ export function bayaanNowMoments(input: NowInput): NowMoment[] {
     moments.push(candidate);
     if (moments.length === 2) break;
   }
+  // The day restyles the first card, unless it is already that day's own
+  // or the backend restyles it.
+  const day = calendarDay(now);
+  if (day && moments[0] && !OWN_SCENE.has(moments[0].reason)) {
+    moments[0] = {...moments[0], day};
+  }
   // A slot with no action restyles what the rules put in its place.
   return moments.map((moment, i) =>
     slots[i] && !slots[i].action ? withSlot(moment, slots[i]) : moment,
   );
 }
 
-/** When the moment can next change: the next hour boundary the rules use. */
+/** Reasons that come with a scene of their own, which a day doesn't change. */
+const OWN_SCENE: ReadonlySet<NowReason> = new Set<NowReason>([
+  'occasion',
+  'friday',
+  'lastHour',
+  'qadr',
+  'arafah',
+  'ashura',
+  'night',
+]);
+
+/** The special day this is, if any, most particular first. */
+export function calendarDay(now: Date): NowDay | null {
+  const night = toHijri(now);
+  const today = toHijri(now, true);
+  const hour = now.getHours();
+  if (today.month === HIJRI_MONTH.shawwal && today.day === 1) {
+    return {kind: 'eidFitr'};
+  }
+  if (
+    today.month === HIJRI_MONTH.dhulHijjah &&
+    today.day >= 10 &&
+    today.day <= 13
+  ) {
+    return {kind: 'eidAdha'};
+  }
+  if (night.month === HIJRI_MONTH.ramadan) {
+    return {kind: 'ramadan', day: night.day};
+  }
+  if (today.month === HIJRI_MONTH.dhulHijjah && today.day <= 9) {
+    return {kind: 'dhulHijjah'};
+  }
+  if (today.month === HIJRI_MONTH.muharram && today.day === 1) {
+    return {kind: 'newYear', year: today.year};
+  }
+  if (night.day >= 13 && night.day <= 15) return {kind: 'whiteDays'};
+  // The Sunnah fasts of Monday and Thursday, before evening adhkar.
+  const weekday = now.getDay();
+  if ((weekday === 1 || weekday === 4) && hour >= 11 && hour < 15) {
+    return {kind: 'fasting'};
+  }
+  return null;
+}
+
+const DAY_SCENE: Record<NowDay['kind'], SceneId> = {
+  ramadan: 'ramadan',
+  eidFitr: 'eidfitr',
+  dhulHijjah: 'dhulhijjah',
+  eidAdha: 'eidadha',
+  newYear: 'hijri',
+  whiteDays: 'whitedays',
+  fasting: 'fasting',
+};
+
+/** The scene behind a moment when the backend sets none. */
+export function sceneFor(moment: NowMoment, now: Date): SceneId {
+  const hour = now.getHours();
+  switch (moment.reason) {
+    case 'friday':
+      return 'kahf';
+    case 'lastHour':
+      return 'lasthour';
+    case 'qadr':
+      return 'qadr';
+    case 'arafah':
+      return 'arafah';
+    case 'ashura':
+      return 'ashura';
+    case 'night':
+      return 'tahajjud';
+    case 'bedtime':
+      return 'bedtime';
+  }
+  if (moment.day) return DAY_SCENE[moment.day.kind];
+  switch (moment.reason) {
+    case 'morning':
+      return hour < 7 && hour >= 4 ? 'fajr' : 'duha';
+    case 'evening':
+      return hour >= 15 && hour < 20 ? 'maghrib' : 'bedtime';
+    case 'midday':
+      return hour < 12 ? 'duha' : 'afternoon';
+    default:
+      return sceneForHour(now);
+  }
+}
+
+/**
+ * When the moment can next change: the next hour boundary the rules and
+ * scenes use. Midnight is one, for the Hijri days kept in daylight.
+ */
 export function nextMomentChange(now: Date): Date {
-  const BOUNDARIES = [4, 11, 15, 18, 19, 20, 21];
+  const BOUNDARIES = [0, 2, 4, 5, 7, 11, 12, 15, 17, 18, 19, 20, 21];
   const hour = now.getHours();
   const next = BOUNDARIES.find(h => h > hour);
   const at = new Date(now);

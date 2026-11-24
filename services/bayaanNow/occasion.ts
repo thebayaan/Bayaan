@@ -12,7 +12,7 @@
 //   "slots": [
 //     {
 //       "action": {"kind": "surah", "surahId": 97},
-//       "look": {"kind": "sky", "preset": "ramadan"},
+//       "look": {"kind": "scene", "scene": "ramadan"},
 //       "content": {"label": {"en": "Tonight", "ar": "الليلة"},
 //                   "title": {"en": "Seek Laylat al-Qadr", "ar": "تحرَّ ليلة القدر"}}
 //     },

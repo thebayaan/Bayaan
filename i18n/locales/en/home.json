@@ -269,7 +269,12 @@
       "evening": "This evening",
       "bedtime": "Before sleep",
       "upNext": "Up next",
-      "occasion": "Today"
+      "occasion": "Today",
+      "night": "Last third of the night",
+      "lastHour": "The last hour of Friday",
+      "qadr": "The last ten nights",
+      "arafah": "Day of Arafah",
+      "ashura": "Day of Ashura"
     },
     "play": "Play",
     "pause": "Pause",
@@ -283,13 +288,41 @@
       "morning": "Morning adhkar",
       "evening": "Evening adhkar",
       "sleep": "Adhkar before sleep",
-      "generic": "Adhkar"
+      "generic": "Adhkar",
+      "dua": "Make dua"
     },
     "adhkarLine": "Listen, or read along",
     "playlistLine_one": "Playlist · {{formatted}} surah",
     "playlistLine_other": "Playlist · {{formatted}} surahs",
     "sleepTimer_one": "{{formatted}} min sleep timer",
-    "sleepTimer_other": "{{formatted}} min sleep timer"
+    "sleepTimer_other": "{{formatted}} min sleep timer",
+    "scene": {
+      "tahajjud": "Last third of the night",
+      "fajr": "Before sunrise",
+      "duha": "Mid-morning",
+      "afternoon": "This afternoon",
+      "maghrib": "As the sun sets",
+      "bedtime": "Before you sleep"
+    },
+    "day": {
+      "ramadan": "Ramadan {{formatted}}",
+      "eidFitr": "Eid al-Fitr",
+      "dhulHijjah": "The best ten days",
+      "eidAdha": "Eid al-Adha",
+      "newYear": "1 Muharram {{year}}",
+      "whiteDays": "The white days",
+      "fasting": "Fasting today?"
+    },
+    "title": {
+      "night": "Stand in the night",
+      "lastHour": "Make dua",
+      "qadr": "Seek Laylat al-Qadr",
+      "arafah": "Make dua until sunset",
+      "ashura": "Musa and the sea"
+    },
+    "surahLine": "{{surah}} · {{reciter}}",
+    "duaLine": "Duas from the Quran",
+    "then": "Then"
   },
   "jump": {
     "title": "Jump back in",

@@ -1,6 +1,9 @@
 // @ai-generated
+import {fromHijri} from '../calendar';
 import {
   bayaanNowMoments,
+  calendarDay,
+  sceneFor,
   isFridayWindow,
   nextMomentChange,
   type NowInput,
@@ -77,7 +80,7 @@ describe('bayaanNowMoments', () => {
         occasion: [
           {
             action: {kind: 'surah', surahId: 97},
-            look: {kind: 'sky', preset: 'ramadan'},
+            look: {kind: 'scene', scene: 'qadr'},
             content: {title: {en: 'Seek Laylat al-Qadr'}},
           },
         ],
@@ -85,7 +88,7 @@ describe('bayaanNowMoments', () => {
     );
     expect(moments.map(m => m.id)).toEqual(['surah:97', 'surah:18']);
     expect(moments[0].reason).toBe('occasion');
-    expect(moments[0].look).toEqual({kind: 'sky', preset: 'ramadan'});
+    expect(moments[0].look).toEqual({kind: 'scene', scene: 'qadr'});
     expect(moments[0].content?.title).toEqual({en: 'Seek Laylat al-Qadr'});
   });
 
@@ -130,10 +133,75 @@ describe('bayaanNowMoments', () => {
 });
 
 describe('nextMomentChange', () => {
-  it('finds the next boundary today, or 4 AM tomorrow', () => {
+  it('finds the next boundary today, or midnight', () => {
     expect(nextMomentChange(at(0, 7)).getHours()).toBe(11);
     const late = nextMomentChange(at(0, 22));
-    expect(late.getHours()).toBe(4);
+    expect(late.getHours()).toBe(0);
     expect(late.getDate()).toBe(24);
+  });
+});
+
+/** A Hijri date at a given hour, for the calendar's rules. */
+function hijri(year: number, month: number, day: number, hour: number): Date {
+  const date = fromHijri(year, month, day);
+  date.setHours(hour, 30);
+  return date;
+}
+
+describe('the Hijri calendar', () => {
+  it('seeks Laylat al-Qadr on the odd nights of the last ten', () => {
+    // The 27th night starts the evening of the 26th.
+    const odd = bayaanNowMoments(input(hijri(1448, 9, 26, 22)));
+    expect(odd[0]).toMatchObject({id: 'surah:97', reason: 'qadr'});
+    expect(ids(input(hijri(1448, 9, 25, 22)))[0]).not.toBe('surah:97');
+  });
+
+  it('makes dua on the Day of Arafah, not the evening before', () => {
+    expect(ids(input(hijri(1448, 12, 9, 10)))[0]).toBe('adhkar:quranic-duas');
+    expect(ids(input(hijri(1448, 12, 8, 20)))[0]).not.toBe(
+      'adhkar:quranic-duas',
+    );
+  });
+
+  it('tells of Musa and the sea on Ashura', () => {
+    expect(ids(input(hijri(1449, 1, 10, 13)))[0]).toBe('surah:26');
+  });
+
+  it('restyles the first card on the special days', () => {
+    expect(calendarDay(hijri(1448, 10, 1, 9))).toEqual({kind: 'eidFitr'});
+    expect(calendarDay(hijri(1448, 12, 11, 9))).toEqual({kind: 'eidAdha'});
+    expect(calendarDay(hijri(1448, 9, 12, 9))).toEqual({
+      kind: 'ramadan',
+      day: 12,
+    });
+    expect(calendarDay(hijri(1449, 1, 1, 9))).toEqual({
+      kind: 'newYear',
+      year: 1449,
+    });
+    const [main] = bayaanNowMoments(input(hijri(1448, 10, 1, 8)));
+    expect(main.day).toEqual({kind: 'eidFitr'});
+    expect(sceneFor(main, hijri(1448, 10, 1, 8))).toBe('eidfitr');
+  });
+});
+
+describe('the week and the night', () => {
+  it('leads with dua in the last hour of Friday, then Al-Kahf', () => {
+    expect(ids(input(at(4, 16)))).toEqual(['adhkar:quranic-duas', 'surah:18']);
+  });
+
+  it('offers Al-Muzzammil in the last third of the night', () => {
+    const [main] = bayaanNowMoments(input(at(1, 3)));
+    expect(main).toMatchObject({id: 'surah:73', reason: 'night'});
+    expect(sceneFor(main, at(1, 3))).toBe('tahajjud');
+  });
+
+  it('picks the scene from the hour', () => {
+    const [dawn] = bayaanNowMoments(input(at(0, 5)));
+    expect(sceneFor({...dawn, day: undefined}, at(0, 5))).toBe('fajr');
+    const [bed] = bayaanNowMoments(input(at(1, 23)));
+    expect(sceneFor(bed, at(1, 23))).toBe('bedtime');
+    expect(sceneFor(bayaanNowMoments(input(at(4, 8)))[0], at(4, 8))).toBe(
+      'kahf',
+    );
   });
 });
