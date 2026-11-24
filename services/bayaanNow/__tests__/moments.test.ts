@@ -202,8 +202,9 @@ describe('the week and the night', () => {
   it('picks the scene from the hour', () => {
     const [dawn] = bayaanNowMoments(input(at(0, 5)));
     expect(sceneFor({...dawn, day: undefined}, at(0, 5))).toBe('fajr');
-    const [bed] = bayaanNowMoments(input(at(1, 23)));
-    expect(sceneFor(bed, at(1, 23))).toBe('bedtime');
+    // A week on, past the white days.
+    const [bed] = bayaanNowMoments(input(at(8, 23)));
+    expect(sceneFor(bed, at(8, 23))).toBe('bedtime');
     expect(sceneFor(bayaanNowMoments(input(at(4, 8)))[0], at(4, 8))).toBe(
       'kahf',
     );
