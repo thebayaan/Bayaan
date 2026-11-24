@@ -21,6 +21,12 @@ export const featureFlags = {
   multiTranslation: true,
   tafsir: true,
   sleepTimer: true,
+  // @ai-start
+  // The redesigned phone Home (components/home: Bayaan Now cover, Jump back
+  // in, shelves). Off until it ships; the shelves Home (RecitersView) shows
+  // instead. Turn it on here to try it.
+  homeRedesign: false,
+  // @ai-end
 } as const;
 
 export type FeatureFlag = keyof typeof featureFlags;

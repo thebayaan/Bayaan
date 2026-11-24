@@ -11,6 +11,7 @@ import {HomeHeldContext} from '@/hooks/readerRestoreState'; // @ai
 // @ai-start
 import {HomeView} from '@/components/home/HomeView';
 import {useResponsive} from '@/hooks/useResponsive';
+import {isFeatureEnabled} from '@/config/featureFlags';
 // @ai-end
 
 function HomeScreen() {
@@ -21,8 +22,9 @@ function HomeScreen() {
   // work competes with the reader's first page. So it stays empty until the
   // restore of the root layout lets it render.
   const waitingForReader = useContext(HomeHeldContext);
-  // Phones get the new Home; iPad keeps its shelves for now.
+  // Phones get the new Home behind its flag; iPad keeps its shelves for now.
   const {isTablet} = useResponsive();
+  const newHome = isFeatureEnabled('homeRedesign') && !isTablet;
   // @ai-end
 
   useLayoutEffect(() => {
@@ -41,7 +43,7 @@ function HomeScreen() {
 
   if (waitingForReader) return <View style={{flex: 1}} />; // @ai
 
-  if (!isTablet) return <HomeView />; // @ai
+  if (newHome) return <HomeView />; // @ai
   return <RecitersView onReciterPress={handleReciterPress} />;
 }
 
