@@ -102,6 +102,8 @@ import {
   type BrowseSort,
 } from './reciterBrowseModel';
 
+/** The rewayah chip row: 8 above, a 32pt chip, 4 below. */
+const CHIPS_HEIGHT = moderateScale(44);
 /** Card width the column count aims for. */
 const CARD_MIN_WIDTH = moderateScale(104);
 
@@ -891,7 +893,12 @@ export default function BrowseReciters({
         <AlphabetRail
           letters={letters}
           onLetter={jumpToLetter}
-          insetTop={USE_GLASS ? headerHeight : insets.top + moderateScale(56)}
+          // Below the rewayah chips too, so a long rail (Arabic carries
+          // both alphabets) never runs over them. @ai
+          insetTop={
+            (USE_GLASS ? headerHeight : insets.top + moderateScale(56)) +
+            CHIPS_HEIGHT
+          }
           insetBottom={railBottom}
         />
       ) : null}
