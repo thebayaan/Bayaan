@@ -27,8 +27,11 @@ import {pickRandomRecitations} from '@/utils/randomRecitation';
 import {createTracksForReciter} from '@/utils/track';
 import {showToast} from '@/utils/toastUtils';
 import {ayahOfTheDayIndex} from '@/modules/bayaan-widgets/src/dayMath';
-import {spotlightSurahIds} from '@/services/widgets/buildContent';
-import {findRewayat} from '@/services/car/snapshot/buildCarSnapshot';
+import {
+  availableSurahIds,
+  findRewayat,
+} from '@/services/car/snapshot/buildCarSnapshot';
+import {reciterOfTheDaySurah} from '@/services/bayaanNow/reciterOfTheDay';
 import {playMoment} from '@/services/bayaanNow/playMoment';
 import {
   SurahGradientMesh,
@@ -259,16 +262,28 @@ function useSurpriseMe(): () => void {
 }
 
 /** Today's reciter, the same one the Reciter Spotlight widget shows. */
-function useReciterOfTheDay(): {reciter: Reciter; surahId: number} | null {
+function useReciterOfTheDay(): {
+  reciter: Reciter;
+  surahId: number;
+  rewayatId: string;
+} | null {
   const catalogVersion = useCatalogVersion();
   return useMemo(() => {
+    const now = new Date();
     const list = getSpotlightReciters();
-    const index = ayahOfTheDayIndex(new Date(), list.length);
+    const index = ayahOfTheDayIndex(now, list.length);
     const reciter = index >= 0 ? list[index] : undefined;
     if (!reciter) return null;
-    const surahId = spotlightSurahIds(reciter)[0];
-    if (surahId === undefined) return null;
-    return {reciter, surahId};
+    // Its fullest rewayah, and a random longer surah from it for today.
+    const rewayat = findRewayat(reciter, undefined);
+    if (!rewayat) return null;
+    const surahId = reciterOfTheDaySurah(
+      availableSurahIds(rewayat),
+      id => SURAHS[id - 1]?.verses_count,
+      now,
+    );
+    if (surahId === null) return null;
+    return {reciter, surahId, rewayatId: rewayat.id};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogVersion]);
 }
@@ -279,7 +294,7 @@ function ReciterOfTheDay() {
   const openReciter = useOpenReciter();
   const pick = useReciterOfTheDay();
   if (!pick) return null;
-  const {reciter, surahId} = pick;
+  const {reciter, surahId, rewayatId} = pick;
   const surah = SURAHS[surahId - 1];
   const name = getReciterDisplayName(reciter);
   const surahName = surah ? getSurahDisplayName(surah) : '';
@@ -288,15 +303,13 @@ function ReciterOfTheDay() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
       ignoreHaptics,
     );
-    const rewayat = findRewayat(reciter, undefined);
-    if (!rewayat) return;
     playMoment({
       id: `surah:${surahId}`,
       kind: 'surah',
       reason: 'midday',
       surahId,
       reciterId: reciter.id,
-      rewayatId: rewayat.id,
+      rewayatId,
     }).catch(error =>
       console.error('Reciter of the day: could not play', error),
     );

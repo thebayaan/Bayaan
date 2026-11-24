@@ -1,10 +1,8 @@
 // @ai-generated
-// Jump back in: the last few recitations, with how much is left, and the
-// page the Mushaf was left on. The recitation already in the player is left
-// out, because the mini player shows it.
+// Jump back in: the Continue Listening cards (an adhkar session in progress,
+// then recent recitations and uploads) and the page the Mushaf was left on.
 import React, {useCallback, useMemo, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
-import {shallow} from 'zustand/shallow';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useFocusEffect, useRouter} from 'expo-router';
 import {useTranslation} from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -16,17 +14,13 @@ import {
   getSurahDisplayName,
   localizeDigits,
 } from '@/i18n/format';
-import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
   useRecentlyPlayedStore,
   type RecentlyPlayedTrack,
 } from '@/services/player/store/recentlyPlayedStore';
-import {resumeRecent} from '@/services/player/utils/resumeRecent';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getLastReadSurah} from '@/utils/quranPages';
-import {SurahCover} from '@/components/collection/CollectionArt';
 import {
   SurahGradientMesh,
   MESH_PALETTES,
@@ -46,8 +40,11 @@ import {
   secondaryText,
   ignoreHaptics,
 } from './homeKit';
-
-const MAX_RECITATIONS = 3;
+import {RecentReciterCard} from '@/components/cards/RecentReciterCard';
+import {
+  AdhkarNowPlayingCard,
+  useHasAdhkarSession,
+} from '@/components/adhkar/AdhkarNowPlayingCard';
 
 function isResumable(track: RecentlyPlayedTrack): boolean {
   return (
@@ -77,93 +74,6 @@ function ProgressBar({progress}: {progress: number}) {
         ]}
       />
     </View>
-  );
-}
-
-function RecitationRow({
-  track,
-  index,
-  first,
-  last,
-}: {
-  track: RecentlyPlayedTrack;
-  index: number;
-  first: boolean;
-  last: boolean;
-}) {
-  const {theme} = useTheme();
-  const {t} = useTranslation('home');
-  const {updateQueue} = usePlayerActions();
-  const secondary = secondaryText(theme.colors.text, theme.isDarkMode);
-  const surahName = getSurahDisplayName(track.surah);
-  const reciterName = getReciterDisplayName(track.reciter);
-  const minutesLeft = Math.max(
-    1,
-    Math.round(((1 - track.progress) * track.duration) / 60),
-  );
-  const finished = track.progress >= 0.95;
-  const detail = finished
-    ? t('jump.finished')
-    : track.duration > 0
-      ? t('jump.minutesLeft', {
-          count: minutesLeft,
-          formatted: localizeDigits(minutesLeft),
-        })
-      : null;
-
-  const onPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(ignoreHaptics);
-    resumeRecent({
-      reciterId: track.reciter.id,
-      surahId: track.surah.id,
-      rewayatId: track.rewayatId,
-      startPosition: finished ? 0 : track.progress * track.duration,
-      recentIndex: index,
-      updateQueue,
-    }).catch(error => console.error('Jump back in: could not resume', error));
-  }, [track, index, finished, updateQueue]);
-
-  return (
-    <PanelRow first={first} last={last}>
-      <PressScale
-        onPress={onPress}
-        scaleTo={0.98}
-        accessibilityRole="button"
-        accessibilityLabel={t('jump.resumeLabel', {
-          surah: surahName,
-          reciter: reciterName,
-        })}
-        style={styles.row}>
-        <SurahCover
-          surahId={track.surah.id}
-          size={PANEL_ART_SIZE}
-          radius={PANEL_ART_RADIUS + moderateScale(2)}
-        />
-        <View style={styles.text}>
-          <Text
-            style={[styles.title, {color: theme.colors.text}]}
-            numberOfLines={1}>
-            {surahName}
-          </Text>
-          <Text style={[styles.subtitle, {color: secondary}]} numberOfLines={1}>
-            {detail ? `${reciterName} · ${detail}` : reciterName}
-          </Text>
-          <ProgressBar progress={track.progress} />
-        </View>
-        <View
-          style={[
-            styles.play,
-            {backgroundColor: Color(theme.colors.text).alpha(0.08).string()},
-          ]}>
-          <HomeSymbol
-            name="play"
-            size={moderateScale(13)}
-            color={theme.colors.text}
-            weight="bold"
-          />
-        </View>
-      </PressScale>
-    </PanelRow>
   );
 }
 
@@ -248,15 +158,9 @@ function ReadingRow({
 }
 
 export function JumpBackIn() {
-  const {t} = useTranslation('home');
+  const {t} = useTranslation(['home', 'common']);
   const recentTracks = useRecentlyPlayedStore(s => s.recentTracks);
-  const current = usePlayerStore(s => {
-    const track =
-      s.queue.currentIndex >= 0
-        ? s.queue.tracks[s.queue.currentIndex]
-        : undefined;
-    return {reciterId: track?.reciterId, surahId: track?.surahId};
-  }, shallow);
+  const hasAdhkar = useHasAdhkarSession();
 
   // The Mushaf position lives in MMKV, which is not reactive: read it again
   // whenever Home comes back into view (after closing the reader).
@@ -274,74 +178,102 @@ export function JumpBackIn() {
     }, []),
   );
 
-  const recitations = useMemo(() => {
-    const rows: {track: RecentlyPlayedTrack; index: number}[] = [];
-    recentTracks.forEach((track, index) => {
-      if (rows.length >= MAX_RECITATIONS || !isResumable(track)) return;
-      const inPlayer =
-        track.reciter.id === current.reciterId &&
-        String(track.surah.id) === current.surahId;
-      if (!inPlayer) rows.push({track, index});
-    });
-    return rows;
-  }, [recentTracks, current.reciterId, current.surahId]);
+  // The Continue Listening cards, as the old Home had them: uploads too.
+  const tracks = useMemo(
+    () =>
+      recentTracks.filter(track =>
+        track.isUserUpload ? !!track.userRecitationId : isResumable(track),
+      ),
+    [recentTracks],
+  );
 
   const hasReading = reading.page !== null && reading.page > 0;
-  if (recitations.length === 0 && !hasReading) return null;
-
-  // Reading sits second: the most recent recitation leads, then the page.
-  const count = recitations.length + (hasReading ? 1 : 0);
-  const readingAt = Math.min(1, recitations.length);
-  let position = 0;
-  const rows: React.ReactNode[] = [];
-  const pushRecitation = (r: {track: RecentlyPlayedTrack; index: number}) => {
-    rows.push(
-      <RecitationRow
-        key={`${r.track.reciter.id}:${r.track.surah.id}:${r.track.timestamp}`}
-        track={r.track}
-        index={r.index}
-        first={position === 0}
-        last={position === count - 1}
-      />,
-    );
-    position += 1;
-  };
-  recitations.forEach((r, i) => {
-    if (hasReading && i === readingAt) {
-      rows.push(
-        <ReadingRow
-          key="mushaf"
-          page={reading.page as number}
-          surahId={reading.surahId}
-          first={position === 0}
-          last={position === count - 1}
-        />,
-      );
-      position += 1;
-    }
-    pushRecitation(r);
-  });
-  if (hasReading && readingAt >= recitations.length) {
-    rows.push(
-      <ReadingRow
-        key="mushaf"
-        page={reading.page as number}
-        surahId={reading.surahId}
-        first={position === 0}
-        last
-      />,
-    );
-  }
+  const hasCards = tracks.length > 0 || hasAdhkar;
+  if (!hasCards && !hasReading) return null;
 
   return (
     <View>
-      <HomeSectionTitle title={t('jump.title')} />
-      {rows}
+      <HomeSectionTitle
+        title={t('jump.title')}
+        action={tracks.length > 0 ? t('common:actions.clear') : undefined}
+        onAction={() => useRecentlyPlayedStore.getState().clearRecentTracks()}
+      />
+      {hasCards ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.shelf}>
+          {/* An adhkar session in progress leads, as it did before. */}
+          <AdhkarNowPlayingCard variant="tile" />
+          {tracks.map(track => (
+            <RecentCard
+              key={`${track.reciter?.id ?? 'upload'}-${track.surah?.id ?? 0}-${track.timestamp}`}
+              track={track}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
+      {hasReading ? (
+        <View style={hasCards ? styles.readingGap : undefined}>
+          <ReadingRow
+            page={reading.page as number}
+            surahId={reading.surahId}
+            first
+            last
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
 
+/** One Continue Listening card: a recitation or an upload. */
+function RecentCard({track}: {track: RecentlyPlayedTrack}) {
+  const {t} = useTranslation('home');
+  if (track.isUserUpload) {
+    return (
+      <RecentReciterCard
+        imageUrl={
+          track.reciter?.id !== '__uploads__'
+            ? (track.reciter?.image_url ?? undefined)
+            : undefined
+        }
+        reciterName={track.uploadArtist || t('home.myRecitations')}
+        surahName={track.uploadTitle || t('home.upload')}
+        trackId={`upload:${track.userRecitationId}`}
+        reciterId={track.reciter?.id || '__uploads__'}
+        surahId={track.surah?.id || 0}
+        duration={track.duration}
+        progress={track.progress}
+        isUserUpload
+        userRecitationId={track.userRecitationId}
+      />
+    );
+  }
+  return (
+    <RecentReciterCard
+      imageUrl={track.reciter.image_url ?? undefined}
+      reciterName={getReciterDisplayName(track.reciter)}
+      imageName={track.reciter.name}
+      surahName={getSurahDisplayName(track.surah)}
+      trackId={`${track.reciter.id}:${track.surah.id}`}
+      reciterId={track.reciter.id}
+      surahId={track.surah.id}
+      duration={track.duration}
+      progress={track.progress}
+      rewayatId={track.rewayatId}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
+  shelf: {
+    paddingHorizontal: moderateScale(16),
+    gap: moderateScale(8),
+  },
+  readingGap: {
+    marginTop: moderateScale(14),
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -312,7 +312,7 @@
     "resume": "متابعة",
     "start": "ابدأ",
     "open": "افتح {{title}}",
-    "openHint": "يعرض ما تشغّله هذه البطاقة",
+    "openHint": "يفتحها للقراءة",
     "fridaySurah": "{{reciter}} · من سنن يوم الجمعة",
     "upNextSurah": "{{reciter}} · بعد السورة التي أتممتها",
     "adhkar": {
@@ -337,14 +337,6 @@
   },
   "jump": {
     "title": "تابع من حيث توقفت",
-    "finished": "اكتملت",
-    "minutesLeft_zero": "أقل من دقيقة",
-    "minutesLeft_one": "بقيت دقيقة",
-    "minutesLeft_two": "بقيت دقيقتان",
-    "minutesLeft_few": "بقيت {{formatted}} دقائق",
-    "minutesLeft_many": "بقيت {{formatted}} دقيقة",
-    "minutesLeft_other": "بقيت {{formatted}} دقيقة",
-    "resumeLabel": "تابع {{surah}} بصوت {{reciter}}",
     "mushafPage": "المصحف · صفحة {{page}}",
     "continueReading": "تابع قراءة {{surah}}",
     "continueReadingPlain": "تابع القراءة"

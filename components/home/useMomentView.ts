@@ -77,7 +77,7 @@ export interface MomentView {
   status: 'idle' | 'playing' | 'paused';
   /** Plays it, or pauses and resumes it once it is playing. */
   onPlay: () => void;
-  /** Opens what the card plays: the reciter, the adhkar or the playlist. */
+  /** Opens it to read: the surah in the Mushaf, the adhkar, or the playlist. */
   onOpen: () => void;
   accessibilityLabel: string;
 }
@@ -155,9 +155,10 @@ export function useMomentView(moment: NowMoment): MomentView {
     switch (moment.kind) {
       case 'surah':
       case 'bedtime':
+        // Not playing it means reading it: open the surah in the Mushaf.
         router.push({
-          pathname: '/(tabs)/(a.home)/reciter/[id]',
-          params: {id: moment.reciterId},
+          pathname: '/mushaf',
+          params: {surah: String(moment.surahId)},
         });
         return;
       case 'adhkar':

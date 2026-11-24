@@ -276,7 +276,7 @@
     "resume": "Resume",
     "start": "Start",
     "open": "Open {{title}}",
-    "openHint": "Shows what this card plays",
+    "openHint": "Opens it to read",
     "fridaySurah": "{{reciter}} · the Friday surah",
     "upNextSurah": "{{reciter}} · after the one you finished",
     "adhkar": {
@@ -293,10 +293,6 @@
   },
   "jump": {
     "title": "Jump back in",
-    "finished": "Finished",
-    "minutesLeft_one": "{{formatted}} min left",
-    "minutesLeft_other": "{{formatted}} min left",
-    "resumeLabel": "Resume {{surah}} by {{reciter}}",
     "mushafPage": "Mushaf · page {{page}}",
     "continueReading": "Continue reading {{surah}}",
     "continueReadingPlain": "Continue reading"
