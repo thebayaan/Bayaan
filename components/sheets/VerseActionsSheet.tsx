@@ -1032,13 +1032,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           styles.container,
           // @ai: in a native sheet the menu scrolls to the screen edge and
           // ends with the inset itself (below); the container adds nothing.
-          {
-            paddingBottom: inNativeSheet
-              ? needsFullHeight
-                ? sheetBottomPadding // @ai: screens end above the home indicator
-                : 0
-              : sheetBottomPadding,
-          },
+          {paddingBottom: inNativeSheet ? 0 : sheetBottomPadding},
           activeScreen && (!inNativeSheet || needsFullHeight) && {flex: 1},
         ]}>
         {/* @ai-start: Word Study only names no verse: no header, no menu */}
