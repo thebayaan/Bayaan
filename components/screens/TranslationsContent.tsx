@@ -53,6 +53,7 @@ import {
   compareTafaseer,
   getTafseerDisplayName,
   isPreferredTafseerLanguage,
+  shownActiveTafseerId,
 } from '@/i18n/tafseer';
 // @ai-end
 
@@ -486,6 +487,11 @@ export default function TranslationsContent({
 
   const tafseerData = useMemo((): FlatItem[] => {
     const items: FlatItem[] = [];
+    // @ai: only a downloaded selection is lifted into the active card
+    const activeId = shownActiveTafseerId(
+      selectedTafseerId,
+      tafseerDownloadedIds,
+    );
 
     const allRows: RowItem[] = [];
 
@@ -525,8 +531,7 @@ export default function TranslationsContent({
         ? allRows
             .filter(
               row =>
-                row.id !== selectedTafseerId &&
-                isPreferredTafseerLanguage(row.language),
+                row.id !== activeId && isPreferredTafseerLanguage(row.language),
             )
             .sort(compareTafaseer)
         : [];
@@ -547,10 +552,7 @@ export default function TranslationsContent({
     // Available section — downloaded items (excluding active)
     const availableRows = allRows
       .filter(
-        r =>
-          r.isDownloaded &&
-          r.id !== selectedTafseerId &&
-          !preferredIds.has(r.id),
+        r => r.isDownloaded && r.id !== activeId && !preferredIds.has(r.id),
       )
       .sort(compareTafaseer);
 
