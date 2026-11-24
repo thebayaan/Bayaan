@@ -695,9 +695,11 @@ export default function BrowseReciters({
   const railShown = letters.length > 0 && !searching;
   // @ai-start
   // The rail is centred between the header and the bars over the bottom of
-  // the list (mini player, tab bar). `bottomInset` counts from the bottom of
-  // the window, but this screen may already end above the tab bar, so only
-  // the part that overlaps it is taken off.
+  // the list (mini player, tab bar). Under the native tabs the safe area
+  // already covers both bars, and `bottomInset` would count them again.
+  // Elsewhere `bottomInset` counts from the bottom of the window, but this
+  // screen may already end above the tab bar, so only the part that overlaps
+  // it is taken off.
   const rootRef = useRef<ViewInstance>(null);
   const [screenBottom, setScreenBottom] = useState<number | null>(null);
   const measureScreenBottom = useCallback(() => {
@@ -705,7 +707,9 @@ export default function BrowseReciters({
   }, []);
   const railBottom = Math.max(
     moderateScale(16),
-    bottomInset - (windowHeight - (screenBottom ?? windowHeight)),
+    USE_GLASS
+      ? insets.bottom
+      : bottomInset - (windowHeight - (screenBottom ?? windowHeight)),
   );
   // @ai-end
   const renderItem = useCallback(
