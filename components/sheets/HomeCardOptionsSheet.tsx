@@ -15,6 +15,7 @@ import {
   ProfileIcon,
   HeartIcon,
   StarIcon,
+  ShuffleIcon,
 } from '@/components/Icons';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -50,7 +51,7 @@ const HomeCardOptionsContent = ({
     moderateScale(8),
   ); // @ai
   const styles = createStyles(theme);
-  const {t} = useTranslation(['sheets', 'common']);
+  const {t} = useTranslation(['sheets', 'common', 'home']);
   const handleClose = useCallback(() => {
     hideSheet('home-card-options');
   }, []);
@@ -118,14 +119,48 @@ const HomeCardOptionsContent = ({
             </>
           )}
 
+          {/* @ai-start Browse › All reciters adds Play all and Shuffle all. */}
+          {payload.onPlayAll && payload.onShuffleAll && (
+            <>
+              <Pressable
+                style={[styles.option]}
+                onPress={() => {
+                  handleClose();
+                  payload.onPlayAll?.();
+                }}>
+                <PlayIcon color={iconColor} size={iconSize} />
+                <Text style={styles.optionText}>
+                  {t('home:browse.playAll')}
+                </Text>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable
+                style={[styles.option]}
+                onPress={() => {
+                  handleClose();
+                  payload.onShuffleAll?.();
+                }}>
+                <ShuffleIcon color={iconColor} size={iconSize} />
+                <Text style={styles.optionText}>
+                  {t('home:browse.shuffleAll')}
+                </Text>
+              </Pressable>
+            </>
+          )}
+          {/* @ai-end */}
+
           {canUseReciter && (
             <>
-              {variant === 'recent' && <View style={styles.divider} />}
+              {(variant === 'recent' || !!payload.onPlayAll) && (
+                <View style={styles.divider} />
+              )}
 
               <Pressable style={[styles.option]} onPress={handleGoToReciter}>
                 <ProfileIcon color={iconColor} size={iconSize} filled={false} />
                 <Text style={styles.optionText}>
-                  {t('homeCardOptions.goToReciter')}
+                  {payload.onOpen
+                    ? t('home:browse.openReciter')
+                    : t('homeCardOptions.goToReciter')}
                 </Text>
               </Pressable>
 

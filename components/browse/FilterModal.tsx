@@ -426,8 +426,8 @@ export default function FilterModal({
               paddingBottom: embedded
                 ? embedded.footerBottomPadding // @ai
                 : isTablet
-                  ? moderateScale(20)
-                  : footerBottom, // @ai
+                ? moderateScale(20)
+                : footerBottom, // @ai
             },
           ]}>
           <View style={styles.footer}>

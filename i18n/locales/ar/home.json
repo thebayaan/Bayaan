@@ -41,17 +41,16 @@
     "surahCount_few": "{{count}} سور",
     "surahCount_many": "{{count}} سورة",
     "surahCount_other": "{{count}} سورة",
-    "playPreview": "استمع إلى مقطع من تلاوة {{name}}",
-    "stopPreview": "أوقف المقطع",
-    "nextVoice": "القارئ التالي",
-    "favorite": "أضف {{name}} إلى المفضّلة",
-    "unfavorite": "أزل {{name}} من المفضّلة",
     "yourReciters": "قرّاؤك",
     "noMatchTitle": "لا يوجد قرّاء مطابقون",
     "noMatchBody": "ألغِ أحد الفلاتر لعرض المزيد من القرّاء.",
     "showAll": "عرض الكل",
     "noResultsTitle": "لا شيء يطابق «{{query}}»",
-    "noResultsBody": "تحقّق من الإملاء، أو اكتب الاسم بالإنجليزية."
+    "noResultsBody": "تحقّق من الإملاء، أو اكتب الاسم بالإنجليزية.",
+    "playAll": "تشغيل الكل",
+    "shuffleAll": "تشغيل عشوائي للكل",
+    "openReciter": "فتح",
+    "reciterOptions": "خيارات {{name}}"
   },
   "search": {
     "placeholder": "ابحث عن سورة أو قارئ أو آية",

@@ -37,17 +37,16 @@
     "downloaded": "Downloaded",
     "surahCount_one": "{{count}} surah",
     "surahCount_other": "{{count}} surahs",
-    "playPreview": "Play a preview of {{name}}",
-    "stopPreview": "Stop the preview",
-    "nextVoice": "Next reciter",
-    "favorite": "Add {{name}} to favourites",
-    "unfavorite": "Remove {{name}} from favourites",
     "yourReciters": "Your reciters",
     "noMatchTitle": "No reciters match",
     "noMatchBody": "Turn off a filter to see more reciters.",
     "showAll": "Show all",
     "noResultsTitle": "Nothing matches “{{query}}”",
-    "noResultsBody": "Check the spelling, or try the name in Arabic."
+    "noResultsBody": "Check the spelling, or try the name in Arabic.",
+    "playAll": "Play all",
+    "shuffleAll": "Shuffle all",
+    "openReciter": "Open",
+    "reciterOptions": "Options for {{name}}"
   },
   "search": {
     "placeholder": "Search surahs, reciters or ayahs",

@@ -96,15 +96,13 @@ jest.mock('@/data/reciterData', () => ({
     },
   ],
 }));
-jest.mock('@/components/default-reciter/useReciterPreview', () => ({
-  previewKey: (a: string, b: string) => `${a}:${b}`,
-  useReciterPreview: () => ({
-    playingKey: null,
-    progress: 0,
-    elapsed: 0,
-    toggle: jest.fn(),
-    stop: jest.fn(),
-  }),
+jest.mock('@/components/sheets/sheetControl', () => ({showSheet: jest.fn()}));
+jest.mock('@/services/player/store/playerStore', () => ({
+  usePlayerStore: {getState: () => ({settings: {shuffle: false}})},
+}));
+jest.mock('@/utils/shareUtils', () => ({
+  reciterShareUrl: jest.fn(),
+  shareUrl: jest.fn(),
 }));
 jest.mock('@/services/player/store/downloadStore', () => ({
   useDownloadStore: (selector: (state: {downloads: unknown[]}) => unknown) =>

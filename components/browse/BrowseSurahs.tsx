@@ -465,14 +465,14 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
             option === 'asc'
               ? 'arrow-up'
               : option === 'desc'
-                ? 'arrow-down'
-                : 'calendar';
+              ? 'arrow-down'
+              : 'calendar';
           const label =
             option === 'asc'
               ? t('sort.asc')
               : option === 'desc'
-                ? t('sort.desc')
-                : t('sort.revelation');
+              ? t('sort.desc')
+              : t('sort.revelation');
           return (
             <Pressable
               key={option}
