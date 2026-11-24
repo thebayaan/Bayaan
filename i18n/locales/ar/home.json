@@ -19,7 +19,6 @@
   "browse": {
     "browseAll": "تصفّح الكل",
     "allSurahs": "جميع السور",
-    "browseRecitersForSurah": "تصفّح القرّاء - {{surah}}",
     "chooseReciterForSurah": "اختر قارئًا · {{surah}}",
     "allChip": "الكل",
     "searchReciters": "ابحث عن قارئ…",

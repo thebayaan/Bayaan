@@ -32,14 +32,14 @@ export default function BrowseScreen() {
 
   // Get surah name if surahId is provided. On iPad a tap on a card plays
   // the surah, so the title says so: "Choose a reciter · Ya-Sin". @ai
-  const surahTitleKey = isTablet
-    ? 'browse.chooseReciterForSurah'
-    : 'browse.browseRecitersForSurah';
   // A surahId that is not 1–114 (a bad link) has no surah to name; reading
   // its name used to throw. It opens the plain list instead. @ai
   const surah = surahId ? SURAHS[parseInt(surahId, 10) - 1] : undefined; // @ai
   const title = surah
-    ? t(surahTitleKey, {surah: getSurahDisplayName(surah)})
+    ? isTablet
+      ? t('browse.chooseReciterForSurah', {surah: getSurahDisplayName(surah)})
+      : // A phone header only fits the surah's name. @ai
+        getSurahDisplayName(surah)
     : t('browse.browseAll');
 
   // Native header title on glass devices, as on the Home tab's copy. @ai

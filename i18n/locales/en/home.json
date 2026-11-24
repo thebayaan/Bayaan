@@ -19,7 +19,6 @@
   "browse": {
     "browseAll": "Browse All",
     "allSurahs": "All Surahs",
-    "browseRecitersForSurah": "Browse Reciters - {{surah}}",
     "chooseReciterForSurah": "Choose a reciter · {{surah}}",
     "allChip": "All",
     "searchReciters": "Search reciters...",

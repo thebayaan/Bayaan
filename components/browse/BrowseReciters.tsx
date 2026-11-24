@@ -280,7 +280,10 @@ export default function BrowseReciters({
     }
     return [...groups].map(([qari, ids]) => ({
       id: `qari:${qari}`,
-      title: getQariLabel(qari as Parameters<typeof getQariLabel>[0]),
+      // Headings start with a capital ("Al-Kisa'i", not "al-Kisa'i"). @ai
+      title: capitalise(
+        getQariLabel(qari as Parameters<typeof getQariLabel>[0]),
+      ),
       items: ids.map(id => ({
         id: `rewayah:${id}`,
         title: getNarratorLabel(id),
@@ -957,3 +960,7 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.background,
     },
   });
+
+function capitalise(text: string): string {
+  return text.charAt(0).toLocaleUpperCase() + text.slice(1);
+}
