@@ -13,8 +13,20 @@ export interface ReciterPreview {
   playingKey: string | null;
   /** 0–1 through the preview. */
   progress: number;
-  toggle: (reciter: Reciter, rewayatId: string) => void;
+  /** Seconds played of the current preview. */
+  elapsed: number;
+  toggle: (reciter: Reciter, rewayatId: string, surahId?: number) => void;
   stop: () => void;
+}
+
+export interface ReciterPreviewOptions {
+  /**
+   * Starts the main player again when the preview ends, if it was playing
+   * when the preview began.
+   */
+  resumeMain?: boolean;
+  /** Ends the preview after this many seconds (default: the whole surah). */
+  maxSeconds?: number;
 }
 
 export const previewKey = (reciterId: string, rewayatId: string) =>
@@ -25,11 +37,17 @@ export const previewKey = (reciterId: string, rewayatId: string) =>
  * voice never touches the queue. The main player is paused while a preview
  * plays, and the preview stops when the screen loses focus.
  */
-export function useReciterPreview(): ReciterPreview {
+export function useReciterPreview({
+  resumeMain = false,
+  maxSeconds,
+}: ReciterPreviewOptions = {}): ReciterPreview {
   const playerRef = useRef<AudioPlayer | null>(null);
+  // The main player was playing when the first preview began.
+  const pausedMainRef = useRef(false);
   const subscriptionRef = useRef<{remove: () => void} | null>(null);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
 
   const release = useCallback(() => {
     subscriptionRef.current?.remove();
@@ -50,10 +68,22 @@ export function useReciterPreview(): ReciterPreview {
     release();
     setPlayingKey(null);
     setProgress(0);
-  }, [release]);
+    setElapsed(0);
+    if (pausedMainRef.current) {
+      pausedMainRef.current = false;
+      if (resumeMain) {
+        usePlayerStore
+          .getState()
+          .play()
+          .catch(error => {
+            console.warn('[useReciterPreview] Could not resume:', error);
+          });
+      }
+    }
+  }, [release, resumeMain]);
 
   const toggle = useCallback(
-    (reciter: Reciter, rewayatId: string) => {
+    (reciter: Reciter, rewayatId: string, surahId?: number) => {
       const key = previewKey(reciter.id, rewayatId);
       if (playingKey === key) {
         stop();
@@ -61,10 +91,12 @@ export function useReciterPreview(): ReciterPreview {
       }
       release();
       setProgress(0);
+      setElapsed(0);
       setPlayingKey(key);
 
       const main = usePlayerStore.getState();
       if (main.playback.state === 'playing') {
+        pausedMainRef.current = true;
         main.pause().catch(error => {
           console.warn('[useReciterPreview] Could not pause playback:', error);
         });
@@ -72,16 +104,30 @@ export function useReciterPreview(): ReciterPreview {
 
       try {
         const player = createAudioPlayer({
-          uri: generateSmartAudioUrl(reciter, PREVIEW_SURAH, rewayatId),
+          uri: generateSmartAudioUrl(
+            reciter,
+            surahId ? String(surahId) : PREVIEW_SURAH,
+            rewayatId,
+          ),
         });
         playerRef.current = player;
         subscriptionRef.current = player.addListener(
           'playbackStatusUpdate',
           status => {
-            if (status.duration > 0) {
-              setProgress(Math.min(1, status.currentTime / status.duration));
+            const length =
+              maxSeconds && status.duration > 0
+                ? Math.min(maxSeconds, status.duration)
+                : (maxSeconds ?? status.duration);
+            if (length > 0) {
+              setProgress(Math.min(1, status.currentTime / length));
             }
-            if (status.didJustFinish) stop();
+            setElapsed(Math.floor(status.currentTime));
+            if (
+              status.didJustFinish ||
+              (maxSeconds && status.currentTime >= maxSeconds)
+            ) {
+              stop();
+            }
           },
         );
         player.play();
@@ -90,11 +136,11 @@ export function useReciterPreview(): ReciterPreview {
         stop();
       }
     },
-    [playingKey, release, stop],
+    [playingKey, release, stop, maxSeconds],
   );
 
   useFocusEffect(useCallback(() => stop, [stop]));
   useEffect(() => release, [release]);
 
-  return {playingKey, progress, toggle, stop};
+  return {playingKey, progress, elapsed, toggle, stop};
 }

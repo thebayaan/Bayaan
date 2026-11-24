@@ -20,6 +20,7 @@ const mockGrid: {onReciterPress: ((reciter: Reciter) => void) | null} = {
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({back: mockBack, push: mockPush}),
+  useNavigation: () => ({setOptions: jest.fn()}),
 }));
 jest.mock('@/hooks/usePlayerActions', () => ({
   usePlayerActions: () => ({updateQueue: mockUpdateQueue, play: mockPlay}),
@@ -45,26 +46,107 @@ jest.mock('@/utils/track', () => ({
     rewayatId: string,
   ) => surahs.map(s => ({id: `${reciter.id}-${s.id}`, rewayatId})),
 }));
-jest.mock('../BrowseGrid', () => ({
-  __esModule: true,
-  default: (props: {onReciterPress: (reciter: Reciter) => void}) => {
-    mockGrid.onReciterPress = props.onReciterPress;
+// @ai: rows hand their onPress to the test; the list draws every item.
+jest.mock('../ReciterBrowseItems', () => ({
+  CARD_GAP: 8,
+  ReciterPanelRow: (props: {onPress: (reciter: Reciter) => void}) => {
+    mockGrid.onReciterPress = props.onPress;
+    return null;
+  },
+  ReciterCard: (props: {onPress: (reciter: Reciter) => void}) => {
+    mockGrid.onReciterPress = props.onPress;
     return null;
   },
 }));
-jest.mock('../FilterModal', () => ({__esModule: true, default: () => null}));
-// @ai: the filters open as a native sheet only on iPhone (not here).
-jest.mock('@/components/sheets/sheetControl', () => ({
-  presentsNatively: () => false,
-  showSheet: jest.fn(),
+jest.mock('@shopify/flash-list', () => {
+  const ReactModule = jest.requireActual('react');
+  const FlashList = ReactModule.forwardRef(
+    (
+      props: {
+        data: unknown[];
+        renderItem: (info: {item: unknown; index: number}) => unknown;
+      },
+      _ref: unknown,
+    ) =>
+      ReactModule.createElement(
+        ReactModule.Fragment,
+        null,
+        props.data.map((item, index) =>
+          ReactModule.createElement(
+            ReactModule.Fragment,
+            {key: index},
+            props.renderItem({item, index}),
+          ),
+        ),
+      ),
+  );
+  return {FlashList};
+});
+jest.mock('@/data/reciterData', () => ({
+  RECITERS: [
+    {
+      id: 'listed',
+      name: 'Listed',
+      date: null,
+      image_url: null,
+      rewayat: [
+        {id: 'listed-hafs', name: '', style: 'murattal', surah_list: [36]},
+      ],
+    },
+  ],
 }));
-jest.mock('@/components/SearchInput', () => ({SearchInput: () => null}));
+jest.mock('@/components/default-reciter/useReciterPreview', () => ({
+  previewKey: (a: string, b: string) => `${a}:${b}`,
+  useReciterPreview: () => ({
+    playingKey: null,
+    progress: 0,
+    elapsed: 0,
+    toggle: jest.fn(),
+    stop: jest.fn(),
+  }),
+}));
+jest.mock('@/services/player/store/downloadStore', () => ({
+  useDownloadStore: (selector: (state: {downloads: unknown[]}) => unknown) =>
+    selector({downloads: []}),
+}));
+jest.mock('@/store/collectionViewStore', () => ({
+  useCollectionViewPref: () => ({
+    view: 'list',
+    sort: 'name',
+    setView: jest.fn(),
+    setSort: jest.fn(),
+  }),
+}));
+jest.mock('@/components/native/NativeMenu', () => ({NativeMenu: () => null}));
+jest.mock('@/components/native/nativeMenus', () => ({
+  nativeMenusAvailable: false,
+}));
+jest.mock('@/components/collection/CollectionScreenHeader', () => ({
+  CollectionSearchField: () => null,
+}));
+jest.mock('@/components/TintedHeader', () => ({tintedHeaderRight: () => ({})}));
+jest.mock('@/components/ActionIcons', () => ({SearchIcon: () => null}));
+jest.mock('expo-symbols', () => ({SymbolView: () => null}));
+jest.mock('@/components/collection/CollectionPanel', () => ({
+  PANEL_MARGIN: 16,
+  PANEL_ROW_PADDING: 18,
+}));
+jest.mock('@/components/settings/SettingsList', () => ({
+  GROUPED_HEADER_GAP: 8,
+  GROUPED_SECTION_GAP: 22,
+  groupedHeaderStyle: () => ({}),
+}));
+jest.mock('../AlphabetRail', () => ({AlphabetRail: () => null}));
 jest.mock('@/components/Header', () => ({
   __esModule: true,
   default: () => null,
 }));
 jest.mock('@/hooks/useFavoriteReciters', () => ({
-  useFavoriteReciters: () => ({}),
+  useFavoriteReciters: () => ({
+    favoriteReciters: [],
+    isFavoriteReciter: () => false,
+    toggleFavorite: jest.fn(),
+  }),
 }));
 jest.mock('@/hooks/useTabReciterPath', () => ({
   useReciterProfilePathname: () => '/(tabs)/(a.home)/reciter/[id]',
@@ -73,9 +155,6 @@ jest.mock('@/hooks/useResponsive', () => ({
   useResponsive: () => ({isTablet: false, width: 390}),
 }));
 jest.mock('@/hooks/useGlassProps', () => ({USE_GLASS: false}));
-jest.mock('@/hooks/useGlassHeaderHeight', () => ({
-  useGlassHeaderHeight: () => 0,
-}));
 jest.mock('@/hooks/useBottomInset', () => ({useBottomInset: () => 0}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
@@ -83,18 +162,10 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('@/utils/reciterImageLookup', () => ({
   getLocalReciterImage: () => undefined,
 }));
-jest.mock('@expo/vector-icons', () => ({Feather: () => null}));
-jest.mock('react-native-reanimated', () => {
-  const {View} = jest.requireActual('react-native');
-  const transition = {duration: () => transition};
-  return {
-    __esModule: true,
-    default: {View},
-    FadeIn: transition,
-    FadeOut: transition,
-    LinearTransition: transition,
-  };
-});
+jest.mock('@expo/vector-icons', () => ({
+  Feather: () => null,
+  MaterialIcons: () => null,
+}));
 
 import BrowseReciters from '../BrowseReciters';
 
