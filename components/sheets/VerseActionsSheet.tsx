@@ -41,6 +41,11 @@ import {
   ShareIcon,
 } from '@/components/Icons';
 import Color from 'color';
+import {
+  GROUPED_CARD_RADIUS,
+  SETTINGS_ROW_INSET,
+  groupedSeparatorColor,
+} from '@/components/settings/SettingsList'; // @ai
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 // @ai-start
@@ -1572,25 +1577,28 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textTertiary,
       textAlign: 'center',
     },
+    // @ai-start: the grouped panel look the Mushaf settings sheet uses
     card: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(12),
+      backgroundColor: theme.isDarkMode
+        ? Color('#ffffff').alpha(0.07).toString()
+        : Color(theme.colors.text).alpha(0.05).toString(),
+      borderRadius: GROUPED_CARD_RADIUS,
+      borderCurve: 'continuous',
       overflow: 'hidden',
-      marginBottom: moderateScale(8),
+      marginBottom: moderateScale(12),
     },
     divider: {
-      height: 1,
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      marginHorizontal: moderateScale(14),
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: groupedSeparatorColor(theme),
+      marginHorizontal: SETTINGS_ROW_INSET,
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(11),
-      paddingHorizontal: moderateScale(14),
+      paddingVertical: moderateScale(12),
+      paddingHorizontal: SETTINGS_ROW_INSET,
     },
+    // @ai-end
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),

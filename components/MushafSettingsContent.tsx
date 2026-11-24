@@ -14,6 +14,10 @@ import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
+import {
+  GROUPED_CARD_RADIUS,
+  SETTINGS_ROW_INSET,
+} from '@/components/settings/SettingsList'; // @ai
 import {Feather} from '@expo/vector-icons';
 import {
   MushafPagePillIcon,
@@ -1842,8 +1846,9 @@ const createStyles = (theme: Theme, onSheet: boolean) =>
         : onSheet
           ? Color(theme.colors.text).alpha(0.05).toString()
           : '#ffffff',
-      borderRadius: moderateScale(24),
-      paddingHorizontal: moderateScale(18),
+      borderRadius: GROUPED_CARD_RADIUS,
+      borderCurve: 'continuous',
+      paddingHorizontal: SETTINGS_ROW_INSET,
       overflow: 'hidden',
       marginBottom: moderateScale(22),
     },
