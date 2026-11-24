@@ -53,7 +53,7 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {getSurahById} from '@/services/dataService';
 import {createTracksForReciter} from '@/utils/track';
-import {pickRewayatId} from '@/utils/rewayatPreference';
+import {pickRewayatId, sortRewayat} from '@/utils/rewayatPreference';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {useReciterProfilePathname} from '@/hooks/useTabReciterPath';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -538,7 +538,9 @@ export default function BrowseReciters({
   const playReciter = useCallback(
     async (reciter: Reciter, shuffle: boolean) => {
       const rewayatId =
-        pickRewayatId(reciter.rewayat, [
+        // Same order and candidates as the profile, so Play all plays the
+        // recording that Open shows. @ai
+        pickRewayatId(sortRewayat(reciter.rewayat), [
           recordingFor(reciter, rewayah)?.id,
           useSettings.getState().reciterPreferences[reciter.id],
         ]) ?? reciter.rewayat[0]?.id;

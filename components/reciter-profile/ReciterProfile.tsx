@@ -73,8 +73,7 @@ import {UploadsTabContent} from './components/UploadsTabContent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from '@/utils/scale';
 import {useBottomInset} from '@/hooks/useBottomInset';
-import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
-import {pickRewayatId} from '@/utils/rewayatPreference'; // @ai
+import {sortRewayat, pickRewayatId} from '@/utils/rewayatPreference'; // @ai
 import {useNavigation} from 'expo-router';
 import {useGlassHeaderHeight} from '@/hooks/useGlassHeaderHeight'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
@@ -114,30 +113,6 @@ interface ReciterProfileProps {
 // Define types matching useSettings
 type ReciterProfileViewMode = 'card' | 'list';
 type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
-
-// Sort rewayat, prioritizing Murattal Hafs A'n Assem
-function sortRewayat(rewayat: Rewayat[]): Rewayat[] {
-  return [...rewayat].sort((a, b) => {
-    const aIsHafsMurattal =
-      a.name === HAFS_REWAYAT_NAME && a.style === 'murattal';
-    const bIsHafsMurattal =
-      b.name === HAFS_REWAYAT_NAME && b.style === 'murattal';
-    if (aIsHafsMurattal && !bIsHafsMurattal) return -1;
-    if (!aIsHafsMurattal && bIsHafsMurattal) return 1;
-
-    const aIsHafs = a.name === HAFS_REWAYAT_NAME;
-    const bIsHafs = b.name === HAFS_REWAYAT_NAME;
-    if (aIsHafs && !bIsHafs) return -1;
-    if (!aIsHafs && bIsHafs) return 1;
-
-    const aIsMurattal = a.style === 'murattal';
-    const bIsMurattal = b.style === 'murattal';
-    if (aIsMurattal && !bIsMurattal) return -1;
-    if (!aIsMurattal && bIsMurattal) return 1;
-
-    return 0;
-  });
-}
 
 // Synchronous reciter init — avoids async loading phase
 function initReciter(id: string): Reciter | null {
