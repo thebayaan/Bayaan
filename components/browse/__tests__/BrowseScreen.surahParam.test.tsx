@@ -50,7 +50,7 @@ describe.each([
   it('names the surah the reciter is being chosen for', () => {
     const props = open('36');
     expect(props.surahId).toBe(36);
-    expect(props.title).toBe('Browse Reciters - Ya-Sin');
+    expect(props.title).toBe('Ya-Sin');
   });
 
   it.each(['0', '115', 'abc'])(

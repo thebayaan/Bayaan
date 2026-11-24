@@ -10,7 +10,9 @@ export type CollectionScreenKey =
   | 'bookmarks'
   | 'notes'
   | 'reciters'
-  | 'uploads';
+  | 'uploads'
+  /** Browse › All reciters (not a Collection screen, same memory). @ai */
+  | 'browseReciters';
 
 export type CollectionView = 'grid' | 'list';
 
@@ -29,6 +31,7 @@ export const COLLECTION_SORTS: Record<CollectionScreenKey, string[]> = {
   notes: ['recent', 'oldest', 'surah'],
   reciters: ['recent', 'name'],
   uploads: ['recent', 'oldest', 'title'],
+  browseReciters: ['name', 'recent'],
 };
 
 /** Screens that switch between a grid and a list. */
@@ -40,6 +43,7 @@ export const COLLECTION_HAS_VIEW: Record<CollectionScreenKey, boolean> = {
   notes: false,
   reciters: false,
   uploads: false,
+  browseReciters: true,
 };
 
 const DEFAULT_VIEW: Record<CollectionScreenKey, CollectionView> = {
@@ -50,6 +54,7 @@ const DEFAULT_VIEW: Record<CollectionScreenKey, CollectionView> = {
   notes: 'list',
   reciters: 'list',
   uploads: 'list',
+  browseReciters: 'list',
 };
 
 // Read synchronously at launch so a screen opens in the view it was left in.

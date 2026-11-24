@@ -1,5 +1,6 @@
 // @ai-generated
 import type {Rewayat} from '@/data/reciterData';
+import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 
 type RewayatChoice = Pick<Rewayat, 'id' | 'surah_list'>;
 
@@ -45,4 +46,32 @@ export function pickRewayatId(
     if (id && pool.some(r => r.id === id)) return id;
   }
   return pool[0]?.id;
+}
+
+/**
+ * A reciter's recordings in the order the profile shows them: Hafs
+ * murattal first, then other Hafs, then other murattal. Moved here from
+ * ReciterProfile so Browse plays the recording the profile opens on. @ai
+ */
+export function sortRewayat(rewayat: Rewayat[]): Rewayat[] {
+  return [...rewayat].sort((a, b) => {
+    const aIsHafsMurattal =
+      a.name === HAFS_REWAYAT_NAME && a.style === 'murattal';
+    const bIsHafsMurattal =
+      b.name === HAFS_REWAYAT_NAME && b.style === 'murattal';
+    if (aIsHafsMurattal && !bIsHafsMurattal) return -1;
+    if (!aIsHafsMurattal && bIsHafsMurattal) return 1;
+
+    const aIsHafs = a.name === HAFS_REWAYAT_NAME;
+    const bIsHafs = b.name === HAFS_REWAYAT_NAME;
+    if (aIsHafs && !bIsHafs) return -1;
+    if (!aIsHafs && bIsHafs) return 1;
+
+    const aIsMurattal = a.style === 'murattal';
+    const bIsMurattal = b.style === 'murattal';
+    if (aIsMurattal && !bIsMurattal) return -1;
+    if (!aIsMurattal && bIsMurattal) return 1;
+
+    return 0;
+  });
 }
