@@ -799,6 +799,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     }
     // Every Hafs verse the reciter verse recites (Warsh 2:1 = Hafs 2:1 + 2:2)
     useTimestampStore.getState().setCurrentAyah(target.tracking);
+    // Scrolling to pick the verse turned follow-along off; playing from it
+    // turns it back on, so the verse is highlighted and followed. @ai
+    useTimestampStore.getState().setIsLocked(true);
     // @ai-end
 
     hideCurrentSheet();
@@ -1032,13 +1035,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           styles.container,
           // @ai: in a native sheet the menu scrolls to the screen edge and
           // ends with the inset itself (below); the container adds nothing.
-          {
-            paddingBottom: inNativeSheet
-              ? needsFullHeight
-                ? sheetBottomPadding // @ai: screens end above the home indicator
-                : 0
-              : sheetBottomPadding,
-          },
+          {paddingBottom: inNativeSheet ? 0 : sheetBottomPadding},
           activeScreen && (!inNativeSheet || needsFullHeight) && {flex: 1},
         ]}>
         {/* @ai-start: Word Study only names no verse: no header, no menu */}

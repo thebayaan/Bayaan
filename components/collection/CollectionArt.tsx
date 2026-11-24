@@ -226,17 +226,22 @@ function CategoryGlyph({
 export function GlassIcon({
   category,
   size,
+  radius: radiusProp, // @ai
 }: {
   category: CollectionCategoryId;
   size: number;
+  /** Corner radius; defaults to 30% of the size. @ai */
+  radius?: number;
 }) {
   const color = CATEGORY_COLORS[category];
+  const radius = radiusProp ?? Math.round(size * 0.3); // @ai
   return (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: Math.round(size * 0.3),
+        borderRadius: radius, // @ai
+        borderCurve: 'continuous', // @ai
         // A solid fill under the gradient lets iOS draw the shadow cheaply.
         backgroundColor: color,
         shadowColor: color,
@@ -250,7 +255,8 @@ export function GlassIcon({
         end={{x: 0.6, y: 1}}
         style={{
           flex: 1,
-          borderRadius: Math.round(size * 0.3),
+          borderRadius: radius, // @ai
+          borderCurve: 'continuous', // @ai
           alignItems: 'center',
           justifyContent: 'center',
         }}>
@@ -279,15 +285,19 @@ export function CollectionPreview({
   category,
   data,
   size,
+  radius: radiusProp, // @ai
 }: {
   category: CollectionCategoryId;
   data: CollectionPreviewData;
   size: number;
+  /** Corner radius, so a row can keep it concentric with its card. @ai */
+  radius?: number;
 }) {
   const {theme} = useTheme();
   const color = CATEGORY_COLORS[category];
-  const radius = Math.round(size * 0.25);
-  if (!data) return <GlassIcon category={category} size={size} />;
+  const radius = radiusProp ?? Math.round(size * 0.25); // @ai
+  if (!data)
+    return <GlassIcon category={category} size={size} radius={radiusProp} />;
 
   switch (data.kind) {
     case 'cover':

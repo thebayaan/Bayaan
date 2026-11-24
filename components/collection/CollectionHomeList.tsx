@@ -11,6 +11,7 @@ import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {
   GROUPED_CARD_RADIUS,
   GROUPED_HEADER_GAP,
+  GROUPED_SECTION_GAP,
   SETTINGS_ROW_INSET,
   groupedCardColor,
   groupedHeaderStyle,
@@ -155,6 +156,8 @@ export function CollectionHomeList({
                               isEmpty ? null : (category.previewData ?? null)
                             }
                             size={moderateScale(38)}
+                            // @ai: the card's 24 less the 16pt gap
+                            radius={moderateScale(8)}
                           />
                           <View style={styles.text}>
                             <Text style={styles.label} numberOfLines={1}>
@@ -188,7 +191,7 @@ const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     root: {
       paddingHorizontal: '16@ms',
-      gap: '18@ms',
+      gap: GROUPED_SECTION_GAP, // @ai: as Settings
     },
     titleRow: {
       flexDirection: 'row',
@@ -228,8 +231,11 @@ const createStyles = (theme: Theme) =>
     },
     card: {
       borderRadius: GROUPED_CARD_RADIUS,
+      borderCurve: 'continuous', // @ai
       overflow: 'hidden',
       backgroundColor: groupedCardColor(theme),
+      // 16pt above the first thumbnail and below the last, as at the side.
+      paddingVertical: '5@ms',
     },
     // @ai-end
     row: {
@@ -254,7 +260,7 @@ const createStyles = (theme: Theme) =>
     },
     separator: {
       height: StyleSheet.hairlineWidth, // @ai
-      marginStart: '70@ms',
+      marginStart: '66@ms', // @ai: at the title (16 + 38 + 12)
       marginEnd: SETTINGS_ROW_INSET, // @ai
       backgroundColor: groupedSeparatorColor(theme), // @ai
     },

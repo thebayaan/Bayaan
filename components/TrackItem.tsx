@@ -28,6 +28,8 @@ import {listRowContextMenusEnabled} from '@/components/native/nativeMenus'; // @
 import {
   PANEL_ROW_PADDING,
   PANEL_ROW_VERTICAL,
+  PANEL_ART_SIZE,
+  PANEL_ART_RADIUS,
 } from '@/components/collection/CollectionPanel'; // @ai
 // @ai-end
 import {
@@ -238,7 +240,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
             <ReciterImage
               reciterName={reciter?.name || ''}
               imageUrl={reciter?.image_url || undefined}
-              style={styles.reciterImage}
+              style={[styles.reciterImage, transparent && panelArt]} // @ai
             />
           )}
         </View>
@@ -402,6 +404,11 @@ TrackItem.displayName = 'TrackItem';
 
 // @ai-start
 // Inside a Collection panel: the iOS list row padding.
+const panelArt = {
+  width: PANEL_ART_SIZE,
+  height: PANEL_ART_SIZE,
+  borderRadius: PANEL_ART_RADIUS,
+};
 const panelPlayZone = {
   paddingVertical: PANEL_ROW_VERTICAL,
   paddingStart: PANEL_ROW_PADDING,
