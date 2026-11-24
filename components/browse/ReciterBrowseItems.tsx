@@ -189,7 +189,7 @@ export const ReciterCard = React.memo(function ReciterCard({
   const {theme} = useTheme();
   const panel = usePanelColor();
   const {reciter, name, line, downloaded, trailing, onPress} = props;
-  const photo = Math.round(width - moderateScale(24));
+  const photo = Math.round(width - moderateScale(36));
   const muted = Color(theme.colors.text).alpha(0.55).toString();
   return (
     <View style={{width}}>
