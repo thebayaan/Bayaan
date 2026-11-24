@@ -204,7 +204,7 @@ const createStyles = (theme: Theme) =>
     panel: {
       marginHorizontal: PANEL_MARGIN,
       borderRadius: PANEL_RADIUS,
-      borderCurve: 'continuous',
+      borderCurve: 'continuous', // @ai
       overflow: 'hidden',
       paddingBottom: '22@ms',
     },

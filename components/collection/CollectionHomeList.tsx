@@ -228,6 +228,7 @@ const createStyles = (theme: Theme) =>
     },
     card: {
       borderRadius: GROUPED_CARD_RADIUS,
+      borderCurve: 'continuous', // @ai
       overflow: 'hidden',
       backgroundColor: groupedCardColor(theme),
     },
@@ -254,7 +255,7 @@ const createStyles = (theme: Theme) =>
     },
     separator: {
       height: StyleSheet.hairlineWidth, // @ai
-      marginStart: '70@ms',
+      marginStart: '68@ms', // @ai: at the title (18 + 38 + 12)
       marginEnd: SETTINGS_ROW_INSET, // @ai
       backgroundColor: groupedSeparatorColor(theme), // @ai
     },

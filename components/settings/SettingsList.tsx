@@ -288,6 +288,7 @@ function createStyles(theme: Theme) {
     card: {
       backgroundColor: groupedCardColor(theme), // @ai
       borderRadius: GROUPED_CARD_RADIUS, // @ai
+      borderCurve: 'continuous', // @ai: Apple's smooth corner, as the panels
       overflow: 'hidden',
     },
     row: {

@@ -174,7 +174,8 @@ function createStyles(theme: Theme) {
     },
     mockCard: {
       flex: 1,
-      borderRadius: moderateScale(9),
+      // @ai: concentric with the mock page: its radius less its 7pt padding
+      borderRadius: TILE_RADIUS - RING - moderateScale(7),
       padding: moderateScale(7),
       gap: moderateScale(4),
       overflow: 'hidden',
