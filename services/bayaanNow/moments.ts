@@ -416,11 +416,11 @@ export function sceneFor(moment: NowMoment, now: Date): SceneId {
       return 'ashura';
     case 'night':
       return 'tahajjud';
-    case 'bedtime':
-      return 'bedtime';
   }
   if (moment.day) return DAY_SCENE[moment.day.kind];
   switch (moment.reason) {
+    case 'bedtime':
+      return 'bedtime';
     case 'morning':
       return hour < 7 && hour >= 4 ? 'fajr' : 'duha';
     case 'evening':

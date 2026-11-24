@@ -181,6 +181,10 @@ describe('the Hijri calendar', () => {
     const [main] = bayaanNowMoments(input(hijri(1448, 10, 1, 8)));
     expect(main.day).toEqual({kind: 'eidFitr'});
     expect(sceneFor(main, hijri(1448, 10, 1, 8))).toBe('eidfitr');
+    // A Ramadan night shows Ramadan, even behind Al-Mulk at bedtime.
+    const [night] = bayaanNowMoments(input(hijri(1448, 9, 12, 22)));
+    expect(night.kind).toBe('bedtime');
+    expect(sceneFor(night, hijri(1448, 9, 12, 22))).toBe('ramadan');
   });
 });
 
