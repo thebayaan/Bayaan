@@ -467,6 +467,7 @@ const createStyles = (theme: Theme) =>
     },
     card: {
       borderRadius: GROUPED_CARD_RADIUS,
+      borderCurve: 'continuous', // @ai
       overflow: 'hidden',
       backgroundColor: groupedCardColor(theme),
     },

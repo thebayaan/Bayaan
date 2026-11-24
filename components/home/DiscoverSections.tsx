@@ -488,6 +488,7 @@ const styles = StyleSheet.create({
     width: moderateScale(38),
     height: moderateScale(38),
     borderRadius: moderateScale(12),
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

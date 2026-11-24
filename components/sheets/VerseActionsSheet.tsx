@@ -799,6 +799,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     }
     // Every Hafs verse the reciter verse recites (Warsh 2:1 = Hafs 2:1 + 2:2)
     useTimestampStore.getState().setCurrentAyah(target.tracking);
+    // Scrolling to pick the verse turned follow-along off; playing from it
+    // turns it back on, so the verse is highlighted and followed. @ai
+    useTimestampStore.getState().setIsLocked(true);
     // @ai-end
 
     hideCurrentSheet();
@@ -1109,74 +1112,82 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 style={isFullScreen ? {flex: 1} : undefined}
               />
             ) : isFullScreen ? (
-              <View style={{flex: 1}}>
-                {activeScreen === 'translation' && (
-                  <TranslationContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'tafseer' && (
-                  <TafseerContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'theme' && (
-                  <ThemeContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'wbw' && (
-                  <WBWContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onOpenWord={handleOpenWord} // @ai
-                    onBack={handleBack}
-                  />
-                )}
-                {/* @ai-start */}
-                {/* The selected verses' words, in the sheet's rewayah
+              <View style={styles.screenSlot}>
+                {/* @ai: the screen fills the slot exactly, whatever its
+                    content's height, so its list scrolls and its footer
+                    stays on screen (long verses pushed it off before). */}
+                <View style={StyleSheet.absoluteFill}>
+                  {activeScreen === 'translation' && (
+                    <TranslationContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      rewayah={resolvedRewayah}
+                      unitStart={unitStart}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'tafseer' && (
+                    <TafseerContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      rewayah={resolvedRewayah}
+                      unitStart={unitStart}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'theme' && (
+                    <ThemeContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      unitStart={unitStart}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'wbw' && (
+                    <WBWContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      rewayah={resolvedRewayah}
+                      unitStart={unitStart}
+                      onOpenWord={handleOpenWord} // @ai
+                      onBack={handleBack}
+                    />
+                  )}
+                  {/* @ai-start */}
+                  {/* The selected verses' words, in the sheet's rewayah
                     (another rewayah steps through its Hafs words), or Word
                     Study only's words. A root opens root search below. */}
-                {activeScreen === 'words' && wordStudy && (
-                  <WordStudyContent
-                    study={wordStudy}
-                    initialWord={wordTarget}
-                    onRootPress={handleRootPress}
-                  />
-                )}
-                {activeScreen === 'root' && rootTarget && (
-                  <RootSearchContent
-                    sheetId={props.sheetId}
-                    root={rootTarget.root}
-                    initialLemma={rootTarget.lemma ?? undefined}
-                    rewayah={resolvedRewayah}
-                  />
-                )}
-                {/* @ai-end */}
-                {activeScreen === 'community-reflections' && readySelection && (
-                  // Reflections are per Hafs verse: the one holding the
-                  // verse's first word; the badge is the verse's own label.
-                  <CommunityReflectionsContent
-                    surahNumber={readySelection.linkVerse.surah}
-                    ayahNumber={readySelection.linkVerse.ayah}
-                    label={
-                      readySelection.units ? readySelection.label : undefined
-                    }
-                  />
-                )}
+                  {activeScreen === 'words' && wordStudy && (
+                    <WordStudyContent
+                      study={wordStudy}
+                      initialWord={wordTarget}
+                      onRootPress={handleRootPress}
+                    />
+                  )}
+                  {activeScreen === 'root' && rootTarget && (
+                    <RootSearchContent
+                      sheetId={props.sheetId}
+                      root={rootTarget.root}
+                      initialLemma={rootTarget.lemma ?? undefined}
+                      rewayah={resolvedRewayah}
+                    />
+                  )}
+                  {/* @ai-end */}
+                  {activeScreen === 'community-reflections' &&
+                    readySelection && (
+                      // Reflections are per Hafs verse: the one holding the
+                      // verse's first word; the badge is the verse's own label.
+                      <CommunityReflectionsContent
+                        surahNumber={readySelection.linkVerse.surah}
+                        ayahNumber={readySelection.linkVerse.ayah}
+                        label={
+                          readySelection.units
+                            ? readySelection.label
+                            : undefined
+                        }
+                      />
+                    )}
+                </View>
               </View>
             ) : readySelection ? (
               <>
@@ -1206,16 +1217,27 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   />
                 )}
                 {isSimilar && qulKey && (
-                  <SimilarVersesContent
-                    verseKey={qulKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    section={activeScreen === 'similar' ? 'similar' : 'phrases'}
-                    rewayah={resolvedRewayah} // @ai
-                    onDone={handleDismiss}
-                    hafsReferences={resolvedRewayah !== 'hafs'}
-                    onOpenVerse={handleOpenVerseInReader}
-                  />
+                  // @ai: in a native sheet it fills its slot exactly, as the
+                  // full screens do
+                  <View style={inNativeSheet ? styles.screenSlot : undefined}>
+                    <View
+                      style={
+                        inNativeSheet ? StyleSheet.absoluteFill : undefined
+                      }>
+                      <SimilarVersesContent
+                        verseKey={qulKey}
+                        surahNumber={surahNumber}
+                        ayahNumber={ayahNumber}
+                        section={
+                          activeScreen === 'similar' ? 'similar' : 'phrases'
+                        }
+                        rewayah={resolvedRewayah} // @ai
+                        onDone={handleDismiss}
+                        hafsReferences={resolvedRewayah !== 'hafs'}
+                        onOpenVerse={handleOpenVerseInReader}
+                      />
+                    </View>
+                  </View>
                 )}
               </>
             ) : null}
@@ -1527,6 +1549,7 @@ const createStyles = (theme: Theme) =>
       width: moderateScale(40),
       height: 2.5,
     },
+    screenSlot: {flex: 1}, // @ai
     container: {
       paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(30),

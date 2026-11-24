@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: PANEL_ROW_PADDING,
-    paddingVertical: PANEL_ROW_VERTICAL + moderateScale(4),
+    paddingVertical: PANEL_ROW_VERTICAL,
     gap: PANEL_ART_GAP,
   },
   faces: {

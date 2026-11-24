@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: PANEL_ROW_PADDING,
-    paddingVertical: PANEL_ROW_VERTICAL + moderateScale(2),
+    paddingVertical: PANEL_ROW_VERTICAL,
     gap: PANEL_ART_GAP,
   },
   text: {
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   bookArt: {
     width: PANEL_ART_SIZE,
     height: PANEL_ART_SIZE,
-    borderRadius: PANEL_ART_RADIUS + moderateScale(2),
+    borderRadius: PANEL_ART_RADIUS,
     borderCurve: 'continuous',
     overflow: 'hidden',
     alignItems: 'center',

@@ -14,6 +14,7 @@ import {
  * Rows of a Collection list drawn as one inset-grouped panel in the
  * Settings look (components/settings/SettingsList): 16pt from the screen
  * edge, the same card fill and corner radius, 48pt artwork in 64pt rows,
+ * 16pt from the panel's edges to the artwork (concentric corners),
  * and a hairline from where the text starts to the row's end inset.
  */
 
@@ -28,6 +29,10 @@ export const PANEL_ART_RADIUS = moderateScale(8);
 export const PANEL_ART_GAP = moderateScale(12);
 /** Top and bottom padding of a row, so an art row is 64pt tall. */
 export const PANEL_ROW_VERTICAL = moderateScale(8);
+/** Extra space at the panel's top and bottom, so the first and last
+ *  artwork sit as far from the corner's top edge as from its side, which
+ *  keeps their 8pt corners concentric with the panel's 24pt ones. */
+const PANEL_EDGE_EXTRA = PANEL_ROW_PADDING - PANEL_ROW_VERTICAL;
 
 export function usePanelColor(): string {
   const {theme} = useTheme();
@@ -59,6 +64,8 @@ export function PanelRow({
         borderTopRightRadius: first ? PANEL_RADIUS : 0,
         borderBottomLeftRadius: last ? PANEL_RADIUS : 0,
         borderBottomRightRadius: last ? PANEL_RADIUS : 0,
+        paddingTop: first ? PANEL_EDGE_EXTRA : 0,
+        paddingBottom: last ? PANEL_EDGE_EXTRA : 0,
       }}>
       {children}
       {!last ? (

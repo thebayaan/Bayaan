@@ -57,15 +57,17 @@ function Mock({mode, styles}: {mode: ThemeMode; styles: Styles}) {
         styles.mockPage,
         {backgroundColor: MOCK.light.page, borderColor: MOCK.light.outline},
       ]}>
+      {/* @ai: the halves cover the hairline outline too; drawn only inside
+          it, the light page showed through at the dark half's edge. */}
       <Svg
-        style={StyleSheet.absoluteFill}
+        style={styles.mockFill}
         viewBox="0 0 100 100"
         preserveAspectRatio="none">
         <Polygon points="100,0 100,100 0,100" fill={MOCK.dark.page} />
       </Svg>
       <View style={[styles.mockCard, styles.mockCardSystem]}>
         <Svg
-          style={StyleSheet.absoluteFill}
+          style={styles.mockCardFill} // @ai
           viewBox="0 0 100 100"
           preserveAspectRatio="none">
           <Polygon points="0,0 100,0 0,100" fill={MOCK.light.card} />
@@ -137,14 +139,16 @@ export function AppearancePicker(): React.JSX.Element {
 type Styles = ReturnType<typeof createStyles>;
 
 const RING = moderateScale(3);
-const TILE_RADIUS = moderateScale(18);
+// @ai: the tile's outer ring (11 + 3 = 14) is the card's 24 less its 10pt padding
+const TILE_RADIUS = moderateScale(11);
+const MOCK_PADDING = moderateScale(5);
 
 function createStyles(theme: Theme) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       gap: moderateScale(12),
-      padding: moderateScale(16),
+      padding: moderateScale(10), // @ai: concentric with the card
     },
     option: {
       flex: 1,
@@ -169,15 +173,33 @@ function createStyles(theme: Theme) {
       flex: 1,
       borderRadius: TILE_RADIUS - RING,
       overflow: 'hidden',
-      padding: moderateScale(7),
+      padding: MOCK_PADDING, // @ai
       borderWidth: StyleSheet.hairlineWidth,
     },
     mockCard: {
       flex: 1,
-      borderRadius: moderateScale(9),
+      // @ai: concentric with the mock page: its radius less its padding
+      borderRadius: TILE_RADIUS - RING - MOCK_PADDING,
       padding: moderateScale(7),
       gap: moderateScale(4),
       overflow: 'hidden',
+    },
+    // @ai: fills the border box, outline included
+    mockFill: {
+      position: 'absolute',
+      top: -StyleSheet.hairlineWidth,
+      bottom: -StyleSheet.hairlineWidth,
+      start: -StyleSheet.hairlineWidth,
+      end: -StyleSheet.hairlineWidth,
+    },
+    // @ai: the card's halves are drawn over the whole page's box (the card
+    // clips them), so its diagonal is the page's diagonal, not its own.
+    mockCardFill: {
+      position: 'absolute',
+      top: -(MOCK_PADDING + 2 * StyleSheet.hairlineWidth),
+      bottom: -(MOCK_PADDING + 2 * StyleSheet.hairlineWidth),
+      start: -(MOCK_PADDING + 2 * StyleSheet.hairlineWidth),
+      end: -(MOCK_PADDING + 2 * StyleSheet.hairlineWidth),
     },
     mockCardSystem: {
       borderWidth: StyleSheet.hairlineWidth,
