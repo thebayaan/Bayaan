@@ -26,7 +26,8 @@ export type SettingsIconName = React.ComponentProps<typeof Feather>['name'];
 
 export const SETTINGS_ICON_SIZE = moderateScale(21);
 /** Row padding; section headers line up with the icons at this inset. */
-export const SETTINGS_ROW_INSET = moderateScale(18);
+// @ai: 16, the same gap the panel's 24pt corners are concentric with (24 - 16 = 8)
+export const SETTINGS_ROW_INSET = moderateScale(16);
 const ICON_GAP = moderateScale(16);
 const CHEVRON_SIZE = moderateScale(18);
 /** Card bottom to the next section's header. */

@@ -137,14 +137,16 @@ export function AppearancePicker(): React.JSX.Element {
 type Styles = ReturnType<typeof createStyles>;
 
 const RING = moderateScale(3);
-const TILE_RADIUS = moderateScale(18);
+// @ai: the tile's outer ring (11 + 3 = 14) is the card's 24 less its 10pt padding
+const TILE_RADIUS = moderateScale(11);
+const MOCK_PADDING = moderateScale(5);
 
 function createStyles(theme: Theme) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       gap: moderateScale(12),
-      padding: moderateScale(16),
+      padding: moderateScale(10), // @ai: concentric with the card
     },
     option: {
       flex: 1,
@@ -169,13 +171,13 @@ function createStyles(theme: Theme) {
       flex: 1,
       borderRadius: TILE_RADIUS - RING,
       overflow: 'hidden',
-      padding: moderateScale(7),
+      padding: MOCK_PADDING, // @ai
       borderWidth: StyleSheet.hairlineWidth,
     },
     mockCard: {
       flex: 1,
-      // @ai: concentric with the mock page: its radius less its 7pt padding
-      borderRadius: TILE_RADIUS - RING - moderateScale(7),
+      // @ai: concentric with the mock page: its radius less its padding
+      borderRadius: TILE_RADIUS - RING - MOCK_PADDING,
       padding: moderateScale(7),
       gap: moderateScale(4),
       overflow: 'hidden',
