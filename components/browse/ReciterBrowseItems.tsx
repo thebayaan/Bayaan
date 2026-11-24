@@ -10,6 +10,7 @@ import Svg, {Circle} from 'react-native-svg';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
+import {localizeDigits} from '@/i18n/format';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
@@ -53,7 +54,9 @@ const WAVE = [
 
 function formatTime(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  return localizeDigits(
+    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
+  );
 }
 
 /** Bars that fill as the preview plays. */

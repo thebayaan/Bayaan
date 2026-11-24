@@ -1,31 +1,60 @@
 // @ai-generated
 import React, {useRef, useState} from 'react';
-import {StyleSheet, Text, View, type GestureResponderEvent} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
+} from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from '@/utils/scale';
 
 const LETTER_HEIGHT = moderateScale(14);
+const MIN_LETTER_HEIGHT = moderateScale(9);
+const RAIL_PADDING = moderateScale(6);
 
 /**
  * The A–Z index at the side of a long list. Touching or dragging along it
  * jumps to the letter under the finger, with a light tick per letter and
- * the letter shown large while the finger is down.
+ * the letter shown large while the finger is down. It stays between
+ * `insetTop` and `insetBottom` (the header and the bars over the list), and
+ * letters shrink when there are more than fit there, as in Arabic, where
+ * the rail carries both the Latin and the Arabic letters.
  */
 export function AlphabetRail({
   letters,
   onLetter,
+  insetTop = 0,
+  insetBottom = 0,
 }: {
   letters: readonly string[];
   onLetter: (letter: string) => void;
+  insetTop?: number;
+  insetBottom?: number;
 }) {
   const {theme} = useTheme();
   const [active, setActive] = useState<string | null>(null);
+  const [space, setSpace] = useState(0);
   const lastRef = useRef<string | null>(null);
+  const letterHeight =
+    space > 0
+      ? Math.max(
+          MIN_LETTER_HEIGHT,
+          Math.min(LETTER_HEIGHT, (space - RAIL_PADDING * 2) / letters.length),
+        )
+      : LETTER_HEIGHT;
+  const onHostLayout = (event: LayoutChangeEvent) =>
+    setSpace(event.nativeEvent.layout.height);
 
   const pick = (event: GestureResponderEvent) => {
-    const i = Math.floor(event.nativeEvent.locationY / LETTER_HEIGHT);
+    // locationY is measured from the view under the finger, so the letters
+    // ignore touches and the rail itself is always that view.
+    const i = Math.floor(
+      (event.nativeEvent.locationY - RAIL_PADDING) / letterHeight,
+    );
     const letter = letters[Math.min(letters.length - 1, Math.max(0, i))];
     if (!letter || letter === lastRef.current) return;
     lastRef.current = letter;
@@ -40,7 +69,10 @@ export function AlphabetRail({
 
   if (letters.length < 2) return null;
   return (
-    <View style={styles.host} pointerEvents="box-none">
+    <View
+      style={[styles.host, {top: insetTop, bottom: insetBottom}]}
+      onLayout={onHostLayout}
+      pointerEvents="box-none">
       <View
         style={styles.rail}
         onStartShouldSetResponder={() => true}
@@ -52,21 +84,26 @@ export function AlphabetRail({
         onResponderTerminate={end}
         accessibilityRole="adjustable"
         accessibilityLabel={letters.join(' ')}>
-        {letters.map(letter => (
-          <Text
-            key={letter}
-            style={[
-              styles.letter,
-              {
-                color:
-                  letter === active
-                    ? theme.colors.text
-                    : Color(theme.colors.text).alpha(0.5).toString(),
-              },
-            ]}>
-            {letter}
-          </Text>
-        ))}
+        <View pointerEvents="none" style={styles.letters}>
+          {letters.map(letter => (
+            <Text
+              key={letter}
+              style={[
+                styles.letter,
+                {
+                  height: letterHeight,
+                  lineHeight: letterHeight,
+                  fontSize: Math.min(moderateScale(10), letterHeight - 2),
+                  color:
+                    letter === active
+                      ? theme.colors.text
+                      : Color(theme.colors.text).alpha(0.5).toString(),
+                },
+              ]}>
+              {letter}
+            </Text>
+          ))}
+        </View>
       </View>
       {active ? (
         <View
@@ -90,20 +127,20 @@ export function AlphabetRail({
 
 const styles = StyleSheet.create({
   host: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    start: 0,
+    end: 0,
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
   rail: {
     paddingHorizontal: moderateScale(3),
-    paddingVertical: moderateScale(6),
+    paddingVertical: RAIL_PADDING,
     marginEnd: moderateScale(1),
     alignItems: 'center',
   },
+  letters: {alignItems: 'center'},
   letter: {
-    height: LETTER_HEIGHT,
-    lineHeight: LETTER_HEIGHT,
-    fontSize: moderateScale(10),
     fontFamily: 'Manrope-Bold',
     textAlign: 'center',
   },

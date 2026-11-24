@@ -30,6 +30,7 @@ import {Feather, MaterialIcons} from '@expo/vector-icons';
 import {SymbolView} from 'expo-symbols';
 import Color from 'color';
 import {useNavigation, useRouter} from 'expo-router';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {useTranslation} from 'react-i18next';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale} from '@/utils/scale';
@@ -170,6 +171,7 @@ export default function BrowseReciters({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const pickingRef = useRef(false);
   const listRef = useRef<FlashListRef<BrowseItem>>(null);
+  const headerHeight = useHeaderHeight();
 
   // ── Filters, view and sort ────────────────────────────────────────────
   const [query, setQuery] = useState('');
@@ -389,9 +391,17 @@ export default function BrowseReciters({
       const index = items.findIndex(
         item => item.type === 'header' && item.letter === letter,
       );
-      if (index >= 0) listRef.current?.scrollToIndex({index, animated: false});
+      // With the glass header the list scrolls under it, so a section's
+      // letter would land behind the header without this offset.
+      if (index >= 0) {
+        listRef.current?.scrollToIndex({
+          index,
+          animated: false,
+          viewOffset: USE_GLASS ? -headerHeight : 0,
+        });
+      }
     },
-    [items],
+    [items, headerHeight],
   );
 
   // ── Opening and picking ───────────────────────────────────────────────
@@ -657,7 +667,11 @@ export default function BrowseReciters({
       horizontal
       showsHorizontalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.chips}>
+      contentContainerStyle={[
+        styles.chips,
+        // Letter headers bring their own gap; bare rows and cards need one.
+        items[0] && items[0].type !== 'header' && styles.chipsAboveRows,
+      ]}>
       <Chip
         label={t('home:browse.allChip')}
         selected={rewayah === null}
@@ -761,6 +775,11 @@ export default function BrowseReciters({
         />
       ) : null}
       <FlashList
+        // A new view, order or filter is a new list, so it starts from the
+        // top instead of keeping an offset that may point past its end.
+        // (Scrolling there by hand cannot: the glass header's inset makes
+        // the top a negative offset, which the scroll view clamps to 0.)
+        key={[view, sort, completeOnly, downloadedOnly].join('|')}
         ref={listRef}
         data={items}
         renderItem={renderItem}
@@ -780,7 +799,12 @@ export default function BrowseReciters({
         drawDistance={moderateScale(400)}
       />
       {letters.length > 0 && !searching ? (
-        <AlphabetRail letters={letters} onLetter={jumpToLetter} />
+        <AlphabetRail
+          letters={letters}
+          onLetter={jumpToLetter}
+          insetTop={USE_GLASS ? headerHeight : insets.top + moderateScale(56)}
+          insetBottom={Math.max(moderateScale(80), bottomInset)}
+        />
       ) : null}
     </View>
   );
@@ -859,6 +883,7 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateScale(8),
       paddingBottom: moderateScale(4),
     },
+    chipsAboveRows: {paddingBottom: moderateScale(14)},
     chip: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -22,6 +22,7 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({back: mockBack, push: mockPush}),
   useNavigation: () => ({setOptions: jest.fn()}),
 }));
+jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
 jest.mock('@/hooks/usePlayerActions', () => ({
   usePlayerActions: () => ({updateQueue: mockUpdateQueue, play: mockPlay}),
 }));
@@ -178,7 +179,7 @@ const reciter = (id: string) =>
     id,
     name: `Reciter ${id}`,
     rewayat: [{id: `${id}-hafs`, name: '', style: 'murattal'}],
-  }) as unknown as Reciter;
+  } as unknown as Reciter);
 
 function renderForSurah() {
   act(() => {
