@@ -225,9 +225,13 @@ export function useMomentView(moment: NowMoment, now: Date): MomentView {
     }
     case 'adhkar': {
       const symbol = ADHKAR_SYMBOL[moment.superId] ?? 'moon';
-      title = superCategory
-        ? getSuperCategoryDisplayTitle(superCategory)
-        : t(ADHKAR_TITLE_KEY[moment.superId] ?? 'now.adhkar.generic');
+      // "Evening adhkar" says more than the category's short "Evening".
+      const key = ADHKAR_TITLE_KEY[moment.superId];
+      title = key
+        ? t(key)
+        : superCategory
+          ? getSuperCategoryDisplayTitle(superCategory)
+          : t('now.adhkar.generic');
       subtitle = t('now.adhkarLine');
       art = {kind: 'symbol', symbol};
       watermark = {symbol};
