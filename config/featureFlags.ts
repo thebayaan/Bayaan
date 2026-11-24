@@ -24,7 +24,8 @@ export const featureFlags = {
   // @ai-start
   // The redesigned phone Home (components/home: Bayaan Now cover, Jump back
   // in, shelves). Off until it ships; the shelves Home (RecitersView) shows
-  // instead. Turn it on here to try it.
+  // instead. True turns it on for every build; otherwise the "home-redesign"
+  // PostHog flag can turn it on remotely (services/remoteFlags).
   homeRedesign: false,
   // @ai-end
 } as const;

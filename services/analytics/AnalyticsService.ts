@@ -41,6 +41,7 @@ import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
 import {ListenSession} from './ListenSession'; // @ai
 import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
+import {connectRemoteFlags} from '@/services/remoteFlags'; // @ai
 
 function isAnalyticsEnabled(): boolean {
   return process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
@@ -129,6 +130,7 @@ class AnalyticsServiceImpl {
     if (!this.enabled) return;
     this.posthog = instance;
     instance.register({platform: 'mobile'});
+    connectRemoteFlags(instance); // @ai: flags load even when events are opted out
     // Honor the user's runtime opt-out choice on the fresh instance — but only
     // once the persisted choice has hydrated, so we don't optIn() on the
     // default before a saved opt-out loads. If already hydrated, apply now;

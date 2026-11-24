@@ -12,6 +12,7 @@ import {HomeHeldContext} from '@/hooks/readerRestoreState'; // @ai
 import {HomeView} from '@/components/home/HomeView';
 import {useResponsive} from '@/hooks/useResponsive';
 import {isFeatureEnabled} from '@/config/featureFlags';
+import {useRemoteFlag} from '@/services/remoteFlags';
 // @ai-end
 
 function HomeScreen() {
@@ -22,9 +23,11 @@ function HomeScreen() {
   // work competes with the reader's first page. So it stays empty until the
   // restore of the root layout lets it render.
   const waitingForReader = useContext(HomeHeldContext);
-  // Phones get the new Home behind its flag; iPad keeps its shelves for now.
+  // Phones get the new Home when the build turns it on or the "home-redesign"
+  // PostHog flag does; iPad keeps its shelves for now.
   const {isTablet} = useResponsive();
-  const newHome = isFeatureEnabled('homeRedesign') && !isTablet;
+  const remoteHome = useRemoteFlag('homeRedesign', false);
+  const newHome = (isFeatureEnabled('homeRedesign') || remoteHome) && !isTablet;
   // @ai-end
 
   useLayoutEffect(() => {
