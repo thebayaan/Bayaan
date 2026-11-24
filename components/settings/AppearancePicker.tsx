@@ -67,7 +67,7 @@ function Mock({mode, styles}: {mode: ThemeMode; styles: Styles}) {
       </Svg>
       <View style={[styles.mockCard, styles.mockCardSystem]}>
         <Svg
-          style={styles.mockFill} // @ai
+          style={styles.mockCardFill} // @ai
           viewBox="0 0 100 100"
           preserveAspectRatio="none">
           <Polygon points="0,0 100,0 0,100" fill={MOCK.light.card} />
@@ -191,6 +191,15 @@ function createStyles(theme: Theme) {
       bottom: -StyleSheet.hairlineWidth,
       start: -StyleSheet.hairlineWidth,
       end: -StyleSheet.hairlineWidth,
+    },
+    // @ai: the card's halves are drawn over the whole page's box (the card
+    // clips them), so its diagonal is the page's diagonal, not its own.
+    mockCardFill: {
+      position: 'absolute',
+      top: -(MOCK_PADDING + 2 * StyleSheet.hairlineWidth),
+      bottom: -(MOCK_PADDING + 2 * StyleSheet.hairlineWidth),
+      start: -(MOCK_PADDING + 2 * StyleSheet.hairlineWidth),
+      end: -(MOCK_PADDING + 2 * StyleSheet.hairlineWidth),
     },
     mockCardSystem: {
       borderWidth: StyleSheet.hairlineWidth,
