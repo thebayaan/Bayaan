@@ -30,6 +30,7 @@ import {
   type NowReason,
 } from '@/services/bayaanNow/moments';
 import {playMoment} from '@/services/bayaanNow/playMoment';
+import {defaultSky, localize, type NowLook} from '@/services/bayaanNow/look';
 import {ignoreHaptics, type HomeSymbolName} from './homeKit';
 
 /** Each moment's colour, from the Surahs cards' palettes. */
@@ -65,6 +66,8 @@ export type MomentArt =
 
 export interface MomentView {
   reason: string;
+  /** Its own sky or image, else the sky for the time of day. */
+  look: NowLook;
   title: string;
   subtitle: string;
   palette: MeshPalette;
@@ -120,8 +123,8 @@ function usePlaybackStatus(moment: NowMoment): MomentView['status'] {
   }
 }
 
-export function useMomentView(moment: NowMoment): MomentView {
-  const {t} = useTranslation('home');
+export function useMomentView(moment: NowMoment, now: Date): MomentView {
+  const {t, i18n} = useTranslation('home');
   const router = useRouter();
   const {play, pause} = usePlayerActions();
   const status = usePlaybackStatus(moment);
@@ -176,7 +179,10 @@ export function useMomentView(moment: NowMoment): MomentView {
   }, [moment, router]);
 
   const palette = MESH_PALETTES[REASON_PALETTE[moment.reason]];
-  const reason = t(`now.reason.${moment.reason}`);
+  const language = i18n.language;
+  const content = moment.content;
+  const reason =
+    localize(content?.label, language) ?? t(`now.reason.${moment.reason}`);
   const playLabel =
     status === 'playing'
       ? t('now.pause')
@@ -243,8 +249,16 @@ export function useMomentView(moment: NowMoment): MomentView {
     }
   }
 
+  title = localize(content?.title, language) ?? title;
+  subtitle = localize(content?.subtitle, language) ?? subtitle;
+  const look: NowLook = moment.look ?? {
+    kind: 'sky',
+    preset: defaultSky(moment.reason, now),
+  };
+
   return {
     reason,
+    look,
     title,
     subtitle,
     badge,

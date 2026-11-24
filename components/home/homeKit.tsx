@@ -56,6 +56,7 @@ export const HOME_SYMBOLS = {
   sunset: ['sunset.fill', 'sunset'],
   moon: ['moon.stars.fill', 'moon'],
   sleep: ['moon.zzz.fill', 'moon'],
+  crescent: ['moon.fill', 'moon'],
   book: ['book.closed.fill', 'book-open'],
   shuffle: ['shuffle', 'shuffle'],
   sparkles: ['sparkles', 'star'],

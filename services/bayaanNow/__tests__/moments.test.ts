@@ -71,14 +71,49 @@ describe('bayaanNowMoments', () => {
     ]);
   });
 
-  it('lets a backend occasion lead', () => {
-    const occasion = {
-      id: 'occasion:qadr',
-      kind: 'playlist' as const,
-      playlistId: 'evening-serenity',
-      reason: 'occasion' as const,
-    };
-    expect(ids(input(at(4, 8), {occasion}))[0]).toBe('occasion:qadr');
+  it('lets a backend slot lead, with its own look and words', () => {
+    const moments = bayaanNowMoments(
+      input(at(4, 8), {
+        occasion: [
+          {
+            action: {kind: 'surah', surahId: 97},
+            look: {kind: 'sky', preset: 'ramadan'},
+            content: {title: {en: 'Seek Laylat al-Qadr'}},
+          },
+        ],
+      }),
+    );
+    expect(moments.map(m => m.id)).toEqual(['surah:97', 'surah:18']);
+    expect(moments[0].reason).toBe('occasion');
+    expect(moments[0].look).toEqual({kind: 'sky', preset: 'ramadan'});
+    expect(moments[0].content?.title).toEqual({en: 'Seek Laylat al-Qadr'});
+  });
+
+  it("restyles the rules' cards when a slot has no action", () => {
+    const image = {kind: 'image' as const, uri: 'https://x.test/a.jpg'};
+    const moments = bayaanNowMoments(
+      input(at(4, 8), {occasion: [{}, {look: image}]}),
+    );
+    expect(moments.map(m => m.id)).toEqual([
+      'surah:18',
+      'adhkar:morning-adhkar',
+    ]);
+    expect(moments[0].look).toBeUndefined();
+    expect(moments[1].look).toEqual(image);
+  });
+
+  it('plays a named reciter only when it can be found', () => {
+    const named = {kind: 'surah' as const, surahId: 36, reciterId: 'r2'};
+    expect(ids(input(at(0, 7), {occasion: [{action: named}]}))[0]).toBe(
+      'adhkar:morning-adhkar',
+    );
+    const found = bayaanNowMoments(
+      input(at(0, 7), {
+        occasion: [{action: named}],
+        resolveReciter: () => ({...reciter, reciterId: 'r2'}),
+      }),
+    );
+    expect(found[0]).toMatchObject({id: 'surah:36', reciterId: 'r2'});
   });
 
   it('falls back to playlists without a reciter', () => {

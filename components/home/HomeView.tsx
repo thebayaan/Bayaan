@@ -4,15 +4,21 @@
 // they left off (53% resume), their own reciters, something new, adhkar,
 // rewayat, the reciter collections and their playlists. iPad keeps
 // RecitersView's shelves.
-import React, {useEffect, useMemo} from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale} from '@/utils/scale';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {useSettings} from '@/hooks/useSettings';
 import branding, {type HomeRow, type HomeRowId} from '@/config/branding';
-import {BayaanNowCard} from './BayaanNowCard';
+import {BayaanNowCard, SKY_HEIGHT} from './BayaanNowCard';
 import {JumpBackIn} from './JumpBackIn';
 import {FindSomethingNew, YourReciters} from './DiscoverSections';
 import {
@@ -40,6 +46,20 @@ const ALL_ROWS: readonly HomeRow[] = [
 export function HomeView() {
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
+  // The sky reaches up behind the clock, past the content's top padding.
+  const skyInset = insets.top + moderateScale(8);
+  // While the sky is under the clock, the clock is white.
+  const [pastSky, setPastSky] = useState(false);
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // With the glass layout the offset starts at -insets.top.
+      const offset =
+        e.nativeEvent.contentOffset.y + (USE_GLASS ? insets.top : 0);
+      const past = offset > SKY_HEIGHT * 0.6;
+      setPastSky(prev => (prev === past ? prev : past));
+    },
+    [insets.top],
+  );
   const {incrementRecitersViewOpenCount} = useSettings();
 
   // The "New to Quran" prompt counts Home opens, as the old Home did.
@@ -76,8 +96,14 @@ export function HomeView() {
             ]
       }
       contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
+      onScroll={ForkTop ? undefined : onScroll}
+      scrollEventThrottle={32}
       showsVerticalScrollIndicator={false}>
-      {ForkTop ? <ForkTop /> : <BayaanNowCard />}
+      {ForkTop ? (
+        <ForkTop />
+      ) : (
+        <BayaanNowCard topInset={skyInset} lightClock={!pastSky} />
+      )}
       {enabled.has('continue-listening') ? <JumpBackIn /> : null}
       {enabled.has('favorites') ? <YourReciters /> : null}
       <FindSomethingNew />

@@ -1,15 +1,20 @@
 // @ai-generated
-// Bayaan Now at the top of Home: a large card for what fits this moment
-// (morning adhkar, Al-Kahf on Friday, Al-Mulk at night…) and a smaller row
-// under it for the next best thing. The same rules drive the Bayaan Now
-// widget and CarPlay's "For right now".
-import React, {useEffect} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+// Bayaan Now at the top of Home: the sky for this moment runs under the
+// clock and melts into the page, with the main moment set large on it and
+// the second moment floating where the sky meets the page. The backend can
+// give either moment its own image and words (services/bayaanNow/occasion);
+// otherwise the time of day picks a preset sky, with the sun or moon on an
+// arc that follows the hour. The same rules drive the widget and CarPlay.
+import React, {useEffect, useState} from 'react';
+import {I18nManager, StyleSheet, Text, View} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {LinearGradient} from 'expo-linear-gradient';
+import {Image} from 'expo-image';
+import Svg, {Circle, Defs, Path, RadialGradient, Stop} from 'react-native-svg';
 import Animated, {
   Easing,
   FadeIn,
   FadeOut,
-  LinearTransition,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -18,114 +23,345 @@ import Animated, {
 } from 'react-native-reanimated';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
+import {StatusBar} from 'expo-status-bar';
+import {useIsFocused} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from '@/utils/scale';
 import {latinLetterSpacing} from '@/utils/rtl';
-import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {SurahGradientMesh} from '@/components/hero/SurahGradientMesh';
 import {SurahCover, SurahMosaic} from '@/components/collection/CollectionArt';
-import {
-  PANEL_ART_GAP,
-  PANEL_ART_RADIUS,
-  PANEL_ART_SIZE,
-  PANEL_ROW_PADDING,
-  PANEL_ROW_VERTICAL,
-  PanelRow,
-} from '@/components/collection/CollectionPanel';
-import {groupedCardColor} from '@/components/settings/SettingsList';
 import type {NowMoment} from '@/services/bayaanNow/moments';
-import {useBayaanNow} from '@/hooks/useBayaanNow';
 import {
-  GlassSurface,
-  HOME_MARGIN,
-  HomeSymbol,
-  PressScale,
-  secondaryText,
-} from './homeKit';
+  SKY_PRESETS,
+  SKY_PRESET_IDS,
+  bodyPosition,
+  type NowLook,
+  type SkyPreset,
+} from '@/services/bayaanNow/look';
+import {useBayaanNow} from '@/hooks/useBayaanNow';
+import {setBayaanNowOccasion} from '@/hooks/useBayaanNowOccasion';
+import {HOME_MARGIN, HomeSymbol, PressScale, secondaryText} from './homeKit';
 import {useMomentView, type MomentArt, type MomentView} from './useMomentView';
 
-const HERO_RADIUS = moderateScale(32);
-const HERO_ART = moderateScale(88);
-const PLAY_HEIGHT = moderateScale(50);
-const BREATH_MS = 9000;
+/** The sky's height below the top of the screen's content. */
+export const SKY_HEIGHT = moderateScale(272);
+/** How far the second card reaches up into the sky. */
+const SECOND_OVERLAP = moderateScale(96);
+const SECOND_HEIGHT = moderateScale(64);
+const PLAY = moderateScale(56);
+const SECOND_PLAY = moderateScale(36);
+/** Room above the sky for a pull-down, so no page shows above it. */
+const OVERSCROLL = 600;
+const GLOW_MS = 6000;
 
-/** The mesh behind the hero drifts slowly, like light moving in a room. */
-function BreathingMesh({view}: {view: MomentView}) {
-  const {theme} = useTheme();
+/** Fixed star positions (as % of the sky), so a sky looks the same each time. */
+const STARS: readonly [number, number][] = [
+  [8, 12],
+  [19, 30],
+  [27, 8],
+  [36, 22],
+  [44, 40],
+  [52, 14],
+  [61, 34],
+  [70, 9],
+  [77, 26],
+  [86, 16],
+  [93, 36],
+  [14, 46],
+  [32, 52],
+  [57, 50],
+  [81, 48],
+  [4, 30],
+  [66, 44],
+  [97, 8],
+  [41, 6],
+  [24, 38],
+];
+
+const IMAGE_FALLBACK = '#1f2937';
+
+function lookColors(look: NowLook): {sky: SkyPreset | null; base: string} {
+  if (look.kind === 'sky') {
+    const sky = SKY_PRESETS[look.preset];
+    return {sky, base: sky.colors[0]};
+  }
+  return {sky: null, base: look.tint ?? IMAGE_FALLBACK};
+}
+
+function Stars({count}: {count: number}) {
+  return (
+    <>
+      {STARS.slice(0, count).map(([x, y], i) => {
+        const size = i % 3 === 0 ? 3 : 2;
+        return (
+          <View
+            key={i}
+            style={{
+              position: 'absolute',
+              left: `${x}%`,
+              top: `${y}%`,
+              width: size,
+              height: size,
+              borderRadius: size,
+              backgroundColor: '#ffffff',
+              opacity: 0.35 + (i % 4) * 0.15,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/** The dotted path the sun or moon travels, matching bodyPosition. */
+function Arc() {
+  return (
+    <Svg
+      style={StyleSheet.absoluteFill}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      pointerEvents="none">
+      <Path
+        d="M0 46 Q50 -14 100 46"
+        fill="none"
+        stroke="rgba(255,255,255,0.3)"
+        strokeWidth={0.35}
+        strokeDasharray="1.2 1.8"
+      />
+    </Svg>
+  );
+}
+
+const SUN = moderateScale(64);
+const MOON = moderateScale(30);
+
+function Body({sky, now, width}: {sky: SkyPreset; now: Date; width: number}) {
   const reduceMotion = useReducedMotion();
-  const t = useSharedValue(0);
+  const pulse = useSharedValue(0);
   useEffect(() => {
     if (reduceMotion) return;
-    t.value = withRepeat(
-      withTiming(1, {duration: BREATH_MS, easing: Easing.inOut(Easing.sin)}),
+    pulse.value = withRepeat(
+      withTiming(1, {duration: GLOW_MS, easing: Easing.inOut(Easing.sin)}),
       -1,
       true,
     );
-  }, [reduceMotion, t]);
-  const drift = useAnimatedStyle(() => ({
-    transform: [
-      {scale: 1.08 + 0.1 * t.value},
-      {translateX: -14 + 28 * t.value},
-      {translateY: 8 - 16 * t.value},
-    ],
+  }, [pulse, reduceMotion]);
+  const breathe = useAnimatedStyle(() => ({
+    transform: [{scale: 1 + 0.08 * pulse.value}],
+    opacity: 0.85 + 0.15 * pulse.value,
   }));
+  if (sky.body === 'none') return null;
+  const {x, y} = bodyPosition(sky.body, now);
+  // In Arabic the day runs the other way across the sky, so the sun or
+  // moon stays clear of the title, which starts on the right.
+  const left = (I18nManager.isRTL ? 1 - x : x) * width;
+  const top = y * SKY_HEIGHT;
+  if (sky.body === 'sun') {
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.body,
+          {left: left - SUN / 2, top: top - SUN / 2, width: SUN, height: SUN},
+          breathe,
+        ]}>
+        <Svg width={SUN} height={SUN}>
+          <Defs>
+            <RadialGradient id="sun" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#fffbe8" stopOpacity={1} />
+              <Stop offset="0.32" stopColor={sky.glow} stopOpacity={1} />
+              <Stop offset="0.55" stopColor={sky.glow} stopOpacity={0.35} />
+              <Stop offset="1" stopColor={sky.glow} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={SUN / 2} cy={SUN / 2} r={SUN / 2} fill="url(#sun)" />
+        </Svg>
+      </Animated.View>
+    );
+  }
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, drift]}>
-      <SurahGradientMesh
-        palette={view.palette}
-        isDark={theme.isDarkMode}
-        viewBoxWidth={360}
-        viewBoxHeight={260}
-        intensity={theme.isDarkMode ? 4.2 : 3.4}
-      />
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.body,
+        styles.moon,
+        {
+          left: left - MOON / 2,
+          top: top - MOON / 2,
+          shadowColor: sky.glow,
+        },
+        breathe,
+      ]}>
+      <HomeSymbol name="crescent" size={MOON} color="#f8fafc" />
     </Animated.View>
   );
 }
 
-function Watermark({view}: {view: MomentView}) {
+/** The sky (or the backend's image) behind the main moment. */
+function SkyBackdrop({
+  look,
+  now,
+  width,
+  height,
+}: {
+  look: NowLook;
+  now: Date;
+  width: number;
+  height: number;
+}) {
   const {theme} = useTheme();
-  const color = Color(theme.colors.text)
-    .alpha(theme.isDarkMode ? 0.07 : 0.06)
-    .string();
-  if ('glyphSurahId' in view.watermark) {
-    return (
-      <Text
-        style={[styles.watermarkGlyph, {color}]}
-        numberOfLines={1}
-        importantForAccessibility="no-hide-descendants"
-        accessibilityElementsHidden>
-        {surahGlyphMap[view.watermark.glyphSurahId] ?? ''}
-      </Text>
-    );
-  }
+  const {sky, base} = lookColors(look);
+  const page = theme.colors.background;
   return (
-    <View
-      style={styles.watermarkSymbol}
-      importantForAccessibility="no-hide-descendants"
-      accessibilityElementsHidden>
-      <HomeSymbol
-        name={view.watermark.symbol}
-        size={moderateScale(190)}
-        color={color}
-        weight="regular"
+    <View style={[StyleSheet.absoluteFill, {backgroundColor: base}]}>
+      {/* Above the sky, for a pull-down. */}
+      <View
+        style={[styles.overscroll, {backgroundColor: base, height: OVERSCROLL}]}
+      />
+      {sky ? (
+        <>
+          <LinearGradient
+            colors={sky.colors}
+            locations={sky.locations}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.starField, {height: height * 0.55}]}>
+            <Stars count={sky.stars} />
+          </View>
+          <View
+            style={{position: 'absolute', top: 0, width, height: SKY_HEIGHT}}>
+            <Arc />
+          </View>
+          <Body sky={sky} now={now} width={width} />
+        </>
+      ) : look.kind === 'image' ? (
+        <>
+          <Image
+            source={{uri: look.uri}}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={300}
+            accessibilityIgnoresInvertColors
+          />
+          {/* A dark wash so white words read on any photo. */}
+          <LinearGradient
+            colors={[
+              `rgba(0,0,0,${0.35 * (look.scrim ?? 1)})`,
+              `rgba(0,0,0,${0.1 * (look.scrim ?? 1)})`,
+              `rgba(0,0,0,${0.5 * (look.scrim ?? 1)})`,
+            ]}
+            locations={[0, 0.35, 0.72]}
+            style={StyleSheet.absoluteFill}
+          />
+        </>
+      ) : null}
+      {/* The sky melts into the page. */}
+      <LinearGradient
+        colors={[Color(page).alpha(0).string(), page]}
+        style={styles.melt}
       />
     </View>
   );
 }
 
-function Art({
-  art,
-  size,
-  radius,
-  palette,
+let previewIndex = -1;
+
+/**
+ * Development builds only: a long press on the sky steps through the
+ * presets, as a backend occasion would set them, then back to the rules.
+ */
+function previewNextPreset(): void {
+  previewIndex += 1;
+  if (previewIndex >= SKY_PRESET_IDS.length) {
+    previewIndex = -1;
+    setBayaanNowOccasion(null);
+    return;
+  }
+  const preset = SKY_PRESET_IDS[previewIndex];
+  setBayaanNowOccasion({
+    id: `preview:${preset}`,
+    startsAt: new Date(0).toISOString(),
+    endsAt: new Date(Date.now() + 86_400_000).toISOString(),
+    slots: [{look: {kind: 'sky', preset}, content: {label: preset}}],
+  });
+}
+
+function Main({
+  view,
+  now,
+  topInset,
 }: {
-  art: MomentArt;
-  size: number;
-  radius: number;
-  /** On a plain panel a symbol sits on its moment's colours, not glass. */
-  palette?: MomentView['palette'];
+  view: MomentView;
+  now: Date;
+  topInset: number;
 }) {
+  const {t} = useTranslation('home');
+  const [width, setWidth] = useState(0);
+  const height = SKY_HEIGHT + topInset;
+  const {base} = lookColors(view.look);
+  const long = view.title.length > 14;
+  return (
+    <PressScale
+      onPress={view.onOpen}
+      onLongPress={__DEV__ ? previewNextPreset : undefined}
+      scaleTo={0.995}
+      accessibilityRole="button"
+      accessibilityLabel={view.accessibilityLabel}
+      accessibilityHint={t('now.openHint')}
+      onLayout={e => setWidth(e.nativeEvent.layout.width)}
+      style={[styles.sky, {height, marginTop: -topInset}]}>
+      <SkyBackdrop look={view.look} now={now} width={width} height={height} />
+      <View style={[styles.eyebrowWrap, {top: topInset + moderateScale(14)}]}>
+        <Text style={styles.eyebrow} numberOfLines={1}>
+          {`${t('now.label')} · ${view.reason}`}
+        </Text>
+      </View>
+      <View style={styles.mainRow}>
+        <View style={styles.mainText}>
+          <Text
+            style={[styles.title, long && styles.titleLong]}
+            numberOfLines={long ? 2 : 1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}>
+            {view.title}
+          </Text>
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {view.badge ? `${view.subtitle} · ${view.badge}` : view.subtitle}
+          </Text>
+        </View>
+        <PressScale
+          onPress={view.onPlay}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`${view.playLabel} ${view.title}`}
+          style={styles.play}>
+          <HomeSymbol
+            name={view.status === 'playing' ? 'pause' : 'play'}
+            size={moderateScale(22)}
+            color={base}
+            weight="bold"
+          />
+        </PressScale>
+      </View>
+    </PressScale>
+  );
+}
+
+function SecondArt({view}: {view: MomentView}) {
   const {theme} = useTheme();
+  const size = moderateScale(44);
+  const radius = moderateScale(12);
+  if (view.look.kind === 'image' && view.art.kind !== 'surah') {
+    return (
+      <Image
+        source={{uri: view.look.uri}}
+        style={{width: size, height: size, borderRadius: radius}}
+        contentFit="cover"
+        accessibilityIgnoresInvertColors
+      />
+    );
+  }
+  const art: MomentArt = view.art;
   switch (art.kind) {
     case 'surah':
       return <SurahCover surahId={art.surahId} size={size} radius={radius} />;
@@ -134,449 +370,270 @@ function Art({
         <SurahMosaic surahIds={art.surahIds} size={size} radius={radius} />
       );
     case 'symbol':
-      if (palette) {
-        return (
-          <View
-            style={[
-              styles.symbolTile,
-              {
-                width: size,
-                height: size,
-                borderRadius: radius,
-                backgroundColor: Color(theme.colors.text).alpha(0.05).string(),
-              },
-            ]}>
-            <SurahGradientMesh
-              palette={palette}
-              isDark={theme.isDarkMode}
-              viewBoxWidth={120}
-              viewBoxHeight={120}
-              intensity={theme.isDarkMode ? 3.2 : 4.5}
-            />
-            <HomeSymbol
-              name={art.symbol}
-              size={size * 0.46}
-              color={theme.colors.text}
-            />
-          </View>
-        );
-      }
       return (
-        <GlassSurface
-          style={{
-            width: size,
-            height: size,
-            borderRadius: radius,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
+        <View
+          style={[
+            styles.symbolTile,
+            {width: size, height: size, borderRadius: radius},
+          ]}>
+          <SurahGradientMesh
+            palette={view.palette}
+            isDark={theme.isDarkMode}
+            viewBoxWidth={120}
+            viewBoxHeight={120}
+            intensity={theme.isDarkMode ? 3.2 : 4.5}
+          />
           <HomeSymbol
             name={art.symbol}
             size={size * 0.46}
             color={theme.colors.text}
           />
-        </GlassSurface>
+        </View>
       );
   }
 }
 
-function PlayGlyph({
-  status,
-  size,
-  color,
-}: {
-  status: MomentView['status'];
-  size: number;
-  color: string;
-}) {
-  return (
-    <HomeSymbol
-      name={status === 'playing' ? 'pause' : 'play'}
-      size={size}
-      color={color}
-      weight="bold"
-    />
-  );
-}
-
-function Hero({moment}: {moment: NowMoment}) {
+function Second({view}: {view: MomentView}) {
   const {theme} = useTheme();
-  const {t} = useTranslation('home');
-  const view = useMomentView(moment);
   const secondary = secondaryText(theme.colors.text, theme.isDarkMode);
-  const solid = theme.colors.text;
-  const onSolid = theme.colors.background;
-
+  // Solid, so the end of the sky doesn't show through it.
+  const surface = theme.isDarkMode
+    ? Color(theme.colors.background).mix(Color('#ffffff'), 0.08).string()
+    : '#ffffff';
   return (
     <PressScale
       onPress={view.onOpen}
-      scaleTo={0.985}
+      scaleTo={0.98}
       accessibilityRole="button"
       accessibilityLabel={view.accessibilityLabel}
-      accessibilityHint={t('now.openHint')}
-      style={[
-        styles.hero,
-        {
-          backgroundColor: groupedCardColor(theme),
-          shadowColor: view.palette[0],
-          shadowOpacity: theme.isDarkMode ? 0 : 0.18,
-        },
-      ]}>
-      <View style={styles.heroClip}>
-        <BreathingMesh view={view} />
-        <Watermark view={view} />
-        <View style={styles.heroBody}>
-          <View style={styles.eyebrowRow}>
-            <View
-              style={[styles.liveDot, {backgroundColor: view.palette[0]}]}
-            />
-            <Text style={[styles.eyebrow, {color: theme.colors.text}]}>
-              {t('now.label')}
-            </Text>
-            <GlassSurface style={styles.reasonPill}>
-              <Text style={[styles.reasonText, {color: theme.colors.text}]}>
-                {view.reason}
-              </Text>
-            </GlassSurface>
-          </View>
-
-          <View style={styles.heroMain}>
-            <View style={styles.heroArt}>
-              <Art art={view.art} size={HERO_ART} radius={moderateScale(22)} />
-            </View>
-            <View style={styles.heroText}>
-              <Text
-                style={[styles.heroTitle, {color: theme.colors.text}]}
-                numberOfLines={2}
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}>
-                {view.title}
-              </Text>
-              <Text
-                style={[styles.heroSubtitle, {color: secondary}]}
-                numberOfLines={2}>
-                {view.subtitle}
-              </Text>
-              {view.badge ? (
-                <GlassSurface style={styles.badge}>
-                  <HomeSymbol
-                    name="timer"
-                    size={moderateScale(12)}
-                    color={theme.colors.text}
-                  />
-                  <Text style={[styles.badgeText, {color: theme.colors.text}]}>
-                    {view.badge}
-                  </Text>
-                </GlassSurface>
-              ) : null}
-            </View>
-          </View>
-
-          <View style={styles.actions}>
-            <PressScale
-              onPress={view.onPlay}
-              accessibilityRole="button"
-              accessibilityLabel={`${view.playLabel} ${view.title}`}
-              style={[styles.playPill, {backgroundColor: solid}]}>
-              <PlayGlyph
-                status={view.status}
-                size={moderateScale(16)}
-                color={onSolid}
-              />
-              <Text style={[styles.playText, {color: onSolid}]}>
-                {view.playLabel}
-              </Text>
-            </PressScale>
-            <PressScale
-              onPress={view.onOpen}
-              accessibilityRole="button"
-              accessibilityLabel={t('now.open', {title: view.title})}>
-              <GlassSurface interactive style={styles.openCircle}>
-                <HomeSymbol
-                  name="chevron"
-                  size={moderateScale(17)}
-                  color={theme.colors.text}
-                  weight="bold"
-                />
-              </GlassSurface>
-            </PressScale>
-          </View>
-        </View>
+      style={[styles.second, {backgroundColor: surface}]}>
+      <SecondArt view={view} />
+      <View style={styles.secondText}>
+        <Text
+          style={[styles.secondLabel, {color: secondary}]}
+          numberOfLines={1}>
+          {view.reason}
+        </Text>
+        <Text
+          style={[styles.secondTitle, {color: theme.colors.text}]}
+          numberOfLines={1}>
+          {view.title}
+        </Text>
       </View>
+      <PressScale
+        onPress={view.onPlay}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`${view.playLabel} ${view.title}`}
+        style={[styles.secondPlay, {backgroundColor: theme.colors.text}]}>
+        <HomeSymbol
+          name={view.status === 'playing' ? 'pause' : 'play'}
+          size={moderateScale(14)}
+          color={theme.colors.background}
+          weight="bold"
+        />
+      </PressScale>
     </PressScale>
   );
 }
 
-function sameWords(a: string, b: string): boolean {
-  return a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+function MainMoment({
+  moment,
+  now,
+  topInset,
+}: {
+  moment: NowMoment;
+  now: Date;
+  topInset: number;
+}) {
+  const view = useMomentView(moment, now);
+  return <Main view={view} now={now} topInset={topInset} />;
 }
 
-function SecondRow({moment}: {moment: NowMoment}) {
-  const {theme} = useTheme();
-  const view = useMomentView(moment);
-  const secondary = secondaryText(theme.colors.text, theme.isDarkMode);
-  return (
-    <PanelRow first last>
-      <PressScale
-        onPress={view.onOpen}
-        scaleTo={0.98}
-        accessibilityRole="button"
-        accessibilityLabel={view.accessibilityLabel}
-        style={styles.row}>
-        <View style={styles.rowArt}>
-          <Art
-            art={view.art}
-            size={PANEL_ART_SIZE}
-            radius={moderateScale(12)}
-            palette={view.palette}
-          />
-        </View>
-        <View style={styles.rowText}>
-          {/* "Before sleep" over "Before Sleep" says it twice. */}
-          {sameWords(view.reason, view.title) ? null : (
-            <Text
-              style={[
-                styles.rowReason,
-                {
-                  // The pastel palettes need depth to read on a white panel.
-                  color: theme.isDarkMode
-                    ? view.palette[0]
-                    : Color(view.palette[0]).darken(0.45).string(),
-                },
-              ]}
-              numberOfLines={1}>
-              {view.reason}
-            </Text>
-          )}
-          <Text
-            style={[styles.rowTitle, {color: theme.colors.text}]}
-            numberOfLines={1}>
-            {view.title}
-          </Text>
-          <Text
-            style={[styles.rowSubtitle, {color: secondary}]}
-            numberOfLines={1}>
-            {view.subtitle}
-          </Text>
-        </View>
-        <PressScale
-          onPress={view.onPlay}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={`${view.playLabel} ${view.title}`}
-          style={[
-            styles.rowPlay,
-            {backgroundColor: Color(theme.colors.text).alpha(0.08).string()},
-          ]}>
-          <PlayGlyph
-            status={view.status}
-            size={moderateScale(13)}
-            color={theme.colors.text}
-          />
-        </PressScale>
-      </PressScale>
-    </PanelRow>
-  );
+function SecondMoment({moment, now}: {moment: NowMoment; now: Date}) {
+  const view = useMomentView(moment, now);
+  return <Second view={view} />;
 }
 
-/** Bayaan Now: the hero for this moment and the row under it. */
-export function BayaanNowCard() {
-  const moments = useBayaanNow();
+/**
+ * Bayaan Now: the sky for this moment and the second moment under it.
+ * topInset is how far above Home's content the sky reaches (the clock).
+ */
+export function BayaanNowCard({
+  topInset,
+  lightClock,
+}: {
+  topInset: number;
+  /** The sky is under the clock, so the clock should be white. */
+  lightClock: boolean;
+}) {
+  const {moments, now} = useBayaanNow();
+  const focused = useIsFocused();
   const [main, second] = moments;
+  const fallbackInset = useSafeAreaInsets().top;
+  const inset = topInset || fallbackInset;
   if (!main) return null;
   return (
-    <Animated.View layout={LinearTransition.duration(300)} style={styles.wrap}>
-      {/* A new moment fades in over the old one. */}
+    <View>
+      {focused && lightClock ? <StatusBar style="light" /> : null}
       <Animated.View
         key={main.id}
         entering={FadeIn.duration(450)}
         exiting={FadeOut.duration(200)}>
-        <Hero moment={main} />
+        <MainMoment moment={main} now={now} topInset={inset} />
       </Animated.View>
       {second ? (
         <Animated.View
           key={second.id}
           entering={FadeIn.duration(450).delay(80)}
           exiting={FadeOut.duration(200)}
-          style={styles.second}>
-          <SecondRow moment={second} />
+          style={styles.secondWrap}>
+          <SecondMoment moment={second} now={now} />
         </Animated.View>
-      ) : null}
-    </Animated.View>
+      ) : (
+        <View style={styles.noSecond} />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginTop: moderateScale(4),
+  sky: {
+    overflow: 'visible',
   },
-  hero: {
-    marginHorizontal: HOME_MARGIN,
-    borderRadius: HERO_RADIUS,
-    borderCurve: 'continuous',
-    shadowRadius: moderateScale(24),
-    shadowOffset: {width: 0, height: moderateScale(10)},
-  },
-  heroClip: {
-    borderRadius: HERO_RADIUS,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
-  },
-  heroBody: {
-    padding: moderateScale(18),
-    paddingTop: moderateScale(16),
-  },
-  watermarkGlyph: {
+  overscroll: {
     position: 'absolute',
-    end: -moderateScale(24),
-    top: moderateScale(18),
-    fontFamily: 'SurahNames',
-    fontSize: moderateScale(150),
-    writingDirection: 'rtl',
+    left: 0,
+    right: 0,
+    bottom: '100%',
   },
-  watermarkSymbol: {
+  starField: {
     position: 'absolute',
-    end: -moderateScale(36),
-    top: -moderateScale(20),
+    top: 0,
+    left: 0,
+    right: 0,
   },
-  eyebrowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: moderateScale(8),
+  body: {
+    position: 'absolute',
   },
-  liveDot: {
-    width: moderateScale(7),
-    height: moderateScale(7),
-    borderRadius: moderateScale(4),
+  moon: {
+    shadowOpacity: 0.6,
+    shadowRadius: moderateScale(12),
+    shadowOffset: {width: 0, height: 0},
+  },
+  melt: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '34%',
+  },
+  eyebrowWrap: {
+    position: 'absolute',
+    start: moderateScale(20),
+    end: moderateScale(20),
   },
   eyebrow: {
     fontFamily: 'Manrope-ExtraBold',
     fontSize: moderateScale(11.5),
-    letterSpacing: latinLetterSpacing(1.3),
+    letterSpacing: latinLetterSpacing(1.1),
     textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.78)',
+    textAlign: 'left',
   },
-  reasonPill: {
-    borderRadius: moderateScale(999),
-    paddingHorizontal: moderateScale(10),
-    paddingVertical: moderateScale(3),
-  },
-  reasonText: {
-    fontFamily: 'Manrope-Bold',
-    fontSize: moderateScale(12),
-  },
-  heroMain: {
+  mainRow: {
+    position: 'absolute',
+    start: moderateScale(20),
+    end: moderateScale(20),
+    bottom: SECOND_OVERLAP + moderateScale(24),
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: moderateScale(16),
-    marginTop: moderateScale(18),
+    alignItems: 'flex-end',
+    gap: moderateScale(14),
   },
-  heroArt: {
-    shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: moderateScale(12),
-    shadowOffset: {width: 0, height: moderateScale(6)},
-  },
-  heroText: {
+  mainText: {
     flex: 1,
     minWidth: 0,
   },
-  heroTitle: {
+  title: {
     fontFamily: 'Manrope-ExtraBold',
-    fontSize: moderateScale(28),
-    lineHeight: moderateScale(33),
-    letterSpacing: latinLetterSpacing(-0.4),
+    fontSize: moderateScale(40),
+    lineHeight: moderateScale(44),
+    letterSpacing: latinLetterSpacing(-1),
+    color: '#ffffff',
     textAlign: 'left',
+    textShadowColor: 'rgba(0,0,0,0.25)',
+    textShadowRadius: 14,
+    textShadowOffset: {width: 0, height: 2},
   },
-  heroSubtitle: {
-    marginTop: moderateScale(5),
+  titleLong: {
+    fontSize: moderateScale(32),
+    lineHeight: moderateScale(36),
+  },
+  subtitle: {
+    marginTop: moderateScale(6),
     fontFamily: 'Manrope-Medium',
     fontSize: moderateScale(14),
-    lineHeight: moderateScale(19),
+    color: 'rgba(255,255,255,0.88)',
     textAlign: 'left',
   },
-  actions: {
+  play: {
+    width: PLAY,
+    height: PLAY,
+    borderRadius: PLAY / 2,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: moderateScale(12),
+    shadowOffset: {width: 0, height: moderateScale(6)},
+  },
+  secondWrap: {
+    marginTop: -SECOND_OVERLAP,
+  },
+  noSecond: {
+    marginTop: -SECOND_OVERLAP + moderateScale(16),
+  },
+  second: {
+    marginHorizontal: HOME_MARGIN,
+    height: SECOND_HEIGHT,
+    borderRadius: moderateScale(22),
+    borderCurve: 'continuous',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: moderateScale(10),
-    marginTop: moderateScale(20),
+    gap: moderateScale(12),
+    paddingHorizontal: moderateScale(10),
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: moderateScale(18),
+    shadowOffset: {width: 0, height: moderateScale(8)},
+  },
+  secondText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  secondLabel: {
+    fontFamily: 'Manrope-ExtraBold',
+    fontSize: moderateScale(11),
+    letterSpacing: latinLetterSpacing(0.7),
+    textTransform: 'uppercase',
+    textAlign: 'left',
+  },
+  secondTitle: {
+    fontFamily: 'Manrope-Bold',
+    fontSize: moderateScale(15),
+    textAlign: 'left',
+  },
+  secondPlay: {
+    width: SECOND_PLAY,
+    height: SECOND_PLAY,
+    borderRadius: SECOND_PLAY / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   symbolTile: {
     borderCurve: 'continuous',
     overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: moderateScale(5),
-    marginTop: moderateScale(9),
-    paddingHorizontal: moderateScale(9),
-    paddingVertical: moderateScale(4),
-    borderRadius: moderateScale(999),
-  },
-  badgeText: {
-    fontFamily: 'Manrope-Bold',
-    fontSize: moderateScale(12),
-  },
-  playPill: {
-    flex: 1,
-    height: PLAY_HEIGHT,
-    borderRadius: PLAY_HEIGHT / 2,
-    borderCurve: 'continuous',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: moderateScale(8),
-  },
-  playText: {
-    fontFamily: 'Manrope-Bold',
-    fontSize: moderateScale(16),
-  },
-  openCircle: {
-    width: PLAY_HEIGHT,
-    height: PLAY_HEIGHT,
-    borderRadius: PLAY_HEIGHT / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  second: {
-    marginTop: moderateScale(10),
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: PANEL_ROW_PADDING,
-    paddingVertical: PANEL_ROW_VERTICAL + moderateScale(2),
-    gap: PANEL_ART_GAP,
-  },
-  rowArt: {
-    borderRadius: PANEL_ART_RADIUS,
-  },
-  rowText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  rowReason: {
-    fontFamily: 'Manrope-Bold',
-    fontSize: moderateScale(11.5),
-    textAlign: 'left',
-  },
-  rowTitle: {
-    fontFamily: 'Manrope-SemiBold',
-    fontSize: moderateScale(15),
-    textAlign: 'left',
-  },
-  rowSubtitle: {
-    fontFamily: 'Manrope-Regular',
-    fontSize: moderateScale(13),
-    textAlign: 'left',
-  },
-  rowPlay: {
-    width: moderateScale(36),
-    height: moderateScale(36),
-    borderRadius: moderateScale(18),
     alignItems: 'center',
     justifyContent: 'center',
   },

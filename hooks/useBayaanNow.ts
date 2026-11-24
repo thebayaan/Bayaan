@@ -22,16 +22,20 @@ import {
   type NowReciter,
 } from '@/services/bayaanNow/moments';
 import {useBayaanNowOccasion} from '@/hooks/useBayaanNowOccasion';
+import {activeSlots} from '@/services/bayaanNow/occasion';
 import {useCatalogVersion} from '@/components/home/homeKit';
 
 const COMPLETED = 0.95;
+/** The sun and moon move along the sky, and occasions start and end. */
+const TICK_MS = 10 * 60 * 1000;
 
-/** The current time, moved on at each boundary the rules use. */
+/** The current time, moved on at each boundary the rules use, and every ten minutes. */
 function useMomentClock(): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const wait = Math.max(1000, nextMomentChange(now).getTime() - Date.now());
-    const timer = setTimeout(() => setNow(new Date()), wait + 500);
+    const untilBoundary = nextMomentChange(now).getTime() - Date.now() + 500;
+    const wait = Math.max(1000, Math.min(untilBoundary, TICK_MS));
+    const timer = setTimeout(() => setNow(new Date()), wait);
     return () => clearTimeout(timer);
   }, [now]);
   useEffect(() => {
@@ -39,9 +43,9 @@ function useMomentClock(): Date {
       if (state !== 'active') return;
       setNow(prev => {
         const fresh = new Date();
-        // Only re-render when the hour moved on while the app was away.
-        return fresh.getHours() === prev.getHours() &&
-          fresh.toDateString() === prev.toDateString()
+        // Only re-render when time moved on while the app was away.
+        return fresh.getTime() - prev.getTime() < TICK_MS &&
+          fresh.getHours() === prev.getHours()
           ? prev
           : fresh;
       });
@@ -67,7 +71,7 @@ function reciterFor(
   };
 }
 
-export function useBayaanNow(): NowMoment[] {
+export function useBayaanNow(): {moments: NowMoment[]; now: Date} {
   const now = useMomentClock();
   const recent = useRecentlyPlayedStore(s =>
     s.recentTracks.find(t => !t.isUserUpload),
@@ -83,7 +87,7 @@ export function useBayaanNow(): NowMoment[] {
   // progress is the fraction listened (0 to 1).
   const recentCompleted = !!recent && recent.progress >= COMPLETED;
 
-  return useMemo(() => {
+  const moments = useMemo(() => {
     const fromRecent = reciterFor(recentReciterId, recentRewayatId);
     const topReciter = fromRecent ?? reciterFor(defaultReciterId, undefined);
     const lastPlayed: NowLastPlayed | null =
@@ -99,7 +103,8 @@ export function useBayaanNow(): NowMoment[] {
         adhkar: isFeatureEnabled('adhkar'),
         bedtime: isFeatureEnabled('sleepTimer'),
       },
-      occasion,
+      occasion: activeSlots(occasion, now),
+      resolveReciter: reciterFor,
     });
     // catalogVersion: RECITERS is read inside, and it fills after launch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -113,4 +118,5 @@ export function useBayaanNow(): NowMoment[] {
     occasion,
     catalogVersion,
   ]);
+  return {moments, now};
 }

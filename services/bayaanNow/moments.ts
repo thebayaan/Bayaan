@@ -10,6 +10,7 @@ import {
   bayaanNowMode,
   type BayaanNowCards,
 } from '@/modules/bayaan-widgets/src/contextRules';
+import type {NowContent, NowLook} from './look';
 
 export const KAHF = 18;
 export const MULK = 67;
@@ -43,6 +44,10 @@ interface NowBase {
   /** Stable across renders: what the card plays, not where it sits. */
   id: string;
   reason: NowReason;
+  /** Its own sky or image, else the time of day picks a sky. */
+  look?: NowLook;
+  /** Words that stand in for the ones the rules write. */
+  content?: NowContent;
 }
 
 export type NowMoment =
@@ -75,6 +80,23 @@ export interface NowLastPlayed extends NowReciter {
   completed: boolean;
 }
 
+/** What a backend slot plays. A surah without a reciter uses the listener's. */
+export type NowAction =
+  | {kind: 'surah'; surahId: number; reciterId?: string; rewayatId?: string}
+  | {kind: 'adhkar'; superId: string}
+  | {kind: 'playlist'; playlistId: string};
+
+/**
+ * One of the two places in Bayaan Now, as the backend sets it for a key
+ * date. With an action it puts that in the place; without one it only
+ * restyles whatever the rules put there.
+ */
+export interface NowSlot {
+  action?: NowAction;
+  look?: NowLook;
+  content?: NowContent;
+}
+
 export interface NowInput {
   now: Date;
   /** The reciter of the last thing played, else the default reciter. */
@@ -83,8 +105,10 @@ export interface NowInput {
   /** System playlists that can play right now. */
   playlistIds: readonly string[];
   cards?: Readonly<BayaanNowCards>;
-  /** Set by the backend for a key date; leads every other card. */
-  occasion?: NowMoment | null;
+  /** Set by the backend for a key date: the first slot is the large card. */
+  occasion?: readonly NowSlot[] | null;
+  /** A reciter the backend names, with the surahs they have. */
+  resolveReciter?: (reciterId: string, rewayatId?: string) => NowReciter | null;
 }
 
 /** Thursday 6 PM to Friday 7 PM, as in CarPlay. */
@@ -155,6 +179,30 @@ function upNext(last: NowLastPlayed | null): NowMoment | null {
   };
 }
 
+function fromAction(action: NowAction, input: NowInput): NowMoment | null {
+  switch (action.kind) {
+    case 'surah': {
+      const reciter = action.reciterId
+        ? (input.resolveReciter?.(action.reciterId, action.rewayatId) ?? null)
+        : input.topReciter;
+      return surah(reciter, action.surahId, 'occasion');
+    }
+    case 'adhkar':
+      return adhkar(action.superId, 'occasion');
+    case 'playlist':
+      return playlist(action.playlistId, 'occasion', input.playlistIds);
+  }
+}
+
+function withSlot(moment: NowMoment, slot: NowSlot | undefined): NowMoment {
+  if (!slot || (!slot.look && !slot.content)) return moment;
+  return {
+    ...moment,
+    look: slot.look ?? moment.look,
+    content: {...moment.content, ...slot.content},
+  };
+}
+
 /**
  * The cards for this moment, most fitting first: the first is the large
  * card, the second the smaller one under it. Never more than two.
@@ -163,7 +211,12 @@ export function bayaanNowMoments(input: NowInput): NowMoment[] {
   const {now, topReciter, lastPlayed, playlistIds} = input;
   const cards = input.cards ?? ALL_BAYAAN_NOW_CARDS;
   const hour = now.getHours();
-  const candidates: (NowMoment | null | undefined)[] = [input.occasion];
+  const slots = input.occasion ?? [];
+  // A slot that plays something leads, styled as the backend set it.
+  const candidates: (NowMoment | null | undefined)[] = slots.map(slot => {
+    const moment = slot.action ? fromAction(slot.action, input) : null;
+    return moment ? withSlot(moment, slot) : null;
+  });
 
   if (isFridayWindow(now)) {
     candidates.push(surah(topReciter, KAHF, 'friday'));
@@ -215,7 +268,10 @@ export function bayaanNowMoments(input: NowInput): NowMoment[] {
     moments.push(candidate);
     if (moments.length === 2) break;
   }
-  return moments;
+  // A slot with no action restyles what the rules put in its place.
+  return moments.map((moment, i) =>
+    slots[i] && !slots[i].action ? withSlot(moment, slots[i]) : moment,
+  );
 }
 
 /** When the moment can next change: the next hour boundary the rules use. */
