@@ -57,15 +57,17 @@ function Mock({mode, styles}: {mode: ThemeMode; styles: Styles}) {
         styles.mockPage,
         {backgroundColor: MOCK.light.page, borderColor: MOCK.light.outline},
       ]}>
+      {/* @ai: the halves cover the hairline outline too; drawn only inside
+          it, the light page showed through at the dark half's edge. */}
       <Svg
-        style={StyleSheet.absoluteFill}
+        style={styles.mockFill}
         viewBox="0 0 100 100"
         preserveAspectRatio="none">
         <Polygon points="100,0 100,100 0,100" fill={MOCK.dark.page} />
       </Svg>
       <View style={[styles.mockCard, styles.mockCardSystem]}>
         <Svg
-          style={StyleSheet.absoluteFill}
+          style={styles.mockFill} // @ai
           viewBox="0 0 100 100"
           preserveAspectRatio="none">
           <Polygon points="0,0 100,0 0,100" fill={MOCK.light.card} />
@@ -181,6 +183,14 @@ function createStyles(theme: Theme) {
       padding: moderateScale(7),
       gap: moderateScale(4),
       overflow: 'hidden',
+    },
+    // @ai: fills the border box, outline included
+    mockFill: {
+      position: 'absolute',
+      top: -StyleSheet.hairlineWidth,
+      bottom: -StyleSheet.hairlineWidth,
+      start: -StyleSheet.hairlineWidth,
+      end: -StyleSheet.hairlineWidth,
     },
     mockCardSystem: {
       borderWidth: StyleSheet.hairlineWidth,
