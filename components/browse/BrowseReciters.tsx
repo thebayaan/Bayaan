@@ -416,17 +416,18 @@ export default function BrowseReciters({
       {
         id: 'view',
         items: [
+          // @ai: Grid first and by default, named as in Collection
+          {
+            id: 'view:cards',
+            title: t('browse.viewGrid'),
+            systemImage: 'square.grid.2x2',
+            checked: view === 'cards',
+          },
           {
             id: 'view:list',
             title: t('browse.viewList'),
             systemImage: 'list.bullet',
             checked: view === 'list',
-          },
-          {
-            id: 'view:cards',
-            title: t('browse.viewCards'),
-            systemImage: 'square.grid.3x2',
-            checked: view === 'cards',
           },
         ],
       },
@@ -515,7 +516,7 @@ export default function BrowseReciters({
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={
-            view === 'list' ? t('browse.viewCards') : t('browse.viewList')
+            view === 'list' ? t('browse.viewGrid') : t('browse.viewList')
           }>
           <Feather
             name={view === 'list' ? 'grid' : 'list'}

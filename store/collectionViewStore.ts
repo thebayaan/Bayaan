@@ -54,11 +54,16 @@ const DEFAULT_VIEW: Record<CollectionScreenKey, CollectionView> = {
   notes: 'list',
   reciters: 'list',
   uploads: 'list',
-  browseReciters: 'list',
+  browseReciters: 'grid', // @ai: grid first, as Osman asked
 };
 
 // Read synchronously at launch so a screen opens in the view it was left in.
 const mmkv = createMMKV({id: 'collection-view'});
+
+// @ai: Browse reciters' default became grid; a new key so a List saved
+// under the old default doesn't stick.
+const storageKey = (screen: CollectionScreenKey): string =>
+  screen === 'browseReciters' ? 'browseReciters.v2' : screen;
 
 function read(screen: CollectionScreenKey): CollectionViewPref {
   const fallback = {
@@ -66,7 +71,7 @@ function read(screen: CollectionScreenKey): CollectionViewPref {
     sort: COLLECTION_SORTS[screen][0],
   };
   try {
-    const raw = mmkv.getString(screen);
+    const raw = mmkv.getString(storageKey(screen));
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<CollectionViewPref>;
     return {
@@ -107,13 +112,13 @@ export const useCollectionViewStore = create<CollectionViewState>()(set => ({
   setView: (screen, view) =>
     set(state => {
       const next = {...state.prefs[screen], view};
-      mmkv.set(screen, JSON.stringify(next));
+      mmkv.set(storageKey(screen), JSON.stringify(next));
       return {prefs: {...state.prefs, [screen]: next}};
     }),
   setSort: (screen, sort) =>
     set(state => {
       const next = {...state.prefs[screen], sort};
-      mmkv.set(screen, JSON.stringify(next));
+      mmkv.set(storageKey(screen), JSON.stringify(next));
       return {prefs: {...state.prefs, [screen]: next}};
     }),
   setDownloadsGrouping: grouping => {
