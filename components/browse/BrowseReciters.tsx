@@ -640,13 +640,16 @@ export default function BrowseReciters({
           title={getReciterDisplayName(reciter)}
           entries={optionEntries(reciter)}
           onSelect={id => onOption(reciter, id)}
+          accessibilityLabel={t('browse.reciterOptions', {
+            name: getReciterDisplayName(reciter),
+          })}
           trigger="tap">
           {button}
         </NativeMenu>
       ) : (
         button
       ),
-    [optionEntries, onOption],
+    [optionEntries, onOption, t],
   );
   const openOptionsSheet = useCallback(
     (reciter: Reciter) => {

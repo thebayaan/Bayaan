@@ -94,8 +94,19 @@ export function NativeMenu({
   children,
 }: NativeMenuProps) {
   const native = useNativeTheme();
-  const rows = entries.map(entry => renderEntry(entry, onSelect, native.tint));
-  const body = title ? <Section title={title}>{rows}</Section> : rows;
+  // SwiftUI drops the header of a Section that holds other Sections, so a
+  // title over grouped entries goes on the first group instead.
+  const [first, ...rest] = entries;
+  const titleOnFirst =
+    !!title &&
+    first !== undefined &&
+    isMenuGroup(first) &&
+    !first.submenu &&
+    !first.title;
+  const shown = titleOnFirst ? [{...first, title}, ...rest] : entries;
+  const rows = shown.map(entry => renderEntry(entry, onSelect, native.tint));
+  const body =
+    title && !titleOnFirst ? <Section title={title}>{rows}</Section> : rows;
   // A tap menu owns the touch and the VoiceOver element, so its React Native
   // trigger is only drawn. A context menu keeps its trigger live: the row
   // still plays on tap, and the menu takes over on a long press or a

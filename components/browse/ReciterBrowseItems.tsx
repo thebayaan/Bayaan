@@ -5,7 +5,7 @@
  * shuffle all, favourite). The menu itself comes from the screen, so these
  * stay light to scroll.
  */
-import React, {type ReactNode} from 'react';
+import React, {useState, type ReactNode} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import Color from 'color';
@@ -113,48 +113,60 @@ export const ReciterPanelRow = React.memo(function ReciterPanelRow({
 }: ReciterItemProps & {first: boolean; last: boolean}) {
   const {theme} = useTheme();
   const {reciter, name, line, downloaded, trailing, onPress} = props;
+  const [pressed, setPressed] = useState(false);
   const muted = Color(theme.colors.text).alpha(0.55).toString();
+  const playGlyph = (
+    <Ionicons
+      name="play"
+      size={moderateScale(16)}
+      color={Color(theme.colors.text).alpha(0.8).toString()}
+    />
+  );
+  // The ••• sits beside the row's Pressable, not inside it, so the native
+  // menu gets the tap instead of the row.
   return (
     <PanelRow first={first} last={last}>
-      <Pressable
-        onPress={() => onPress(reciter)}
-        accessibilityRole="button"
-        accessibilityLabel={name}
-        accessibilityHint={line}
-        style={({pressed}) => [
+      <View
+        style={[
           styles.row,
           pressed && {
             backgroundColor: Color(theme.colors.text).alpha(0.05).toString(),
           },
         ]}>
-        <RoundPhoto reciter={reciter} size={PANEL_ART_SIZE} />
-        <View style={styles.rowText}>
-          <View style={styles.nameLine}>
-            <Text
-              style={[styles.name, {color: theme.colors.text}]}
-              numberOfLines={1}>
-              {name}
+        <Pressable
+          onPress={() => onPress(reciter)}
+          onPressIn={() => setPressed(true)}
+          onPressOut={() => setPressed(false)}
+          accessibilityRole="button"
+          accessibilityLabel={name}
+          accessibilityHint={line}
+          style={styles.rowMain}>
+          <RoundPhoto reciter={reciter} size={PANEL_ART_SIZE} />
+          <View style={styles.rowText}>
+            <View style={styles.nameLine}>
+              <Text
+                style={[styles.name, {color: theme.colors.text}]}
+                numberOfLines={1}>
+                {name}
+              </Text>
+              {downloaded ? (
+                <Feather
+                  name="arrow-down-circle"
+                  size={moderateScale(12)}
+                  color={muted}
+                />
+              ) : null}
+            </View>
+            <Text style={[styles.line, {color: muted}]} numberOfLines={1}>
+              {line}
             </Text>
-            {downloaded ? (
-              <Feather
-                name="arrow-down-circle"
-                size={moderateScale(12)}
-                color={muted}
-              />
-            ) : null}
           </View>
-          <Text style={[styles.line, {color: muted}]} numberOfLines={1}>
-            {line}
-          </Text>
-        </View>
-        <View style={styles.trailing}>
           {trailing === 'play' ? (
-            <Ionicons
-              name="play"
-              size={moderateScale(16)}
-              color={Color(theme.colors.text).alpha(0.8).toString()}
-            />
-          ) : (
+            <View style={styles.trailing}>{playGlyph}</View>
+          ) : null}
+        </Pressable>
+        {trailing === 'options' ? (
+          <View style={styles.trailing}>
             <OptionsButton
               reciter={reciter}
               name={name}
@@ -162,9 +174,9 @@ export const ReciterPanelRow = React.memo(function ReciterPanelRow({
               renderOptions={props.renderOptions}
               onOptions={props.onOptions}
             />
-          )}
-        </View>
-      </Pressable>
+          </View>
+        ) : null}
+      </View>
     </PanelRow>
   );
 });
@@ -180,34 +192,36 @@ export const ReciterCard = React.memo(function ReciterCard({
   const photo = Math.round(width - moderateScale(24));
   const muted = Color(theme.colors.text).alpha(0.55).toString();
   return (
-    <Pressable
-      onPress={() => onPress(reciter)}
-      accessibilityRole="button"
-      accessibilityLabel={name}
-      accessibilityHint={line}
-      style={({pressed}) => [
-        styles.card,
-        {width, backgroundColor: panel},
-        pressed && {opacity: 0.85},
-      ]}>
-      <RoundPhoto reciter={reciter} size={photo} />
-      <View style={styles.cardNameLine}>
-        <Text
-          style={[styles.cardName, {color: theme.colors.text}]}
-          numberOfLines={1}>
-          {name}
+    <View style={{width}}>
+      <Pressable
+        onPress={() => onPress(reciter)}
+        accessibilityRole="button"
+        accessibilityLabel={name}
+        accessibilityHint={line}
+        style={({pressed}) => [
+          styles.card,
+          {width, backgroundColor: panel},
+          pressed && {opacity: 0.85},
+        ]}>
+        <RoundPhoto reciter={reciter} size={photo} />
+        <View style={styles.cardNameLine}>
+          <Text
+            style={[styles.cardName, {color: theme.colors.text}]}
+            numberOfLines={1}>
+            {name}
+          </Text>
+          {downloaded ? (
+            <Feather
+              name="arrow-down-circle"
+              size={moderateScale(10)}
+              color={muted}
+            />
+          ) : null}
+        </View>
+        <Text style={[styles.cardLine, {color: muted}]} numberOfLines={1}>
+          {line}
         </Text>
-        {downloaded ? (
-          <Feather
-            name="arrow-down-circle"
-            size={moderateScale(10)}
-            color={muted}
-          />
-        ) : null}
-      </View>
-      <Text style={[styles.cardLine, {color: muted}]} numberOfLines={1}>
-        {line}
-      </Text>
+      </Pressable>
       {trailing === 'options' ? (
         <View style={styles.cardOptions}>
           <OptionsButton
@@ -219,7 +233,7 @@ export const ReciterCard = React.memo(function ReciterCard({
           />
         </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 });
 
@@ -229,8 +243,15 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingStart: PANEL_ROW_PADDING,
     paddingEnd: moderateScale(14),
+    gap: PANEL_ART_GAP,
+  },
+  rowMain: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingStart: PANEL_ROW_PADDING,
     paddingVertical: PANEL_ROW_VERTICAL,
     gap: PANEL_ART_GAP,
   },
