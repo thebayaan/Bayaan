@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {isCurrentSurahTrack} from '@/utils/currentSurahTrack'; // @ai
 import {Link} from 'expo-router';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 // @ai-start
@@ -128,45 +129,16 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   // card-mode list ever grows large/unvirtualized). With boolean selectors,
   // zustand's Object.is equality only re-renders a card when ITS OWN
   // current/playing state flips.
-  const isCurrentTrack = usePlayerStore(state => {
-    const idx = state.queue.currentIndex;
-    const currentTrack =
-      idx >= 0 && idx < (state.queue.tracks?.length ?? 0)
-        ? state.queue.tracks[idx]
-        : null;
-    if (!reciterId || !currentTrack) return false;
-    const rewayatMatches =
-      rewayatId && currentTrack.rewayatId
-        ? rewayatId === currentTrack.rewayatId
-        : true;
-    return (
-      currentTrack.reciterId === reciterId &&
-      currentTrack.surahId === id.toString() &&
-      rewayatMatches
-    );
-  });
+  // @ai Both selectors share one check, so they cannot drift apart.
+  const isCurrentTrack = usePlayerStore(state =>
+    isCurrentSurahTrack(state.queue, reciterId, id, rewayatId),
+  );
 
   // Playing/buffering AND this card's track — used by the NowPlayingIndicator.
   const isCurrentlyPlaying = usePlayerStore(state => {
     const status = state.playback.state;
-    if ((status !== 'playing' && status !== 'buffering') || !reciterId) {
-      return false;
-    }
-    const idx = state.queue.currentIndex;
-    const currentTrack =
-      idx >= 0 && idx < (state.queue.tracks?.length ?? 0)
-        ? state.queue.tracks[idx]
-        : null;
-    if (!currentTrack) return false;
-    const rewayatMatches =
-      rewayatId && currentTrack.rewayatId
-        ? rewayatId === currentTrack.rewayatId
-        : true;
-    return (
-      currentTrack.reciterId === reciterId &&
-      currentTrack.surahId === id.toString() &&
-      rewayatMatches
-    );
+    if (status !== 'playing' && status !== 'buffering') return false;
+    return isCurrentSurahTrack(state.queue, reciterId, id, rewayatId); // @ai
   });
 
   // --- Conditional Animation Setup ---
