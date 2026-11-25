@@ -2,7 +2,11 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 
-type ImageProps = {source: unknown; onError?: () => void};
+type ImageProps = {
+  source: unknown;
+  onError?: () => void;
+  cachePolicy?: string; // @ai
+};
 const mockImage: {props: ImageProps | null} = {props: null};
 jest.mock('expo-image', () => ({
   Image: (props: ImageProps) => {
@@ -93,4 +97,13 @@ it('tries a new URL after another one failed', () => {
     );
   });
   expect(mockImage.props!.source).toEqual({uri: 'https://cdn.example/b.jpg'});
+});
+
+// @ai — a recycled list cell finds its decoded photo in memory.
+it('keeps the photo in the memory cache as well as on disk', () => {
+  render({
+    imageUrl: 'https://cdn.example/abdulbasit.jpg',
+    reciterName: 'Abdulbasit Abdulsamad',
+  });
+  expect(mockImage.props?.cachePolicy).toBe('memory-disk');
 });

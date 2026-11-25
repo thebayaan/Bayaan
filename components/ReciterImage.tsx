@@ -85,6 +85,12 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
             source={imageSource}
             style={styles.image}
             contentFit="cover"
+            // @ai-start
+            // The default policy ('disk') skips the memory cache, so a list
+            // cell that scrolls back into view decodes its photo from disk
+            // again. Keep the decoded photo in memory as well.
+            cachePolicy="memory-disk"
+            // @ai-end
             recyclingKey={imageUrl || formattedName}
             transition={100}
             onError={remoteUrl ? () => setFailedUrl(remoteUrl) : undefined} // @ai
