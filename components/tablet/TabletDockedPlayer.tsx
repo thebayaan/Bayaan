@@ -81,7 +81,11 @@ export const TabletDockedPlayer: React.FC<TabletDockedPlayerProps> = React.memo(
     // @ai-start
     // VoiceOver treats the whole dock as one element (the play button is
     // nested inside it), so expose play/pause as an action on the dock too.
-    const playPauseA11y = a11y.playPause(isPlaying, isLoadingTrack);
+    const playPauseA11y = a11y.playPause(
+      isPlaying,
+      isLoadingTrack,
+      showSpinner,
+    );
     const dockA11y = {
       ...a11y.openPlayer(
         getTrackDisplayTitle(currentTrack),
