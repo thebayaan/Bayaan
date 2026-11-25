@@ -885,7 +885,8 @@ export default function MushafViewer({
   // @ai — load verse annotations for every surah on the current page.
   // Nothing in the horizontal paged pipeline loaded the store before, so
   // bookmark tints never painted and the long-press sheet showed stale
-  // bookmark state on cold entry (tapping it then INSERTed a duplicate row).
+  // bookmark state on cold entry (tapping it then threw on the UNIQUE
+  // verse_key, before the insert became INSERT OR IGNORE).
   // Multi-surah aware because Juz-'Amma pages hold several surahs; the
   // continuous views' own per-surah loads become subset no-ops against this.
   const loadAnnotationsForSurahs = useVerseAnnotationsStore(
