@@ -1,16 +1,11 @@
 package expo.modules.bayaanwidgets
 
 import android.app.Activity
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager // @ai
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
-import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.MoreExecutors
 import expo.modules.bayaanwidgets.continuelistening.ContinueListeningWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,18 +13,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay // @ai
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 /**
  * Invisible target of every widget tap. A broadcast receiver cannot open the
  * app on Android 14+ (background activity launch is blocked), and JS timers
- * are paused while the app is backgrounded. Play/pause on a live media
- * session stays in place.
+ * are paused while the app is backgrounded.
  *
  * Anything JS must do runs in [WidgetReactRoot], a headless React root, while
  * this activity stays up (touch-through, nothing drawn) until JS has handled
@@ -95,7 +86,11 @@ class WidgetCommandActivity : Activity() {
       withContext(Dispatchers.IO) { WidgetStorage.enqueueCommand(context, command) }
       return
     }
-    if (controlSession(context, playing)) return
+    // @ai-start
+    // No MediaController shortcut here: expo-audio's AudioControlsService
+    // returns its own binder from onBind, so a controller never connects and
+    // each cold tap waited for the connect timeout (3 s) first.
+    // @ai-end
     playInBackground(context, command) // @ai
   }
 
@@ -123,39 +118,6 @@ class WidgetCommandActivity : Activity() {
   }
   // @ai-end
 
-  /** Returns true when a live session with a loaded item took the command. */
-  private suspend fun controlSession(context: Context, playing: Boolean): Boolean {
-    var controller: MediaController? = null
-    try {
-      val token = SessionToken(context, ComponentName(context, AUDIO_SERVICE))
-      val future = MediaController.Builder(context, token).buildAsync()
-      controller = withTimeoutOrNull(CONTROLLER_TIMEOUT_MS) { future.await() }
-      if (controller == null) {
-        // Timed out; if it connects anyway, release it then.
-        future.addListener({ runCatching { future.get().release() } }, MoreExecutors.directExecutor())
-        return false
-      }
-      if (controller.currentMediaItem == null) return false
-      if (playing) controller.play() else controller.pause()
-      return true
-    } catch (e: Exception) {
-      return false // fall through to queue + open
-    } finally {
-      controller?.let { runCatching { it.release() } }
-    }
-  }
-
-  private suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { cont ->
-    addListener({
-      try {
-        cont.resume(get())
-      } catch (e: Exception) {
-        cont.resumeWithException(e)
-      }
-    }, MoreExecutors.directExecutor())
-    cont.invokeOnCancellation { cancel(false) }
-  }
-
   /** The command is already queued; the app drains it once active. */ // @ai
   private fun openApp(context: Context) { // @ai
     // Allowed from a foreground activity.
@@ -167,8 +129,6 @@ class WidgetCommandActivity : Activity() {
 
   companion object {
     const val EXTRA_COMMAND = "command"
-    private const val AUDIO_SERVICE = "expo.modules.audio.service.AudioControlsService"
-    private const val CONTROLLER_TIMEOUT_MS = 3_000L
     // @ai-start
     // A cold start boots React, restores the session and loads the track; an
     // emulator took up to 10.4 s, so leave room for slower phones under load.
