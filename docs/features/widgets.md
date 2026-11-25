@@ -133,6 +133,8 @@ Widget (native)
   └── user taps → deep link (bayaan://) → opens app at correct screen
 ```
 
+The app writes a new snapshot when playback changes, not on each tick. So a snapshot that says "playing" stays until the track's computed end if the app process ends first. On iOS, `BayaanWidgetsModule` handles `UIApplication.willTerminateNotification` (for example a swipe up in the app switcher while audio plays in the background): it rewrites `snapshot.json` with playback stopped at the position it had reached, and reloads the listening widgets (`StoppedSnapshot.swift`). A process that the system kills with no notice (for example for memory) does not get this step.
+
 ### Expo Integration
 
 Since widgets are native code, integration with the Expo/RN project requires:
