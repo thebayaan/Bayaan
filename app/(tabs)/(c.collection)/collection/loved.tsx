@@ -53,6 +53,7 @@ import {flipX} from '@/utils/rtl';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
 import {queueFromIndex} from '@/utils/queueFromIndex'; // @ai
+import {defaultRewayatIdForSurah} from '@/utils/rewayatForSurah'; // @ai
 import {
   CollectionOptionsMenu,
   type CollectionOptionsPayload,
@@ -107,7 +108,8 @@ const LovedScreen = () => {
   // one surah blanked the whole screen and threw the list back to the top.
   //
   // A surah loved before rewayat were saved has none, and it plays in the
-  // reciter's first rewayah. The row takes that rewayah here, once, so that
+  // reciter's first rewayah that has the surah (the first rewayah need not
+  // have it). The row takes that rewayah here, once, so that
   // playing it, downloading it and its downloaded badge all mean the same
   // file. "Download all" used to save such a surah under an empty rewayah
   // that playback never looks up: the row showed as downloaded and then
@@ -128,7 +130,10 @@ const LovedScreen = () => {
             surahId: track.surahId,
             rewayatId: track.userRecitationId
               ? track.rewayatId
-              : track.rewayatId || reciter?.rewayat[0]?.id,
+              : track.rewayatId ||
+                (reciter
+                  ? defaultRewayatIdForSurah(reciter, Number(track.surahId))
+                  : undefined),
             userRecitationId: track.userRecitationId,
           },
           reciter,
