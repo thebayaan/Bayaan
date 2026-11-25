@@ -641,7 +641,12 @@ export default function MushafViewer({
   initialVerseKey,
   onFirstContent, // @ai
 }: MushafViewerProps) {
-  useKeepAwake();
+  // @ai-start
+  // On Android the unmount-time deactivate rejects when the OS destroyed the
+  // Activity first ("The current activity is no longer available"). The
+  // library option catches that rejection; the screen lock is gone anyway.
+  useKeepAwake(undefined, {suppressDeactivateWarnings: true});
+  // @ai-end
   const {t} = useTranslation(['reader', 'common']);
   const [currentPage, setCurrentPage] = useState(initialPage);
   // @ai-start
