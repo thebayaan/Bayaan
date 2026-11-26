@@ -38,6 +38,7 @@ Both players play the same file for a surah. The difference is not the audio. It
 2. **Audio from the Mushaf has no controls after Back.** It continues, and no screen shows it. If a Listen track was paused before, the mini player shows that track, not the audio that plays.
 3. **The Listen player knows the verse and cannot use it.** With timings it highlights the verse in its own list, but it has no verse step, no verse repeat and no range.
 4. **Two settings for one thing.** A speed set in the Listen player does not apply on the Mushaf, and the same is true for repeat and for the reciter.
+5. **The full player has no way to the page.** A tap on a notification or on the mini player opens the verse list of the full player. Its settings sheet hides the view type (`components/MushafSettingsContent.tsx:905` on `develop` `fdd80db7a`), and no control opens the Mushaf at the verse that plays. The only way today is Repeat in the verse sheet, which pauses the audio and opens the Playback Settings. On 2026-11-26 in Qariah, a listener opened a new recitation from its notification, and could not find how to change to the page view.
 
 ### The same work, two times
 
@@ -138,6 +139,7 @@ A prototype of steps 1 to 3 exists for Android phones. It was written on `develo
 
 - On the Mushaf, Play starts a reciter for which `timestampFetchService.hasSurah()` is false. The audio plays, no verse is highlighted, and no error shows.
 - After Back from the Mushaf, the mini player shows the audio that plays, and controls it.
+- From the full player of a surah, one tap opens the Mushaf at the verse that plays, and the audio continues.
 - A sleep timer pauses audio that was started on the Mushaf.
 - A track started from Listen, with timings, highlights its verse on the Mushaf, and takes a verse step and a verse repeat.
 - A verse repeat of two repeats with the screen off (Android, 80 s, measured through the media session position).
