@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 230" width="360" height="230" font-family="-apple-system, Roboto, sans-serif">
+  <rect width="360" height="230" fill="#f2f2f7"/>
+  <text x="20" y="34" font-size="13" fill="#6e6e73" letter-spacing="0.5">PRIVACY</text>
+  <rect x="12" y="46" width="336" height="112" rx="12" fill="#ffffff"/>
+  <text x="28" y="78" font-size="16" fill="#1c1c1e">Anonymous analytics</text>
+  <text x="28" y="100" font-size="13" fill="#8e8e93">Off for users under 18</text>
+  <rect x="276" y="64" width="52" height="30" rx="15" fill="#e5e5ea"/>
+  <circle cx="292" cy="79" r="12" fill="#ffffff" stroke="#d1d1d6"/>
+  <line x1="28" y1="118" x2="332" y2="118" stroke="#e5e5ea"/>
+  <text x="28" y="144" font-size="13" fill="#8e8e93">The switch is disabled while the store reports a minor.</text>
+  <text x="20" y="190" font-size="12" fill="#6e6e73">Wireframe. Users with no band or an adult band</text>
+  <text x="20" y="208" font-size="12" fill="#6e6e73">see the switch as it is today.</text>
+</svg>
