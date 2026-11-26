@@ -105,11 +105,16 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 // Set native root view background immediately (before any component renders)
 // This prevents the white flash between splash screen and first frame
 // @ai-start
+// On Android the call rejects with "The current activity is no longer
+// available" when the OS destroyed the Activity. The color does not matter
+// then, so drop the rejection instead of an unhandled promise error.
 SystemUI.setBackgroundColorAsync(
   Appearance.getColorScheme() === 'dark'
     ? ROOT_COLORS.dark.background
     : ROOT_COLORS.light.background,
-);
+).catch(() => {
+  /* the Activity is gone; nothing to color */
+});
 // @ai-end
 
 const analyticsEnabled = process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
@@ -356,7 +361,12 @@ function RootLayout() {
 
   // Set native root view background + configure Android navigation bar to match theme
   useEffect(() => {
-    SystemUI.setBackgroundColorAsync(theme.colors.background);
+    // @ai-start
+    // The Activity can be gone (see the module-scope call above).
+    SystemUI.setBackgroundColorAsync(theme.colors.background).catch(() => {
+      /* the Activity is gone; nothing to color */
+    });
+    // @ai-end
 
     // Edge-to-edge: the app draws behind the navigation bar, so only the
     // button style follows the theme.
