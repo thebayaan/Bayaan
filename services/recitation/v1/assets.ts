@@ -8,10 +8,11 @@ import {ensureSecondLookModel} from '../recitationAssets';
 // so it fetches nothing.
 //
 // - The listener, spliced-clean@1-int8 (the full tier; React Native's `auto` would
-//   pick the lite one, which leaves about four times the false marks after our
+//   pick the lite one, which leaves about six times the false marks after our
 //   check): CC BY 4.0, from Tilawa's models-v1 release.
 // - Its Quran reference, ref-v2 (Tanzil text through quran-transcript), from the
-//   1.0.0-rc.0 tag. It names the words that marks and places point at.
+//   1.0.0-rc.0 tag; the SDK's 1.0.0-rc.1 has no tag and ships the same file. It
+//   names the words that marks and places point at.
 //
 // The second look's model (quran-asr-small) checks every mark this engine raises,
 // so it is part of this download too.

@@ -15,7 +15,7 @@ config.resolver.assetExts.push('db');
 
 // @tilawa/core only declares an "import" export condition, which Metro skips
 // once Babel has turned imports into require() calls. Point it at the entry.
-// @tilawa/core-v1 is the same package at 1.0.0-rc.0 (the preview engine), with
+// @tilawa/core-v1 is the same package at 1.0.0-rc.1 (the preview engine), with
 // the same exports, so its entries are pointed at in the same way.
 const tilawaEntries = {
   '@tilawa/core': 'node_modules/@tilawa/core/dist/index.js',
