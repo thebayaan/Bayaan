@@ -176,7 +176,9 @@ function handlersFor(run: IdentifyRun): SessionHandlers {
   }
 
   function onEvent(msg: EngineMessage): void {
-    if (!owns() || msg.type === 'word_verdicts') return;
+    if (!owns() || msg.type === 'word_verdicts' || msg.type === 'v1_mark') {
+      return;
+    }
     const ayah = placedAyah(msg);
     if (!ayah) return;
     if (!run.match) {

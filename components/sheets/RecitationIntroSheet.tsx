@@ -7,7 +7,8 @@ import {SheetFooter} from './SheetGestures';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
-import {RECITATION_DOWNLOAD_MB} from '@/constants/recitation';
+import {recitationDownloadMb} from '@/constants/recitation';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTheme} from '@/hooks/useTheme';
 import {formatNumber} from '@/i18n/format';
 import {Theme} from '@/utils/themeUtils';
@@ -27,13 +28,14 @@ export const RecitationIntroSheet = (
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
+  const follower = useMushafSettingsStore(s => s.recitationEngine);
   const points: readonly IntroPoint[] = [
     {icon: 'book-open', text: t('recitationIntro.follows')},
     {icon: 'lock', text: t('recitationIntro.private')},
     {
       icon: 'download',
       text: t('recitationIntro.download', {
-        size: formatNumber(RECITATION_DOWNLOAD_MB),
+        size: formatNumber(recitationDownloadMb(follower)),
       }),
     },
     {icon: 'info', text: t('recitationIntro.hafs')},

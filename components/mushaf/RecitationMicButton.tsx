@@ -147,7 +147,11 @@ export function useRecitationMic(currentPage: number): RecitationMic {
       return;
     }
     if (status !== 'off') return;
-    if ((await recitationModelNeedsDownload()) && !(await confirmIntro())) {
+    const follower = useMushafSettingsStore.getState().recitationEngine;
+    if (
+      (await recitationModelNeedsDownload(follower)) &&
+      !(await confirmIntro())
+    ) {
       return;
     }
     await startRecitationTracking(
