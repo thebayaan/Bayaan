@@ -75,6 +75,8 @@ const mockSettings = {
   recitationHideText: false,
   recitationMistakeHaptics: true,
   recitationCheckMistakes: true,
+  // These tests cover the Tilawa 0.4 follower.
+  recitationEngine: 'v0',
 };
 const mockHaptics = {
   notificationAsync: jest.fn(async (_type: string) => undefined),

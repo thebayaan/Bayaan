@@ -74,7 +74,7 @@ import {
   removeRecitationModel,
 } from '@/services/recitation/RecitationTrackingService';
 import {recitationLogDatabase} from '@/services/recitation/RecitationLogDatabase';
-import {RECITATION_DOWNLOAD_MB} from '@/constants/recitation';
+import {recitationDownloadMb} from '@/constants/recitation';
 import {formatNumber} from '@/i18n/format';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
@@ -569,12 +569,13 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
   const status = useRecitationTrackingStore(s => s.status);
   const progress = useRecitationTrackingStore(s => s.downloadProgress);
   const [downloaded, setDownloaded] = useState<boolean | null>(null);
-  const [sizeMb, setSizeMb] = useState(RECITATION_DOWNLOAD_MB);
+  const follower = useMushafSettingsStore(s => s.recitationEngine);
+  const [sizeMb, setSizeMb] = useState(recitationDownloadMb(follower));
   const size = formatNumber(sizeMb);
 
   useEffect(() => {
     let cancelled = false;
-    recitationModelOnPhone().then(onPhone => {
+    recitationModelOnPhone(follower).then(onPhone => {
       if (cancelled) return;
       setDownloaded(onPhone.downloaded);
       setSizeMb(onPhone.sizeMb);
@@ -582,7 +583,7 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [status]);
+  }, [status, follower]);
 
   function confirmRemove(): void {
     Alert.alert(
@@ -596,7 +597,7 @@ const RecitationModelControl: React.FC<RecitationModelControlProps> = ({
           onPress: () => {
             removeRecitationModel().then(() => {
               setDownloaded(false);
-              setSizeMb(RECITATION_DOWNLOAD_MB);
+              setSizeMb(recitationDownloadMb(follower));
             });
           },
         },
