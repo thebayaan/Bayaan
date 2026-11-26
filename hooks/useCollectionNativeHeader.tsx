@@ -1,4 +1,4 @@
-import React, {useLayoutEffect} from 'react';
+import React, {useEffect, useLayoutEffect, useState} from 'react';
 import {Animated as RNAnimated} from 'react-native';
 import {useNavigation} from 'expo-router';
 import {useTheme} from './useTheme';
@@ -21,11 +21,24 @@ export function useCollectionNativeHeader({
 }: UseCollectionNativeHeaderOptions) {
   const navigation = useNavigation();
   const {theme} = useTheme();
+  // @ai-start
+  // Once the list scrolls under the bar, give the bar a blurred background
+  // so rows and headings don't run into the back button and title.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    if (!USE_GLASS) return;
+    const id = scrollY.addListener(({value}) => setScrolled(value > 4));
+    return () => scrollY.removeListener(id);
+  }, [scrollY]);
+  // @ai-end
 
   useLayoutEffect(() => {
     if (!USE_GLASS) return;
 
     navigation.setOptions({
+      // VoiceOver and the back menu read `title`; without it they read the
+      // route name ("collection/loved"). @ai
+      title,
       headerTitle: hasContent
         ? () => (
             <RNAnimated.Text
@@ -45,6 +58,11 @@ export function useCollectionNativeHeader({
           )
         : title,
       headerRight: headerRight ?? undefined,
+      headerBlurEffect: scrolled // @ai
+        ? theme.isDarkMode
+          ? 'systemChromeMaterialDark'
+          : 'systemChromeMaterialLight'
+        : undefined,
     });
   }, [
     navigation,
@@ -52,6 +70,8 @@ export function useCollectionNativeHeader({
     title,
     headerRight,
     theme.colors.text,
+    theme.isDarkMode, // @ai
+    scrolled, // @ai
     scrollY,
     threshold,
   ]);

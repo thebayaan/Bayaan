@@ -1,21 +1,19 @@
 import React, {useRef, useState, useCallback, useMemo} from 'react';
 import {
   View,
-  Text,
   Pressable,
   StyleSheet,
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {useLocalSearchParams} from 'expo-router'; // @ai
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ReciterItem} from '@/components/ReciterItem';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useRouter} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import {ProfileIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
-import {SearchInput} from '@/components/SearchInput';
 import Color from 'color';
 import {Reciter} from '@/data/reciterData';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -25,6 +23,8 @@ import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
+import {PanelRow} from '@/components/collection/CollectionPanel'; // @ai
 import {getReciterDisplayName} from '@/i18n/format';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
@@ -32,6 +32,15 @@ import {
   type CollectionOptionsPayload,
 } from '@/components/sheets/options/collectionOptions';
 import {rankReciters} from '@/utils/search/catalog'; // @ai
+// @ai-start
+import {
+  CollectionHeaderActions,
+  CollectionScreenHeader,
+  CollectionSearchField,
+} from '@/components/collection/CollectionScreenHeader';
+import {GRID_PADDING} from '@/components/collection/CollectionGridTile';
+import {useCollectionViewPref} from '@/store/collectionViewStore';
+// @ai-end
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
 // @ai-end
@@ -51,26 +60,24 @@ export default function FavoriteRecitersScreen() {
   const nativeMenus = useNativeOptionsMenu(); // @ai
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  // @ai A search typed on the Collection tab arrives as `q`.
+  const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
+  const [showSearch, setShowSearch] = useState(Boolean(initialQuery));
+  const [searchQuery, setSearchQuery] = useState(initialQuery ?? '');
 
+  // @ai-start
+  const {sort} = useCollectionViewPref('reciters');
   const renderHeaderRight = useCallback(
-    () => (
-      <Pressable
-        onPress={() => {
-          setShowSearch(prev => !prev);
-          if (showSearch) setSearchQuery('');
-        }}
-        hitSlop={8}>
-        <Feather
-          name="search"
-          size={moderateScale(20)}
-          color={theme.colors.text}
+    () =>
+      showSearch ? null : (
+        <CollectionHeaderActions
+          screen="reciters"
+          onSearch={() => setShowSearch(true)}
         />
-      </Pressable>
-    ),
-    [showSearch, theme.colors.text],
+      ),
+    [showSearch],
   );
+  // @ai-end
 
   useCollectionNativeHeader({
     title: t('favoriteRecitersScreen.title'),
@@ -80,10 +87,21 @@ export default function FavoriteRecitersScreen() {
   });
 
   // @ai-start
-  const filteredReciters = useMemo(
-    () => [...rankReciters(searchQuery, favoriteReciters)],
-    [favoriteReciters, searchQuery],
-  );
+  // A query ranks by match; otherwise the order picked in the sort menu.
+  const filteredReciters = useMemo(() => {
+    if (searchQuery.trim()) {
+      return [...rankReciters(searchQuery, favoriteReciters)];
+    }
+    const list = [...favoriteReciters];
+    if (sort === 'name') {
+      list.sort((a, b) =>
+        getReciterDisplayName(a).localeCompare(getReciterDisplayName(b)),
+      );
+    } else {
+      list.sort((a, b) => b.favoritedAt - a.favoritedAt);
+    }
+    return list;
+  }, [favoriteReciters, searchQuery, sort]);
   // @ai-end
 
   const styles = useMemo(
@@ -289,23 +307,29 @@ export default function FavoriteRecitersScreen() {
   // @ai-end
 
   const renderItem = useCallback(
-    ({item}: {item: Reciter}) => (
-      <ReciterItem
-        item={item}
-        onPress={reciter => handleReciterPress(reciter.id)}
-        onOptionsPress={handleReciterOptions}
-        onLongPress={handleReciterOptions}
-        optionsMenu={
-          nativeMenus ? (
-            <CollectionOptionsMenu
-              payload={buildReciterOptions(item)}
-              layout="overlay"
-            />
-          ) : undefined
-        }
-      />
+    ({item, index}: {item: Reciter; index: number}) => (
+      <PanelRow
+        first={index === 0}
+        last={index === filteredReciters.length - 1}>
+        <ReciterItem
+          inPanel
+          item={item}
+          onPress={reciter => handleReciterPress(reciter.id)}
+          onOptionsPress={handleReciterOptions}
+          onLongPress={handleReciterOptions}
+          optionsMenu={
+            nativeMenus ? (
+              <CollectionOptionsMenu
+                payload={buildReciterOptions(item)}
+                layout="overlay"
+              />
+            ) : undefined
+          }
+        />
+      </PanelRow>
     ),
     [
+      filteredReciters.length, // @ai
       handleReciterPress,
       handleReciterOptions,
       nativeMenus,
@@ -314,121 +338,80 @@ export default function FavoriteRecitersScreen() {
   );
 
   if (favoriteReciters.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('favoriteRecitersScreen.title')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <ProfileIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-              filled={true}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('favoriteRecitersScreen.emptyTitle')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('favoriteRecitersScreen.emptySubtitle')}
-          </Text>
-          <Pressable
-            style={styles.emptyActionBar}
-            onPress={handleOpenSelectReciters}>
+      <CollectionEmptyState
+        category="reciters"
+        title={t('favoriteRecitersScreen.title')}
+        meta={t('collectionScreen.emptyState.reciters.meta')}
+        heading={t('collectionScreen.emptyState.reciters.heading')}
+        message={t('collectionScreen.emptyState.reciters.message')}
+        showBack={!isStackRoot}
+        primary={{
+          label: t('favoriteRecitersScreen.addReciters'),
+          icon: (
             <Feather
               name="plus"
               size={moderateScale(16)}
-              color={theme.colors.textSecondary}
+              color={theme.colors.background}
             />
-            <Text style={styles.emptyActionText}>
-              {t('favoriteRecitersScreen.addReciters')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+          ),
+          onPress: handleOpenSelectReciters,
+        }}
+      />
     );
   }
 
   // @ai: render as an element; a component defined here remounts the search
   // input on every keystroke and drops focus.
   const renderListHeader = (): React.ReactElement => {
+    // @ai-start
+    if (showSearch) {
+      return (
+        <CollectionSearchField
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onCancel={() => {
+            setShowSearch(false);
+            setSearchQuery('');
+          }}
+          placeholder={t('favoriteRecitersScreen.searchPlaceholder')}
+          resultLabel={
+            searchQuery.trim()
+              ? t('collectionScreen.search.matches', {
+                  count: filteredReciters.length,
+                })
+              : undefined
+          }
+          style={{
+            paddingHorizontal: GRID_PADDING,
+            paddingTop: USE_GLASS ? moderateScale(8) : insets.top + 8,
+            paddingBottom: moderateScale(12),
+          }}
+        />
+      );
+    }
     return (
-      <View style={styles.headerContainer}>
-        <View style={styles.contentArea}>
-          <View style={styles.contentCenter}>
-            <View style={styles.heroIconContainer}>
-              <View style={styles.heroIconInner}>
-                <ProfileIcon
-                  color={theme.colors.text}
-                  size={moderateScale(30)}
-                  filled={true}
-                />
-              </View>
-            </View>
-            <Text style={styles.title}>
-              {t('favoriteRecitersScreen.title')}
-            </Text>
-            <Text style={styles.subtitle}>
-              {t('common:counts.reciters', {count: favoriteReciters.length})}
-            </Text>
-          </View>
-        </View>
-
-        <Pressable style={styles.addBar} onPress={handleOpenSelectReciters}>
-          <Feather
-            name="plus"
-            size={moderateScale(16)}
-            color={theme.colors.textSecondary}
-          />
-          <Text style={styles.addBarText}>
-            {t('favoriteRecitersScreen.addReciters')}
-          </Text>
-        </Pressable>
-
-        {showSearch && (
-          <View style={styles.searchBarContainer}>
-            <SearchInput
-              placeholder={t('favoriteRecitersScreen.searchPlaceholder')}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              showCancelButton={false}
-              iconColor={theme.colors.text}
-              iconOpacity={0.25}
-              placeholderTextColor={Color(theme.colors.text)
-                .alpha(0.35)
-                .toString()}
-              textColor={theme.colors.text}
-              backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
-              borderColor={Color(theme.colors.text).alpha(0.06).toString()}
-              containerStyle={{paddingHorizontal: 0}}
+      <CollectionScreenHeader
+        category="reciters"
+        preview={null}
+        title={t('favoriteRecitersScreen.title')}
+        meta={t('common:counts.reciters', {count: favoriteReciters.length})}
+        primary={{
+          label: t('favoriteRecitersScreen.addReciters'),
+          icon: (
+            <Feather
+              name="plus"
+              size={moderateScale(16)}
+              color={theme.colors.background}
             />
-          </View>
-        )}
-      </View>
+          ),
+          onPress: handleOpenSelectReciters,
+        }}
+        actions={renderHeaderRight()}
+      />
     );
+    // @ai-end
   };
 
   return (
@@ -457,38 +440,13 @@ export default function FavoriteRecitersScreen() {
         </RNAnimated.View>
       )}
 
-      {!USE_GLASS && (
-        <RNAnimated.View
-          style={[
-            styles.fixedSearchToggle,
-            {
-              opacity: scrollY.interpolate({
-                inputRange: [80, 120],
-                outputRange: [1, 0],
-                extrapolate: 'clamp',
-              }),
-            },
-          ]}>
-          <Pressable
-            onPress={() => {
-              setShowSearch(prev => !prev);
-              if (showSearch) setSearchQuery('');
-            }}
-            hitSlop={8}>
-            <Feather
-              name="search"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-        </RNAnimated.View>
-      )}
-
       <RNAnimated.FlatList
         data={filteredReciters}
         renderItem={renderItem}
         keyExtractor={item => item.id}
         ListHeaderComponent={renderListHeader()} // @ai
+        keyboardShouldPersistTaps="handled" // @ai
+        keyboardDismissMode="on-drag" // @ai
         contentContainerStyle={[
           styles.listContentContainer,
           {paddingBottom: listBottomPadding}, // @ai

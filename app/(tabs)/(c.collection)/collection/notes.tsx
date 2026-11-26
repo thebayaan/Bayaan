@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useRef} from 'react';
+import React, {useState, useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {useLocalSearchParams} from 'expo-router'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -21,11 +22,11 @@ import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {NoteItem} from '@/components/collection/NoteItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
-import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseNote} from '@/types/verse-annotations';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
 import i18n from '@/i18n';
 import {getSurahDisplayName} from '@/i18n/format';
 import {flipX} from '@/utils/rtl';
@@ -39,6 +40,16 @@ import {
 import {savedVerseRouteParams} from '@/services/verse-annotations/unitAnnotations'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+// @ai-start
+import {
+  CollectionHeaderActions,
+  CollectionScreenHeader,
+  CollectionSearchField,
+} from '@/components/collection/CollectionScreenHeader';
+import {GRID_PADDING} from '@/components/collection/CollectionGridTile';
+import {useCollectionViewPref} from '@/store/collectionViewStore';
+import {matchesQuery, matchesVerseRef} from '@/utils/collectionSearch';
+// @ai-end
 // @ai-end
 
 interface NoteData {
@@ -64,11 +75,59 @@ const NotesScreen = () => {
   const scrollY = useRef(new RNAnimated.Value(0)).current;
   const openingRef = useRef(false); // @ai
 
+  // @ai-start
+  const {sort} = useCollectionViewPref('notes');
+  // @ai A search typed on the Collection tab arrives as `q`.
+  const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
+  const [searching, setSearching] = useState(Boolean(initialQuery));
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const visibleNotes = useMemo(() => {
+    const list = [...notes];
+    if (sort === 'oldest') {
+      list.sort((a, b) => a.note.createdAt - b.note.createdAt);
+    } else if (sort === 'surah') {
+      list.sort(
+        (a, b) =>
+          a.note.surahNumber - b.note.surahNumber ||
+          a.note.ayahNumber - b.note.ayahNumber,
+      );
+    } else {
+      list.sort((a, b) => b.note.updatedAt - a.note.updatedAt);
+    }
+    if (!searching || !query.trim()) return list;
+    // Your own words first: a note matches on its text, its verse number
+    // ("2:255") or its surah's name.
+    return list.filter(n => {
+      const surah = getSurahById(n.note.surahNumber);
+      return (
+        matchesVerseRef(query, n.note.surahNumber, n.note.ayahNumber) ||
+        matchesQuery(query, [
+          n.note.content,
+          n.surahName,
+          surah?.name,
+          surah?.translated_name_english,
+        ])
+      );
+    });
+  }, [notes, sort, searching, query]);
+  const renderHeaderRight = useCallback(
+    () =>
+      searching ? null : (
+        <CollectionHeaderActions
+          screen="notes"
+          onSearch={() => setSearching(true)}
+        />
+      ),
+    [searching],
+  );
+
   useCollectionNativeHeader({
     title: t('collectionScreen.notes'),
     scrollY,
     hasContent: notes.length > 0 && !loading,
+    headerRight: notes.length > 0 ? renderHeaderRight : undefined,
   });
+  // @ai-end
 
   const loadNotes = useCallback(async () => {
     try {
@@ -192,39 +251,39 @@ const NotesScreen = () => {
   );
   // @ai-end
 
-  const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
-  const heroInnerBg = Color(theme.colors.textSecondary).alpha(0.08).toString();
-
-  const ListHeaderComponent = useCallback(() => {
-    return (
-      <View style={styles.headerContainer}>
-        <View style={{paddingTop: USE_GLASS ? 0 : insets.top}} />
-        <View style={styles.headerContent}>
-          <View
-            style={[styles.heroIconContainer, {backgroundColor: heroOuterBg}]}>
-            <View
-              style={[styles.heroIconInner, {backgroundColor: heroInnerBg}]}>
-              <Feather
-                name="file-text"
-                size={moderateScale(30)}
-                color={theme.colors.text}
-              />
-            </View>
-          </View>
-          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            {t('collectionScreen.notes')}
-          </Text>
-          <Text
-            style={[
-              styles.headerSubtitle,
-              {color: theme.colors.textSecondary},
-            ]}>
-            {t('notesScreen.count', {count: notes.length})}
-          </Text>
-        </View>
-      </View>
-    );
-  }, [notes.length, insets.top, theme, heroOuterBg, heroInnerBg, t]);
+  // @ai-start
+  const listHeader = searching ? (
+    <CollectionSearchField
+      value={query}
+      onChangeText={setQuery}
+      onCancel={() => {
+        setSearching(false);
+        setQuery('');
+      }}
+      placeholder={t('collectionScreen.search.placeholderIn', {
+        name: t('collectionScreen.notes'),
+      })}
+      resultLabel={
+        query.trim()
+          ? t('collectionScreen.search.matches', {count: visibleNotes.length})
+          : undefined
+      }
+      style={{
+        paddingHorizontal: GRID_PADDING,
+        paddingTop: USE_GLASS ? moderateScale(8) : insets.top + 8,
+        paddingBottom: moderateScale(12),
+      }}
+    />
+  ) : (
+    <CollectionScreenHeader
+      category="notes"
+      preview={null}
+      title={t('collectionScreen.notes')}
+      meta={t('collectionScreen.meta.notes', {count: notes.length})}
+      actions={renderHeaderRight()}
+    />
+  );
+  // @ai-end
 
   const renderItem: ListRenderItem<NoteData> = ({item}) => (
     <NoteItem
@@ -290,51 +349,20 @@ const NotesScreen = () => {
   }
 
   if (notes.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View
-        style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-              {t('collectionScreen.notes')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <Feather
-              name="file-text"
-              size={moderateScale(48)}
-              color={theme.colors.textSecondary}
-            />
-          </View>
-          <Text style={[styles.emptyTitle, {color: theme.colors.text}]}>
-            {t('collectionScreen.empty.notes')}
-          </Text>
-          <Text
-            style={[styles.emptySubtitle, {color: theme.colors.textSecondary}]}>
-            {t('notesScreen.emptySubtitle')}
-          </Text>
-        </View>
-      </View>
+      <CollectionEmptyState
+        category="notes"
+        title={t('collectionScreen.notes')}
+        meta={t('collectionScreen.emptyState.notes.meta')}
+        heading={t('collectionScreen.emptyState.notes.heading')}
+        message={t('collectionScreen.emptyState.notes.message')}
+        showBack={!isStackRoot}
+        link={{
+          label: t('collectionScreen.emptyState.notes.link'),
+          onPress: () => router.push('/mushaf' as never),
+        }}
+      />
     );
   }
 
@@ -369,10 +397,12 @@ const NotesScreen = () => {
       )}
 
       <RNAnimated.FlatList
-        data={notes}
+        data={visibleNotes} // @ai
         renderItem={renderItem}
         keyExtractor={getItemKey}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={listHeader} // @ai
+        keyboardShouldPersistTaps="handled" // @ai
+        keyboardDismissMode="on-drag" // @ai
         contentContainerStyle={[
           styles.listContentContainer,
           {paddingBottom: listBottomPadding}, // @ai

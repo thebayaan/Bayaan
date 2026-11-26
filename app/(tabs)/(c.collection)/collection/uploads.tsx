@@ -9,12 +9,13 @@ import {
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {useLocalSearchParams} from 'expo-router'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -40,8 +41,17 @@ import {GradientText} from '@/components/GradientText';
 import {ReciterImage} from '@/components/ReciterImage';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
-import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
+import {
+  PANEL_ART_GAP,
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PANEL_ROW_PADDING,
+  PANEL_ROW_VERTICAL,
+  PanelRow,
+} from '@/components/collection/CollectionPanel'; // @ai
 import i18n from '@/i18n';
 import {
   getReciterDisplayName,
@@ -60,6 +70,16 @@ import {
   UploadOptionsMenu,
   type UploadOptionsPayload,
 } from '@/components/sheets/options/uploadOptions';
+// @ai-start
+import {
+  CollectionHeaderActions,
+  CollectionScreenHeader,
+  CollectionSearchField,
+} from '@/components/collection/CollectionScreenHeader';
+import {GRID_PADDING} from '@/components/collection/CollectionGridTile';
+import {useCollectionViewPref} from '@/store/collectionViewStore';
+import {matchesQuery} from '@/utils/collectionSearch';
+// @ai-end
 // @ai-end
 // @ai-end
 
@@ -273,6 +293,10 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
         </Pressable>
         <Pressable
           style={styles.itemOptionsZone}
+          accessibilityRole="button"
+          accessibilityLabel={i18n.t(
+            'collection:collectionScreen.actions.moreOptions',
+          )}
           onPress={() => onShowOptions(item, index)}>
           {isCurrentTrack ? (
             <NowPlayingIndicator
@@ -309,7 +333,7 @@ export default function UploadsScreen() {
   const isStackRoot = useIsStackRoot(); // @ai
   const {t} = useTranslation(['collection', 'common']);
   const {
-    recitations,
+    recitations: storeRecitations, // @ai sorted below
     totalCount,
     importFile,
     importFiles,
@@ -319,6 +343,46 @@ export default function UploadsScreen() {
   const {updateQueue, addToQueue, play} = usePlayerActions();
 
   const [isImporting, setIsImporting] = useState(false);
+
+  // @ai-start
+  // The order picked in the sort menu; Play all and a row's queue follow it.
+  const {sort} = useCollectionViewPref('uploads');
+  // @ai A search typed on the Collection tab arrives as `q`.
+  const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
+  const [searching, setSearching] = useState(Boolean(initialQuery));
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const uploadTitle = useCallback((r: UploadedRecitation) => {
+    if (r.title) return r.title;
+    const surah = r.surahNumber ? getSurahById(r.surahNumber) : undefined;
+    return surah ? getSurahDisplayName(surah) : r.originalFilename;
+  }, []);
+  const recitations = useMemo(() => {
+    const list = [...storeRecitations];
+    if (sort === 'oldest') list.sort((a, b) => a.dateAdded - b.dateAdded);
+    else if (sort === 'title') {
+      list.sort((a, b) => uploadTitle(a).localeCompare(uploadTitle(b)));
+    } else list.sort((a, b) => b.dateAdded - a.dateAdded);
+    return list;
+  }, [storeRecitations, sort, uploadTitle]);
+  const visibleRecitations = useMemo(
+    () =>
+      searching && query.trim()
+        ? recitations.filter(r => {
+            const surah = r.surahNumber
+              ? getSurahById(r.surahNumber)
+              : undefined;
+            return matchesQuery(query, [
+              uploadTitle(r),
+              r.originalFilename,
+              surah?.name,
+              surah?.translated_name_english,
+              r.category,
+            ]);
+          })
+        : recitations,
+    [recitations, searching, query, uploadTitle],
+  );
+  // @ai-end
 
   // Scroll tracking for sticky header
   const scrollY = useRef(new RNAnimated.Value(0)).current;
@@ -349,18 +413,29 @@ export default function UploadsScreen() {
   }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
-    () => (
-      <CollectionOptionsMenu payload={optionsPayload}>
-        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-          <Feather
-            name="more-horizontal"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </CollectionOptionsMenu>
-    ),
-    [optionsPayload, handleOptionsMenu, theme.colors.text],
+    () =>
+      searching ? null : (
+        <CollectionHeaderActions
+          screen="uploads"
+          onSearch={() => setSearching(true)}
+          extra={
+            <CollectionOptionsMenu payload={optionsPayload}>
+              <Pressable
+                onPress={handleOptionsMenu}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('collectionScreen.actions.moreOptions')}>
+                <Feather
+                  name="more-horizontal"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+            </CollectionOptionsMenu>
+          }
+        />
+      ),
+    [optionsPayload, handleOptionsMenu, theme.colors.text, searching],
   );
   // @ai-end
 
@@ -467,191 +542,128 @@ export default function UploadsScreen() {
 
   const renderItem = useCallback(
     ({item, index}: ListRenderItemInfo<UploadedRecitation>) => (
-      <UploadListItem
-        item={item}
-        index={index}
-        onPlay={handlePlayRecitation}
-        onShowOptions={handleShowOptions}
-        renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
-      />
+      <PanelRow
+        first={index === 0}
+        last={index === visibleRecitations.length - 1}>
+        <UploadListItem
+          item={item}
+          // @ai The row's place in the whole sorted list, so a search
+          // result still queues from where it sits among all uploads.
+          index={searching ? recitations.indexOf(item) : index}
+          onPlay={handlePlayRecitation}
+          onShowOptions={handleShowOptions}
+          renderOptionsMenu={nativeMenus ? renderOptionsMenu : undefined}
+        />
+      </PanelRow>
     ),
-    [handlePlayRecitation, handleShowOptions, nativeMenus, renderOptionsMenu],
+    [
+      visibleRecitations.length, // @ai
+      handlePlayRecitation,
+      handleShowOptions,
+      nativeMenus,
+      renderOptionsMenu,
+      searching, // @ai
+      recitations, // @ai
+    ],
   );
 
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
 
   if (!hasRecitations) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('common:terms.uploads')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <MicrophoneIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('collectionScreen.empty.uploads')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('uploadsScreen.emptySubtitle')}
-          </Text>
-          <Pressable
-            style={styles.emptyActionBar}
-            onPress={handleImportFile}
-            disabled={isImporting}>
-            {isImporting ? (
-              <ActivityIndicator
-                size="small"
-                color={theme.colors.textSecondary}
-              />
-            ) : (
-              <Feather
-                name="plus"
-                size={moderateScale(16)}
-                color={theme.colors.textSecondary}
-              />
-            )}
-            <Text style={styles.emptyActionText}>
-              {isImporting
-                ? t('uploadsScreen.opening')
-                : t('uploadsScreen.addRecitation')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
-
-  const ListHeaderComponent = () => {
-    return (
-      <View style={styles.headerContainer}>
-        <View
-          style={[
-            styles.contentArea,
-            {
-              paddingTop: USE_GLASS
-                ? moderateScale(16)
-                : insets.top + moderateScale(40),
-            },
-          ]}>
-          {/* Hero Icon */}
-          <View style={styles.contentCenter}>
-            <View style={styles.heroIconContainer}>
-              <View style={styles.heroIconInner}>
-                <MicrophoneIcon
-                  color={theme.colors.text}
-                  size={moderateScale(30)}
-                />
-              </View>
-            </View>
-            <Text style={styles.title}>{t('common:terms.uploads')}</Text>
-            <Text style={styles.subtitle}>
-              {t('uploadsScreen.recitationsCount', {count: totalCount})}
-            </Text>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={[styles.actionButtons, forceLTR]}>
-          {!USE_GLASS && (
-            <Pressable
-              style={[
-                styles.circleButton,
-                !hasRecitations && styles.disabledButton,
-              ]}
-              onPress={hasRecitations ? handleOptionsMenu : undefined}
-              disabled={!hasRecitations}>
-              <Feather
-                name="more-horizontal"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              {hasRecitations && (
-                <CollectionOptionsMenu
-                  payload={optionsPayload}
-                  layout="overlay"
-                />
-              )}
-            </Pressable>
-          )}
-          <Pressable
-            style={[
-              styles.circleButton,
-              styles.playButton,
-              !hasRecitations && styles.disabledButton,
-            ]}
-            onPress={hasRecitations ? handlePlayAll : undefined}
-            disabled={!hasRecitations}>
-            <View style={styles.playIconContainer}>
-              <PlayIcon
-                color={theme.colors.background}
-                size={moderateScale(16)}
-              />
-            </View>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.circleButton,
-              !hasRecitations && styles.disabledButton,
-            ]}
-            onPress={hasRecitations ? handleShuffle : undefined}
-            disabled={!hasRecitations}>
-            <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-          </Pressable>
-        </View>
-
-        {/* Add Recitation Bar */}
-        <Pressable
-          style={styles.uploadBar}
-          onPress={handleImportFile}
-          disabled={isImporting}>
-          {isImporting ? (
-            <ActivityIndicator
-              size="small"
-              color={theme.colors.textSecondary}
-            />
-          ) : (
+      <CollectionEmptyState
+        category="uploads"
+        title={t('common:terms.uploads')}
+        meta={t('collectionScreen.emptyState.uploads.meta')}
+        heading={t('collectionScreen.emptyState.uploads.heading')}
+        message={t('collectionScreen.emptyState.uploads.message')}
+        showBack={!isStackRoot}
+        primary={{
+          label: isImporting
+            ? t('uploadsScreen.opening')
+            : t('uploadsScreen.addRecitation'),
+          icon: (
             <Feather
               name="plus"
               size={moderateScale(16)}
-              color={theme.colors.textSecondary}
+              color={theme.colors.background}
             />
-          )}
-          <Text style={styles.uploadBarText}>
-            {isImporting
-              ? t('uploadsScreen.opening')
-              : t('uploadsScreen.addRecitation')}
-          </Text>
-        </Pressable>
-      </View>
+          ),
+          onPress: handleImportFile,
+          disabled: isImporting,
+        }}
+      />
     );
-  };
+  }
+
+  // @ai-start
+  const listHeader = searching ? (
+    <CollectionSearchField
+      value={query}
+      onChangeText={setQuery}
+      onCancel={() => {
+        setSearching(false);
+        setQuery('');
+      }}
+      placeholder={t('collectionScreen.search.placeholderIn', {
+        name: t('common:terms.uploads'),
+      })}
+      resultLabel={
+        query.trim()
+          ? t('collectionScreen.search.matches', {
+              count: visibleRecitations.length,
+            })
+          : undefined
+      }
+      style={{
+        paddingHorizontal: GRID_PADDING,
+        paddingTop: USE_GLASS ? moderateScale(8) : insets.top + 8,
+        paddingBottom: moderateScale(12),
+      }}
+    />
+  ) : (
+    <CollectionScreenHeader
+      category="uploads"
+      preview={null}
+      title={t('common:terms.uploads')}
+      meta={t('uploadsScreen.recitationsCount', {count: totalCount})}
+      primary={{
+        label: t('collectionScreen.actions.playAll'),
+        icon: (
+          <PlayIcon color={theme.colors.background} size={moderateScale(15)} />
+        ),
+        onPress: handlePlayAll,
+      }}
+      secondary={[
+        {
+          label: t('common:actions.shuffle'),
+          icon: (
+            <ShuffleIcon color={theme.colors.text} size={moderateScale(15)} />
+          ),
+          onPress: handleShuffle,
+        },
+        {
+          label: isImporting
+            ? t('uploadsScreen.opening')
+            : t('uploadsScreen.addRecitation'),
+          icon: isImporting ? (
+            <ActivityIndicator size="small" color={theme.colors.text} />
+          ) : (
+            <Feather
+              name="plus"
+              size={moderateScale(15)}
+              color={theme.colors.text}
+            />
+          ),
+          onPress: handleImportFile,
+          disabled: isImporting,
+        },
+      ]}
+      actions={renderHeaderRight()}
+    />
+  );
+  // @ai-end
 
   return (
     <View style={styles.container}>
@@ -683,10 +695,12 @@ export default function UploadsScreen() {
       )}
 
       <RNAnimated.FlatList
-        data={recitations}
+        data={visibleRecitations} // @ai
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={listHeader} // @ai
+        keyboardShouldPersistTaps="handled" // @ai
+        keyboardDismissMode="on-drag" // @ai
         contentContainerStyle={[
           styles.listContentContainer,
           {paddingBottom: listBottomPadding}, // @ai
@@ -881,29 +895,28 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
     itemRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.colors.background,
     },
     itemPlayZone: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(8),
-      paddingLeft: moderateScale(18),
+      paddingVertical: PANEL_ROW_VERTICAL,
+      paddingStart: PANEL_ROW_PADDING,
     },
     itemIconContainer: {
-      width: moderateScale(44),
-      height: moderateScale(44),
-      borderRadius: moderateScale(10),
+      width: PANEL_ART_SIZE,
+      height: PANEL_ART_SIZE,
+      borderRadius: PANEL_ART_RADIUS,
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: moderateScale(10),
+      marginEnd: PANEL_ART_GAP,
     },
     itemReciterImage: {
-      width: moderateScale(44),
-      height: moderateScale(44),
-      borderRadius: moderateScale(10),
-      marginRight: moderateScale(10),
+      width: PANEL_ART_SIZE,
+      height: PANEL_ART_SIZE,
+      borderRadius: PANEL_ART_RADIUS,
+      marginEnd: PANEL_ART_GAP,
     },
     itemInfoContainer: {
       flex: 1,

@@ -62,6 +62,8 @@ import Animated, {
 import {ActionButtons} from './components/ActionButtons';
 import {ReciterHeader} from './components/ReciterHeader';
 import {NavigationButtons} from './components/NavigationButtons';
+import {ReciterViewMenu} from './components/ReciterViewMenu'; // @ai
+import {nativeMenusAvailable} from '@/components/native/nativeMenus'; // @ai
 import {SurahList, SurahListTableHeader} from './components/SurahList'; // @ai
 import {SearchView} from './components/SearchView';
 import {RewayatTabBar} from './components/RewayatTabBar';
@@ -367,62 +369,6 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     ),
   ).current;
   const [showSearch, setShowSearch] = useState(false);
-
-  // iOS native header: search icon in headerRight, hidden when search is active
-  const headerTitleShownRef = useRef(false);
-  useLayoutEffect(() => {
-    if (!isGlass) return;
-    headerTitleShownRef.current = false;
-    navigation.setOptions({
-      headerTitle: '',
-      headerBackTitle: ' ',
-      headerBackButtonDisplayMode: 'minimal',
-      headerTransparent: true,
-      headerStyle: {backgroundColor: 'transparent'},
-      headerShadowVisible: false,
-      // Hide back button and search icon when SearchView is open (it has its own cancel)
-      headerBackVisible: !showSearch,
-      headerRight: showSearch
-        ? () => null
-        : () => (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: moderateScale(20),
-                paddingHorizontal: moderateScale(6),
-              }}>
-              <Pressable
-                onPress={() => {
-                  const slug = reciter?.slug ?? currentReciterId;
-                  shareUrl(
-                    reciterShareUrl(slug),
-                    t('reciterProfile.shareMessage', {
-                      name: reciter
-                        ? getReciterDisplayName(reciter)
-                        : t('reciterProfile.thisReciter'),
-                      appName: branding.appName,
-                    }),
-                  );
-                }}
-                hitSlop={8}>
-                <Feather
-                  name="share"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-              </Pressable>
-              <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
-                <Feather
-                  name="search"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-              </Pressable>
-            </View>
-          ),
-    });
-  }, [navigation, theme, showSearch, t]);
 
   const [viewMode, setViewMode] = useState<ReciterProfileViewMode>(
     useSettings(state => state.reciterProfileViewMode),
@@ -1011,6 +957,86 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     });
   }, [heartScale]);
 
+  // @ai-start View and sort sit in the header beside search, as on the
+  // Collection screens; the old row of sort pills stays only where there
+  // are no native menus (web). Hidden on My Uploads, which has no surahs.
+  const setViewModeTo = useCallback(
+    (mode: ReciterProfileViewMode) => {
+      setReciterViewModeSetting(mode);
+      setViewMode(mode);
+    },
+    [setReciterViewModeSetting],
+  );
+  const viewMenu =
+    nativeMenusAvailable && activeTab !== 'uploads' ? (
+      <ReciterViewMenu
+        viewMode={viewMode}
+        sortOption={sortOption}
+        lovedOnly={showLovedOnly}
+        onViewModeChange={setViewModeTo}
+        onSortChange={changeSortOption}
+        onToggleLovedOnly={toggleShowLovedOnly}
+      />
+    ) : null;
+  // @ai-end
+
+  // iOS native header: search icon in headerRight, hidden when search is active
+  const headerTitleShownRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!isGlass) return;
+    headerTitleShownRef.current = false;
+    navigation.setOptions({
+      headerTitle: '',
+      headerBackTitle: ' ',
+      headerBackButtonDisplayMode: 'minimal',
+      headerTransparent: true,
+      headerStyle: {backgroundColor: 'transparent'},
+      headerShadowVisible: false,
+      // Hide back button and search icon when SearchView is open (it has its own cancel)
+      headerBackVisible: !showSearch,
+      headerRight: showSearch
+        ? () => null
+        : () => (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: moderateScale(20),
+                paddingHorizontal: moderateScale(6),
+              }}>
+              <Pressable
+                onPress={() => {
+                  const slug = reciter?.slug ?? currentReciterId;
+                  shareUrl(
+                    reciterShareUrl(slug),
+                    t('reciterProfile.shareMessage', {
+                      name: reciter
+                        ? getReciterDisplayName(reciter)
+                        : t('reciterProfile.thisReciter'),
+                      appName: branding.appName,
+                    }),
+                  );
+                }}
+                hitSlop={8}>
+                <Feather
+                  name="share"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+              <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
+                <Feather
+                  name="search"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+              {viewMenu}
+            </View>
+          ),
+    });
+  }, [navigation, theme, showSearch, t, viewMenu]);
+
   // Uploads for this reciter
   const reciterUploads = useUploadsStore(state =>
     state.recitations.filter(r => r.reciterId === currentReciterId),
@@ -1363,7 +1389,13 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
             {/* paddingTop offsets below native header (iOS) or sticky title (Android) */}
             <View
               onLayout={e => setStickyHeight(e.nativeEvent.layout.height)}
-              style={{paddingTop: stickyPinOffset}}
+              // @ai: the offset above the tabs is painted too, so rows
+              // scrolling up don't show between the top bar and the tabs.
+              // Before the header collapses, the header sits over it.
+              style={{
+                paddingTop: stickyPinOffset,
+                backgroundColor: theme.colors.background,
+              }}
               pointerEvents="box-none">
               <View style={{backgroundColor: theme.colors.background}}>
                 {tabs.length > 0 && (
@@ -1376,92 +1408,94 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                     screenWidth={pageWidth}
                   />
                 )}
-                <View
-                  style={[
-                    styles.controlsRow,
-                    isTablet && {marginHorizontal: pageMargin},
-                  ]}>
-                  {activeTab !== 'uploads' && (
-                    <View style={styles.sortOptionsContainer}>
-                      <Pressable
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'asc' && styles.activeOptionButton,
-                        ]}
-                        onPress={() => changeSortOption('asc')}>
-                        <Text
+                {!nativeMenusAvailable && (
+                  <View
+                    style={[
+                      styles.controlsRow,
+                      isTablet && {marginHorizontal: pageMargin},
+                    ]}>
+                    {activeTab !== 'uploads' && (
+                      <View style={styles.sortOptionsContainer}>
+                        <Pressable
                           style={[
-                            styles.optionButtonText,
-                            sortOption === 'asc' && styles.activeOptionText,
-                          ]}>
-                          {t('reciterProfile.sort.asc')}
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'desc' && styles.activeOptionButton,
-                        ]}
-                        onPress={() => changeSortOption('desc')}>
-                        <Text
+                            styles.optionButton,
+                            sortOption === 'asc' && styles.activeOptionButton,
+                          ]}
+                          onPress={() => changeSortOption('asc')}>
+                          <Text
+                            style={[
+                              styles.optionButtonText,
+                              sortOption === 'asc' && styles.activeOptionText,
+                            ]}>
+                            {t('reciterProfile.sort.asc')}
+                          </Text>
+                        </Pressable>
+                        <Pressable
                           style={[
-                            styles.optionButtonText,
-                            sortOption === 'desc' && styles.activeOptionText,
-                          ]}>
-                          {t('reciterProfile.sort.desc')}
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'revelation' &&
-                            styles.activeOptionButton,
-                        ]}
-                        onPress={() => changeSortOption('revelation')}>
-                        <Text
+                            styles.optionButton,
+                            sortOption === 'desc' && styles.activeOptionButton,
+                          ]}
+                          onPress={() => changeSortOption('desc')}>
+                          <Text
+                            style={[
+                              styles.optionButtonText,
+                              sortOption === 'desc' && styles.activeOptionText,
+                            ]}>
+                            {t('reciterProfile.sort.desc')}
+                          </Text>
+                        </Pressable>
+                        <Pressable
                           style={[
-                            styles.optionButtonText,
+                            styles.optionButton,
                             sortOption === 'revelation' &&
-                              styles.activeOptionText,
-                          ]}>
-                          {t('reciterProfile.sort.revelation')}
-                        </Text>
+                              styles.activeOptionButton,
+                          ]}
+                          onPress={() => changeSortOption('revelation')}>
+                          <Text
+                            style={[
+                              styles.optionButtonText,
+                              sortOption === 'revelation' &&
+                                styles.activeOptionText,
+                            ]}>
+                            {t('reciterProfile.sort.revelation')}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                    <View style={styles.rightControlsContainer}>
+                      <Pressable
+                        style={[
+                          styles.optionButton,
+                          {
+                            marginRight: moderateScale(15),
+                            marginTop: moderateScale(4),
+                          },
+                        ]}
+                        onPress={toggleShowLovedOnly}>
+                        <Animated.View style={heartAnimatedStyle}>
+                          <HeartIcon
+                            size={moderateScale(22)}
+                            color={
+                              showLovedOnly
+                                ? theme.colors.error
+                                : theme.colors.textSecondary
+                            }
+                            filled={true}
+                          />
+                        </Animated.View>
+                      </Pressable>
+                      <Pressable
+                        style={styles.viewModeButton}
+                        onPress={toggleViewMode}>
+                        <Feather
+                          name={viewMode === 'card' ? 'list' : 'grid'}
+                          size={moderateScale(16)}
+                          color={theme.colors.text}
+                        />
                       </Pressable>
                     </View>
-                  )}
-                  <View style={styles.rightControlsContainer}>
-                    <Pressable
-                      style={[
-                        styles.optionButton,
-                        {
-                          marginRight: moderateScale(15),
-                          marginTop: moderateScale(4),
-                        },
-                      ]}
-                      onPress={toggleShowLovedOnly}>
-                      <Animated.View style={heartAnimatedStyle}>
-                        <HeartIcon
-                          size={moderateScale(22)}
-                          color={
-                            showLovedOnly
-                              ? theme.colors.error
-                              : theme.colors.textSecondary
-                          }
-                          filled={true}
-                        />
-                      </Animated.View>
-                    </Pressable>
-                    <Pressable
-                      style={styles.viewModeButton}
-                      onPress={toggleViewMode}>
-                      <Feather
-                        name={viewMode === 'card' ? 'list' : 'grid'}
-                        size={moderateScale(16)}
-                        color={theme.colors.text}
-                      />
-                    </Pressable>
                   </View>
-                </View>
+                )}
                 {/* @ai: the table's column labels stay on screen while the
                     surahs scroll under them. */}
                 {showPinnedTableHeader && (
@@ -1618,6 +1652,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               iconsOpacity={iconsOpacity}
               iconsZIndex={iconsZIndex}
               onSearchPress={() => setShowSearch(true)}
+              extra={viewMenu}
               onSharePress={() => {
                 const slug = reciter?.slug ?? currentReciterId;
                 shareUrl(

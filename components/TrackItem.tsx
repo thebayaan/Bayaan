@@ -25,6 +25,10 @@ import {currentLanguageConfig} from '@/i18n/language'; // @ai
 import {useSurahOptionsContext} from '@/components/sheets/options/SurahOptionsContext';
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {listRowContextMenusEnabled} from '@/components/native/nativeMenus'; // @ai
+import {
+  PANEL_ROW_PADDING,
+  PANEL_ROW_VERTICAL,
+} from '@/components/collection/CollectionPanel'; // @ai
 // @ai-end
 import {
   getReciterDisplayName,
@@ -52,6 +56,14 @@ interface TrackItemProps {
    * options aren't surah options (downloads, uploads). @ai
    */
   optionsMenu?: React.ReactNode;
+  /** Drawn in place of the reciter photo, e.g. a surah cover. @ai */
+  art?: React.ReactNode;
+  /** No row background, for rows inside a panel. @ai */
+  transparent?: boolean;
+  /** Leave out the reciter's name, e.g. under that reciter's heading. @ai */
+  hideReciterName?: boolean;
+  /** Prefix the title with the surah number (default true). @ai */
+  showSurahNumber?: boolean;
 }
 
 // @ai-start
@@ -67,6 +79,10 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     onOptionsPress,
     onLongPress,
     optionsMenu,
+    art, // @ai
+    showSurahNumber = true, // @ai
+    transparent, // @ai
+    hideReciterName, // @ai
   }) => {
     const {theme} = useTheme();
     // @ai-start
@@ -188,12 +204,12 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 
     // The Arabic surah name is already shown as text in Arabic mode.
     const surahGlyph =
-      currentLanguageConfig.bilingualContent === 'ar' // @ai
+      currentLanguageConfig.bilingualContent === 'ar' || art // @ai
         ? undefined
         : surahGlyphMap[surah.id];
-    const surahTitle = `${localizeDigits(surah.id)}. ${getSurahDisplayName(
-      surah,
-    )}`;
+    const surahTitle = showSurahNumber // @ai
+      ? `${localizeDigits(surah.id)}. ${getSurahDisplayName(surah)}`
+      : getSurahDisplayName(surah);
     const knownStyle = KNOWN_STYLES.find(
       s => s === rewayat?.style?.toLowerCase(),
     );
@@ -214,15 +230,17 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 
     const playZone = (
       <Pressable
-        style={styles.playZone}
+        style={[styles.playZone, transparent && panelPlayZone]} // @ai
         onPress={onPress}
         onLongPress={rowMenu ? undefined : onLongPress}>
         <View style={styles.imageContainer}>
-          <ReciterImage
-            reciterName={reciter?.name || ''}
-            imageUrl={reciter?.image_url || undefined}
-            style={styles.reciterImage}
-          />
+          {art ?? ( // @ai
+            <ReciterImage
+              reciterName={reciter?.name || ''}
+              imageUrl={reciter?.image_url || undefined}
+              style={styles.reciterImage}
+            />
+          )}
         </View>
 
         <View style={styles.trackInfo}>
@@ -245,28 +263,72 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
               </Text>
             )}
           </View>
-          <View style={styles.reciterInfoRow}>
-            {isCurrentlyDownloading ? (
-              <CircularProgress
-                progress={downloadProgress}
-                size={moderateScale(13)}
-                strokeWidth={moderateScale(1.5)}
-                color={theme.colors.textSecondary}
-              />
-            ) : isDownloadedState ? (
-              <Ionicons
-                name="arrow-down-circle"
-                size={moderateScale(13)}
-                color={theme.colors.textSecondary}
-                style={styles.downloadIcon}
-              />
-            ) : null}
-            <Text
-              style={[styles.reciterName, {color: theme.colors.textSecondary}]}>
-              {getReciterDisplayName(reciter)}
-            </Text>
-          </View>
-          {renderRewayatBadge()}
+          {/* Under its reciter's heading the whole line would repeat. @ai */}
+          {transparent ? (
+            // @ai In a panel: one secondary line, like Music's two-line
+            // rows: reciter · riwayah (or just the riwayah under a heading),
+            // still led by the download state.
+            <View style={styles.reciterInfoRow}>
+              {isCurrentlyDownloading ? (
+                <CircularProgress
+                  progress={downloadProgress}
+                  size={moderateScale(13)}
+                  strokeWidth={moderateScale(1.5)}
+                  color={theme.colors.textSecondary}
+                />
+              ) : isDownloadedState && !hideReciterName ? (
+                <Ionicons
+                  name="arrow-down-circle"
+                  size={moderateScale(13)}
+                  color={theme.colors.textSecondary}
+                  style={styles.downloadIcon}
+                />
+              ) : null}
+              <Text
+                style={[
+                  styles.reciterName,
+                  {color: theme.colors.textSecondary, flexShrink: 1},
+                ]}
+                numberOfLines={1}>
+                {[
+                  hideReciterName ? null : getReciterDisplayName(reciter),
+                  rewayat
+                    ? `${getDisplayLabelFromName(rewayat.name)}${
+                        styleLabel ? ` \u2022 ${styleLabel}` : ''
+                      }`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' \u00B7 ')}
+              </Text>
+            </View>
+          ) : hideReciterName ? null : (
+            <View style={styles.reciterInfoRow}>
+              {isCurrentlyDownloading ? (
+                <CircularProgress
+                  progress={downloadProgress}
+                  size={moderateScale(13)}
+                  strokeWidth={moderateScale(1.5)}
+                  color={theme.colors.textSecondary}
+                />
+              ) : isDownloadedState ? (
+                <Ionicons
+                  name="arrow-down-circle"
+                  size={moderateScale(13)}
+                  color={theme.colors.textSecondary}
+                  style={styles.downloadIcon}
+                />
+              ) : null}
+              <Text
+                style={[
+                  styles.reciterName,
+                  {color: theme.colors.textSecondary},
+                ]}>
+                {getReciterDisplayName(reciter)}
+              </Text>
+            </View>
+          )}
+          {transparent ? null : renderRewayatBadge()}
         </View>
       </Pressable>
     );
@@ -275,7 +337,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       <View
         style={[
           styles.trackItem,
-          {backgroundColor: theme.colors.card},
+          {backgroundColor: transparent ? 'transparent' : theme.colors.card}, // @ai
           tabletInset, // @ai
         ]}>
         {/* Play zone */}
@@ -296,6 +358,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         {onOptionsPress && (
           <Pressable
             style={styles.optionsZone}
+            accessibilityRole="button" // @ai
+            accessibilityLabel={tHome('surahItem.moreOptions')} // @ai
             onPress={tapMenu ? undefined : onOptionsPress}>
             {isCurrentTrack ? (
               <NowPlayingIndicator
@@ -337,6 +401,12 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 TrackItem.displayName = 'TrackItem';
 
 // @ai-start
+// Inside a Collection panel: the iOS list row padding.
+const panelPlayZone = {
+  paddingVertical: PANEL_ROW_VERTICAL,
+  paddingStart: PANEL_ROW_PADDING,
+  paddingEnd: 0,
+};
 const styles = StyleSheet.create({
   trackItem: {
     flexDirection: 'row',

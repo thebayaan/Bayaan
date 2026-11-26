@@ -10,13 +10,135 @@
     "itemsCount_many": "{{count}} عنصرًا",
     "itemsCount_other": "{{count}} عنصر",
     "empty": {
-      "playlists": "أنشئ أول قائمة تشغيل",
-      "reciters": "لا توجد مفضلات بعد",
-      "downloads": "لا توجد تنزيلات بعد",
-      "loved": "لا توجد سور محبّبة بعد",
-      "bookmarks": "لا توجد علامات مرجعية بعد",
-      "notes": "لا توجد ملاحظات بعد",
-      "uploads": "لا توجد ملفات مستوردة بعد"
+      "playlists": "اجمع السور لوِردك",
+      "reciters": "اضغط على المفضلة في صفحة القارئ",
+      "downloads": "نزّل السور لتستمع دون اتصال",
+      "loved": "اضغط على القلب في أي سورة",
+      "bookmarks": "اضغط مطوّلًا على آية في المصحف",
+      "notes": "اضغط مطوّلًا على آية لتضيف ملاحظة",
+      "uploads": "أضف ملفًا صوتيًا من الملفات"
+    },
+    "groups": {
+      "listening": "الاستماع",
+      "reading": "القراءة",
+      "yours": "خاصّتك"
+    },
+    "summary": {
+      "two": "{{a}}، {{b}}",
+      "more_zero": "{{a}}، {{b}}",
+      "more_one": "{{a}}، {{b}} وواحدة أخرى",
+      "more_two": "{{a}}، {{b}} واثنتان أخريان",
+      "more_few": "{{a}}، {{b}} و{{count}} أخرى",
+      "more_many": "{{a}}، {{b}} و{{count}} أخرى",
+      "more_other": "{{a}}، {{b}} و{{count}} أخرى",
+      "downloads": "{{surahs}} · {{size}}",
+      "quote": "«{{text}}»",
+      "sizeMB": "{{size}} ميغابايت",
+      "sizeGB": "{{size}} غيغابايت",
+      "countThenNames": "{{countText}} · {{names}}",
+      "separator": "، ",
+      "firstAndMoreReciters_zero": "{{a}}",
+      "firstAndMoreReciters_one": "{{a}} وواحد آخر",
+      "firstAndMoreReciters_two": "{{a}} واثنان آخران",
+      "firstAndMoreReciters_few": "{{a}} و{{count}} آخرون",
+      "firstAndMoreReciters_many": "{{a}} و{{count}} آخرين",
+      "firstAndMoreReciters_other": "{{a}} و{{count}} آخرين"
+    },
+    "view": {
+      "grid": "شبكة",
+      "list": "قائمة",
+      "sortBy": "ترتيب حسب",
+      "menuLabel": "العرض والترتيب"
+    },
+    "sort": {
+      "dateLoved": "تاريخ الإعجاب",
+      "dateDownloaded": "تاريخ التنزيل",
+      "dateAdded": "تاريخ الإضافة",
+      "newest": "الأحدث",
+      "oldest": "الأقدم",
+      "surahOrder": "ترتيب المصحف",
+      "reciter": "القارئ",
+      "title": "العنوان",
+      "updated": "آخر تعديل",
+      "dateCreated": "تاريخ الإنشاء",
+      "size": "الحجم",
+      "name": "الاسم"
+    },
+    "search": {
+      "placeholder": "ابحث في مجموعتك",
+      "placeholderIn": "ابحث في {{name}}",
+      "matches_zero": "لا نتائج",
+      "matches_one": "نتيجة واحدة",
+      "matches_two": "نتيجتان",
+      "matches_few": "{{count}} نتائج",
+      "matches_many": "{{count}} نتيجة",
+      "matches_other": "{{count}} نتيجة",
+      "noResults": "لا شيء يطابق «{{query}}»",
+      "hint": "جرّب اسم سورة أو قارئ، أو آية مثل 2:255، أو كلمات من ملاحظاتك",
+      "includes": "تتضمن {{name}}",
+      "all": "الكل",
+      "seeAll": "عرض الكل في {{name}} ({{total}})"
+    },
+    "meta": {
+      "pair": "{{a}} · {{b}}",
+      "inSurahs": "{{ayahs}} في {{surahs}}",
+      "notes_zero": "لا ملاحظات",
+      "notes_one": "ملاحظة واحدة",
+      "notes_two": "ملاحظتان",
+      "notes_few": "{{count}} ملاحظات",
+      "notes_many": "{{count}} ملاحظة",
+      "notes_other": "{{count}} ملاحظة"
+    },
+    "actions": {
+      "playAll": "تشغيل الكل",
+      "moreOptions": "خيارات إضافية"
+    },
+    "downloads": {
+      "byReciter": "حسب القارئ",
+      "allSurahs": "كل السور",
+      "groupingLabel": "عرض التنزيلات"
+    },
+    "emptyState": {
+      "loved": {
+        "meta": "لا توجد سور بعد",
+        "heading": "لا شيء في المفضلة بعد",
+        "message": "اضغط على القلب في المشغّل أو على أي سورة لتظهر هنا.",
+        "link": "تصفّح القرّاء"
+      },
+      "playlists": {
+        "meta": "لا توجد قوائم بعد",
+        "heading": "أنشئ أول قائمة تشغيل",
+        "message": "اجمع السور لوِردك، مثل الكهف يوم الجمعة أو قبل النوم.",
+        "button": "قائمة جديدة"
+      },
+      "downloads": {
+        "meta": "لا توجد تنزيلات",
+        "heading": "استمع دون اتصال",
+        "message": "اضغط على تنزيل في سورة أو قارئ لتحفظه على هذا الهاتف.",
+        "link": "تصفّح السور"
+      },
+      "bookmarks": {
+        "meta": "لا توجد آيات بعد",
+        "heading": "علّم الآيات لتعود إليها",
+        "message": "في المصحف، اضغط مطوّلًا على آية واختر إضافة علامة مرجعية.",
+        "link": "افتح المصحف"
+      },
+      "notes": {
+        "meta": "لا توجد ملاحظات بعد",
+        "heading": "اكتب ما تعنيه لك آية",
+        "message": "في المصحف، اضغط مطوّلًا على آية واختر إضافة ملاحظة.",
+        "link": "افتح المصحف"
+      },
+      "reciters": {
+        "meta": "لا يوجد قرّاء بعد",
+        "heading": "أبقِ قرّاءك قريبين",
+        "message": "اضغط على المفضلة في صفحة القارئ، أو أضف بعضهم الآن."
+      },
+      "uploads": {
+        "meta": "لا توجد تلاوات بعد",
+        "heading": "أضف تسجيلاتك الخاصة",
+        "message": "أضف ملفًا صوتيًا من الملفات، ثم حدّد السورة والقارئ."
+      }
     }
   },
   "bookmarksScreen": {

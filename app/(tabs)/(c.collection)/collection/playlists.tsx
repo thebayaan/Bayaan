@@ -1,12 +1,12 @@
-import React, {useRef, useCallback, useMemo} from 'react';
+import React, {useRef, useCallback, useMemo, useState} from 'react'; // @ai
 import {
   View,
-  Text,
   Pressable,
   StyleSheet,
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {useLocalSearchParams} from 'expo-router'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PlaylistItem} from '@/components/PlaylistItem';
@@ -30,8 +30,29 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
 import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
+import {
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PanelRow,
+} from '@/components/collection/CollectionPanel'; // @ai
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+import {
+  CollectionHeaderActions,
+  CollectionScreenHeader,
+  CollectionSearchField,
+} from '@/components/collection/CollectionScreenHeader';
+import {SurahMosaic} from '@/components/collection/CollectionArt';
+import {
+  CollectionGridTile,
+  GRID_GAP,
+  GRID_PADDING,
+  useGridTileWidth,
+} from '@/components/collection/CollectionGridTile';
+import {usePlaylistCovers} from '@/hooks/useCollectionPreviews';
+import {useCollectionViewPref} from '@/store/collectionViewStore';
+import {matchesQuery} from '@/utils/collectionSearch';
 // @ai-end
 
 // @ai-start
@@ -51,11 +72,49 @@ export default function PlaylistsScreen() {
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
+  // @ai-start
+  const {view, sort} = useCollectionViewPref('playlists');
+  // @ai A search typed on the Collection tab arrives as `q`.
+  const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
+  const [searching, setSearching] = useState(Boolean(initialQuery));
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const covers = usePlaylistCovers(playlists);
+  const tileWidth = useGridTileWidth(3);
+  const sortedPlaylists = useMemo(() => {
+    const list = [...playlists];
+    if (sort === 'title') list.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sort === 'created') list.sort((a, b) => b.createdAt - a.createdAt);
+    else list.sort((a, b) => b.updatedAt - a.updatedAt);
+    return list;
+  }, [playlists, sort]);
+  const visiblePlaylists = useMemo(
+    () =>
+      searching && query.trim()
+        ? sortedPlaylists.filter(p =>
+            matchesQuery(query, [p.name, p.description]),
+          )
+        : sortedPlaylists,
+    [sortedPlaylists, searching, query],
+  );
+  const totalItems = playlists.reduce((sum, p) => sum + p.itemCount, 0);
+  const renderHeaderRight = useCallback(
+    () =>
+      searching ? null : (
+        <CollectionHeaderActions
+          screen="playlists"
+          onSearch={() => setSearching(true)}
+        />
+      ),
+    [searching],
+  );
+
   useCollectionNativeHeader({
     title: t('common:terms.playlists'),
     scrollY,
     hasContent: playlists.length > 0,
+    headerRight: playlists.length > 0 ? renderHeaderRight : undefined,
   });
+  // @ai-end
 
   const existingColors = useMemo(
     () => playlists.map(p => p.color),
@@ -267,121 +326,160 @@ export default function PlaylistsScreen() {
   }, [existingColors, createPlaylist]);
 
   const renderItem = useCallback(
-    ({item}: {item: (typeof playlists)[0]}) => (
-      <PlaylistItem
-        id={item.id}
-        name={item.name}
-        itemCount={item.itemCount}
-        color={item.color}
-        onPress={() => handlePlaylistPress(item.id)}
-        onLongPress={() => handlePlaylistOptions(item)}
-        onOptionsPress={() => handlePlaylistOptions(item)}
-        optionsMenu={
-          nativeMenus ? (
-            <PlaylistOptionsMenu payload={buildPlaylistOptions(item)} />
-          ) : undefined
-        }
-      />
-    ),
+    ({item, index}: {item: (typeof playlists)[0]; index: number}) =>
+      // @ai-start
+      view === 'grid' ? (
+        <CollectionGridTile
+          width={tileWidth}
+          art={
+            (covers[item.id]?.length ?? 0) > 0 ? (
+              <SurahMosaic
+                surahIds={covers[item.id]}
+                size={tileWidth}
+                radius={moderateScale(18)}
+              />
+            ) : (
+              <View
+                style={{
+                  width: tileWidth,
+                  height: tileWidth,
+                  borderRadius: moderateScale(18),
+                  backgroundColor: Color(item.color || '#6366F1')
+                    .alpha(0.18)
+                    .string(),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <PlaylistIcon
+                  color={item.color || '#6366F1'}
+                  size={tileWidth * 0.3}
+                />
+              </View>
+            )
+          }
+          title={item.name}
+          subtitle={t('common:counts.surahs', {count: item.itemCount})}
+          onPress={() => handlePlaylistPress(item.id)}
+          onLongPress={() => handlePlaylistOptions(item)}
+        />
+      ) : (
+        // @ai-end
+        <PanelRow
+          first={index === 0}
+          last={index === visiblePlaylists.length - 1}>
+          <PlaylistItem
+            id={item.id}
+            name={item.name}
+            itemCount={item.itemCount}
+            color={item.color}
+            countOnly
+            art={
+              (covers[item.id]?.length ?? 0) > 0 ? ( // @ai
+                <SurahMosaic
+                  surahIds={covers[item.id]}
+                  size={PANEL_ART_SIZE}
+                  radius={PANEL_ART_RADIUS}
+                />
+              ) : undefined
+            }
+            onPress={() => handlePlaylistPress(item.id)}
+            onLongPress={() => handlePlaylistOptions(item)}
+            onOptionsPress={() => handlePlaylistOptions(item)}
+            optionsMenu={
+              nativeMenus ? (
+                <PlaylistOptionsMenu payload={buildPlaylistOptions(item)} />
+              ) : undefined
+            }
+          />
+        </PanelRow>
+      ), // @ai
     [
+      view, // @ai
+      tileWidth, // @ai
+      covers, // @ai
+      t, // @ai
       handlePlaylistPress,
       handlePlaylistOptions,
       nativeMenus,
       buildPlaylistOptions,
+      visiblePlaylists.length, // @ai
     ],
   );
 
   if (playlists.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('common:terms.playlists')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <PlaylistIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('playlistsScreen.emptyTitle')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('playlistsScreen.emptySubtitle')}
-          </Text>
-          <Pressable
-            style={styles.emptyActionBar}
-            onPress={handleCreatePlaylist}>
+      <CollectionEmptyState
+        category="playlists"
+        title={t('common:terms.playlists')}
+        meta={t('collectionScreen.emptyState.playlists.meta')}
+        heading={t('collectionScreen.emptyState.playlists.heading')}
+        message={t('collectionScreen.emptyState.playlists.message')}
+        showBack={!isStackRoot}
+        primary={{
+          label: t('collectionScreen.emptyState.playlists.button'),
+          icon: (
             <Feather
               name="plus"
               size={moderateScale(16)}
-              color={theme.colors.textSecondary}
+              color={theme.colors.background}
             />
-            <Text style={styles.emptyActionText}>
-              {t('playlistsScreen.createNew')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+          ),
+          onPress: handleCreatePlaylist,
+        }}
+      />
     );
   }
 
-  const ListHeaderComponent = () => {
-    return (
-      <View style={styles.headerContainer}>
-        <View style={styles.contentArea}>
-          <View style={styles.contentCenter}>
-            <View style={styles.heroIconContainer}>
-              <View style={styles.heroIconInner}>
-                <PlaylistIcon
-                  color={theme.colors.text}
-                  size={moderateScale(30)}
-                />
-              </View>
-            </View>
-            <Text style={styles.title}>{t('common:terms.playlists')}</Text>
-            <Text style={styles.subtitle}>
-              {t('playlistsScreen.count', {count: playlists.length})}
-            </Text>
-          </View>
-        </View>
-
-        <Pressable style={styles.createBar} onPress={handleCreatePlaylist}>
+  // @ai-start
+  const listHeader = searching ? (
+    <CollectionSearchField
+      value={query}
+      onChangeText={setQuery}
+      onCancel={() => {
+        setSearching(false);
+        setQuery('');
+      }}
+      placeholder={t('collectionScreen.search.placeholderIn', {
+        name: t('common:terms.playlists'),
+      })}
+      resultLabel={
+        query.trim()
+          ? t('collectionScreen.search.matches', {
+              count: visiblePlaylists.length,
+            })
+          : undefined
+      }
+      style={{
+        paddingHorizontal: GRID_PADDING,
+        paddingTop: USE_GLASS ? moderateScale(8) : insets.top + 8,
+        paddingBottom: moderateScale(12),
+      }}
+    />
+  ) : (
+    <CollectionScreenHeader
+      category="playlists"
+      preview={null}
+      title={t('common:terms.playlists')}
+      meta={t('collectionScreen.meta.pair', {
+        a: t('playlistsScreen.count', {count: playlists.length}),
+        b: t('common:counts.surahs', {count: totalItems}),
+      })}
+      primary={{
+        label: t('playlistsScreen.createNew'),
+        icon: (
           <Feather
             name="plus"
             size={moderateScale(16)}
-            color={theme.colors.textSecondary}
+            color={theme.colors.background}
           />
-          <Text style={styles.createBarText}>
-            {t('playlistsScreen.createNew')}
-          </Text>
-        </Pressable>
-      </View>
-    );
-  };
+        ),
+        onPress: handleCreatePlaylist,
+      }}
+      actions={renderHeaderRight()}
+    />
+  );
+  // @ai-end
 
   return (
     <View style={styles.container}>
@@ -410,10 +508,23 @@ export default function PlaylistsScreen() {
       )}
 
       <RNAnimated.FlatList
-        data={playlists}
+        key={view} // @ai a FlatList can't change its columns in place
+        data={visiblePlaylists} // @ai
         renderItem={renderItem}
         keyExtractor={item => item.id}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={listHeader} // @ai
+        numColumns={view === 'grid' ? 3 : 1} // @ai
+        columnWrapperStyle={
+          view === 'grid' // @ai
+            ? {
+                gap: GRID_GAP,
+                paddingHorizontal: GRID_PADDING,
+                marginBottom: moderateScale(18),
+              }
+            : undefined
+        }
+        keyboardShouldPersistTaps="handled" // @ai
+        keyboardDismissMode="on-drag" // @ai
         contentContainerStyle={[
           styles.listContentContainer,
           {paddingBottom: listBottomPadding}, // @ai

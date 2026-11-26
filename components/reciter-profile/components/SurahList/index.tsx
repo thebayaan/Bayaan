@@ -12,6 +12,11 @@ import {useTheme} from '@/hooks/useTheme';
 import {SurahListProps} from '@/components/reciter-profile/types';
 import {SurahItem, SurahTableHeader} from '@/components/SurahItem'; // @ai
 import {SurahCard} from '@/components/cards/SurahCard';
+import {
+  PANEL_MARGIN,
+  PANEL_ROW_PADDING,
+  PanelRow,
+} from '@/components/collection/CollectionPanel'; // @ai
 import {Surah} from '@/data/surahData';
 // @ai-start
 import {getJuzForSurah} from '@/data/juzData';
@@ -413,6 +418,65 @@ export const SurahList = React.forwardRef<
       const visibleData = expandedList
         ? data
         : data.slice(0, INITIAL_LIST_BATCH);
+
+      // @ai-start Phones: each Juz is a grey label over its own rounded
+      // panel, like the reciter groups in Downloads. Without Juz labels
+      // (order of revelation) the surahs share one panel.
+      if (!isTabletLayout) {
+        const groups: {key: string; label?: string; surahs: Surah[]}[] = [];
+        for (const item of visibleData) {
+          if (item.type === 'juz-header') {
+            groups.push({key: item.key, label: item.juzName, surahs: []});
+          } else {
+            if (groups.length === 0) groups.push({key: 'all', surahs: []});
+            groups[groups.length - 1].surahs.push(item.surahs[0]);
+          }
+        }
+        return (
+          <View style={styles.surahsContainer}>
+            {data.length === 0 ? (
+              <Text style={styles.emptyText}>
+                {t('reciterProfile.noSurahsAvailable')}
+              </Text>
+            ) : (
+              groups.map(group => (
+                <View key={group.key}>
+                  {group.label ? (
+                    <Text
+                      style={styles.panelGroupLabel}
+                      accessibilityRole="header">
+                      {group.label}
+                    </Text>
+                  ) : (
+                    <View style={styles.panelGroupGap} />
+                  )}
+                  {group.surahs.map((surah, i) => (
+                    <PanelRow
+                      key={surah.id}
+                      first={i === 0}
+                      last={i === group.surahs.length - 1}>
+                      <SurahItem
+                        item={surah}
+                        onPress={onSurahPress}
+                        reciterId={reciterId}
+                        isLoved={isLoved(reciterId, surah.id.toString())}
+                        isDownloaded={isDownloaded(
+                          reciterId,
+                          surah.id.toString(),
+                        )}
+                        onOptionsPress={onOptionsPress}
+                        rewayatId={rewayatId}
+                        panel
+                      />
+                    </PanelRow>
+                  ))}
+                </View>
+              ))
+            )}
+          </View>
+        );
+      }
+      // @ai-end
       // In the table, a hairline separates two surah rows; Juz labels
       // stand on their own.
       const separatorAfter = (index: number) =>
@@ -489,6 +553,17 @@ SurahList.displayName = 'SurahList';
 // @ai-start
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
+    // @ai-start
+    panelGroupLabel: {
+      paddingHorizontal: PANEL_MARGIN + PANEL_ROW_PADDING,
+      paddingTop: moderateScale(22),
+      paddingBottom: moderateScale(7),
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.textSecondary,
+    },
+    panelGroupGap: {height: moderateScale(8)},
+    // @ai-end
     surahsContainer: {
       flex: 1,
     },

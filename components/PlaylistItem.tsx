@@ -6,6 +6,12 @@ import {Theme} from '@/utils/themeUtils';
 import {MaterialIcons, Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
+import {
+  PANEL_ART_GAP,
+  PANEL_ART_SIZE,
+  PANEL_ROW_PADDING,
+  PANEL_ROW_VERTICAL,
+} from '@/components/collection/CollectionPanel'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
@@ -21,6 +27,10 @@ interface PlaylistItemProps {
   /** A native menu laid over the ••• button on tablets. @ai */
   optionsMenu?: React.ReactNode;
   isSelected?: boolean;
+  /** Drawn in place of the tinted icon, e.g. the playlist's mosaic. @ai */
+  art?: React.ReactNode;
+  /** Just the surah count, on screens that only list playlists. @ai */
+  countOnly?: boolean;
 }
 
 // @ai-start
@@ -34,6 +44,8 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
     onOptionsPress,
     optionsMenu,
     isSelected,
+    art,
+    countOnly,
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation(['collection', 'common']);
@@ -50,23 +62,33 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
 
     return (
       <Pressable
-        style={[styles.playlistItem, isSelected && styles.selectedPlaylistItem]}
+        style={[
+          styles.playlistItem,
+          art ? styles.panelItem : null, // @ai
+          isSelected && styles.selectedPlaylistItem,
+        ]}
         onPress={handlePress}
         onLongPress={handleLongPress}>
-        <View
-          style={[
-            styles.iconContainer,
-            {backgroundColor, borderColor},
-            isSelected && styles.selectedIconContainer,
-          ]}>
-          <PlaylistIcon color={playlistColor} size={moderateScale(24)} />
-        </View>
+        {art ? (
+          <View style={styles.artContainer}>{art}</View>
+        ) : (
+          <View
+            style={[
+              styles.iconContainer,
+              {backgroundColor, borderColor},
+              isSelected && styles.selectedIconContainer,
+            ]}>
+            <PlaylistIcon color={playlistColor} size={moderateScale(24)} />
+          </View>
+        )}
         <View style={styles.playlistInfo}>
           <Text style={styles.playlistName}>{name}</Text>
           <Text style={styles.playlistSubtitle} numberOfLines={1}>
-            {t('playlistItem.subtitle', {
-              surahs: t('common:counts.surahs', {count: itemCount}),
-            })}
+            {countOnly
+              ? t('common:counts.surahs', {count: itemCount})
+              : t('playlistItem.subtitle', {
+                  surahs: t('common:counts.surahs', {count: itemCount}),
+                })}
           </Text>
         </View>
         {onOptionsPress && !isSelected && (
@@ -116,6 +138,16 @@ const createStyles = (theme: Theme) =>
       overflow: 'hidden',
       borderRadius: moderateScale(10),
       borderWidth: moderateScale(1),
+    },
+    artContainer: {
+      width: PANEL_ART_SIZE,
+      height: PANEL_ART_SIZE,
+      marginEnd: PANEL_ART_GAP,
+    },
+    panelItem: {
+      paddingVertical: PANEL_ROW_VERTICAL,
+      paddingStart: PANEL_ROW_PADDING,
+      paddingEnd: moderateScale(4),
     },
     playlistInfo: {
       flex: 1,

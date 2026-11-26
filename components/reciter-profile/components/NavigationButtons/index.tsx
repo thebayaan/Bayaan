@@ -16,6 +16,8 @@ interface NavigationButtonsProps {
   iconsZIndex: Animated.Value;
   onSearchPress: () => void;
   onSharePress?: () => void;
+  /** Drawn after search, e.g. the view-and-sort menu. @ai */
+  extra?: React.ReactNode;
 }
 
 // @ai-start
@@ -25,6 +27,7 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
   iconsZIndex,
   onSearchPress,
   onSharePress,
+  extra,
 }) => {
   const router = useRouter();
   const {theme} = useTheme();
@@ -79,6 +82,9 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
             color={theme.colors.text}
           />
         </Pressable>
+        {extra ? (
+          <View style={{marginStart: moderateScale(18)}}>{extra}</View>
+        ) : null}
       </Animated.View>
     </>
   );

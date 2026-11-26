@@ -29,10 +29,20 @@ jest.mock('@/hooks/useCollectionNativeHeader', () => ({
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
+jest.mock('@/components/collection/CollectionScreenHeader', () => ({
+  CollectionScreenHeader: () => null,
+  CollectionHeaderActions: () => null,
+  CollectionSearchField: () => null,
+}));
+jest.mock('@/hooks/useCollectionPreviews', () => ({
+  useCollectionPreviews: () => ({}),
+  usePlaylistCovers: () => ({}),
+}));
 jest.mock('expo-router', () => {
   const ReactActual = jest.requireActual('react');
   return {
     useRouter: () => ({back: jest.fn(), push: jest.fn()}),
+    useLocalSearchParams: () => ({}),
     // The screen is focused once, when it mounts.
     useFocusEffect: (effect: () => void) =>
       ReactActual.useEffect(() => effect(), [effect]),
