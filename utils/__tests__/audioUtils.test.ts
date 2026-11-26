@@ -145,3 +145,32 @@ describe('a download recorded without a rewayah, asked for by rewayah id', () =>
     );
   });
 });
+
+// @ai-start
+describe('a recitation streamed with no rewayah', () => {
+  // The first rewayah has a few surahs only; the second has Al-Baqarah.
+  const partial: Reciter = {
+    ...reciter,
+    rewayat: [
+      {...rewayah('warsh'), surah_list: [112, 113, 114]},
+      {...rewayah('hafs'), surah_list: [1, 2, 114]},
+    ],
+  };
+
+  beforeEach(() => {
+    RECITERS.splice(0, RECITERS.length, partial);
+  });
+
+  it('streams from the first rewayah that has the surah', () => {
+    expect(generateSmartAudioUrl(partial, '2')).toBe(
+      'https://cdn.test/hafs/002.mp3',
+    );
+  });
+
+  it('streams from the first rewayah when it has the surah', () => {
+    expect(generateSmartAudioUrl(partial, '114')).toBe(
+      'https://cdn.test/warsh/114.mp3',
+    );
+  });
+});
+// @ai-end

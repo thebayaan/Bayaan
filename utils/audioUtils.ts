@@ -7,16 +7,18 @@ import {
 // @ai-end
 import {resolveFilePath} from '@/services/downloadService';
 import {audioFileUrl} from '@/utils/audioFileUrl';
+import {findRewayatForSurah} from '@/utils/rewayatForSurah'; // @ai
 
 export function generateAudioUrl(
   reciter: Reciter,
   surahId: string,
   rewayatId?: string,
 ): string {
-  // Get the rewayat - either specified or default to first one
+  // Get the rewayat - either specified or, with none, the first one that
+  // has this surah (the first rewayah need not have it). @ai
   const rewayat = rewayatId
     ? reciter.rewayat.find(r => r.id === rewayatId)
-    : reciter.rewayat[0];
+    : (findRewayatForSurah(reciter, Number(surahId)) ?? reciter.rewayat[0]);
 
   if (!rewayat) {
     throw new Error('No rewayat found for reciter');

@@ -3,6 +3,7 @@ import {SURAHS} from '@/data/surahData';
 import {Track} from '@/types/audio';
 import {Surah} from '@/data/surahData';
 import {generateSmartAudioUrl} from './audioUtils';
+import {defaultRewayatIdForSurah} from './rewayatForSurah'; // @ai
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {resolveFilePath} from '@/services/downloadService';
 import type {UploadedRecitation} from '@/types/uploads';
@@ -43,7 +44,11 @@ export async function createTrack(
   surah: Surah,
   rewayatId?: string,
 ): Promise<Track> {
-  const url = generateSmartAudioUrl(reciter, String(surah.id), rewayatId);
+  // @ai With no rewayah asked for, take one that has this surah: the first
+  // rewayah need not have it, and its url would be a file that does not exist.
+  const trackRewayatId =
+    rewayatId || defaultRewayatIdForSurah(reciter, surah.id);
+  const url = generateSmartAudioUrl(reciter, String(surah.id), trackRewayatId);
   return {
     id: `${reciter.id}-${surah.id}`,
     url,
@@ -54,7 +59,7 @@ export async function createTrack(
     reciterId: reciter.id,
     reciterName: reciter.name,
     duration: 0, // Will be set by expo-audio
-    rewayatId: rewayatId || reciter.rewayat[0].id,
+    rewayatId: trackRewayatId, // @ai
   };
 }
 
@@ -139,7 +144,7 @@ export function createDownloadedTrack(
     surahId: String(surah.id),
     reciterId: reciter.id,
     reciterName: reciter.name,
-    rewayatId: rewayatId || reciter.rewayat[0].id,
+    rewayatId: rewayatId || defaultRewayatIdForSurah(reciter, surah.id), // @ai
     duration: 0, // Will be set by expo-audio
   };
 }
