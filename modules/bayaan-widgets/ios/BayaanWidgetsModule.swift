@@ -40,8 +40,33 @@ private func takeString(_ key: String) -> String {
   }
 }
 
+// @ai-start
+// The kinds that reloadWidgets(["ContinueListening"]) reloads.
+private func reloadListeningWidgets() {
+  WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListening")
+  WidgetCenter.shared.reloadTimelines(ofKind: "ListeningAccessory")
+  if #available(iOS 18.0, *) {
+    ControlCenter.shared.reloadControls(ofKind: "PlaybackControl")
+  }
+}
+
+/// The app is about to end (for example a swipe up in the app switcher while
+/// audio plays in the background): the audio stops with it, so the widgets
+/// must not keep showing Pause. See stoppedSnapshotData.
+private func writeStoppedSnapshot() {
+  guard let dir = widgetsDir() else { return }
+  let url = dir.appendingPathComponent("snapshot.json")
+  guard let data = try? Data(contentsOf: url),
+        let stopped = stoppedSnapshotData(data, nowMs: Date().timeIntervalSince1970 * 1000)
+  else { return }
+  guard (try? stopped.write(to: url, options: .atomic)) != nil else { return }
+  reloadListeningWidgets()
+}
+// @ai-end
+
 public class BayaanWidgetsModule: Module {
   private var observer: NSObjectProtocol?
+  private var terminateObserver: NSObjectProtocol? // @ai
 
   public func definition() -> ModuleDefinition {
     Name("BayaanWidgets")
@@ -55,7 +80,22 @@ public class BayaanWidgetsModule: Module {
         let selector = NSSelectorFromString("refresh")
         if target.responds(to: selector) { _ = target.perform(selector) }
       }
+      // @ai-start
+      // queue nil: runs on the posting (main) thread before the process ends.
+      self.terminateObserver = NotificationCenter.default.addObserver(
+        forName: UIApplication.willTerminateNotification, object: nil, queue: nil
+      ) { _ in
+        writeStoppedSnapshot()
+      }
+      // @ai-end
     }
+
+    // @ai-start
+    OnDestroy {
+      if let observer = self.terminateObserver { NotificationCenter.default.removeObserver(observer) }
+      self.terminateObserver = nil
+    }
+    // @ai-end
 
     OnStartObserving {
       self.observer = NotificationCenter.default.addObserver(
