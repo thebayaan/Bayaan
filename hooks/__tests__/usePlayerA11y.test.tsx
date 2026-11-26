@@ -51,6 +51,11 @@ describe('usePlayerA11y', () => {
     expect(a11y.playPause(true, true).accessibilityState).toEqual({
       disabled: true,
     });
+    // @ai Busy only while the button shows its spinner.
+    expect(a11y.playPause(false, true, true).accessibilityState).toEqual({
+      disabled: true,
+      busy: true,
+    });
   });
 
   it('includes the seek interval', () => {

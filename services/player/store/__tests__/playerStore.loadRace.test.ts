@@ -65,14 +65,7 @@ import {usePlayerStore} from '../playerStore';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import type {Track} from '@/types/audio';
 
-const mockedAudio = expoAudioService as unknown as {
-  loadTrack: jest.Mock;
-  play: jest.Mock;
-  pause: jest.Mock;
-  seekTo: jest.Mock;
-  getDuration: jest.Mock;
-  cleanup: jest.Mock;
-};
+const mockedAudio = jest.mocked(expoAudioService); // @ai
 
 function deferred(): {promise: Promise<void>; resolve: () => void} {
   let resolve!: () => void;
@@ -89,7 +82,7 @@ function makeTrack(id: string): Track {
     reciterId: 'test-reciter',
     reciterName: 'Test Reciter',
     surahId: '1',
-  } as unknown as Track;
+  };
 }
 
 // Flush the microtask queue so awaited continuations run to completion.

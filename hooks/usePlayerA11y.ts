@@ -32,9 +32,10 @@ export function usePlayerA11y() {
         button(t('player:a11y.nowPlaying', {title, artist}), {
           accessibilityHint: hint ?? t('player:a11y.openReciter'),
         }),
-      playPause: (playing: boolean, disabled = false) =>
+      // busy: the button shows a spinner (a load or a stalled stream).
+      playPause: (playing: boolean, disabled = false, busy = false) =>
         button(t(playing ? 'common:actions.pause' : 'common:actions.play'), {
-          accessibilityState: {disabled},
+          accessibilityState: {disabled, ...(busy ? {busy} : {})},
         }),
       previous: (disabled = false) =>
         button(t('player:a11y.previous'), {accessibilityState: {disabled}}),

@@ -215,14 +215,17 @@ interface VerseSelectionState {
 
 ```typescript
 interface VerseAnnotationsState {
-  loadedSurah: number | null;
+  loadedSurahs: Set<number>;                 // every surah loaded so far (accumulates)
   bookmarkedVerseKeys: Set<string>;          // O(1) lookup
   notedVerseKeys: Set<string>;               // O(1) lookup
   highlights: Record<string, HighlightColor>; // verseKey -> color
   loading: boolean;
 
-  // Load all annotations for a surah (called on surah change)
+  // Load the annotations of one surah, or of every surah on a mushaf page.
+  // Loads merge into the cache and never replace it; a load of a surah
+  // that is already loaded does nothing.
   loadAnnotationsForSurah(surahNumber: number): Promise<void>;
+  loadAnnotationsForSurahs(surahNumbers: number[]): Promise<void>;
 
   // Mutations (optimistic update + async SQLite write)
   toggleBookmark(verseKey: string, surahNumber: number, ayahNumber: number): Promise<boolean>;
@@ -240,7 +243,7 @@ interface VerseAnnotationsState {
 
 ### Sync Strategy
 
-- **On surah change:** Single batch query `getAnnotationsForSurah()` populates Sets/Records
+- **On surah or page change:** One `getAnnotationsForSurah()` query for each surah that is not loaded yet; the results merge into the Sets/Records
 - **On mutation:** Optimistic update to Zustand (instant UI) + async SQLite write
 - **No startup pre-loading:** Loads on-demand when the player opens a surah
 

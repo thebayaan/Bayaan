@@ -18,7 +18,7 @@ import Color from 'color';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import type {QueueState} from '@/services/player/types/state'; // @ai
+import {isCurrentSurahTrack} from '@/utils/currentSurahTrack'; // @ai
 
 import {NowPlayingIndicator} from './NowPlayingIndicator';
 import {
@@ -136,13 +136,14 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       const status = state.playback.state;
       const active = status === 'playing' || status === 'buffering';
       return (
-        active && isRowCurrentTrack(state.queue, reciterId, item.id, rewayatId)
+        active &&
+        isCurrentSurahTrack(state.queue, reciterId, item.id, rewayatId)
       );
     });
 
     // Check if this is the current track (regardless of play state)
     const isCurrentTrack = usePlayerStore(state =>
-      isRowCurrentTrack(state.queue, reciterId, item.id, rewayatId),
+      isCurrentSurahTrack(state.queue, reciterId, item.id, rewayatId),
     );
 
     const handlePress = React.useCallback(() => {
@@ -393,37 +394,6 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
 // @ai-end
 
 SurahItem.displayName = 'SurahItem';
-
-// @ai-start
-/**
- * True when the queue's current track is this row: the same reciter and
- * surah, and the same rewayah when both have one. Both player-store
- * selectors of SurahItem use it, so the two checks cannot drift apart.
- */
-function isRowCurrentTrack(
-  queue: Pick<QueueState, 'tracks' | 'currentIndex'>,
-  reciterId: string | undefined,
-  surahId: number,
-  rewayatId: string | undefined,
-): boolean {
-  if (!reciterId) return false;
-  const {tracks, currentIndex} = queue;
-  const currentTrack =
-    currentIndex >= 0 && currentIndex < (tracks?.length ?? 0)
-      ? tracks[currentIndex]
-      : null;
-  if (!currentTrack) return false;
-  const rewayatMatches =
-    rewayatId && currentTrack.rewayatId
-      ? rewayatId === currentTrack.rewayatId
-      : true;
-  return (
-    currentTrack.reciterId === reciterId &&
-    currentTrack.surahId === surahId.toString() &&
-    rewayatMatches
-  );
-}
-// @ai-end
 
 // @ai-start
 /** Wraps the row in its context menu when given one, else renders it. */

@@ -114,7 +114,8 @@ function MiniPlayerInner() {
             style={styles.playButton}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityState={{disabled: isLoadingTrack}}
+            // @ai Busy while the spinner shows, so a screen reader says so.
+            accessibilityState={{disabled: isLoadingTrack, busy: showSpinner}}
             accessibilityLabel={t(
               isPlaying ? 'common:actions.pause' : 'common:actions.play',
             )}>

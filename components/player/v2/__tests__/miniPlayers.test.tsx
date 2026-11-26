@@ -182,4 +182,18 @@ describe.each(players)('%s play button', (_name, element) => {
       disabled: true,
     });
   });
+
+  // @ai-start
+  // A screen reader says the button is busy while it shows the spinner.
+  it('is busy while the spinner shows, and only then', () => {
+    const r = mount(element());
+    expect(playButton(r).props.accessibilityState?.busy).toBeFalsy();
+    setPlayer('loading', true);
+    expect(playButton(r).props.accessibilityState).toMatchObject({busy: true});
+    setPlayer('buffering');
+    expect(playButton(r).props.accessibilityState).toMatchObject({busy: true});
+    setPlayer('playing');
+    expect(playButton(r).props.accessibilityState?.busy).toBeFalsy();
+  });
+  // @ai-end
 });
