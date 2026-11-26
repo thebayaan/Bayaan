@@ -1,0 +1,22 @@
+{
+  "about": "The check on Tilawa 1.0's added-word and skipped-passage marks (v1/checkMark) and the restart rule (v1/marks). Set on the natural bench's dev reciters and read on its test reciters: scripts/recitation-bench/tilawa1/SCOREBOARD.md. Tuned on Tilawa 1.0's marks (CC BY 4.0) and the second model's output, not on Quran-Lab's model. added.keepGain: a run of extra letters must beat the two words read straight on by this many nats; repeatSlack: a repeat of the words just read that comes within this of it makes the run a repeat. skipped.keepGain: going straight on from the last words read must beat the words that should have come next by this many; the slice runs from beforeSeconds before the last word read to afterSeconds after the reader left it; wordsAhead and maxAyat say how far on the reader may have gone (later words of the ayah, starts of the next ayat), and a skip over more whole ayat than maxAyat is taken for the reader moving elsewhere and not shown. firstWord.waitSeconds: a mark on a first word the reader may open with the basmala waits this long at most for the follower to pass the word before it is checked (Tilawa marks it while the basmala is still being said).",
+  "added": {
+    "keepGain": 10,
+    "repeatSlack": 5,
+    "contextWords": 2
+  },
+  "skipped": {
+    "keepGain": 15,
+    "beforeSeconds": 1,
+    "afterSeconds": 4,
+    "wordsAhead": 4,
+    "maxAyat": 3,
+    "contextWords": 2
+  },
+  "restart": {
+    "on": true
+  },
+  "firstWord": {
+    "waitSeconds": 8
+  }
+}

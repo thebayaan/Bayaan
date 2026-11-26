@@ -66,6 +66,8 @@ const mockSettings = {
   recitationHideText: false,
   recitationMistakeHaptics: true,
   recitationCheckMistakes: true,
+  // These tests cover the Tilawa 0.4 follower.
+  recitationEngine: 'v0',
   recitationCancelMayCancel: null as 'all' | 'skipped' | null,
 };
 const mockHaptics = {

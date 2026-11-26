@@ -795,3 +795,55 @@ describe('sessionRunner correction sessions', () => {
     expect(mockEngine.correct).not.toHaveBeenCalled();
   });
 });
+
+describe('beforeStop', () => {
+  it('a stop runs it first: no more audio reaches the engine, but its events still do', async () => {
+    const h = handlers();
+    const order: string[] = [];
+    h.beforeStop = jest.fn(async () => {
+      order.push('before');
+      micControl.chunk?.(new Float32Array(160), 16000);
+      engineControl.sendEvent?.(wordProgress(1, 2, 0, 4));
+    });
+    h.onUpdate.mockImplementation(update => {
+      if (update.status === 'off') order.push('off');
+    });
+    await runner.startSession({purpose: 'follow', hint: null}, h);
+    mockEngine.feed.mockClear();
+    await runner.stopSession('user');
+    expect(order).toEqual(['before', 'off']);
+    expect(h.beforeStop).toHaveBeenCalledWith('user');
+    expect(mockEngine.feed).not.toHaveBeenCalled();
+    expect(h.onEvent).toHaveBeenCalledWith(wordProgress(1, 2, 0, 4));
+  });
+
+  it('a stop waits for it at most BEFORE_STOP_MS', async () => {
+    jest.useFakeTimers();
+    const h = handlers();
+    h.beforeStop = jest.fn(() => new Promise<void>(() => undefined));
+    await runner.startSession({purpose: 'follow', hint: null}, h);
+    let stopped = false;
+    void runner.stopSession('user').then(() => (stopped = true));
+    await jest.advanceTimersByTimeAsync(runner.BEFORE_STOP_MS - 100);
+    expect(stopped).toBe(false);
+    await jest.advanceTimersByTimeAsync(200);
+    expect(stopped).toBe(true);
+    expect(h.onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('a second stop while it runs waits for the first and stops once', async () => {
+    const h = handlers();
+    let release: () => void = () => undefined;
+    h.beforeStop = jest.fn(() => new Promise<void>(r => (release = r)));
+    await runner.startSession({purpose: 'follow', hint: null}, h);
+    const first = runner.stopSession('user');
+    const second = runner.stopSession('mic_silent');
+    release();
+    await Promise.all([first, second]);
+    expect(h.beforeStop).toHaveBeenCalledTimes(1);
+    expect(h.onFinish).toHaveBeenCalledTimes(1);
+    expect(h.onFinish).toHaveBeenCalledWith(
+      expect.objectContaining({reason: 'user'}),
+    );
+  });
+});
