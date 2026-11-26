@@ -115,6 +115,20 @@ export function stripArabicArticle(token: string): string {
   return token.length > 3 && token.startsWith('ال') ? token.slice(2) : token;
 }
 
+// @ai-start
+/**
+ * "noor" -> "nur", "teen" -> "tin", "hadeed" -> "hadid": the doubled vowels
+ * of Indo-Pakistani spellings. Never part of toSearchKey: folding every key
+ * would stop "mo" prefix-matching "moon" and tie "sad" with reciter "saad".
+ */
+export function foldLongVowels(token: string): string {
+  return token
+    .replace(/aa+/g, 'a')
+    .replace(/ee+|ii+/g, 'i')
+    .replace(/oo+|ou|uu+/g, 'u');
+}
+// @ai-end
+
 export function latinSkeleton(token: string): string {
   if (!/^[a-z]+$/.test(token)) return token;
   let word = stripLatinArticle(token);

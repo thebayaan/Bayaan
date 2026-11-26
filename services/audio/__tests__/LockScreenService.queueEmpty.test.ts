@@ -19,6 +19,7 @@ const mockMainPlayer = {
 };
 
 const mockMushafPlayer = {
+  setActiveForLockScreen: jest.fn(), // @ai verse audio claims the entry
   updateLockScreenMetadata: jest.fn(),
   clearLockScreenControls: jest.fn(),
 };
@@ -187,13 +188,20 @@ describe('LockScreenService: the main queue has no current track', () => {
     expect(activatedTitles()).toEqual(['Track a']);
   });
 
-  it('(safety) the Mushaf goes idle with a main track in the queue: the main controls come back, nothing clears them', async () => {
+  // @ai-start
+  it('(safety) the Mushaf plays and goes idle with a main track in the queue: the main controls come back', async () => {
     await usePlayerStore.getState().updateQueue([makeTrack('a')], 0);
     await flush();
     setMushaf({playbackState: 'playing'});
+    // Verse audio takes the lock screen while it plays: the main entry is
+    // cleared once, by that hand-over and not by the empty-queue rule.
+    expect(mockMushafPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+    expect(mockMainPlayer.clearLockScreenControls).toHaveBeenCalledTimes(1);
+
     setMushaf({playbackState: 'idle'});
 
-    expect(mockMainPlayer.clearLockScreenControls).not.toHaveBeenCalled();
+    expect(mockMainPlayer.clearLockScreenControls).toHaveBeenCalledTimes(1);
     expect(activatedTitles()).toEqual(['Track a', 'Track a']);
   });
+  // @ai-end
 });

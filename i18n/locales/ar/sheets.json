@@ -98,7 +98,9 @@
     "useDefault": "القارئ الافتراضي",
     "random": "قارئ عشوائي",
     "browseAll": "تصفّح جميع القرّاء",
-    "askEveryTime": "السؤال في كل مرة"
+    "askEveryTime": "السؤال في كل مرة",
+    "surahUnavailable": "لا توجد تلاوة لسورة {{surah}} بصوت {{reciter}}",
+    "surahUnavailableHint": "اختر لها قارئًا آخر."
   },
   "copy": {
     "optionsTitle": "خيارات النسخ",
@@ -176,7 +178,10 @@
     "downloaded": "تم التنزيل",
     "shareListen": "استمع إلى السورة رقم {{surah}} على {{appName}}",
     "shareListenSurah": "استمع إلى سورة {{surah}} على {{appName}}",
-    "removeFromPlaylist": "إزالة من قائمة التشغيل"
+    "removeFromPlaylist": "إزالة من قائمة التشغيل",
+    "downloadFailedTitle": "تعذّر تنزيل سورة {{surah}}",
+    "downloadFailedHint": "يُرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.",
+    "downloadOfflineHint": "لا يوجد اتصال بالإنترنت. اتصل بالإنترنت ثم حاول مرة أخرى."
   },
   "uploads": {
     "untagged": "غير مصنّف",
@@ -270,6 +275,8 @@
     "completeMessage_other": "تم تنزيل {{count}} عنصر من «{{name}}» بنجاح.",
     "failedTitle": "فشل التنزيل",
     "failedMessage": "حدث خطأ أثناء تنزيل قائمة التشغيل. يرجى المحاولة مرة أخرى.",
+    "partialTitle": "لم يكتمل التنزيل",
+    "partialMessage": "تم تنزيل {{downloaded}} من أصل {{total}} من «{{name}}». حاول مرة أخرى لتنزيل البقية.",
     "downloadingPlaylist": "جارٍ تنزيل قائمة التشغيل...",
     "itemsProgress_zero": "{{current}} من {{count}} عنصر",
     "itemsProgress_one": "{{current}} من عنصر واحد",
@@ -298,7 +305,11 @@
   "translationContent": {
     "notAvailable": "الترجمة غير متاحة",
     "switch": "تبديل",
-    "prev": "السابق"
+    "prev": "السابق",
+    "names": {
+      "saheeh": "صحيح إنترناشونال (بالإنجليزية)",
+      "clearQuran": "القرآن الواضح (بالإنجليزية)"
+    }
   },
   "repeat": {
     "title": "إعدادات التكرار",

@@ -67,7 +67,10 @@
     "downloadCompleteTitle": "Download Complete",
     "downloadCompleteMessage": "All loved surahs have been downloaded.",
     "downloadErrorTitle": "Download Error",
-    "downloadErrorMessage": "Some downloads may have failed."
+    "downloadErrorMessage": "Some downloads may have failed.",
+    "downloadFailedMessage": "None of the surahs could be downloaded. Check your connection and try again.",
+    "downloadPartialTitle": "Download Finished",
+    "downloadPartialMessage": "Downloaded: {{downloaded}}. Failed: {{failed}}. Choose Download All again to retry the rest."
   },
   "uploadsScreen": {
     "recitationsCount_one": "{{count}} recitation",
@@ -117,7 +120,8 @@
     "typeInPlaylist": "In Playlist"
   },
   "playlistDetail": {
-    "empty": "No surahs in this playlist"
+    "empty": "No surahs in this playlist",
+    "notFound": "This playlist no longer exists"
   },
   "reciterDownloads": {
     "empty": "No downloads for this reciter"

@@ -224,6 +224,29 @@ it('no anchor, units built: the Hafs verse at once, as before', () => {
   expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:7']});
 });
 
+// The 3 s timer used to clear whatever was selected when it fired: a verse
+// long-pressed during the flash lost its highlight under the open sheet,
+// and on iOS releasing a drag-select after that moment opened nothing.
+it("a long-press made during the flash keeps the reader's selection", () => {
+  open({page: '1', surah: '1', ayah: '7'});
+  act(() => jest.advanceTimersByTime(1000));
+  act(() => {
+    useMushafVerseSelectionStore.getState().selectVerse('1:5', 1);
+  });
+  act(() => jest.advanceTimersByTime(5000));
+  expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:5']});
+});
+
+it('leaving the reader still clears the selection', () => {
+  open({page: '1', surah: '1', ayah: '7'});
+  act(() => {
+    useMushafVerseSelectionStore.getState().selectVerse('1:5', 1);
+  });
+  act(() => renderer?.unmount());
+  renderer = null;
+  expect(selection()).toEqual({rewayah: null, keys: []});
+});
+
 // @ai-start
 // A Quran search hit opens with `words`: its matched slots flash with the
 // verse (3 s), and leaving the screen ends the flash.
@@ -245,3 +268,26 @@ it('flashes no words without a valid words param', () => {
   expect(useMushafWordFlashStore.getState().flash).toBeNull();
 });
 // @ai-end
+
+// A search hit's verse flash ends only itself; its words end on their own
+// timer, also when the reader long-pressed a verse meanwhile.
+it('a search hit: its verse and its words go after 3 s', () => {
+  open({page: '1', surah: '1', ayah: '7', anchor: '1:7:3', words: '3,4'});
+  act(() => jest.advanceTimersByTime(2999));
+  expect(selection()).toEqual({rewayah: 'warsh', keys: ['1:7']});
+  expect(useMushafWordFlashStore.getState().flash).not.toBeNull();
+  act(() => jest.advanceTimersByTime(1));
+  expect(selection()).toEqual({rewayah: null, keys: []});
+  expect(useMushafWordFlashStore.getState().flash).toBeNull();
+});
+
+it('a long-press during a search hit flash stays; its words still go', () => {
+  open({page: '1', surah: '1', ayah: '7', anchor: '1:7:3', words: '3,4'});
+  act(() => jest.advanceTimersByTime(1000));
+  act(() => {
+    useMushafVerseSelectionStore.getState().selectVerse('1:5', 1);
+  });
+  act(() => jest.advanceTimersByTime(2000));
+  expect(selection()).toEqual({rewayah: 'hafs', keys: ['1:5']});
+  expect(useMushafWordFlashStore.getState().flash).toBeNull();
+});

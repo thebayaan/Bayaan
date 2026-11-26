@@ -7,6 +7,9 @@ import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useLoved} from '@/hooks/useLoved';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {findRecentIndex} from '@/components/cards/recentCardEntry'; // @ai
+import {useUploadsStore} from '@/store/uploadsStore'; // @ai
+import {createUserUploadTrack} from '@/utils/track'; // @ai
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
@@ -30,7 +33,8 @@ export interface HomeCardOptionsPayload {
   surahId?: number;
   surahName?: string;
   rewayatId?: string;
-  recentIndex?: number;
+  /** Set on an upload's card: the upload's id. @ai */
+  userRecitationId?: string; // @ai
   variant: 'recent' | 'reciter';
   onContinuePlaying?: () => void;
 }
@@ -55,7 +59,7 @@ export function useHomeCardOptions(
     surahId,
     surahName,
     rewayatId,
-    recentIndex,
+    userRecitationId, // @ai
     variant,
   } = payload;
 
@@ -65,38 +69,96 @@ export function useHomeCardOptions(
     ? getSurahDisplayName(surahForName)
     : surahName;
 
-  const isFavorite = isFavoriteReciter(reciterId);
-  const isLoved =
-    surahId !== undefined && rewayatId
-      ? isLovedWithRewayat(reciterId, surahId, rewayatId)
-      : false;
+  // @ai-start
+  // An upload's card carries the reciter and surah it was played under, or
+  // the '__uploads__' placeholder and surah 0 when it had no tags. The rows
+  // act on the upload as it is tagged now, the way its own options do, and
+  // never on the catalogue recording of the same reciter and surah.
+  const isUpload = userRecitationId !== undefined;
+  const upload = useUploadsStore(state =>
+    userRecitationId !== undefined
+      ? state.recitations.find(r => r.id === userRecitationId)
+      : undefined,
+  );
+  const actionReciterId = isUpload ? upload?.reciterId ?? undefined : reciterId;
+  const actionSurahId = isUpload ? upload?.surahNumber ?? undefined : surahId;
+  const canAddToQueue = !isUpload || upload !== undefined;
+  const canUseReciter = actionReciterId !== undefined;
+  const canUseRecitation =
+    !isUpload || (actionReciterId !== undefined && actionSurahId !== undefined);
+  // An upload lives only on this device, so it has no link to share.
+  const canShare = !isUpload;
+
+  const isFavorite =
+    actionReciterId !== undefined && isFavoriteReciter(actionReciterId);
+  let isLoved = false;
+  if (isUpload) {
+    isLoved =
+      actionReciterId !== undefined &&
+      actionSurahId !== undefined &&
+      isLovedWithRewayat(actionReciterId, actionSurahId, '', userRecitationId);
+  } else if (surahId !== undefined && rewayatId) {
+    isLoved = isLovedWithRewayat(reciterId, surahId, rewayatId);
+  }
+  // @ai-end
 
   const handleClose = close;
 
   const handleGoToReciter = useCallback(() => {
     handleClose();
+    if (actionReciterId === undefined) return; // @ai
     setTimeout(() => {
       router.push({
         pathname: '/(tabs)/(a.home)/reciter/[id]',
-        params: {id: reciterId},
+        params: {id: actionReciterId}, // @ai
       });
     }, 300);
-  }, [handleClose, router, reciterId]);
+  }, [handleClose, router, actionReciterId]); // @ai
 
   const handleToggleFavorite = useCallback(async () => {
-    const reciter = await getReciterById(reciterId);
+    // @ai-start
+    const reciter =
+      actionReciterId !== undefined
+        ? await getReciterById(actionReciterId)
+        : undefined;
+    // @ai-end
     if (reciter) toggleFavorite(reciter);
     handleClose();
-  }, [reciterId, toggleFavorite, handleClose]);
+  }, [actionReciterId, toggleFavorite, handleClose]); // @ai
 
   const handleToggleLoved = useCallback(() => {
-    if (surahId !== undefined && rewayatId) {
+    // @ai-start
+    if (isUpload) {
+      if (actionReciterId !== undefined && actionSurahId !== undefined) {
+        toggleLoved(actionReciterId, actionSurahId, '', userRecitationId);
+      }
+    } else if (surahId !== undefined && rewayatId) {
       toggleLoved(reciterId, surahId, rewayatId);
     }
     handleClose();
-  }, [reciterId, surahId, rewayatId, toggleLoved, handleClose]);
+  }, [
+    isUpload,
+    actionReciterId,
+    actionSurahId,
+    userRecitationId,
+    reciterId,
+    surahId,
+    rewayatId,
+    toggleLoved,
+    handleClose,
+  ]);
+  // @ai-end
 
   const handleAddToQueue = useCallback(async () => {
+    // @ai-start
+    // Queue the upload's own file. Its card's reciter and surah would have
+    // queued the catalogue recording, or nothing at all when untagged.
+    if (isUpload) {
+      if (upload) addToQueue([createUserUploadTrack(upload)]);
+      handleClose();
+      return;
+    }
+    // @ai-end
     if (surahId === undefined) return;
     const reciter = await getReciterById(reciterId);
     const surah = getSurahById(surahId);
@@ -120,19 +182,46 @@ export function useHomeCardOptions(
 
     addToQueue([track]);
     handleClose();
-  }, [reciterId, surahId, rewayatId, addToQueue, handleClose]);
+  }, [
+    isUpload, // @ai
+    upload, // @ai
+    reciterId,
+    surahId,
+    rewayatId,
+    addToQueue,
+    handleClose,
+  ]);
 
   const handleAddToPlaylist = useCallback(() => {
-    if (surahId === undefined) return;
-    const surah = getSurahById(surahId);
-    if (!surah) return;
+    // @ai-start
+    if (actionReciterId === undefined || actionSurahId === undefined) {
+      handleClose();
+      return;
+    }
+    const surah = getSurahById(actionSurahId);
+    if (!surah) {
+      handleClose();
+      return;
+    }
     handleClose();
     setTimeout(() => {
       SheetManager.show('select-playlist', {
-        payload: {surah, reciterId, rewayatId},
+        payload: {
+          surah,
+          reciterId: actionReciterId,
+          rewayatId,
+          userRecitationId,
+        },
       });
     }, 300);
-  }, [reciterId, surahId, rewayatId, handleClose]);
+  }, [
+    actionReciterId,
+    actionSurahId,
+    rewayatId,
+    userRecitationId,
+    handleClose,
+  ]);
+  // @ai-end
 
   const handleShare = useCallback(async () => {
     const reciter = await getReciterById(reciterId);
@@ -177,11 +266,22 @@ export function useHomeCardOptions(
   ]);
 
   const handleRemoveFromRecents = useCallback(() => {
-    if (recentIndex !== undefined) {
-      useRecentlyPlayedStore.getState().removeTrack(recentIndex);
+    // @ai-start
+    // Found now, not when the options opened: a card arriving at the front
+    // in the meantime shifts every position, and the position the card had
+    // when it was pressed then removed a different card.
+    const index = findRecentIndex({
+      reciterId,
+      surahId,
+      rewayatId,
+      userRecitationId,
+    });
+    if (index !== -1) {
+      useRecentlyPlayedStore.getState().removeTrack(index);
     }
+    // @ai-end
     handleClose();
-  }, [recentIndex, handleClose]);
+  }, [reciterId, surahId, rewayatId, userRecitationId, handleClose]); // @ai
 
   const handleContinuePlaying = useCallback(() => {
     handleClose();
@@ -198,6 +298,12 @@ export function useHomeCardOptions(
     subtitle,
     isFavorite,
     isLoved,
+    // @ai-start
+    canAddToQueue,
+    canUseReciter,
+    canUseRecitation,
+    canShare,
+    // @ai-end
     handleContinuePlaying,
     handleAddToQueue,
     handleGoToReciter,
@@ -220,35 +326,39 @@ function HomeCardMenu({
   const o = useHomeCardOptions(payload, noop);
   const recent = o.variant === 'recent';
   const entries: NativeMenuEntry[] = [];
+  // @ai-start
   if (recent) {
+    entries.push({
+      id: 'continue',
+      title: t('homeCardOptions.continuePlaying'),
+      systemImage: 'play',
+    });
+  }
+  if (recent && o.canAddToQueue) {
+    entries.push({
+      id: 'queue',
+      title: t('homeCardOptions.addToQueue'),
+      systemImage: 'text.badge.plus',
+    });
+  }
+  if (o.canUseReciter) {
     entries.push(
       {
-        id: 'continue',
-        title: t('homeCardOptions.continuePlaying'),
-        systemImage: 'play',
+        id: 'reciter',
+        title: t('homeCardOptions.goToReciter'),
+        systemImage: 'person',
       },
       {
-        id: 'queue',
-        title: t('homeCardOptions.addToQueue'),
-        systemImage: 'text.badge.plus',
+        id: 'favorite',
+        title: o.isFavorite
+          ? t('homeCardOptions.removeReciterFromFavorites')
+          : t('homeCardOptions.addReciterToFavorites'),
+        systemImage: o.isFavorite ? 'star.fill' : 'star',
       },
     );
   }
-  entries.push(
-    {
-      id: 'reciter',
-      title: t('homeCardOptions.goToReciter'),
-      systemImage: 'person',
-    },
-    {
-      id: 'favorite',
-      title: o.isFavorite
-        ? t('homeCardOptions.removeReciterFromFavorites')
-        : t('homeCardOptions.addReciterToFavorites'),
-      systemImage: o.isFavorite ? 'star.fill' : 'star',
-    },
-  );
-  if (recent) {
+  if (recent && o.canUseRecitation) {
+    // @ai-end
     entries.push(
       {
         id: 'love',
@@ -264,11 +374,15 @@ function HomeCardMenu({
       },
     );
   }
-  entries.push({
-    id: 'share',
-    title: t('common:actions.share'),
-    systemImage: 'square.and.arrow.up',
-  });
+  // @ai-start
+  if (o.canShare) {
+    entries.push({
+      id: 'share',
+      title: t('common:actions.share'),
+      systemImage: 'square.and.arrow.up',
+    });
+  }
+  // @ai-end
   if (recent) {
     entries.push({
       id: 'destructive',

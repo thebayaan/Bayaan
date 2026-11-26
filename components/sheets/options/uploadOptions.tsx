@@ -52,7 +52,9 @@ export function UploadOptionsMenu({
   const surahId = surah ? String(surah.id) : '';
   const hasReciter = !!reciterId;
   const isLoved =
-    !!surah && hasReciter && isLovedWithRewayat(reciterId, surahId, '');
+    !!surah &&
+    hasReciter &&
+    isLovedWithRewayat(reciterId, surahId, '', recitation.id); // @ai
 
   const entries: NativeMenuEntry[] = [
     {id: 'play', title: t('options.playNow'), systemImage: 'play'},

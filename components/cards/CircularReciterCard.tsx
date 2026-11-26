@@ -22,6 +22,14 @@ import {useTranslation} from 'react-i18next';
 interface CircularReciterCardProps {
   imageUrl?: string;
   name: string;
+  // @ai-start
+  /**
+   * The reciter's catalogue name, which the bundled photos are keyed by.
+   * `name` is what is shown and may be localised; an Arabic name finds no
+   * photo. Falls back to `name`.
+   */
+  imageName?: string;
+  // @ai-end
   reciterId?: string;
   onPress: () => void;
   onLongPress?: () => void;
@@ -38,6 +46,7 @@ interface CircularReciterCardProps {
 export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   imageUrl,
   name,
+  imageName,
   reciterId,
   onPress,
   onLongPress,
@@ -143,7 +152,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
           <>
             <ReciterImage
               imageUrl={imageUrl}
-              reciterName={name}
+              reciterName={imageName ?? name}
               style={styles.reciterImage}
             />
             {isSelected && <View style={styles.selectedOverlay} />}

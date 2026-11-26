@@ -1,5 +1,9 @@
 // @ai-generated
-import {pickRewayatId} from '../rewayatPreference';
+import {
+  pickRewayatId,
+  reciterHasSurah,
+  rewayahHasSurah,
+} from '../rewayatPreference';
 
 const hafs = {id: 'hafs', surah_list: [1, 2, 3]};
 const warsh = {id: 'warsh', surah_list: [1, 2]};
@@ -38,5 +42,23 @@ describe('pickRewayatId', () => {
 
   it('ignores the surah when no rewayat has it', () => {
     expect(pickRewayatId(rewayat, ['warsh'], 114)).toBe('warsh');
+  });
+});
+
+describe('reciterHasSurah', () => {
+  it('is true when any rewayah lists the surah', () => {
+    expect(reciterHasSurah(rewayat, 3)).toBe(true);
+    expect(rewayahHasSurah(warsh, 3)).toBe(false);
+    expect(rewayahHasSurah(qalun, 3)).toBe(true);
+  });
+
+  // The case pickRewayatId cannot report: it still returns a rewayah.
+  it('is false when no rewayah lists the surah', () => {
+    expect(reciterHasSurah(rewayat, 114)).toBe(false);
+    expect(reciterHasSurah([], 1)).toBe(false);
+  });
+
+  it('treats a rewayah without a list as complete', () => {
+    expect(reciterHasSurah([{surah_list: undefined as never}], 114)).toBe(true);
   });
 });

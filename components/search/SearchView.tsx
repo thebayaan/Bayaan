@@ -153,6 +153,13 @@ interface SearchViewProps {
   /** Skip the built-in safe-area top padding (when the parent already handles it) */
   skipTopInset?: boolean;
   // @ai-start
+  /**
+   * Dismisses the keyboard of a field this view does not own: the native
+   * search bar on iOS 26, which Keyboard.dismiss() cannot reach.
+   */
+  onDismissKeyboard?: () => void;
+  // @ai-end
+  // @ai-start
   /** Replaces the query (a root suggestion opens `root:ر ح م`). */
   onQueryChange?: (query: string) => void;
   // @ai-end
@@ -165,14 +172,20 @@ export function SearchView({
   query,
   isSearchActive,
   skipTopInset,
+  onDismissKeyboard, // @ai
   onQueryChange,
 }: SearchViewProps) {
   const bottomInset = useBottomInset();
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [, setLoading] = useState(true);
+  // The query `searchResults` were computed for.
+  const [searchedQuery, setSearchedQuery] = useState('');
+  const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
+  // False until the stored list has been read (or failed to be): an empty
+  // list before then is not "none".
+  const [recentsLoaded, setRecentsLoaded] = useState(false);
   // The list as last set, for the writes below, and the read of the stored
   // list, which every write waits for: a search remembered before the list
   // was read joins it instead of replacing it.
@@ -340,9 +353,11 @@ export function SearchView({
       stored => {
         recentsRef.current = stored;
         setRecentSearches(stored);
+        setRecentsLoaded(true);
       },
       error => {
         console.error('Error loading recent searches:', error);
+        setRecentsLoaded(true);
       },
     );
     return recentsRead.current;
@@ -397,6 +412,7 @@ export function SearchView({
     if (!catalogSearch || !debouncedQuery.trim()) {
       setSearchResults([]);
       setSearching(false);
+      if (catalogSearch) setSearchedQuery(debouncedQuery);
       return;
     }
 
@@ -423,6 +439,7 @@ export function SearchView({
       setSearchResults([]);
     }
 
+    setSearchedQuery(debouncedQuery);
     setSearching(false);
   }, [debouncedQuery, catalogSearch]);
 
@@ -431,11 +448,27 @@ export function SearchView({
       performSearch();
     } else {
       // A root lists its words only, and while the answer is pending no
-      // rows of the last query stay under this one.
+      // rows of the last query stay under this one. The cleared list is no
+      // query's answer: typing the last query again is pending, not
+      // "No results", until it is searched again.
       setSearchResults(NO_CATALOGUE_RESULTS);
+      setSearchedQuery('');
       setSearching(false);
     }
   }, [performSearch, catalogueShown]);
+
+  // Until the results are for what is typed (the query is debounced), and
+  // while the index is still being built on first use, an empty list means
+  // "not searched yet", not "nothing found". The first keystroke used to
+  // show "No results" until the results came in. If the index failed to
+  // load there is nothing to wait for. While the catalogue sits a query out
+  // (a root lists its words only) it searches nothing, so only the debounce
+  // is pending for it; the Ayahs are pending while the Quran search runs.
+  let cataloguePending = query !== debouncedQuery;
+  if (catalogueShown) {
+    cataloguePending = catalogSearch ? query !== searchedQuery : loading;
+  }
+  const resultsPending = cataloguePending || quranState.status === 'searching';
 
   const addToRecentSearches = useCallback(
     (result: SearchResult) =>
@@ -447,9 +480,16 @@ export function SearchView({
     [rememberSearch],
   );
 
+  // @ai-start
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+    onDismissKeyboard?.();
+  }, [onDismissKeyboard]);
+  // @ai-end
+
   const handleResultPress = useCallback(
     async (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard(); // @ai
       await addToRecentSearches(result);
 
       if (result.type === 'reciter') {
@@ -466,7 +506,7 @@ export function SearchView({
         });
       }
     },
-    [router, addToRecentSearches],
+    [router, addToRecentSearches, dismissKeyboard], // @ai
   );
 
   // An ayah from the Quran search opens in the Mushaf on the page of its
@@ -474,7 +514,7 @@ export function SearchView({
   const openQuranHit = useOpenQuranHit();
   const openVerse = useCallback(
     (verseKey: string, positions: readonly number[]) => {
-      Keyboard.dismiss();
+      dismissKeyboard();
       rememberSearch({
         type: 'verse',
         verseKey,
@@ -485,7 +525,7 @@ export function SearchView({
       });
       openQuranHit(verseKey, positions);
     },
-    [openQuranHit, rememberSearch],
+    [dismissKeyboard, openQuranHit, rememberSearch],
   );
 
   const quranRowAction = useMemo<Omit<QuranResultRowViewProps, 'row'>>(
@@ -510,7 +550,7 @@ export function SearchView({
 
   const handleSurahLongPress = useCallback(
     async (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard(); // @ai
       await addToRecentSearches(result);
 
       const surah = result.item as Surah;
@@ -546,9 +586,7 @@ export function SearchView({
           });
           break;
         default:
-          SheetManager.show('select-reciter', {
-            payload: {surahId, source: 'search'},
-          });
+          SheetManager.show('select-reciter', {payload: {surahId}});
       }
       // @ai-end
     },
@@ -560,6 +598,7 @@ export function SearchView({
       defaultReciter,
       playWithReciter,
       playWithRandomReciter,
+      dismissKeyboard, // @ai
     ],
   );
 
@@ -591,11 +630,11 @@ export function SearchView({
 
   const handleSurahOptions = useCallback(
     (result: SearchResult) => {
-      Keyboard.dismiss();
+      dismissKeyboard();
       const payload = buildSurahOptions(result.item as Surah);
       if (payload) SheetManager.show('surah-options', {payload});
     },
-    [buildSurahOptions],
+    [buildSurahOptions, dismissKeyboard],
   );
   // @ai-end
 
@@ -751,7 +790,7 @@ export function SearchView({
                   keyboardShouldPersistTaps="handled"
                 />
               </View>
-            ) : (
+            ) : !recentsLoaded ? null : ( // not "none" while they are being read
               <View style={styles.emptyState}>
                 <Feather
                   name="search"
@@ -797,6 +836,7 @@ export function SearchView({
               onResultPress={handleResultPress}
               onSurahPlay={handleSurahLongPress}
               onSurahOptions={handleSurahOptions}
+              onScrollBeginDrag={dismissKeyboard} // @ai
               quranRows={quranRows}
               onQuranRowAction={quranRowAction}
               bottomPadding={Math.max(keyboardHeight, bottomInset)}
@@ -818,9 +858,11 @@ export function SearchView({
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={() => Keyboard.dismiss()}
+            onScrollBeginDrag={dismissKeyboard} // @ai
             ListHeaderComponent={
-              searching ? (
+              resultsPending &&
+              searchResults.length === 0 &&
+              quranRows.length === 0 ? (
                 <View style={styles.loadingContainer}>
                   <LoadingIndicator size={24} />
                 </View>

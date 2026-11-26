@@ -86,7 +86,9 @@
     "useDefault": "Use Default Reciter",
     "random": "Random Reciter",
     "browseAll": "Browse All Reciters",
-    "askEveryTime": "Ask every time"
+    "askEveryTime": "Ask every time",
+    "surahUnavailable": "{{reciter}} has not recorded {{surah}}",
+    "surahUnavailableHint": "Choose another reciter for it."
   },
   "copy": {
     "optionsTitle": "Copy Options",
@@ -156,7 +158,10 @@
     "downloaded": "Downloaded",
     "shareListen": "Listen to Surah {{surah}} on {{appName}}",
     "shareListenSurah": "Listen to {{surah}} on {{appName}}",
-    "removeFromPlaylist": "Remove from Playlist"
+    "removeFromPlaylist": "Remove from Playlist",
+    "downloadFailedTitle": "Couldn't download {{surah}}",
+    "downloadFailedHint": "Check your internet connection and try again.",
+    "downloadOfflineHint": "You're offline. Connect to the internet and try again."
   },
   "uploads": {
     "untagged": "Untagged",
@@ -242,6 +247,8 @@
     "completeMessage_other": "Successfully downloaded {{count}} items from \"{{name}}\".",
     "failedTitle": "Download Failed",
     "failedMessage": "An error occurred while downloading the playlist. Please try again.",
+    "partialTitle": "Download Incomplete",
+    "partialMessage": "Downloaded {{downloaded}} of {{total}} from \"{{name}}\". Try again to download the rest.",
     "downloadingPlaylist": "Downloading playlist...",
     "itemsProgress_one": "{{current}} of {{count}} item",
     "itemsProgress_other": "{{current}} of {{count}} items"
@@ -266,7 +273,11 @@
   "translationContent": {
     "notAvailable": "Translation not available",
     "switch": "Switch",
-    "prev": "Prev"
+    "prev": "Prev",
+    "names": {
+      "saheeh": "Saheeh International",
+      "clearQuran": "The Clear Quran"
+    }
   },
   "repeat": {
     "title": "Repeat Settings",

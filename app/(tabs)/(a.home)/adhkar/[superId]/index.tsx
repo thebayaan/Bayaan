@@ -174,9 +174,13 @@ const SuperCategoryListScreen: React.FC = () => {
   }, [superId, getSuperCategoryById]);
 
   const titled = superCategory ?? storedSuperCategory;
-  const displayTitle = titled
-    ? getSuperCategoryDisplayTitle(titled)
-    : t('common:status.loading');
+  // @ai-start
+  // A list that failed to load or no longer exists (an old link) kept
+  // "Loading..." as its title for good. Once loading is over, say "Adhkar".
+  let displayTitle = t('common:terms.adhkar');
+  if (titled) displayTitle = getSuperCategoryDisplayTitle(titled);
+  else if (loading) displayTitle = t('common:status.loading');
+  // @ai-end
 
   // The session's list title, localized as the header shows it.
   const listTitle = superCategory

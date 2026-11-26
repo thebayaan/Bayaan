@@ -24,6 +24,8 @@ export interface BulkDownloadDeps {
     reciterId: string,
     rewayatId: string | undefined,
     onProgress?: (progress: number) => void,
+    /** `onStart` receives a function that stops this download. */
+    options?: {onStart?: (cancel: () => void) => void},
   ) => Promise<{filePath: string; fileSize: number}>;
   isDownloaded: (reciterId: string, surahId: string) => boolean;
   isDownloadedWithRewayat: (
@@ -52,6 +54,8 @@ export interface BulkDownloadCallbacks {
   interDownloadDelayMs?: number;
   /** Minimum gap (ms) between per-item progress writes to the store. */
   progressThrottleMs?: number;
+  /** How often (ms) `isCancelled` is polled while a file is downloading. */
+  cancelPollMs?: number;
 }
 
 export interface BulkDownloadSummary {
@@ -69,6 +73,7 @@ export interface BulkDownloadSummary {
 
 const DEFAULT_INTER_DOWNLOAD_DELAY_MS = 100;
 const DEFAULT_PROGRESS_THROTTLE_MS = 300;
+const DEFAULT_CANCEL_POLL_MS = 250;
 
 /**
  * Builds the download-tracking ID for a surah. This MUST match the format used
@@ -83,6 +88,18 @@ export function buildDownloadId(item: BulkDownloadItem): string {
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * True for the download service's "offline, did not start" error. Read off
+ * the error's `reason` so this module stays free of the service's imports.
+ */
+function isOfflineError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as {reason?: unknown}).reason === 'offline'
+  );
 }
 
 /**
@@ -103,6 +120,7 @@ export async function bulkDownloadSurahs(
     isCancelled,
     interDownloadDelayMs = DEFAULT_INTER_DOWNLOAD_DELAY_MS,
     progressThrottleMs = DEFAULT_PROGRESS_THROTTLE_MS,
+    cancelPollMs = DEFAULT_CANCEL_POLL_MS,
   } = callbacks;
 
   const total = items.length;
@@ -148,6 +166,18 @@ export async function bulkDownloadSurahs(
       continue;
     }
 
+    // Cancelling used to be noticed only between files. On iOS a file that
+    // is waiting for a connection never ends, so the batch sat on it and
+    // tapping the button again did nothing. Watch for the cancel while the
+    // file is in flight and stop that file too.
+    let stopInFlight: (() => void) | null = null;
+    const cancelWatch = isCancelled
+      ? setInterval(() => {
+          if (isCancelled()) stopInFlight?.();
+        }, cancelPollMs)
+      : null;
+    let offline = false;
+
     try {
       deps.setDownloading(downloadId);
 
@@ -160,6 +190,11 @@ export async function bulkDownloadSurahs(
           if (now - lastProgressUpdate < progressThrottleMs) return;
           lastProgressUpdate = now;
           deps.setDownloadProgress(downloadId, progress);
+        },
+        {
+          onStart: cancel => {
+            stopInFlight = cancel;
+          },
         },
       );
 
@@ -175,11 +210,24 @@ export async function bulkDownloadSurahs(
 
       downloaded += 1;
     } catch (error) {
-      failed += 1;
-      console.error(`Bulk download failed for surah ${item.surahId}:`, error);
+      if (isCancelled?.()) {
+        // Stopped on request: not a failure.
+        cancelled = true;
+      } else if (isOfflineError(error)) {
+        // Nothing can start while offline, so the rest would fail the same
+        // way one by one. Count them now and stop.
+        offline = true;
+        failed += pending.length - index;
+      } else {
+        failed += 1;
+        console.error(`Bulk download failed for surah ${item.surahId}:`, error);
+      }
     } finally {
+      if (cancelWatch) clearInterval(cancelWatch);
       deps.clearDownloading(downloadId);
     }
+
+    if (cancelled || offline) break;
 
     onProgress?.(index + 1, pendingTotal);
 

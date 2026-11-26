@@ -1,8 +1,9 @@
 // @ai-generated
 /**
- * On iPad the list and translation views take the pane they are given and
- * keep their text in a centred reading column of at most 680pt. Phones leave
- * the size out, and readingViews.hafsGolden checks they render as before.
+ * The list and translation views take the size they are given and keep
+ * their text in a centred reading column of at most 680pt: on iPad, and on a
+ * phone in landscape. A phone in portrait is narrower than the column and
+ * renders as before (readingViews.hafsGolden checks that in full).
  */
 import React, {act} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
@@ -242,22 +243,81 @@ describe('ReadingPageView on iPad', () => {
   });
 });
 
-describe('ContinuousListView on iPad', () => {
-  function renderList(width: number, scrollsToTop?: boolean) {
-    act(() => {
-      TestRenderer.create(
-        <ContinuousListView
-          textColor="#111111"
-          labelColor="#666666"
-          borderColor="#cccccc"
-          initialPage={1}
-          width={width}
-          scrollsToTop={scrollsToTop}
-        />,
-      );
-    });
-  }
+function renderList(width: number, scrollsToTop?: boolean) {
+  act(() => {
+    TestRenderer.create(
+      <ContinuousListView
+        textColor="#111111"
+        labelColor="#666666"
+        borderColor="#cccccc"
+        initialPage={1}
+        width={width}
+        scrollsToTop={scrollsToTop}
+      />,
+    );
+  });
+}
 
+// The reader unlocks rotation on phones. The list views sized themselves
+// from the screen the app launched with (portrait), so in landscape the
+// pager turned landscape-wide pages over portrait-sized items: two narrow
+// pages side by side, the lower half of each off screen. They now take the
+// pager's live item size, which the viewer always passes.
+describe('a phone in landscape (844 x 390)', () => {
+  it('the page fills the pager item, not the portrait screen', () => {
+    const r = renderPage({width: 844, height: 390}, false);
+    const page = r.root.findAll(n => (n.type as unknown) === View)[0];
+    expect(flat(page)).toMatchObject({width: 844, height: 390});
+  });
+
+  it('keeps the text in the centred column, clear of the notch', () => {
+    const r = renderPage({width: 844, height: 390}, false);
+    const scroll = r.root.find(n => (n.type as unknown) === ScrollView);
+    expect(scroll.props.contentContainerStyle.paddingHorizontal).toBe(82);
+    expect(mockRecorded.dividerWidths[0]).toBe(680);
+  });
+
+  it('the vertical list sizes its dividers from the landscape width', () => {
+    renderList(844);
+    expect(
+      mockRecorded.flashList?.contentContainerStyle?.paddingHorizontal,
+    ).toBe(82);
+    expect(mockRecorded.dividerWidths[0]).toBe(680);
+  });
+});
+
+describe('a phone in portrait (390 x 844)', () => {
+  it('keeps its edge padding and full-width page', () => {
+    const r = renderPage({width: 390, height: 844}, false);
+    const page = r.root.findAll(n => (n.type as unknown) === View)[0];
+    expect(flat(page)).toMatchObject({width: 390, height: 844});
+    const scroll = r.root.find(n => (n.type as unknown) === ScrollView);
+    expect(scroll.props.contentContainerStyle.paddingHorizontal).toBe(16);
+    expect(mockRecorded.dividerWidths[0]).toBe(358);
+  });
+
+  it('keeps the page-edge look in the book layout', () => {
+    const r = renderPage({width: 390, height: 844}, true);
+    expect(
+      r.root.findAll(
+        n => (n.type as unknown) === View && flat(n).borderRadius === 40,
+      ),
+    ).toHaveLength(0);
+    expect(mockRecorded.dividerWidths[0]).toBeCloseTo(
+      390 - 4 - moderateScale(12) * 2,
+    );
+  });
+
+  it('the vertical list keeps its phone padding', () => {
+    renderList(390);
+    expect(
+      mockRecorded.flashList?.contentContainerStyle?.paddingHorizontal,
+    ).toBe(moderateScale(8));
+    expect(mockRecorded.dividerWidths[0]).toBeCloseTo(390 - moderateScale(16));
+  });
+});
+
+describe('ContinuousListView on iPad', () => {
   it('keeps the text in a centred 680pt column', () => {
     renderList(1376);
     expect(

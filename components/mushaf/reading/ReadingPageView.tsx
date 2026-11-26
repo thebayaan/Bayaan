@@ -27,6 +27,7 @@ import {
   getReadingPageItems,
   type ReadingPageItem,
 } from '@/utils/mushafPageVerses';
+import {useEnhancedVersesVersion} from '@/utils/enhancedVersesVersion'; // @ai
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
@@ -40,8 +41,6 @@ import PageEdgeDecoration, {
 } from '../PageEdgeDecoration';
 import {moderateScale} from '@/utils/scale';
 import {
-  SCREEN_WIDTH,
-  SCREEN_HEIGHT,
   PAGE_PADDING_HORIZONTAL,
   PAGE_PADDING_TOP,
   PAGE_PADDING_BOTTOM,
@@ -59,6 +58,9 @@ import {usePlaybackBand} from '../skia/playbackBand';
 import {readingPageUnitItems, themeHafsKeyOfRow} from './mushafVerseUnitRows';
 import {VerseUnitsPending} from './VerseUnitsPending';
 import {useRecitedVerseKey} from '@/store/recitationTrackingStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {selectedRowKeys} from './selectedRowKeys';
+import {appLayoutDirection} from '@/utils/rtl';
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 // @ai-end
@@ -80,11 +82,10 @@ interface ReadingPageViewProps {
   onTap?: () => void;
   // @ai-start
   /**
-   * The pager item's size on iPad, where the text also sits in a centred
-   * reading column. Phones leave it out and keep the launch-time screen
-   * size.
+   * The pager item's live size. Where it is wider than the reading column
+   * (iPad, a phone in landscape) the text sits in a centred column.
    */
-  pageSize?: {width: number; height: number};
+  pageSize: {width: number; height: number};
   onFirstContent?: () => void;
   // @ai-end
 }
@@ -208,6 +209,10 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   );
   // @ai-end
 
+  // Counts rebuilds of the verse data: the page's rows are taken again when
+  // another translation has been applied. Before, a page already visited
+  // kept the previous translation's text under the new one's name.
+  const versesVersion = useEnhancedVersesVersion();
   const items = useMemo<ReadingPageItem[]>(
     () =>
       // @ai — a rewayah's page: its verse rows (none until they are ready)
@@ -216,7 +221,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
           ? readingPageUnitItems(pageUnits, pageNumber)
           : []
         : getReadingPageItems(pageNumber),
-    [pageNumber, unitsRewayah, pageUnits],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pageNumber, unitsRewayah, pageUnits, versesVersion],
   );
 
   // @ai-start
@@ -236,26 +242,25 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     [pageNumber],
   );
 
-  const pageWidth = pageSize?.width ?? SCREEN_WIDTH;
-  const pageHeight = pageSize?.height ?? SCREEN_HEIGHT;
+  // Always the size the pager gives its items. The screen size the app
+  // launched with (portrait) was used on phones, which broke the pager in
+  // landscape: its items were narrower and taller than the pages it turned.
+  const pageWidth = pageSize.width;
+  const pageHeight = pageSize.height;
 
-  // Content area horizontal padding for the ScrollView
+  // Content area horizontal padding for the ScrollView. A phone in portrait
+  // is narrower than the reading column, so it keeps its edge padding.
   const bookContentPadding = moderateScale(12);
   const contentHorizontalPadding = isBookLayout
     ? bookContentPadding
-    : pageSize
-      ? readingColumnPadding(pageWidth, PAGE_PADDING_HORIZONTAL + 8)
-      : PAGE_PADDING_HORIZONTAL + 8;
+    : readingColumnPadding(pageWidth, PAGE_PADDING_HORIZONTAL + 8);
 
-  // Book layout on iPad: the card holds the reading column and is centred
-  // in the item with all four corners rounded, like a single mushaf page.
-  const sheetWidth = pageSize
-    ? Math.min(
-        pageWidth,
-        READING_COLUMN_MAX_WIDTH +
-          (bookContentPadding + EDGE_HORIZONTAL_INSET) * 2,
-      )
-    : pageWidth;
+  // Book layout in a wide item: the card holds the reading column and is
+  // centred with all four corners rounded, like a single mushaf page.
+  const sheetWidth = Math.min(
+    pageWidth,
+    READING_COLUMN_MAX_WIDTH + (bookContentPadding + EDGE_HORIZONTAL_INSET) * 2,
+  );
   const symmetricEdges = sheetWidth < pageWidth;
 
   // Width available for SurahDivider / content items
@@ -290,6 +295,75 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       scrollViewRef.current?.scrollTo({y, animated: true});
     }
   }, [isPlaying, activeRowKey]);
+
+  // @ai-start
+  // The verse a jump took the reader to (a search result, a bookmark, a
+  // link, a similar verse) is selected in the mushaf's selection store, for
+  // the page it is on. The rows here only read the verse list's own store,
+  // so the page opened at its top with nothing lit and the verse often
+  // below the fold. Its rows are lit as on the mushaf pages, and the page
+  // scrolls to the first of them.
+  const selectedVerseKeys = useMushafVerseSelectionStore(
+    s => s.selectedVerseKeys,
+  );
+  const selectedRewayah = useMushafVerseSelectionStore(s => s.selectedRewayah);
+  const selectedPageNumber = useMushafVerseSelectionStore(
+    s => s.selectedPageNumber,
+  );
+  const selectedKeys = useMemo(
+    () =>
+      selectedPageNumber === pageNumber && (!unitsRewayah || pageUnits)
+        ? selectedRowKeys(
+            pageUnits ? shownVerseUnitsOf(pageUnits) : null,
+            selectedRewayah,
+            selectedVerseKeys,
+          )
+        : NO_KEYS,
+    [
+      selectedPageNumber,
+      pageNumber,
+      unitsRewayah,
+      pageUnits,
+      selectedRewayah,
+      selectedVerseKeys,
+    ],
+  );
+
+  // Where the content's first row sits on screen at scroll 0: just below
+  // the header panel. A row scrolled to its own y would sit under the panel.
+  // (The book card starts insets.top down, its content as much higher.)
+  const firstRowInset = PAGE_PADDING_TOP - (isBookLayout ? insets.top : 0);
+  const firstRowInsetRef = useRef(firstRowInset);
+  useEffect(() => {
+    firstRowInsetRef.current = firstRowInset;
+  }, [firstRowInset]);
+  const scrollToRowAt = useCallback((y: number, animated: boolean) => {
+    scrollViewRef.current?.scrollTo({
+      y: Math.max(0, y - firstRowInsetRef.current),
+      animated,
+    });
+  }, []);
+
+  // The row being scrolled to. The page is usually mounted only as the
+  // pager reaches it, and a row's y moves while the rows above it measure
+  // (the verse text is drawn once its width is known): the row scrolls
+  // again from its own onLayout until the reader drags the page.
+  // Every jump writes a new selectedVerseKeys array, so the effect also runs
+  // for a second jump to the verse still lit: after the reader dragged away,
+  // that jump scrolls back to it instead of lighting it off screen.
+  const jumpRowKey = selectedKeys[0] ?? null;
+  const jumpRowKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    jumpRowKeyRef.current = jumpRowKey;
+    if (!jumpRowKey) return;
+    // A page already laid out (a jump within the page being read).
+    const y = verseOffsetsRef.current.get(jumpRowKey);
+    if (y != null) scrollToRowAt(y, true);
+  }, [jumpRowKey, selectedVerseKeys, scrollToRowAt]);
+  const handleScrollBeginDrag = useCallback(() => {
+    jumpRowKeyRef.current = null;
+  }, []);
+  // @ai-end
 
   // Tap on verse → toggle immersive mode (matches DKPageView tap behavior)
   const handleVersePress = useCallback(() => {
@@ -352,6 +426,10 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
               item.verse.verse_key,
               e.nativeEvent.layout.y,
             );
+            // @ai — the row a jump is scrolling to: follow its new place
+            if (jumpRowKeyRef.current === item.verse.verse_key) {
+              scrollToRowAt(e.nativeEvent.layout.y, false); // @ai
+            }
           }}
           style={
             themeBg ? {backgroundColor: themeBg, borderRadius: 6} : undefined
@@ -385,6 +463,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             wbwShowTranslation={wbwShowTranslation}
             wbwShowTransliteration={wbwShowTransliteration}
             unitRow={unitRow} // @ai — the row is this rewayah verse
+            // @ai — the verse a jump took the reader to; unset otherwise, so
+            // the row's props stay exactly as before (readingViews.hafsGolden)
+            selected={selectedKeys.includes(item.verse.verse_key) || undefined}
           />
         </View>
       );
@@ -408,6 +489,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       playbackVerseKeys, // @ai
       basmalaSurah, // @ai
       bandKeys, // @ai
+      selectedKeys, // @ai
+      scrollToRowAt, // @ai
       isPlaying,
       translationName,
       selectedTranslationId,
@@ -459,6 +542,11 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       style={{
         width: pageWidth,
         height: pageHeight,
+        // @ai — the page card, its edges and rounded corners are drawn in
+        // physical book coordinates (as DKPageView): inherited RTL swapped
+        // them to the wrong side in Arabic. The text re-takes the app's
+        // direction in the scroll content below.
+        direction: 'ltr',
         backgroundColor: isBookLayout ? bgColor : cardColor,
       }}>
       {isBookLayout ? (
@@ -495,10 +583,12 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
               ref={scrollViewRef}
               style={styles.scrollView}
               contentContainerStyle={{
+                ...appLayoutDirection, // @ai — the text: see the root
                 paddingHorizontal: bookContentPadding,
                 paddingTop: PAGE_PADDING_TOP - METADATA_OFFSET - insets.top,
                 paddingBottom: PAGE_PADDING_BOTTOM - insets.top,
               }}
+              onScrollBeginDrag={handleScrollBeginDrag} // @ai
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled>
               {scrollContent}
@@ -516,10 +606,12 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
           ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={{
+            ...appLayoutDirection, // @ai — the text: see the root
             paddingTop: PAGE_PADDING_TOP - METADATA_OFFSET,
             paddingBottom: PAGE_PADDING_BOTTOM,
             paddingHorizontal: contentHorizontalPadding,
           }}
+          onScrollBeginDrag={handleScrollBeginDrag} // @ai
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled>
           {scrollContent}

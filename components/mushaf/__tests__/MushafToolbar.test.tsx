@@ -6,8 +6,11 @@
  *
  *  - the verse label is in the numbering of the mushaf on screen (the store's
  *    currentVerseLabel), never "S:0", and says when verse tracking is off;
- *  - previous / next ayah are disabled when there is no verse tracking;
- *  - refused playback requests and untracked surahs surface as notices.
+ *  - previous / next ayah are disabled when there is no verse tracking, and
+ *    ask the store to skip (it tells a skip from the reciter moving on);
+ *  - refused playback requests and untracked surahs surface as notices;
+ *  - after Stop, Play and the options open for the page on screen (the store
+ *    kept it), not for page 1.
  */
 
 import React, {act} from 'react';
@@ -87,8 +90,9 @@ jest.mock('@/services/mushaf/MushafSessionStore', () => ({
   mushafSessionStore: {setLastScreenWasMushaf: jest.fn()},
 }));
 
+const mockShowSheet = jest.fn();
 jest.mock('react-native-actions-sheet', () => ({
-  SheetManager: {show: jest.fn()},
+  SheetManager: {show: (...args: unknown[]) => mockShowSheet(...args)},
 }));
 
 jest.mock('@/utils/toastUtils', () => ({
@@ -124,6 +128,7 @@ interface ButtonProps {
   icon?: string;
   disabled?: boolean;
   children?: unknown;
+  onPress?: () => void;
 }
 
 let renderer: TestRenderer.ReactTestRenderer | null = null;
@@ -146,6 +151,7 @@ function setPlayer(state: object) {
 
 beforeEach(() => {
   mockShowToast.mockClear();
+  mockShowSheet.mockClear();
   useMushafPlayerStore.setState({
     playbackState: 'idle',
     currentSurah: 0,
@@ -230,6 +236,48 @@ describe('verse label', () => {
       numberingMode: 'hafs',
     });
     expect(playPause().children).toBe('Al-Baqarah');
+  });
+});
+
+describe('previous / next ayah', () => {
+  it('ask the store to skip', () => {
+    const nextVerse = jest.fn();
+    const previousVerse = jest.fn();
+    setPlayer({
+      playbackState: 'playing',
+      currentSurah: 2,
+      numberingMode: 'hafs',
+      nextVerse,
+      previousVerse,
+    });
+    act(() => button('forward.end.fill').onPress?.());
+    expect(nextVerse).toHaveBeenCalledTimes(1);
+    expect(previousVerse).not.toHaveBeenCalled();
+    act(() => button('backward.end.fill').onPress?.());
+    expect(previousVerse).toHaveBeenCalledTimes(1);
+    expect(nextVerse).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('after Stop', () => {
+  it('Play and the options open for the page on screen, not page 1', () => {
+    setPlayer({
+      playbackState: 'playing',
+      currentSurah: 16,
+      numberingMode: 'hafs',
+      currentPage: 300,
+    });
+    act(() => button('stop.fill').onPress?.());
+    expect(useMushafPlayerStore.getState().playbackState).toBe('idle');
+    act(() => button('play.fill').onPress?.());
+    expect(mockShowSheet).toHaveBeenLastCalledWith('mushaf-player-options', {
+      payload: {currentPage: 300},
+    });
+    mockShowSheet.mockClear();
+    act(() => button('ellipsis.circle').onPress?.());
+    expect(mockShowSheet).toHaveBeenLastCalledWith('mushaf-player-options', {
+      payload: {currentPage: 300},
+    });
   });
 });
 

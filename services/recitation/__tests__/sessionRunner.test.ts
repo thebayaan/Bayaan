@@ -10,6 +10,7 @@ import {
   mockEngine,
   mockMic,
   mockPlayerPause,
+  mockPlayerPlay,
   playerControl,
   recitationAssetsModule,
   recitationEngineModule,
@@ -50,6 +51,8 @@ type Host = typeof import('../engineHost');
 let runner: Runner;
 let host: Host;
 let ring: (typeof import('../secondLook/audioRing'))['recentAudio'];
+// @ai The adhkar session store the runner under test sees.
+let adhkarStore: (typeof import('@/store/adhkarSessionStore'))['useAdhkarSessionStore'];
 let appState: {fire: (next: string) => void};
 
 function handlers(): jest.Mocked<SessionHandlers> {
@@ -70,6 +73,7 @@ beforeEach(() => {
     runner = require('../sessionRunner');
     host = require('../engineHost');
     ring = require('../secondLook/audioRing').recentAudio;
+    adhkarStore = require('@/store/adhkarSessionStore').useAdhkarSessionStore; // @ai
   });
 });
 
@@ -269,8 +273,61 @@ describe('sessionRunner', () => {
   it("pauses Bayaan's own audio before opening the mic", async () => {
     playerControl.playing = true;
     await runner.startSession({purpose: 'identify', hint: null}, handlers());
-    expect(mockPlayerPause).toHaveBeenCalledTimes(1);
+    // @ai-start
+    // Asked at the start and again before the mic opens (the mock keeps
+    // reporting 'playing'; a real player is paused by the first).
+    expect(mockPlayerPause).toHaveBeenCalled();
+    // @ai-end
   });
+
+  // @ai-start
+  // The permission prompt and the model load can take a while. Audio left
+  // playing through them reached its next clip or surah, and a starting
+  // track ends any listening session: the mic never opened.
+  it('pauses it before the permission prompt and the model load', async () => {
+    playerControl.playing = true;
+    const order: string[] = [];
+    mockPlayerPause.mockImplementation(() => void order.push('pause'));
+    mockRecitation.micStreamModule.requestMicPermission.mockImplementationOnce(
+      async () => {
+        order.push('permission');
+        return true;
+      },
+    );
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    mockPlayerPause.mockReset();
+    expect(order.slice(0, 2)).toEqual(['pause', 'permission']);
+  });
+  // @ai-end
+
+  // @ai-start
+  it.each(['buffering', 'loading'])(
+    'pauses a player that is still %s, so it cannot start under the mic',
+    async state => {
+      playerControl.state = state;
+      await runner.startSession({purpose: 'identify', hint: null}, handlers());
+      expect(mockPlayerPause).toHaveBeenCalled();
+    },
+  );
+
+  it('pauses adhkar that is playing before opening the mic', async () => {
+    const session = {status: 'playing'} as NonNullable<
+      ReturnType<typeof adhkarStore.getState>['session']
+    >;
+    adhkarStore.setState({session});
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    expect(adhkarStore.getState().session?.status).toBe('paused');
+  });
+
+  it('leaves paused adhkar as it is', async () => {
+    const session = {status: 'paused', lastActiveAt: 7} as NonNullable<
+      ReturnType<typeof adhkarStore.getState>['session']
+    >;
+    adhkarStore.setState({session});
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    expect(adhkarStore.getState().session).toBe(session);
+  });
+  // @ai-end
 
   it('the model stays loaded while a session runs', async () => {
     await runner.startSession({purpose: 'follow', hint: null}, handlers());
@@ -279,6 +336,98 @@ describe('sessionRunner', () => {
     await runner.stopSession('user');
     await host.unloadRecitationModel();
     expect(mockEngine.dispose).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Bayaan's audio is paused before the permission prompt and the model load.
+// A start that fails there plays it again: the surah or adhkar goes on as it
+// did when only a mic about to open paused it.
+describe('a start that fails before the mic opens', () => {
+  type AdhkarSession = NonNullable<
+    ReturnType<typeof adhkarStore.getState>['session']
+  >;
+
+  beforeEach(() => {
+    playerControl.playing = true;
+    // A real player reports 'paused' once it is paused.
+    mockPlayerPause.mockImplementation(() => {
+      playerControl.playing = false;
+    });
+  });
+
+  afterEach(() => {
+    mockPlayerPause.mockReset();
+  });
+
+  it('a denied microphone plays the paused surah again', async () => {
+    micControl.granted = false;
+    const h = handlers();
+    await expect(
+      runner.startSession({purpose: 'identify', hint: null}, h),
+    ).resolves.toBe(false);
+    expect(h.onUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({status: 'error', stage: 'permission'}),
+    );
+    expect(mockPlayerPause).toHaveBeenCalledTimes(1);
+    expect(mockPlayerPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it('a model that fails to load plays the paused surah again', async () => {
+    recitationEngineModule.createRecitationEngine.mockRejectedValueOnce(
+      new Error('offline'),
+    );
+    const h = handlers();
+    await expect(
+      runner.startSession({purpose: 'follow', hint: null}, h),
+    ).resolves.toBe(false);
+    expect(h.onUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({status: 'error', stage: 'model_load'}),
+    );
+    expect(mockPlayerPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it('plays the paused adhkar clip again', async () => {
+    playerControl.playing = false;
+    micControl.granted = false;
+    adhkarStore.setState({
+      session: {status: 'playing', trackToken: 3} as AdhkarSession,
+    });
+    await runner.startSession({purpose: 'follow', hint: null}, handlers());
+    expect(adhkarStore.getState().session).toMatchObject({
+      status: 'loading',
+      trackToken: 3,
+    });
+  });
+
+  it('a surah stopped meanwhile is not started again', async () => {
+    mockRecitation.micStreamModule.requestMicPermission.mockImplementationOnce(
+      async () => {
+        playerControl.state = 'stopped';
+        return false;
+      },
+    );
+    await runner.startSession({purpose: 'identify', hint: null}, handlers());
+    expect(mockPlayerPlay).not.toHaveBeenCalled();
+  });
+
+  it('a mic that fails to open leaves it paused', async () => {
+    mockRecitation.micStreamModule.startMicStream.mockRejectedValueOnce(
+      new Error('mic busy'),
+    );
+    const h = handlers();
+    await runner.startSession({purpose: 'follow', hint: null}, h);
+    expect(h.onUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({status: 'error', stage: 'mic'}),
+    );
+    expect(mockPlayerPlay).not.toHaveBeenCalled();
+  });
+
+  it('a start that opens the mic leaves it paused', async () => {
+    await expect(
+      runner.startSession({purpose: 'follow', hint: null}, handlers()),
+    ).resolves.toBe(true);
+    expect(mockPlayerPause).toHaveBeenCalledTimes(1);
+    expect(mockPlayerPlay).not.toHaveBeenCalled();
   });
 });
 

@@ -28,6 +28,7 @@ import {usePlayCountStore} from '@/store/playCountStore';
 import {useDefaultReciterPick} from '@/store/reciterStore';
 import {useTafseerStore} from '@/store/tafseerStore';
 import {useThemeStore} from '@/store/themeStore';
+import {useFollowAlongChoice} from '@/store/timestampStore';
 
 export const PERSISTED_STORES: readonly PersistedStore[] = [
   useSettings,
@@ -45,4 +46,5 @@ export const PERSISTED_STORES: readonly PersistedStore[] = [
   useDefaultReciterPick,
   useTafseerStore,
   useThemeStore,
+  useFollowAlongChoice,
 ];

@@ -87,7 +87,10 @@
     "downloadCompleteTitle": "اكتمل التنزيل",
     "downloadCompleteMessage": "تم تنزيل جميع السور المحبّبة.",
     "downloadErrorTitle": "خطأ في التنزيل",
-    "downloadErrorMessage": "ربما تعذّر تنزيل بعض السور."
+    "downloadErrorMessage": "ربما تعذّر تنزيل بعض السور.",
+    "downloadFailedMessage": "تعذّر تنزيل أي سورة. تحقّق من اتصالك بالإنترنت ثم حاول مرة أخرى.",
+    "downloadPartialTitle": "انتهى التنزيل",
+    "downloadPartialMessage": "تم تنزيل: {{downloaded}}. تعذّر تنزيل: {{failed}}. اختر «تنزيل الكل» مرة أخرى لإعادة المحاولة للباقي."
   },
   "uploadsScreen": {
     "recitationsCount_zero": "لا توجد تلاوات",
@@ -149,7 +152,8 @@
     "typeInPlaylist": "في قائمة تشغيل"
   },
   "playlistDetail": {
-    "empty": "لا توجد سور في قائمة التشغيل هذه"
+    "empty": "لا توجد سور في قائمة التشغيل هذه",
+    "notFound": "قائمة التشغيل هذه لم تعد موجودة"
   },
   "reciterDownloads": {
     "empty": "لا توجد تنزيلات لهذا القارئ"

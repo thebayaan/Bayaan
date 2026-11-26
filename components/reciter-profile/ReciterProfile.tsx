@@ -30,7 +30,6 @@ import {Surah, SURAHS} from '@/data/surahData';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {getReciterByIdSync} from '@/services/dataService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {StatusBar} from 'expo-status-bar';
 import {useLoved} from '@/hooks/useLoved';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -63,11 +62,7 @@ import Animated, {
 import {ActionButtons} from './components/ActionButtons';
 import {ReciterHeader} from './components/ReciterHeader';
 import {NavigationButtons} from './components/NavigationButtons';
-import {
-  SurahList,
-  SurahListTableHeader,
-  TABLE_MIN_WIDTH,
-} from './components/SurahList'; // @ai
+import {SurahList, SurahListTableHeader} from './components/SurahList'; // @ai
 import {SearchView} from './components/SearchView';
 import {RewayatTabBar} from './components/RewayatTabBar';
 import {UploadsTabContent} from './components/UploadsTabContent';
@@ -85,6 +80,8 @@ import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import i18n from '@/i18n';
+import {showToast} from '@/utils/toastUtils';
 import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
 import {currentLanguage} from '@/i18n/language';
 import {SOURCE_LANGUAGE} from '@/i18n/languages';
@@ -93,6 +90,14 @@ import {getRecitationStyleLabel} from '@/components/player/v2/recitationStyle';
 import {rankSurahs} from '@/utils/search/catalog'; // @ai
 // @ai-end
 import {hasPagerReachedInitialPage} from './utils/pagerLayout'; // @ai
+// @ai-start
+import {
+  HERO_COLUMN_WIDTH,
+  heroColumnTop,
+  usesHeroColumn,
+} from './utils/heroColumn';
+import {TABLE_MIN_WIDTH} from './utils/surahTable';
+// @ai-end
 import {TabletReciterHero} from './components/TabletReciterHero'; // @ai
 import {useResponsive} from '@/hooks/useResponsive'; // @ai
 
@@ -216,13 +221,49 @@ const SurahListSkeleton: React.FC<{theme: any}> = React.memo(({theme}) => {
 const isGlass = USE_GLASS;
 
 // @ai-start
+const notFoundStyles = StyleSheet.create({
+  body: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: moderateScale(32),
+    gap: moderateScale(8),
+  },
+  title: {
+    fontSize: moderateScale(17),
+    fontFamily: 'Manrope-SemiBold',
+    textAlign: 'center',
+  },
+  hint: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-Regular',
+    textAlign: 'center',
+  },
+  button: {
+    marginTop: moderateScale(12),
+    paddingHorizontal: moderateScale(20),
+    paddingVertical: moderateScale(10),
+    borderRadius: moderateScale(12),
+    borderWidth: 1,
+  },
+  buttonPressed: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    fontSize: moderateScale(14),
+    fontFamily: 'Manrope-SemiBold',
+  },
+});
+// @ai-end
+
+// @ai-start
 const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
   showLoved = false,
   initialRewayatId: initialRewayatIdProp,
 }) => {
   const {theme} = useTheme();
-  const {t} = useTranslation('player');
+  const {t} = useTranslation(['player', 'common']);
   const styles = createSharedStyles(theme);
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
@@ -232,6 +273,18 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const {isTablet} = useResponsive();
   const pageMargin = windowWidth >= 900 ? 32 : 24;
   // @ai-start
+  // When the profile is wide enough for the hero column and the table
+  // beside it, the hero is a fixed leading column and only the tab bar and
+  // the surahs scroll (ipad-standards §10.2). The profile's own width
+  // decides, not the window: the sidebar and the capped Collection column
+  // take part of the window.
+  const [profileWidth, setProfileWidth] = useState<number | null>(null);
+  const handleProfileLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = e.nativeEvent.layout.width;
+    setProfileWidth(prev => (prev === next ? prev : next));
+  }, []);
+  const heroColumn =
+    profileWidth !== null && usesHeroColumn(isTablet, profileWidth);
   // The pager pages must match the pager's own width, not the window: on
   // iPad the profile sits beside the sidebar inside a capped column, so
   // window-wide pages were clipped and swipes landed mid-page. Pages render
@@ -396,6 +449,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   );
   const scrollTargetRef = useRef<string | null>(null);
   const activeTabRef = useRef(initialRewayatId ?? '');
+  const pagerContentWidthRef = useRef(0); // @ai: last width after the reveal
 
   const [collapsibleHeight, setCollapsibleHeight] = useState(0);
   const [stickyHeight, setStickyHeight] = useState(0);
@@ -403,7 +457,15 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   // iOS: offset below transparent native header; Android: below custom sticky title
   const stickyPinOffset = isGlass ? headerHeight : stickyTitleHeight;
-  const {isLovedWithRewayat} = useLoved();
+  // @ai-start
+  const heroColumnTopInset = heroColumnTop({
+    isGlass,
+    headerHeight,
+    safeAreaTop: insets.top,
+    stickyPinOffset,
+  });
+  // @ai-end
+  const {isLovedWithRewayat, lovedTracks} = useLoved();
   const {
     isDownloaded,
     isDownloadedWithRewayat,
@@ -413,21 +475,35 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   // @ai-start
   const {setDownloading, clearDownloading, addDownload, setDownloadProgress} =
     useDownloadActions();
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [downloadAllProgress, setDownloadAllProgress] = useState(0);
-  const downloadAllCancelledRef = useRef(false);
+  // "Download all" batches in flight, by rewayah, with how far each has got
+  // (0–1). One flag for the whole screen made another rewayah's button show
+  // this batch's progress, and a tap there cancelled it instead of starting
+  // that rewayah's own.
+  const [downloadAllProgressById, setDownloadAllProgressById] = useState<
+    Record<string, number>
+  >({});
   // Tracks mount state so a long batch's deferred setState/Alert never fire
-  // after the screen is gone; the in-flight ref also closes the same-frame
+  // after the screen is gone; the batches ref also closes the same-frame
   // double-tap window that React state alone leaves open.
   const isMountedRef = useRef(true);
-  const downloadAllInFlightRef = useRef(false);
+  const downloadAllBatchesRef = useRef(new Map<string, {cancelled: boolean}>());
 
   useEffect(() => {
     isMountedRef.current = true;
+    const batches = downloadAllBatchesRef.current;
     return () => {
       isMountedRef.current = false;
-      // Signal any in-flight batch to stop when the user leaves the screen.
-      downloadAllCancelledRef.current = true;
+      if (batches.size === 0) return;
+      // Signal any in-flight batch to stop when the user leaves the screen,
+      // and say so: it used to stop after the current surah without a word.
+      batches.forEach(batch => {
+        batch.cancelled = true;
+      });
+      showToast(
+        i18n.t('player:reciterProfile.downloadAll.stoppedOnLeave'),
+        i18n.t('player:reciterProfile.downloadAll.stoppedOnLeaveHint'),
+        'none',
+      );
     };
   }, []);
   // @ai-end
@@ -499,7 +575,19 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     key: '',
     map: new Map(),
   });
-  const cacheKey = `${showLovedOnly}|${searchQuery}|${sortOption}`;
+  // @ai-start
+  // With the heart filter on, the lists are made of what is loved, so they
+  // have to be rebuilt when that changes. `isLovedWithRewayat` keeps its
+  // identity, so a surah un-loved from its options stayed in the list,
+  // without its heart, until the filter or the sort was toggled.
+  const lovedKey = showLovedOnly
+    ? lovedTracks
+        .filter(track => track.reciterId === currentReciterId)
+        .map(track => `${track.surahId}:${track.rewayatId}`)
+        .join(',')
+    : '';
+  const cacheKey = `${showLovedOnly}|${searchQuery}|${sortOption}|${lovedKey}`;
+  // @ai-end
   if (surahCacheRef.current.key !== cacheKey) {
     surahCacheRef.current = {key: cacheKey, map: new Map()};
   }
@@ -515,7 +603,9 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       cache.set(tabId, result);
       return result;
     },
-    [reciter, getFilteredSurahsForRewayat],
+    // `cacheKey`: once the cache is reset, `filteredSurahs` below has to
+    // read it again. @ai
+    [reciter, getFilteredSurahsForRewayat, cacheKey], // @ai
   );
 
   // Derived filteredSurahs for the active rewayat (used by playback handlers)
@@ -536,46 +626,54 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
   const {toggleFavorite, isFavoriteReciter} = useFavoriteReciters();
 
+  // @ai-start
+  // `tabId` is the rewayah tab whose list the row was tapped in. Every tab's
+  // list used to share one handler that played the selected rewayah, so a tap
+  // in the Hafs list played Warsh whenever the two had drifted apart (or did
+  // nothing if Warsh lacked the surah). The search overlay has a single list
+  // for the selected rewayah and passes no tab.
   const handleSurahPress = useCallback(
-    async (surah: Surah) => {
-      if (!reciter || !selectedRewayat) return;
+    async (surah: Surah, tabId?: string) => {
+      if (!reciter) return;
+      const rewayat = tabId
+        ? reciter.rewayat.find(r => r.id === tabId)
+        : selectedRewayat;
+      if (!rewayat) return;
       try {
-        const startIndex = filteredSurahs.findIndex(s => s.id === surah.id);
+        const tabSurahs = getSurahsForTab(rewayat.id);
+        const startIndex = tabSurahs.findIndex(s => s.id === surah.id);
         if (startIndex === -1) return;
 
         const artwork = getReciterArtwork(reciter);
 
         // Build all tracks with selected surah first
         const reorderedSurahs = [
-          filteredSurahs[startIndex],
-          ...filteredSurahs.slice(startIndex + 1),
-          ...filteredSurahs.slice(0, startIndex),
+          tabSurahs[startIndex],
+          ...tabSurahs.slice(startIndex + 1),
+          ...tabSurahs.slice(0, startIndex),
         ];
 
         const allTracks = reorderedSurahs.map(s => ({
           id: `${reciter.id}:${s.id}`,
-          url: generateSmartAudioUrl(
-            reciter,
-            s.id.toString(),
-            selectedRewayat.id,
-          ),
+          url: generateSmartAudioUrl(reciter, s.id.toString(), rewayat.id),
           title: getSurahDisplayName(s),
           artist: reciter.name,
           reciterId: reciter.id,
           artwork,
           surahId: s.id.toString(),
           reciterName: reciter.name,
-          rewayatId: selectedRewayat.id,
+          rewayatId: rewayat.id,
         }));
 
         await updateQueue(allTracks, 0);
-        startNewChain(reciter, surah, 0, 0, selectedRewayat.id);
+        startNewChain(reciter, surah, 0, 0, rewayat.id);
       } catch (error) {
         console.error('Error playing surah:', error);
       }
     },
-    [reciter, filteredSurahs, selectedRewayat, startNewChain, updateQueue],
+    [reciter, getSurahsForTab, selectedRewayat, startNewChain, updateQueue],
   );
+  // @ai-end
 
   const handlePlayAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
@@ -665,15 +763,24 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     selectedRewayat?.id,
   );
 
+  // The selected rewayah's own batch, if it has one running.
+  const selectedBatchProgress = selectedRewayat
+    ? downloadAllProgressById[selectedRewayat.id]
+    : undefined;
+  const isDownloadingAll = selectedBatchProgress !== undefined;
+  const downloadAllProgress = selectedBatchProgress ?? 0;
+
   const handleDownloadAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
+    const rewayatId = selectedRewayat.id;
 
-    // A tap while a batch is in flight requests cancellation. Read the ref
-    // (not `isDownloadingAll` state) so a rapid second tap in the same frame
-    // is caught before the setIsDownloadingAll(true) re-render lands, which
-    // otherwise lets two concurrent batches start.
-    if (downloadAllInFlightRef.current) {
-      downloadAllCancelledRef.current = true;
+    // A tap while this rewayah's batch is in flight requests cancellation.
+    // Read the ref (not state) so a rapid second tap in the same frame is
+    // caught before the re-render lands, which otherwise lets two batches
+    // for the same rewayah start.
+    const running = downloadAllBatchesRef.current.get(rewayatId);
+    if (running) {
+      running.cancelled = true;
       return;
     }
 
@@ -681,22 +788,21 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
     if (allDownloaded) {
       Alert.alert(
-        'Already Downloaded',
-        'Every surah shown is already downloaded for this rewayah.',
+        t('reciterProfile.downloadAll.alreadyTitle'),
+        t('reciterProfile.downloadAll.alreadyMessage'),
       );
       return;
     }
 
-    downloadAllInFlightRef.current = true;
-    downloadAllCancelledRef.current = false;
-    setIsDownloadingAll(true);
-    setDownloadAllProgress(0);
+    const batch = {cancelled: false};
+    downloadAllBatchesRef.current.set(rewayatId, batch);
+    setDownloadAllProgressById(prev => ({...prev, [rewayatId]: 0}));
 
     try {
       const items = filteredSurahs.map(s => ({
         surahId: s.id,
         reciterId: reciter.id,
-        rewayatId: selectedRewayat.id,
+        rewayatId,
       }));
 
       const summary = await bulkDownloadSurahs(
@@ -716,44 +822,59 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
           onProgress: (completed, total) => {
             // Skip progress writes once the screen is gone.
             if (!isMountedRef.current) return;
-            setDownloadAllProgress(total > 0 ? completed / total : 1);
+            setDownloadAllProgressById(prev => ({
+              ...prev,
+              [rewayatId]: total > 0 ? completed / total : 1,
+            }));
           },
-          isCancelled: () =>
-            downloadAllCancelledRef.current || !isMountedRef.current,
+          isCancelled: () => batch.cancelled || !isMountedRef.current,
         },
       );
 
       // Don't surface result alerts on an unrelated screen if the user
-      // navigated away from the reciter profile mid-batch.
+      // navigated away from the reciter profile mid-batch (the unmount
+      // effect has told them it stopped).
       if (!isMountedRef.current) return;
 
       if (summary.cancelled) {
         Alert.alert(
-          'Download Stopped',
-          `Downloaded ${summary.downloaded} surah(s) before stopping.`,
+          t('reciterProfile.downloadAll.stoppedTitle'),
+          t('reciterProfile.downloadAll.stoppedMessage', {
+            count: summary.downloaded,
+          }),
         );
       } else if (summary.failed > 0) {
         Alert.alert(
-          'Download Finished',
-          `${summary.downloaded} downloaded, ${summary.failed} failed. Tap again to retry the rest.`,
+          t('reciterProfile.downloadAll.finishedTitle'),
+          t('reciterProfile.downloadAll.finishedMessage', {
+            downloaded: summary.downloaded,
+            failed: summary.failed,
+          }),
         );
       } else if (summary.downloaded > 0) {
         Alert.alert(
-          'Download Complete',
-          `All surahs for ${reciter.name} are now available offline.`,
+          t('reciterProfile.downloadAll.completeTitle'),
+          t('reciterProfile.downloadAll.completeMessage', {
+            reciter: getReciterDisplayName(reciter),
+          }),
         );
       }
     } catch (error) {
       console.error('Error downloading all surahs:', error);
       if (isMountedRef.current) {
-        Alert.alert('Download Error', 'Some downloads may have failed.');
+        Alert.alert(
+          t('reciterProfile.downloadAll.errorTitle'),
+          t('reciterProfile.downloadAll.errorMessage'),
+        );
       }
     } finally {
-      downloadAllInFlightRef.current = false;
-      downloadAllCancelledRef.current = false;
+      downloadAllBatchesRef.current.delete(rewayatId);
       if (isMountedRef.current) {
-        setIsDownloadingAll(false);
-        setDownloadAllProgress(0);
+        setDownloadAllProgressById(prev => {
+          const next = {...prev};
+          delete next[rewayatId];
+          return next;
+        });
       }
     }
   }, [
@@ -769,6 +890,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     clearDownloading,
     addDownload,
     setDownloadProgress,
+    t,
   ]);
   // @ai-end
 
@@ -994,7 +1116,27 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   const handlePagerContentSizeChange = useCallback(
     (contentWidth: number) => {
-      if (pagerScrolledRef.current) return;
+      // @ai-start
+      // After the reveal, go back to the active page each time the pages get
+      // a new width (rotation, Split View, the sidebar, the hero column).
+      // Only now do the pages have that width: a scroll before it is clamped
+      // to the old content on Android, and leaves the pager between pages.
+      if (pagerScrolledRef.current) {
+        if (contentWidth === pagerContentWidthRef.current) return;
+        pagerContentWidthRef.current = contentWidth;
+        const index = tabs.findIndex(tab => tab.id === activeTabRef.current);
+        if (index < 0) return;
+        const x = index * pageWidth;
+        // The tab bar indicator follows scrollX.
+        scrollX.setValue(x);
+        // A scroll in this frame can still reach the view before its new
+        // layout, so wait one frame.
+        requestAnimationFrame(() =>
+          horizontalRef.current?.scrollTo({x, y: 0, animated: false}),
+        );
+        return;
+      }
+      // @ai-end
       const targetX = initialTabIndex * pageWidth;
       // @ai-start
       const initialPageReady = hasPagerReachedInitialPage(
@@ -1005,6 +1147,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       );
       if (initialPageReady) {
         pagerScrolledRef.current = true;
+        pagerContentWidthRef.current = contentWidth; // @ai
         // Set scrollX so the tab bar indicator lands on the correct tab immediately
         scrollX.setValue(targetX);
         horizontalRef.current?.scrollTo({
@@ -1019,24 +1162,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       }
       // @ai-end
     },
-    [pageWidth, pagerOpacity, initialTabIndex, scrollX],
+    [pageWidth, pagerOpacity, initialTabIndex, scrollX, tabs],
   );
-
-  // @ai-start
-  // Keep the current page in place when the pager width changes after the
-  // first reveal (rotation, Split View, sidebar changes).
-  const lastPageWidthRef = useRef(pageWidth);
-  useEffect(() => {
-    if (lastPageWidthRef.current === pageWidth) return;
-    lastPageWidthRef.current = pageWidth;
-    if (!pagerScrolledRef.current) return;
-    const index = tabs.findIndex(tab => tab.id === activeTabRef.current);
-    if (index < 0) return;
-    const x = index * pageWidth;
-    scrollX.setValue(x);
-    horizontalRef.current?.scrollTo({x, y: 0, animated: false});
-  }, [pageWidth, tabs, scrollX]);
-  // @ai-end
 
   // Sticky title bar opacity — fades in as the outer scroll collapses the header
   // With negative margin on header, the actual collapse point is reduced
@@ -1067,26 +1194,104 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     renderedTabsRef.current.add(tabs[i].id);
   }
 
+  // @ai-start
+  // The reciter is looked up once, from the catalogue already in memory, so
+  // a missing one never arrives: a card or favourite whose reciter left the
+  // catalogue, a mistyped link, "Go to reciter" on an untagged upload. This
+  // used to show a spinner forever, with no way back on screens without the
+  // native header.
   if (!reciter) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style={theme.isDarkMode ? 'light' : 'dark'} />
-        <LoadingIndicator />
+        <View style={notFoundStyles.body}>
+          <Text style={[notFoundStyles.title, {color: theme.colors.text}]}>
+            {t('reciterProfile.notFound')}
+          </Text>
+          <Text
+            style={[notFoundStyles.hint, {color: theme.colors.textSecondary}]}>
+            {t('reciterProfile.notFoundHint')}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigation.goBack()}
+            style={({pressed}) => [
+              notFoundStyles.button,
+              {borderColor: theme.colors.border},
+              pressed && notFoundStyles.buttonPressed,
+            ]}>
+            <Text
+              style={[notFoundStyles.buttonText, {color: theme.colors.text}]}>
+              {t('common:actions.back')}
+            </Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     );
   }
+  // @ai-end
+
+  // @ai-start
+  // On a tablet the hero's place depends on the profile's width, so the
+  // page lays out once that is measured, as the pager pages do. This keeps
+  // the hero from jumping from a row to the column on the first frame.
+  if (isTablet && profileWidth === null) {
+    return <View onLayout={handleProfileLayout} style={styles.container} />;
+  }
+
+  // The tablet hero, built once: a row above the list, or the pinned column
+  // beside it.
+  const rowHeroTop = showSearch ? 16 : isGlass ? 8 : insets.top + 56;
+  const tabletHero = isTablet ? (
+    <TabletReciterHero
+      reciter={reciter}
+      layout={heroColumn ? 'column' : 'row'}
+      paddingTop={heroColumn ? heroColumnTopInset : rowHeroTop}
+      margin={pageMargin}
+      onFavoritePress={handleToggleFavorite}
+      onShufflePress={handleShuffleAll}
+      onPlayPress={handlePlayAll}
+      isFavoriteReciter={isFavoriteReciter(reciter.id)}
+      onDownloadAllPress={handleDownloadAll}
+      isDownloadingAll={isDownloadingAll}
+      downloadAllProgress={downloadAllProgress}
+      allDownloaded={allDownloaded}
+    />
+  ) : null;
+  // @ai-end
 
   return (
-    <View style={styles.container}>
+    <View
+      onLayout={handleProfileLayout} // @ai
+      style={styles.container}>
       <StatusBar style={theme.isDarkMode ? 'light' : 'dark'} />
       {/* Main content — always mounted to preserve pager scroll position */}
-      <View style={{flex: 1}} pointerEvents={showSearch ? 'none' : 'auto'}>
+      <View
+        style={[{flex: 1}, heroColumn && {flexDirection: 'row'}]} // @ai
+        pointerEvents={showSearch ? 'none' : 'auto'}>
         <>
+          {/* @ai-start */}
+          {/* Large windows: the hero is a leading column outside the scroll
+           * view. It scrolls on its own only when it is taller than the
+           * window (a short window or a large text size). */}
+          {heroColumn && (
+            <ScrollView
+              style={{width: HERO_COLUMN_WIDTH, flexGrow: 0, flexShrink: 0}}
+              showsVerticalScrollIndicator={false}
+              alwaysBounceVertical={false}>
+              {tabletHero}
+            </ScrollView>
+          )}
+          {/* @ai-end */}
           {/* Single outer scroll: header collapses, tab bar sticks, content scrolls */}
           <RNAnimated.ScrollView
             ref={outerScrollRef}
+            style={heroColumn ? {flex: 1} : undefined} // @ai
             stickyHeaderIndices={[1]}
-            contentInsetAdjustmentBehavior={isGlass ? 'automatic' : 'never'}
+            // @ai: the column layout pads for the native header itself
+            contentInsetAdjustmentBehavior={
+              isGlass && !heroColumn ? 'automatic' : 'never'
+            }
             onScroll={RNAnimated.event(
               [{nativeEvent: {contentOffset: {y: scrollY}}}],
               {
@@ -1125,20 +1330,12 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               onLayout={e => setCollapsibleHeight(e.nativeEvent.layout.height)}
               style={{marginBottom: -stickyPinOffset, zIndex: 11}}
               pointerEvents="box-none">
-              {isTablet ? (
-                <TabletReciterHero
-                  reciter={reciter}
-                  paddingTop={showSearch ? 16 : isGlass ? 8 : insets.top + 56}
-                  margin={pageMargin}
-                  onFavoritePress={handleToggleFavorite}
-                  onShufflePress={handleShuffleAll}
-                  onPlayPress={handlePlayAll}
-                  isFavoriteReciter={isFavoriteReciter(reciter.id)}
-                  onDownloadAllPress={handleDownloadAll}
-                  isDownloadingAll={isDownloadingAll}
-                  downloadAllProgress={downloadAllProgress}
-                  allDownloaded={allDownloaded}
-                />
+              {/* @ai: with the hero in its column, only its top inset stays
+               * here, so the tab bar starts level with the photo. */}
+              {heroColumn ? (
+                <View style={{height: heroColumnTopInset}} />
+              ) : isTablet ? (
+                tabletHero
               ) : (
                 <>
                   <ReciterHeader
@@ -1333,7 +1530,9 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                             <MemoizedSurahList
                               inline
                               surahs={getSurahsForTab(tab.id)}
-                              onSurahPress={handleSurahPress}
+                              onSurahPress={(surah: Surah) =>
+                                handleSurahPress(surah, tab.id)
+                              }
                               reciterId={currentReciterId}
                               isLoved={
                                 isLovedPerTab.get(tab.id) ??
@@ -1468,7 +1667,11 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               }}
               availableRewayat={rewayatList}
               selectedRewayatId={selectedRewayatId}
-              onRewayatSelect={handleRewayatChange}
+              // Through the tab handler, so the tab bar and pager under this
+              // overlay move with the chip. Setting only the rewayah left
+              // the old tab's list showing after Cancel while taps, Play,
+              // Shuffle and Download all acted on the chip's rewayah.
+              onRewayatSelect={handleTabChange}
               isDarkMode={theme.isDarkMode}
               reciterName={getReciterDisplayName(reciter)}
               viewMode={viewMode}

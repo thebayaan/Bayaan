@@ -1,6 +1,7 @@
 // @ai-generated
 import React from 'react';
 import {act, create, type ReactTestRenderer} from 'react-test-renderer';
+import {Platform} from 'react-native'; // @ai
 
 const mockLockAsync = jest.fn();
 const mockUnlockAsync = jest.fn();
@@ -72,4 +73,46 @@ describe('usePhoneOrientation', () => {
       },
     );
   });
+
+  // @ai-start
+  describe('on Android tablets', () => {
+    const originalOS = Platform.OS;
+
+    beforeEach(() => {
+      mockIsTablet = true;
+      Platform.OS = 'android';
+    });
+
+    afterEach(() => {
+      Platform.OS = originalOS;
+    });
+
+    // The manifest pins the activity to portrait, so a tablet that is
+    // "never locked" has to be unlocked, or it cannot turn at all.
+    it.each(['portrait', 'free'] as const)(
+      'unlocks, and never locks (%s)',
+      mode => {
+        const renderer = render(mode);
+        expect(mockUnlockAsync).toHaveBeenCalledTimes(1);
+        act(() => renderer.unmount());
+        expect(mockLockAsync).not.toHaveBeenCalled();
+      },
+    );
+
+    it('releases the phone lock when a foldable unfolds into a tablet', () => {
+      mockIsTablet = false;
+      let renderer!: ReactTestRenderer;
+      act(() => {
+        renderer = create(<Probe mode="portrait" />);
+      });
+      expect(mockLockAsync).toHaveBeenCalledWith('PORTRAIT_UP');
+
+      mockIsTablet = true;
+      act(() => {
+        renderer.update(<Probe mode="portrait" />);
+      });
+      expect(mockUnlockAsync).toHaveBeenCalledTimes(1);
+    });
+  });
+  // @ai-end
 });

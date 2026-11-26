@@ -63,16 +63,23 @@ jest.mock('../TransportCard', () => {
     ),
   };
 });
+// How many times the pane has mounted: one means it was never thrown away.
+let mockBodyMounts = 0;
 jest.mock('../PlayerPaneBody', () => {
+  const ReactActual = jest.requireActual('react');
   const {View: MockView} = jest.requireActual('react-native');
   return {
-    PlayerPaneBody: (props: object) => (
-      <MockView testID="pane-body" {...props} />
-    ),
+    PlayerPaneBody: (props: object) => {
+      ReactActual.useEffect(() => {
+        mockBodyMounts += 1;
+      }, []);
+      return <MockView testID="pane-body" {...props} />;
+    },
   };
 });
 
 import {TabletPlayerLayout} from '../TabletPlayerLayout';
+import {nowPlayingColumnWidth} from '../playerMetrics';
 
 const handlers = {
   onSpeedPress: jest.fn(),
@@ -100,6 +107,7 @@ beforeEach(() => {
   mockWindow = {width: 1032, height: 1376};
   mockTrack = {reciterId: 'r1'};
   mockSetImmersive.mockClear();
+  mockBodyMounts = 0;
 });
 
 describe('TabletPlayerLayout', () => {
@@ -172,6 +180,42 @@ describe('TabletPlayerLayout', () => {
     expect(switcher.props.showReciters).toBe(false);
     expect(switcher.props.value).toBe('text');
     expect(byId(renderer, 'pane-body')[0].props.pane).toBe('text');
+  });
+
+  // An 11" iPad is under 900pt wide in portrait and over it in landscape.
+  // The pane used to be mounted afresh on every turn, which threw away the
+  // text position, the follow-along lock and what Queue and Reciters showed.
+  it('keeps the pane mounted when the window crosses 900pt', () => {
+    mockWindow = {width: 834, height: 1194};
+    const renderer = render();
+    act(() => {
+      byId(renderer, 'pane-switcher')[0].props.onChange('queue');
+    });
+    expect(mockBodyMounts).toBe(1);
+
+    mockWindow = {width: 1194, height: 834};
+    act(() => {
+      renderer.update(<TabletPlayerLayout {...handlers} />);
+    });
+    expect(byId(renderer, 'now-playing-column')).toHaveLength(1);
+    expect(byId(renderer, 'transport-card')).toHaveLength(0);
+    expect(byId(renderer, 'close')).toHaveLength(0);
+    expect(mockBodyMounts).toBe(1);
+    let [body] = byId(renderer, 'pane-body');
+    expect(body.props.pane).toBe('queue');
+    expect(body.props.width).toBe(1194 - nowPlayingColumnWidth(1194));
+    expect(body.props.bottomInset).toBe(20);
+
+    mockWindow = {width: 834, height: 1194};
+    act(() => {
+      renderer.update(<TabletPlayerLayout {...handlers} />);
+    });
+    expect(byId(renderer, 'transport-card')).toHaveLength(1);
+    expect(byId(renderer, 'close')).toHaveLength(1);
+    expect(mockBodyMounts).toBe(1);
+    [body] = byId(renderer, 'pane-body');
+    expect(body.props.pane).toBe('queue');
+    expect(body.props.width).toBe(834);
   });
 
   it('turns immersive mode off, since nothing covers the text', () => {

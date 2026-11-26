@@ -190,6 +190,21 @@ export function useAyahTracker() {
       publishBasmalaIntro(null);
     }
   }, [followAlongEnabled, numbering]);
+
+  // Follow Along switched off: no verse stays highlighted. The interval
+  // below stops then, and the verse it last published used to stay lit for
+  // the rest of the surah. A verse written while it is off ("Play from
+  // here" publishes the one it seeks to) is dropped as well: with the
+  // tracker stopped, nothing would ever replace it.
+  useEffect(() => {
+    if (followAlongEnabled) return;
+    const dropVerse = () => {
+      const store = useTimestampStore.getState();
+      if (store.currentAyah) store.clearCurrentAyah();
+    };
+    dropVerse();
+    return useTimestampStore.subscribe(dropVerse);
+  }, [followAlongEnabled]);
   // @ai-end
 
   // @ai-start

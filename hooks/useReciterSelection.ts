@@ -1,15 +1,24 @@
 import {useCallback} from 'react';
+import {useRouter, useSegments} from 'expo-router'; // @ai
 import {getAllReciters, getSurahById} from '@/services/dataService';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {Reciter} from '@/data/reciterData';
 import {useSettings} from '@/hooks/useSettings'; // @ai
-import {pickRewayatId} from '@/utils/rewayatPreference'; // @ai
+import {pickRewayatId, reciterHasSurah} from '@/utils/rewayatPreference'; // @ai
+// @ai-start
+import i18n from '@/i18n';
+import {getReciterDisplayName, getSurahDisplayName} from '@/i18n/format';
+import {showToast} from '@/utils/toastUtils';
+import {reciterBrowsePathname} from '@/hooks/useTabReciterPath';
+// @ai-end
 
 export function useReciterSelection() {
   const {updateQueue, play} = usePlayerActions();
   const startNewChain = useRecentlyPlayedStore(s => s.startNewChain); // @ai
+  const router = useRouter(); // @ai
+  const segments = useSegments(); // @ai
 
   const playWithReciter = useCallback(
     async (reciter: Reciter, surahId: string) => {
@@ -19,7 +28,33 @@ export function useReciterSelection() {
         const surah = await getSurahById(parseInt(surahId, 10));
         if (!surah) return;
 
+        // Until the catalogue has loaded, the default reciter is a
+        // placeholder with no id and no rewayat: there is nothing to play,
+        // and no reciter to name in the message below.
+        if (!reciter.id) return false;
+
         // @ai-start
+        // Many reciters have recorded only part of the Quran. Playing a
+        // surah the default reciter does not have put a card for it in
+        // Continue Listening and sent the player after a file that does not
+        // exist. Say so, and open the reciters who do have it, as "Browse
+        // all reciters" does.
+        if (!reciterHasSurah(reciter.rewayat, surah.id)) {
+          showToast(
+            i18n.t('sheets:selectReciter.surahUnavailable', {
+              reciter: getReciterDisplayName(reciter),
+              surah: getSurahDisplayName(surah),
+            }),
+            i18n.t('sheets:selectReciter.surahUnavailableHint'),
+            'error',
+          );
+          router.push({
+            pathname: reciterBrowsePathname(segments),
+            params: {view: 'all', surahId: surah.id},
+          });
+          return false;
+        }
+
         // Play the rewayat the user last picked for this reciter
         const rewayatId = pickRewayatId(
           reciter.rewayat,
@@ -47,7 +82,7 @@ export function useReciterSelection() {
         return false;
       }
     },
-    [updateQueue, play, startNewChain],
+    [updateQueue, play, startNewChain, router, segments], // @ai
   );
 
   const playWithRandomReciter = useCallback(
@@ -85,11 +120,14 @@ export function useReciterSelection() {
           );
           selectedReciter = availableReciters[randomIndex];
         } else {
-          // Fallback to first reciter (should never happen as all reciters should have all surahs)
-          console.warn(
-            'No reciters found with surah available, using fallback',
-          );
-          selectedReciter = allReciters[0];
+          // @ai-start
+          // Nobody has recorded it, so there is nothing to play. This used
+          // to fall back to the first reciter in the catalogue and queue a
+          // file that does not exist.
+          console.warn('No reciters found with surah available');
+          showToast(i18n.t('home:randomHero.findFailed'), undefined, 'error');
+          return false;
+          // @ai-end
         }
 
         // Find rewayat that has this surah

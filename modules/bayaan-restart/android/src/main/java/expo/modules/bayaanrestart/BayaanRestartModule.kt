@@ -1,6 +1,7 @@
 package expo.modules.bayaanrestart
 
 import android.content.Context
+import android.content.Intent
 import com.facebook.react.modules.i18nmanager.I18nUtil
 import com.jakewharton.processphoenix.ProcessPhoenix
 import expo.modules.kotlin.exception.Exceptions
@@ -23,6 +24,21 @@ class BayaanRestartModule : Module() {
       persistLayoutDirection(context, rtl)
       ProcessPhoenix.triggerRebirth(context)
     }
+
+    // A restart starts the app again the way the launcher does, so it drops
+    // anything else that opened the screen on show: a link (a widget, an app
+    // link) or a shared file. False when there is no screen to ask.
+    Function("launchedFromLauncher") {
+      isLauncherIntent(appContext.currentActivity?.intent)
+    }
+  }
+
+  private fun isLauncherIntent(intent: Intent?): Boolean {
+    if (intent == null) return false
+    return intent.action == Intent.ACTION_MAIN &&
+      intent.data == null &&
+      intent.type == null &&
+      intent.clipData == null
   }
 
   /**

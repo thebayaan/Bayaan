@@ -218,7 +218,9 @@
     "browseAll": "Browse All Reciters",
     "browseAllDescription": "Search through our complete collection of reciters",
     "useDefault": "Use Default Reciter",
-    "useDefaultDescription": "Always use your selected default reciter"
+    "useDefaultDescription": "Always use your selected default reciter",
+    "random": "Random Reciter",
+    "randomDescription": "Play each surah with a reciter picked at random"
   },
   "storage": {
     "loading": "Loading storage information...",
@@ -234,8 +236,8 @@
     "removeDownloadsSuccess": "All downloads have been removed.",
     "removeDownloadsError": "Failed to remove downloads.",
     "clearCacheTitle": "Clear cache",
-    "clearCacheDescription": "You can free up storage by clearing your cache. Your downloads won't be removed.",
-    "clearCacheConfirm": "This will clear your cache. Your downloads won't be removed.",
+    "clearCacheDescription": "Free up storage by clearing temporary files. This also resets the player and Continue Listening. Your downloads won't be removed.",
+    "clearCacheConfirm": "This clears temporary files and resets the player: playback stops, and your queue, Continue Listening and playback settings (speed, repeat, sleep timer) are cleared. Your downloads won't be removed.",
     "clearCacheSuccess": "Cache has been cleared.",
     "clearCacheError": "Failed to clear cache.",
     "success": "Success",
@@ -288,6 +290,7 @@
     "system": "System",
     "wordByWordHeader": "Word by Word",
     "wordByWord": "Word by Word",
+    "englishMeanings": "English Meanings",
     "translation": "Translation",
     "transliteration": "Transliteration",
     "arabicFontSize": "Arabic Font Size",
@@ -407,6 +410,12 @@
       "retry": "Try again",
       "keepLabel": "Keep reading Hafs",
       "keep": "Keep Hafs"
+    },
+    "rewayahNotice": {
+      "nowReading": "Now reading",
+      "stillShowing": "Still showing {{rewayah}}.",
+      "showingInstead": "Showing {{rewayah}} instead.",
+      "tryAgain": "Please try again."
     },
     "communityReflections": "Community Reflections",
     "communityReflectionsHelper": "Show community reflections under each ayah in list view",

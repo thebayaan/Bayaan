@@ -94,6 +94,7 @@ const mockUpdateQueueState = jest.fn((next: FakeQueue) => {
 });
 
 jest.mock('@/services/player/store/playerStore', () => ({
+  setTrackUrlResolver: jest.fn(), // @ai restoreSession registers it at boot
   usePlayerStore: {
     getState: () => ({
       queue: mockQueue,

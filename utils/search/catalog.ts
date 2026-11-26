@@ -1,7 +1,7 @@
 // @ai-generated
 import {SURAHS, type Surah} from '@/data/surahData';
 import {RECITERS, getRecitersVersion, type Reciter} from '@/data/reciterData';
-import {SURAH_ALIASES} from '@/data/searchAliases';
+import {SURAH_ALIASES, SURAH_NAME_SPELLINGS} from '@/data/searchAliases'; // @ai
 import {FEATURED_RECITER_NAMES} from '@/data/featuredReciters';
 import {getReciterDisplayName} from '@/i18n/format';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
@@ -13,9 +13,62 @@ import {
 } from './createSearchIndex';
 import {toSearchKey, tokenize} from './normalize';
 
-// "surah 36", "sura yasin", "سورة يس": the prefix word carries no meaning.
-const SURAH_PREFIX = /^(surah|surat|sura|soorah|سوره|سورت)\s+/;
+// @ai-start
+// "surah 36", "yasin surah", "chapter 36", "سورة يس": the surah word carries
+// no meaning wherever it sits. Directly after it, Urdu "e" ("surah e
+// yaseen") and "no" / "number" / "رقم" ("surah number 36") are link words.
+const SURAH_WORDS = new Set([
+  'surah',
+  'surat',
+  'sura',
+  'soorah',
+  'chapter',
+  'سوره',
+  'سورت',
+]);
+const SURAH_LINK_WORDS = new Set(['e', 'no', 'number', 'رقم']);
+
+/** Drops the surah word (and a link word after it) unless it is all there is. */
+function stripSurahWords(key: string): string {
+  const tokens = tokenize(key);
+  const kept = tokens.filter(
+    (token, i) =>
+      !SURAH_WORDS.has(token) &&
+      // Only when another word follows: "surah no" may still become "noor".
+      !(
+        SURAH_LINK_WORDS.has(token) &&
+        SURAH_WORDS.has(tokens[i - 1] ?? '') &&
+        i < tokens.length - 1
+      ),
+  );
+  return kept.length > 0 ? kept.join(' ') : key;
+}
+// @ai-end
 const FEATURED = new Set(FEATURED_RECITER_NAMES);
+// @ai-start
+// Titles and "son of" typed before or inside a reciter's name ("sheikh
+// sudais", "qari abdul basit", "الشيخ ماهر"). Keys: "القارئ" is "القاري".
+const RECITER_FILLER_WORDS: ReadonlySet<string> = new Set([
+  'sheikh',
+  'shaikh',
+  'shaykh',
+  'sheik',
+  'shaik',
+  'shiekh',
+  'qari',
+  'qaari',
+  'imam',
+  'bin',
+  'ibn',
+  'الشيخ',
+  'شيخ',
+  'القاري',
+  'قاري',
+  'الامام',
+  'امام',
+  'بن',
+]);
+// @ai-end
 
 export function createSurahSearch(
   surahs: readonly Surah[],
@@ -26,12 +79,13 @@ export function createSurahSearch(
       {get: surah => surah.name_arabic, weight: 1},
       {get: surah => surah.translated_name_english, weight: 0.8},
       {get: surah => SURAH_ALIASES[surah.id] ?? [], weight: 0.9},
+      {get: surah => SURAH_NAME_SPELLINGS[surah.id] ?? [], weight: 1}, // @ai
     ],
   });
   return {
     search(query: string, limit?: number): SearchHit<Surah>[] {
       const key = toSearchKey(query);
-      const unprefixed = key.replace(SURAH_PREFIX, '');
+      const unprefixed = stripSurahWords(key); // @ai
       if (/^\d+$/.test(unprefixed)) {
         const surah = surahs.find(item => item.id === Number(unprefixed));
         return surah ? [{item: surah, score: TIER.exact}] : [];
@@ -61,15 +115,24 @@ export function createReciterSearch(
     fields: [
       {get: reciter => reciter.name, weight: 1},
       {get: reciter => getReciterDisplayName(reciter, 'ar'), weight: 1},
-      {get: reciter => reciter.rewayat.map(r => r.name), weight: 0.6},
+      // Every rewayah name joins reader and teacher with "A'n" ("from"),
+      // keyed "an": read as an article, it let "al" and "el" match every
+      // reciter.
+      {
+        get: reciter => reciter.rewayat.map(r => r.name),
+        weight: 0.6,
+        articleSpellings: false,
+      },
       {
         get: reciter =>
           reciter.rewayat.map(r => getDisplayLabelFromName(r.name)),
         weight: 0.6,
+        articleSpellings: false,
       },
       {get: reciter => reciter.rewayat.map(r => r.style), weight: 0.4},
     ],
     boost: reciter => (FEATURED.has(reciter.name) ? 1 : 0),
+    fillerWords: RECITER_FILLER_WORDS, // @ai
   });
 }
 
@@ -135,7 +198,15 @@ export function rankReciters(
 ): readonly Reciter[] {
   if (!query.trim()) return within ?? RECITERS;
   const index = within ? getSubsetIndex(within) : getReciterIndex();
-  return index.search(query).map(hit => hit.item);
+  // @ai-start
+  const hits = index.search(query);
+  // Same last resort as Home search: one word the catalogue lacks.
+  const found =
+    hits.length > 0
+      ? hits
+      : index.search(query, undefined, {allowOneMissingWord: true});
+  return found.map(hit => hit.item);
+  // @ai-end
 }
 
 export interface CatalogSearchResult {
@@ -155,15 +226,32 @@ export function createCatalogSearch(
     search(query: string): CatalogSearchResult[] {
       const surahHits = surahSearch.search(query);
       // A bare number is a surah reference; reciters never match digits.
-      if (/^\d+$/.test(toSearchKey(query))) {
+      // @ai-start
+      // A bare surah word is too: "sura" otherwise typo-matches the style
+      // "murattal" and lists every reciter while "surah ..." is being typed.
+      const key = toSearchKey(query);
+      if (
+        /^\d+$/.test(key) ||
+        (key !== '' && tokenize(key).every(token => SURAH_WORDS.has(token)))
+      ) {
+        // @ai-end
         return surahHits.map(hit => ({type: 'surah' as const, ...hit}));
+      }
+      // @ai-start
+      const reciterHits = reciterSearch.search(query);
+      if (surahHits.length === 0 && reciterHits.length === 0) {
+        // Only when nothing matched: a word the catalogue lacks ("mishary
+        // rashid alafasy"). Never alongside surah hits, or "surah muhammad"
+        // would also list every reciter named Muhammad.
+        return reciterSearch
+          .search(query, undefined, {allowOneMissingWord: true})
+          .map(hit => ({type: 'reciter' as const, ...hit}));
       }
       return [
         ...surahHits.map(hit => ({type: 'surah' as const, ...hit})),
-        ...reciterSearch
-          .search(query)
-          .map(hit => ({type: 'reciter' as const, ...hit})),
+        ...reciterHits.map(hit => ({type: 'reciter' as const, ...hit})),
       ].sort((a, b) => b.score - a.score);
+      // @ai-end
     },
   };
 }

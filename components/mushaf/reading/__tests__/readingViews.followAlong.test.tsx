@@ -241,6 +241,7 @@ const views: Record<string, () => React.JSX.Element> = {
       labelColor="#666666"
       borderColor="#cccccc"
       initialPage={2}
+      width={390} // @ai
     />
   ),
   ReadingPageView: () => (
@@ -255,6 +256,7 @@ const views: Record<string, () => React.JSX.Element> = {
       cardColor="#ffffff"
       bgColor="#ffffff"
       isBookLayout={false}
+      pageSize={{width: 390, height: 844}} // @ai
     />
   ),
 };

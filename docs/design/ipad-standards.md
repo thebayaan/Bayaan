@@ -375,6 +375,8 @@ Benchmarks: Apple Music and Spotify on iPad. The listening audit, wireframes per
 
 **Built (#436):** the reciter page spans the pane. Its hero puts the round photo (240pt from 900pt, 200pt below) beside the name, with Play all, Shuffle, and round Favorite and Download buttons. Once the list is at least 720pt wide, surah rows become a table with Revelation and Verses columns under a pinned header; card mode adds columns to fit. Adhkar lists and Saved show two cards per row from 900pt, with the cards in a row sharing their height (#443).
 
+**Built (pinned hero):** when the profile is wide enough for a 448pt hero column and the 720pt table beside it (1168pt of the profile's own measured width, not the window's), the reciter hero is a fixed leading column, with the photo above the name. That is a 13" iPad in landscape with the sidebar collapsed, and larger windows; with the labelled sidebar, and in the Collection column, the hero stays above the table. Only the rewayah tabs and the surahs scroll beside it; the tab bar still pins when the list scrolls. The rule and the column width are in `components/reciter-profile/utils/heroColumn.ts`.
+
 ### 10.3 Mini player
 
 - **MUST** stay visible on every tab screen and dock as described in [§6](#6-navigation-and-app-shell); it does not float over content on tablet.

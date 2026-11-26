@@ -28,17 +28,25 @@ interface TabletReciterHeroProps extends ActionButtonsProps {
   paddingTop: number;
   /** Page margin, so the hero lines up with the table below it. */
   margin: number;
+  /**
+   * `row` puts the photo beside the name, above the table. `column` stacks
+   * the photo above the name, for the pinned hero column at `large`.
+   */
+  layout?: 'row' | 'column';
 }
 
 /**
  * The reciter page header on iPad (mockup L9): a large round photo beside
  * the name, then Play all, Shuffle, and round Favorite and Download buttons.
  * It replaces ReciterHeader and ActionButtons on tablets; phones keep those.
+ * From the `large` class the profile pins it as a leading column, with the
+ * photo above the name (`layout="column"`).
  */
 export function TabletReciterHero({
   reciter,
   paddingTop,
   margin,
+  layout = 'row',
   onPlayPress,
   onShufflePress,
   onFavoritePress,
@@ -85,9 +93,15 @@ export function TabletReciterHero({
     : t('common:actions.download');
 
   return (
-    <View style={[styles.container, {paddingTop, paddingHorizontal: margin}]}>
+    <View
+      style={[
+        styles.container,
+        layout === 'column' && styles.columnContainer,
+        {paddingTop, paddingHorizontal: margin},
+      ]}>
       {USE_GLASS ? <Link.AppleZoomTarget>{photo}</Link.AppleZoomTarget> : photo}
-      <View style={styles.details}>
+      <View
+        style={[styles.details, layout === 'column' && styles.columnDetails]}>
         <Text style={styles.overline}>{t('common:terms.reciter')}</Text>
         <Text style={styles.name} numberOfLines={2}>
           {getReciterDisplayName(reciter)}
@@ -183,10 +197,19 @@ const createStyles = (theme: Theme) => {
       paddingBottom: 20,
       backgroundColor: theme.colors.background,
     },
+    columnContainer: {
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      gap: 20,
+    },
     details: {
       flex: 1,
       minWidth: 0,
       gap: 6,
+    },
+    columnDetails: {
+      flex: 0,
+      alignSelf: 'stretch',
     },
     overline: {
       fontSize: 12,

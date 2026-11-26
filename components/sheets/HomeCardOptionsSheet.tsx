@@ -53,6 +53,10 @@ const HomeCardOptionsContent = ({
     subtitle,
     isFavorite,
     isLoved,
+    canAddToQueue,
+    canUseReciter,
+    canUseRecitation,
+    canShare,
     handleContinuePlaying,
     handleAddToQueue,
     handleGoToReciter,
@@ -80,20 +84,25 @@ const HomeCardOptionsContent = ({
         </View>
 
         <View style={styles.card}>
+          {/* Each group after the first draws its own divider above it, so
+              hiding a group (an upload's card hides the ones that cannot
+              apply to it) never leaves a divider at the edge. */}
           {variant === 'recent' && (
-            <>
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleContinuePlaying}>
-                <PlayIcon color={iconColor} size={iconSize} />
-                <Text style={styles.optionText}>
-                  {t('homeCardOptions.continuePlaying')}
-                </Text>
-              </Pressable>
+            <Pressable
+              style={({pressed}) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+              onPress={handleContinuePlaying}>
+              <PlayIcon color={iconColor} size={iconSize} />
+              <Text style={styles.optionText}>
+                {t('homeCardOptions.continuePlaying')}
+              </Text>
+            </Pressable>
+          )}
 
+          {variant === 'recent' && canAddToQueue && (
+            <>
               <View style={styles.divider} />
 
               <Pressable
@@ -109,40 +118,48 @@ const HomeCardOptionsContent = ({
                   {t('homeCardOptions.addToQueue')}
                 </Text>
               </Pressable>
-
-              <View style={styles.divider} />
             </>
           )}
 
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleGoToReciter}>
-            <ProfileIcon color={iconColor} size={iconSize} filled={false} />
-            <Text style={styles.optionText}>
-              {t('homeCardOptions.goToReciter')}
-            </Text>
-          </Pressable>
+          {canUseReciter && (
+            <>
+              {variant === 'recent' && <View style={styles.divider} />}
 
-          <View style={styles.divider} />
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleGoToReciter}>
+                <ProfileIcon color={iconColor} size={iconSize} filled={false} />
+                <Text style={styles.optionText}>
+                  {t('homeCardOptions.goToReciter')}
+                </Text>
+              </Pressable>
 
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleToggleFavorite}>
-            <StarIcon color={iconColor} size={iconSize} filled={isFavorite} />
-            <Text style={styles.optionText}>
-              {isFavorite
-                ? t('homeCardOptions.removeReciterFromFavorites')
-                : t('homeCardOptions.addReciterToFavorites')}
-            </Text>
-          </Pressable>
+              <View style={styles.divider} />
 
-          {variant === 'recent' && (
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleToggleFavorite}>
+                <StarIcon
+                  color={iconColor}
+                  size={iconSize}
+                  filled={isFavorite}
+                />
+                <Text style={styles.optionText}>
+                  {isFavorite
+                    ? t('homeCardOptions.removeReciterFromFavorites')
+                    : t('homeCardOptions.addReciterToFavorites')}
+                </Text>
+              </Pressable>
+            </>
+          )}
+
+          {variant === 'recent' && canUseRecitation && (
             <>
               <View style={styles.divider} />
 
@@ -180,17 +197,23 @@ const HomeCardOptionsContent = ({
             </>
           )}
 
-          <View style={styles.divider} />
+          {canShare && (
+            <>
+              <View style={styles.divider} />
 
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleShare}>
-            <Feather name="share" size={iconSize} color={iconColor} />
-            <Text style={styles.optionText}>{t('common:actions.share')}</Text>
-          </Pressable>
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleShare}>
+                <Feather name="share" size={iconSize} color={iconColor} />
+                <Text style={styles.optionText}>
+                  {t('common:actions.share')}
+                </Text>
+              </Pressable>
+            </>
+          )}
         </View>
 
         {variant === 'recent' && (

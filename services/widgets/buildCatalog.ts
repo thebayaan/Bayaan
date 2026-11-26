@@ -100,27 +100,17 @@ export function buildTasbeehEntries(
   return entries;
 }
 
-// The adhkar store resets counts lazily, so after midnight it can still hold
-// yesterday's numbers. Remembers the day each count was last seen to change
-// (or first seen) and hides counts that belong to an earlier day.
-export function createCountDayTracker(): (
+// @ai-start
+// The adhkar store holds the counts of one local day (`countsDay`). After
+// midnight that can still be yesterday, until the app is next opened and
+// reloads them; those are not today's counts. The day used to be guessed
+// from whether a number had changed since the last snapshot, which hid a
+// count that reached the same total as the day before.
+export function countsOfToday(
   counts: Record<string, number>,
+  countsDay: string | null,
   today: string,
-) => Record<string, number> {
-  let previous: Record<string, number> = {};
-  const days = new Map<string, string>();
-  return (counts, today) => {
-    for (const id of days.keys()) {
-      if (!(id in counts)) days.delete(id);
-    }
-    for (const [id, count] of Object.entries(counts)) {
-      if (!days.has(id) || previous[id] !== count) days.set(id, today);
-    }
-    previous = counts;
-    const fresh: Record<string, number> = {};
-    for (const [id, count] of Object.entries(counts)) {
-      if (days.get(id) === today) fresh[id] = count;
-    }
-    return fresh;
-  };
+): Record<string, number> {
+  return countsDay === today ? counts : {};
 }
+// @ai-end

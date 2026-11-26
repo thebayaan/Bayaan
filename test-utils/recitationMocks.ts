@@ -120,14 +120,22 @@ export const mockAnalytics = {
 
 export const analyticsModule = {analyticsService: mockAnalytics};
 
-export const playerControl = {playing: false};
+// @ai `state` sets the player's exact state when a test needs one other
+// than playing / paused.
+export const playerControl = {playing: false, state: null as string | null};
 export const mockPlayerPause = jest.fn();
+export const mockPlayerPlay = jest.fn();
 
 export const playerStoreModule = {
   usePlayerStore: {
     getState: () => ({
-      playback: {state: playerControl.playing ? 'playing' : 'paused'},
+      playback: {
+        state:
+          playerControl.state ?? // @ai
+          (playerControl.playing ? 'playing' : 'paused'),
+      },
       pause: mockPlayerPause,
+      play: mockPlayerPlay,
     }),
   },
 };
@@ -154,6 +162,7 @@ export function resetRecitationControls(): void {
   micControl.chunk = null;
   micControl.interrupt = null;
   playerControl.playing = false;
+  playerControl.state = null; // @ai
 }
 
 /**

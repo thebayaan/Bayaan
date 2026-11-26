@@ -39,12 +39,13 @@ export default function BrowseScreen() {
   const surahTitleKey = isTablet
     ? 'browse.chooseReciterForSurah'
     : 'browse.browseRecitersForSurah';
+  // A surahId that is not 1–114 (a bad link) has no surah to name; reading
+  // its name used to throw. It opens the plain list instead. @ai
+  const surah = surahId ? SURAHS[parseInt(surahId, 10) - 1] : undefined; // @ai
   const title = rewayatName
     ? rewayatName
-    : surahId
-      ? t(surahTitleKey, {
-          surah: getSurahDisplayName(SURAHS[parseInt(surahId, 10) - 1]),
-        })
+    : surah
+      ? t(surahTitleKey, {surah: getSurahDisplayName(surah)})
       : t('browse.browseAll');
 
   // Set native header title on iOS
@@ -58,7 +59,7 @@ export default function BrowseScreen() {
     <BrowseReciters
       theme={theme}
       onBack={handleBack}
-      surahId={surahId ? parseInt(surahId, 10) : undefined}
+      surahId={surah?.id} // @ai
       title={title}
       initialTeacher={teacher}
       initialStudent={student}

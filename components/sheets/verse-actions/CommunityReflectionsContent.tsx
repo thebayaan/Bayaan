@@ -16,14 +16,7 @@
  */
 
 import React, {useState, useMemo, useEffect, useCallback} from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-  Linking,
-} from 'react-native';
+import {View, Text, Pressable, ActivityIndicator, Linking} from 'react-native';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
@@ -35,6 +28,7 @@ import type {CommunityReflection} from '@/types/CommunityReflection';
 import {useTranslation} from 'react-i18next';
 import {latinLetterSpacing} from '@/utils/rtl';
 // @ai-end
+import {SheetScrollView} from './sheetGestures';
 
 interface CommunityReflectionsContentProps {
   surahNumber: number;
@@ -89,11 +83,10 @@ export const CommunityReflectionsContent: React.FC<
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <SheetScrollView
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}
-        showsVerticalScrollIndicator={false}
-        bounces={true}>
+        showsVerticalScrollIndicator={false}>
         <View style={styles.verseBadge}>
           {/* @ai: the rewayah's own label when given */}
           <Text style={styles.verseBadgeText}>{label ?? verseKey}</Text>
@@ -135,7 +128,7 @@ export const CommunityReflectionsContent: React.FC<
             </View>
           </>
         )}
-      </ScrollView>
+      </SheetScrollView>
     </View>
   );
 };

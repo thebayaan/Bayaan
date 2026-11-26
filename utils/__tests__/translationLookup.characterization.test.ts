@@ -36,8 +36,9 @@ describe('translationLookup (characterization, develop behavior)', () => {
         '8365bdf532d87bc3905904c012932b8a35e30a0e67c20eec474d1ad64d5e494f',
       clear11:
         '38fcf74d05c29c7478254a7c48623d214e4eaf3894fa9f529753207f0954e91c',
+      // Without its two footnote numbers ("His Seat1 encompasses" before). @ai
       clear2255:
-        '23da26f47875bd83423f036ce01a181ae0222c86efa5509f373aa7250951f16d',
+        'c47913e69c60ff0f02bd3763c6ad45e15444420556e32d948191bbe23ecd332e', // @ai
     });
   });
 
@@ -53,6 +54,8 @@ describe('translationLookup (characterization, develop behavior)', () => {
     const t11 = getBundledTranslation('1:1', 'clear-quran');
     expect(t11.length).toBeGreaterThan(0);
     expect(t11).not.toMatch(/<[^>]*>/);
+    // A footnote marker goes with its number, not only its tags. @ai
+    expect(getBundledTranslation('2:1', 'clear-quran')).toBe('Alif-Lãm-Mĩm.'); // @ai
     expect(getBundledTranslation('2:255', 'clear-quran')).toContain(
       'Ever-Living',
     );

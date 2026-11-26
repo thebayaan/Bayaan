@@ -1,10 +1,11 @@
 import React, {useMemo} from 'react';
-import {View, Text, FlatList, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFlatList} from './SheetGestures';
 import Color from 'color';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {useTimestampStore} from '@/store/timestampStore';
@@ -43,7 +44,7 @@ export const FollowAlongSheet = (props: SheetProps<'follow-along'>) => {
       </View>
       <View style={styles.container}>
         <Text style={styles.description}>{t('followAlong.description')}</Text>
-        <FlatList
+        <SheetFlatList
           data={supportedReciters}
           keyExtractor={item => item.id}
           renderItem={({item}) => (

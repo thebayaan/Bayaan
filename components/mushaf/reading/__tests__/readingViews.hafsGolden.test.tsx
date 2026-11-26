@@ -11,6 +11,14 @@
  * Regenerate only from the code before verse units:
  *   UPDATE_HAFS_GOLDEN=1 npx jest readingViews.hafsGolden --watchAll=false
  */
+// @ai-start
+// A phone's window, set before anything reads the window size at import.
+// The fixture was recorded with Jest's default 750pt window, wider than any
+// phone, while the views sized themselves from the launch-time screen. It
+// was recorded again from that same code with this window; the views now
+// take the size they are given and render it unchanged.
+import {PHONE_WINDOW} from '../__fixtures__/phoneWindow';
+// @ai-end
 import * as fs from 'fs';
 import * as path from 'path';
 import {createHash} from 'crypto';
@@ -248,6 +256,7 @@ function runScenarios(): Record<string, unknown> {
       cardColor="#ffffff"
       bgColor="#fafafa"
       isBookLayout={page % 2 === 0}
+      pageSize={PHONE_WINDOW} // @ai
     />
   );
   for (const [page, themes] of [
@@ -285,6 +294,7 @@ function runScenarios(): Record<string, unknown> {
           initialPage={initialPage}
           onCurrentPageChange={p => mockRecorded.calls.push(['page', p])}
           onCurrentSurahChange={s => mockRecorded.calls.push(['surah', s])}
+          width={PHONE_WINDOW.width} // @ai
         />,
       );
     });

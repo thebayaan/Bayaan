@@ -5,7 +5,7 @@ import adhkarSeed from '@/data/adhkar.json';
 import {
   buildCatalog,
   buildTasbeehEntries,
-  createCountDayTracker,
+  countsOfToday, // @ai
   DEFAULT_TASBEEH_DHIKR_ID,
   seedAdhkar,
   tasbeehAdhkar,
@@ -207,21 +207,35 @@ describe('buildTasbeehEntries', () => {
   });
 });
 
-describe('createCountDayTracker', () => {
-  it('drops counts that were loaded on an earlier day', () => {
-    const track = createCountDayTracker();
-    const counts = {'91': 12, '96': 3};
-    expect(track(counts, '2026-10-10')).toEqual({'91': 12, '96': 3});
-    // Midnight passes without the store resetting its in-memory numbers.
-    expect(track(counts, '2026-10-11')).toEqual({});
-    // A tap on the new day refreshes only that dhikr.
-    expect(track({...counts, '91': 13}, '2026-10-11')).toEqual({'91': 13});
+// @ai-start
+// These replace the createCountDayTracker cases, which pinned the old rule:
+// a count was taken as today's when its number had changed since the last
+// snapshot. A day that ended on yesterday's total then showed as 0.
+describe('countsOfToday', () => {
+  const counts = {'91': 33, '96': 3};
+
+  it('keeps the counts of the day they were loaded for', () => {
+    expect(countsOfToday(counts, 'Sat Oct 10 2026', 'Sat Oct 10 2026')).toBe(
+      counts,
+    );
   });
 
-  it('forgets a dhikr after it is reset', () => {
-    const track = createCountDayTracker();
-    track({'91': 12}, '2026-10-10');
-    expect(track({}, '2026-10-10')).toEqual({});
-    expect(track({'91': 12}, '2026-10-11')).toEqual({'91': 12});
+  it('drops counts still held from an earlier day', () => {
+    // Midnight passed and the store has not reloaded yet.
+    expect(countsOfToday(counts, 'Sat Oct 10 2026', 'Sun Oct 11 2026')).toEqual(
+      {},
+    );
+  });
+
+  it('does not go by the numbers: the same total as yesterday is kept', () => {
+    // Reloaded on the new day, then 33 taps again.
+    expect(
+      countsOfToday({'91': 33}, 'Sun Oct 11 2026', 'Sun Oct 11 2026'),
+    ).toEqual({'91': 33});
+  });
+
+  it('shows nothing before the counts are loaded', () => {
+    expect(countsOfToday({}, null, 'Sat Oct 10 2026')).toEqual({});
   });
 });
+// @ai-end

@@ -1126,7 +1126,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           ]}
           onPress={toggleWBWTranslation}>
           <Text style={styles.settingRowLabel}>
-            {t('mushafSettings.translation')}
+            {t('mushafSettings.englishMeanings')}
           </Text>
           {wbwShowTranslation && (
             <Feather

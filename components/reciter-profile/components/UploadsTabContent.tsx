@@ -266,7 +266,7 @@ export const UploadsTabContent = React.forwardRef<
     const {t} = useTranslation('player');
     const styles = useMemo(() => createStyles(theme), [theme]);
     const {updateQueue, addToQueue, play} = usePlayerActions();
-    const {importFile, getByReciter} = useUploadsStore();
+    const {importFile, updateTags, getByReciter} = useUploadsStore(); // @ai
 
     const uploads = getByReciter(reciterId);
 
@@ -342,13 +342,22 @@ export const UploadsTabContent = React.forwardRef<
 
         const asset = result.assets[0];
         const recitation = await importFile(asset.uri, asset.name || 'Unknown');
+        // @ai-start
+        // Tag it with this reciter now. The sheet only pre-fills the reciter,
+        // so closing it without saving left the new upload untagged, and it
+        // vanished from the page it had just been added on.
+        await updateTags(recitation.id, {reciterId});
         SheetManager.show('organize-recitation', {
-          payload: {recitation, prefillReciterId: reciterId},
+          payload: {
+            recitation: {...recitation, reciterId},
+            prefillReciterId: reciterId,
+          },
         });
+        // @ai-end
       } catch (error) {
         console.error('Error importing file:', error);
       }
-    }, [importFile, reciterId]);
+    }, [importFile, updateTags, reciterId]); // @ai
 
     const renderCardItem = useCallback(
       ({item, index}: {item: UploadedRecitation; index: number}) => (

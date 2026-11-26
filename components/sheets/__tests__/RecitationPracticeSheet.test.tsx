@@ -53,11 +53,17 @@ jest.mock(
     };
   },
 );
-jest.mock('react-native-actions-sheet', () => {
-  const {ScrollView} = jest.requireActual('react-native');
+jest.mock('react-native-actions-sheet', () => ({
+  SheetManager: {hide: jest.fn(async () => undefined)},
+}));
+jest.mock('@/components/sheets/SheetGestures', () => {
+  const {ScrollView: MockScrollView, View: MockView} =
+    jest.requireActual('react-native');
   return {
-    ScrollView,
-    SheetManager: {hide: jest.fn(async () => undefined)},
+    SheetScrollView: MockScrollView,
+    SheetFooter: (props: object) => (
+      <MockView {...props} testID="sheet-footer" />
+    ),
   };
 });
 
@@ -100,6 +106,14 @@ function button(r: TestRenderer.ReactTestRenderer, label: string) {
         .findAll(m => (m.type as unknown) === Text)
         .some(m => [m.props.children].flat().join('') === label),
   );
+}
+
+/** Whether a SheetFooter holds `node`, keeping the sheet's drag off it. */
+function inSheetFooter(node: TestRenderer.ReactTestInstance): boolean {
+  for (let n: TestRenderer.ReactTestInstance | null = node; n; n = n.parent) {
+    if (n.props.testID === 'sheet-footer') return true;
+  }
+  return false;
 }
 
 beforeEach(() => {
@@ -183,5 +197,17 @@ describe('RecitationPracticeSheet', () => {
     await act(async () => r.unmount());
     renderer = null;
     expect(mockPractice.stop).toHaveBeenCalled();
+  });
+
+  it('keeps the sheet drag off Try again and Done', async () => {
+    usePracticeStore.setState({
+      ...PRACTICE_IDLE,
+      status: 'done',
+      target: TARGET,
+      verdict: {outcome: 'nothing', flags: [], recited: []},
+    });
+    const r = await render();
+    expect(inSheetFooter(button(r, 'Try again'))).toBe(true);
+    expect(inSheetFooter(button(r, 'Done'))).toBe(true);
   });
 });

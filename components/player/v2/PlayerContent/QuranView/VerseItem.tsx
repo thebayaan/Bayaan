@@ -19,6 +19,7 @@ import {
   useVerseAnnotationsStore,
 } from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {HIGHLIGHT_COLORS} from '@/types/verse-annotations'; // @ai
 import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
@@ -49,6 +50,7 @@ import {
 import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
 import {isRTL} from '@/utils/rtl';
+import {useTranslationStore} from '@/store/translationStore';
 // @ai-end
 
 // Type for processed word data from store
@@ -77,6 +79,15 @@ interface SaheehFootnoteEntry {
 interface SaheehData {
   [verseKey: string]: SaheehFootnoteEntry;
 }
+
+// @ai-start
+// Text of a left-to-right script (the transliteration, an English
+// translation) starts at the physical left, text of a right-to-left one at
+// the right. React Native swaps textAlign left and right in an RTL layout,
+// so in the Arabic UI 'left' set English text against the right edge.
+const PHYSICAL_LEFT = isRTL ? 'right' : 'left';
+const PHYSICAL_RIGHT = isRTL ? 'left' : 'right';
+// @ai-end
 
 // Shown in place of the Arabic line when the rewayah's words fail to load. @ai
 const TEXT_UNAVAILABLE_MESSAGE = "Verse text couldn't be loaded.";
@@ -125,6 +136,12 @@ interface VerseItemProps {
    * Hafs verse row, exactly as before.
    */
   unitRow?: VerseUnitRow;
+  /**
+   * Shown as selected whatever the verse selection store holds: the mushaf's
+   * list modes pass the verse the reader was taken to (a search result, a
+   * bookmark, a link), which the mushaf's own selection store holds.
+   */
+  selected?: boolean;
   // @ai-end
 }
 
@@ -164,6 +181,7 @@ export const VerseItem = memo<VerseItemProps>(
     wbwShowTransliteration,
     rewayah,
     unitRow, // @ai
+    selected, // @ai
   }) => {
     const {theme} = useTheme();
     const {t} = useTranslation(['player', 'common']);
@@ -204,7 +222,7 @@ export const VerseItem = memo<VerseItemProps>(
     // A selected key means something only in its numbering: a Hafs verse row
     // matches a Hafs selection, a rewayah verse row one of its own rewayah.
     const selectionRewayah = unitRow ? unitRow.rewayah : 'hafs';
-    const isSelected = useVerseSelectionStore(
+    const isSelectedHere = useVerseSelectionStore(
       useCallback(
         s =>
           s.selectedVerseKey === verseKey &&
@@ -212,6 +230,7 @@ export const VerseItem = memo<VerseItemProps>(
         [verseKey, selectionRewayah],
       ),
     );
+    const isSelected = isSelectedHere || !!selected;
     // @ai-end
     const selectVerse = useVerseSelectionStore(s => s.selectVerse);
 
@@ -243,6 +262,24 @@ export const VerseItem = memo<VerseItemProps>(
         [verseKey, unitRow],
       ),
     );
+    // @ai-start
+    // The verse's colour highlight. The rows showed bookmark and note marks
+    // but never the colour, so a highlight picked in the verse sheet left
+    // no trace in the list (the sheet then offered "Remove highlight").
+    const highlightColor = useVerseAnnotationsStore(
+      useCallback(
+        s =>
+          unitRow
+            ? unitRow.unit !== null
+              ? selectUnitAnnotations(s, unitRow.units).highlightColors[
+                  unitRow.unit.key
+                ]
+              : undefined
+            : s.highlights[verseKey],
+        [verseKey, unitRow],
+      ),
+    );
+    // @ai-end
     // Fetch tajweed data directly from store — granular selector means only
     // the ~10 visible VerseItems re-render when tajweed finishes loading
     const processedTajweedAyahData = useTajweedStore(
@@ -523,7 +560,20 @@ export const VerseItem = memo<VerseItemProps>(
     const containerStyle = useMemo(
       () => [
         styles.container,
-        {borderBottomColor: borderColor},
+        {
+          borderBottomColor: borderColor,
+          // @ai-start
+          // The colour highlight: below the follow-along and selection
+          // tints, as on the pages. Spread so an unhighlighted row's style
+          // is exactly as before.
+          ...(highlightColor
+            ? {
+                backgroundColor: HIGHLIGHT_COLORS[highlightColor],
+                borderRadius: moderateScale(8),
+              }
+            : null),
+          // @ai-end
+        },
         isActive && {
           backgroundColor: derivedColors.activeBg,
           borderRadius: moderateScale(8),
@@ -535,6 +585,7 @@ export const VerseItem = memo<VerseItemProps>(
       ],
       [
         borderColor,
+        highlightColor, // @ai
         isActive,
         derivedColors.activeBg,
         isSelected,
@@ -574,21 +625,49 @@ export const VerseItem = memo<VerseItemProps>(
       [textColor, transliterationFontSize],
     );
 
+    // @ai-start
+    // A downloaded translation in a right-to-left script (Urdu, Persian...)
+    // is set from the right; the bundled ones are English.
+    const translationIsRTL = useTranslationStore(
+      useCallback(
+        s =>
+          translationId !== undefined &&
+          s.downloadedMeta.some(
+            m => m.identifier === translationId && m.direction === 'rtl',
+          ),
+        [translationId],
+      ),
+    );
     const translationStyle = useMemo(
-      () => [
-        styles.translationText,
-        {color: textColor, fontSize: moderateScale(translationFontSize)},
-      ],
-      [textColor, translationFontSize],
+      () =>
+        translationIsRTL
+          ? [
+              styles.translationText,
+              {color: textColor, fontSize: moderateScale(translationFontSize)},
+              styles.rtlTranslationText,
+            ]
+          : [
+              styles.translationText,
+              {color: textColor, fontSize: moderateScale(translationFontSize)},
+            ],
+      [textColor, translationFontSize, translationIsRTL],
     );
 
     const translationSourceStyle = useMemo(
-      () => [
-        styles.translationSource,
-        {color: derivedColors.translationSource},
-      ],
-      [derivedColors.translationSource],
+      () =>
+        translationIsRTL
+          ? [
+              styles.translationSource,
+              {color: derivedColors.translationSource},
+              styles.rtlTranslationSource,
+            ]
+          : [
+              styles.translationSource,
+              {color: derivedColors.translationSource},
+            ],
+      [derivedColors.translationSource, translationIsRTL],
     );
+    // @ai-end
 
     // @ai — notes under a verse row's Hafs content (a translation the
     // rewayah divides between verses, the transliteration's Hafs disclosure)
@@ -901,20 +980,31 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(8),
-    textAlign: 'left',
+    textAlign: PHYSICAL_LEFT, // @ai — always Latin
+    ...(isRTL ? {writingDirection: 'ltr'} : null), // @ai — iOS punctuation
   },
   translationText: {
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(8),
-    textAlign: 'left',
+    textAlign: PHYSICAL_LEFT, // @ai — see rtlTranslationText
+    ...(isRTL ? {writingDirection: 'ltr'} : null), // @ai — iOS punctuation
   },
+  // @ai-start
+  rtlTranslationText: {
+    textAlign: PHYSICAL_RIGHT,
+    writingDirection: 'rtl',
+  },
+  rtlTranslationSource: {
+    textAlign: PHYSICAL_RIGHT,
+  },
+  // @ai-end
   translationSource: {
     fontSize: moderateScale(11),
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(2),
     marginBottom: verticalScale(4),
-    textAlign: 'left',
+    textAlign: PHYSICAL_LEFT, // @ai — under its translation
     fontStyle: 'italic',
   },
   footnoteContainer: {

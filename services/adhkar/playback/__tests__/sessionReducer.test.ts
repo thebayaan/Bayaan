@@ -123,6 +123,55 @@ describe('rule 1: start from a card', () => {
   });
 });
 
+// @ai-start
+describe('Repeat armed before the card plays', () => {
+  it('starts a single session that already loops', () => {
+    const s = reduceSession(
+      null,
+      {type: 'pressCard', source: morning, index: 1, loop: true},
+      NOW,
+    );
+    expect(s).toMatchObject({mode: 'single', index: 1, loop: true});
+  });
+  it('starts without a loop when Repeat was not armed', () => {
+    const s = reduceSession(
+      null,
+      {type: 'pressCard', source: morning, index: 1},
+      NOW,
+    );
+    expect(s?.loop).toBe(false);
+  });
+  it('replaces a session of another dhikr with a looping one', () => {
+    const s = reduceSession(
+      session({mode: 'single', index: 0, loop: false}),
+      {type: 'pressCard', source: morning, index: 1, loop: true},
+      NOW,
+    );
+    expect(s).toMatchObject({mode: 'single', index: 1, loop: true});
+  });
+  it('does not make Play All loop when the press joins it', () => {
+    const s = reduceSession(
+      session({index: 0}),
+      {type: 'pressCard', source: morning, index: 3, loop: true},
+      NOW,
+    );
+    expect(s).toMatchObject({mode: 'all', index: 3, loop: false});
+  });
+  it('leaves the loop of the current card to toggleLoop', () => {
+    const s = reduceSession(
+      session({mode: 'single', index: 1, status: 'paused', loop: false}),
+      {type: 'pressCard', source: morning, index: 1, loop: true},
+      NOW,
+    );
+    expect(s).toMatchObject({status: 'loading', loop: false});
+  });
+  it('never loops a Play All session', () => {
+    const s = reduceSession(null, {type: 'pressPlayAll', source: morning}, NOW);
+    expect(s?.loop).toBe(false);
+  });
+});
+// @ai-end
+
 describe('rule 2: toggle the current card', () => {
   it('pauses a playing current card', () => {
     const s = reduceSession(
@@ -383,6 +432,41 @@ describe('rules 7 and 8, player events', () => {
       ),
     ).toMatchObject({positionSec: 12, lastActiveAt: 5});
   });
+  // @ai-start
+  it('positionSaved keeps the clip length it is given', () => {
+    const paused = reduceSession(
+      session({status: 'paused'}),
+      {type: 'positionSaved', positionSec: 12, durationSec: 40},
+      NOW,
+    );
+    expect(paused).toMatchObject({positionSec: 12, durationSec: 40});
+    // A later position without a length (a seek before the clip is loaded
+    // again) is still a position in the same clip.
+    expect(
+      reduceSession(paused, {type: 'positionSaved', positionSec: 20}, NOW),
+    ).toMatchObject({positionSec: 20, durationSec: 40});
+  });
+  it('another dhikr starts without the previous clip length', () => {
+    const before = session({
+      status: 'paused',
+      positionSec: 12,
+      durationSec: 40,
+    });
+    const swiped = reduceSession(
+      before,
+      {type: 'swipedTo', listId: 'morning-adhkar', dhikrId: 'b'},
+      NOW,
+    );
+    expect(swiped).toMatchObject({index: 1, positionSec: 0});
+    expect(swiped?.durationSec).toBeUndefined();
+    const advanced = reduceSession(
+      {...before, status: 'playing'},
+      {type: 'trackEnded', token: before.trackToken},
+      NOW,
+    );
+    expect(advanced?.durationSec).toBeUndefined();
+  });
+  // @ai-end
   it('restored replaces the state', () => {
     const restored = session({status: 'paused', index: 3});
     expect(

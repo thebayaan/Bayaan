@@ -8,6 +8,7 @@ import {
   getDeviceStorage,
   formatBytes,
 } from '@/services/storageService';
+import {uploadsService} from '@/services/uploads/UploadsService'; // @ai
 
 // @ai-start
 export function useStorageBreakdown() {
@@ -18,6 +19,7 @@ export function useStorageBreakdown() {
       free: zero,
       used: zero,
       downloads: zero,
+      uploads: zero,
       cache: zero,
       otherApps: zero,
     };
@@ -27,6 +29,7 @@ export function useStorageBreakdown() {
     free: 0,
     used: 0,
     downloads: 0,
+    uploads: 0,
     cache: 0,
     otherApps: 0,
   });
@@ -44,19 +47,27 @@ export function useStorageBreakdown() {
         const deviceStorage = await getDeviceStorage();
 
         // Get downloads storage
-        const downloadsSize = getDownloadsStorage();
+        const downloadsSize = await getDownloadsStorage();
         console.log('[Storage] Downloads size:', downloadsSize, 'bytes');
 
         // Get cache storage
         const cacheSize = await getCacheStorage();
         console.log('[Storage] Cache size:', cacheSize, 'bytes');
 
+        // The user's imported audio. It had no row of its own and was
+        // counted under "Other apps". A failure here must not hide the rest
+        // of the screen.
+        const uploadsSize = await uploadsService
+          .getTotalStorageSize()
+          .catch(() => 0);
+
         // Calculate breakdown:
         // Device used = total - free
-        // Device used = other apps + our downloads + our cache
-        // So: other apps = device used - our downloads - our cache
+        // Device used = other apps + our downloads + our uploads + our cache
+        // So: other apps = device used - our downloads - uploads - cache
         const deviceUsed = deviceStorage.used;
-        const otherAppsSize = deviceUsed - downloadsSize - cacheSize;
+        const otherAppsSize =
+          deviceUsed - downloadsSize - uploadsSize - cacheSize;
 
         // Update raw data (in bytes)
         setRawData({
@@ -64,6 +75,7 @@ export function useStorageBreakdown() {
           free: deviceStorage.free,
           used: deviceUsed,
           downloads: downloadsSize,
+          uploads: uploadsSize,
           cache: cacheSize,
           otherApps: Math.max(0, otherAppsSize), // Ensure non-negative
         });
@@ -74,6 +86,7 @@ export function useStorageBreakdown() {
           free: formatBytes(deviceStorage.free),
           used: formatBytes(deviceUsed),
           downloads: formatBytes(downloadsSize),
+          uploads: formatBytes(uploadsSize),
           cache: formatBytes(cacheSize),
           otherApps: formatBytes(Math.max(0, otherAppsSize)),
         });

@@ -11,6 +11,7 @@
  *
  * Installed once at startup by sheets.tsx, which the root layout imports.
  */
+import i18n from 'i18next';
 import {
   getShortLabel,
   type RewayahId,
@@ -18,14 +19,18 @@ import {
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {showToast} from '@/utils/toastUtils';
 
-/** Notice copy for a fallback from `from` to Hafs. */
+/** Notice copy for a fallback from `from` to Hafs, in the app language. */
 export function rewayahFallbackNotice(from: RewayahId): {
   title: string;
   message: string;
 } {
   return {
-    title: `Couldn't load ${getShortLabel(from)}`,
-    message: 'Showing Hafs instead.',
+    title: i18n.t('settings:mushafSettings.fallback.title', {
+      rewayah: getShortLabel(from),
+    }),
+    message: i18n.t('settings:mushafSettings.rewayahNotice.showingInstead', {
+      rewayah: getShortLabel('hafs'),
+    }),
   };
 }
 

@@ -53,6 +53,7 @@ import {useHover} from '@/hooks/useHover';
 import {useKeyCommands} from '@/hooks/useKeyCommands';
 import type {KeyBinding} from '@/services/keyboard/keyCommands';
 import {requestSearchFocus} from '@/services/keyboard/searchFocus';
+import {getSheetStack} from 'react-native-actions-sheet';
 // @ai-end
 
 // Text in the sidebar grows with Dynamic Type only this far, so the labels
@@ -273,6 +274,23 @@ export const TabletSidebar: React.FC<BottomTabBarProps> = ({
   // Keyboard: ⌘1–⌘5 press the items, ⌘F opens Search with the cursor in
   // its field. Only while the tabs are on show, not under the reader.
   const tabsOnShow = useIsFocused();
+  // Nor under the full player. It covers the tabs without being a screen,
+  // so they stay focused beneath it: ⌘1–⌘5 changed tab unseen, and ⌘F put
+  // the cursor in the hidden search field, after which Space typed into it
+  // instead of pausing and ← / → stopped seeking.
+  const playerOpen = usePlayerStore(s => s.sheetMode === 'full');
+  // A sheet open over the tabs (surah options, the sleep timer, a note)
+  // keeps the keys as well: the tab would change behind it. The sheets
+  // have no state to follow, so this is asked at the press. Esc closes
+  // the sheet first. False when the press was ignored.
+  const pressFromKey = useCallback(
+    (item: SidebarItemId): boolean => {
+      if (getSheetStack().length > 0) return false;
+      handlePress(item);
+      return true;
+    },
+    [handlePress],
+  );
   const keyBindings = useMemo<KeyBinding[]>(
     () => [
       ...TOP_ITEMS.map(
@@ -280,28 +298,27 @@ export const TabletSidebar: React.FC<BottomTabBarProps> = ({
           key: NUMBER_KEYS[i],
           title: labels[id],
           menu: 'go',
-          run: () => handlePress(id),
+          run: () => pressFromKey(id),
         }),
       ),
       {
         key: 'cmd-5',
         title: labels.library,
         menu: 'go',
-        run: () => handlePress('library'),
+        run: () => pressFromKey('library'),
       },
       {
         key: 'cmd-f',
         title: t('keyboard.findSurahOrReciter'),
         menu: 'go',
         run: () => {
-          handlePress('search');
-          requestSearchFocus();
+          if (pressFromKey('search')) requestSearchFocus();
         },
       },
     ],
-    [labels, t, handlePress],
+    [labels, t, pressFromKey],
   );
-  useKeyCommands(keyBindings, tabsOnShow);
+  useKeyCommands(keyBindings, tabsOnShow && !playerOpen);
 
   const containerStyle = useMemo(
     () => [

@@ -1,15 +1,12 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, Pressable, Text, View} from 'react-native';
-import {
-  ScrollView,
-  SheetManager,
-  type SheetProps,
-} from 'react-native-actions-sheet';
+import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter, SheetScrollView} from './SheetGestures';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
 import {SURAHS} from '@/data/surahData';
 import {useTheme} from '@/hooks/useTheme';
@@ -183,14 +180,16 @@ export const RecitationPracticeSheet = (
           </View>
         )}
         <Text style={styles.footnote}>{t('recitationSummary.footnote')}</Text>
-        <Pressable
-          style={styles.secondaryButton}
-          onPress={() => void SheetManager.hide(props.sheetId)}
-          accessibilityRole="button">
-          <Text style={styles.secondaryButtonText}>
-            {t('common:actions.done')}
-          </Text>
-        </Pressable>
+        <SheetFooter>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => void SheetManager.hide(props.sheetId)}
+            accessibilityRole="button">
+            <Text style={styles.secondaryButtonText}>
+              {t('common:actions.done')}
+            </Text>
+          </Pressable>
+        </SheetFooter>
       </View>
     </ActionSheet>
   );
@@ -214,7 +213,7 @@ function TargetText({
   const passage = target.expected;
   if (!passage || !fontMgr || width <= 0) return null;
   return (
-    <ScrollView style={styles.verseBox}>
+    <SheetScrollView style={styles.verseBox}>
       <SkiaVerseText
         verseKey={`${passage.surah}:${passage.ayah}`}
         rewayah="hafs"
@@ -228,7 +227,7 @@ function TargetText({
         arabicTextWeight={arabicTextWeight}
         textAlign="center"
       />
-    </ScrollView>
+    </SheetScrollView>
   );
 }
 
@@ -243,16 +242,19 @@ function PrimaryButton({
   label: string;
   onPress: () => void;
 }): React.JSX.Element {
+  // In a SheetFooter, like Done: a tap that wobbles never drags the sheet.
   return (
-    <Pressable
-      style={[styles.primaryButton, {backgroundColor: theme.colors.text}]}
-      onPress={onPress}
-      accessibilityRole="button">
-      <Text
-        style={[styles.primaryButtonText, {color: theme.colors.background}]}>
-        {label}
-      </Text>
-    </Pressable>
+    <SheetFooter>
+      <Pressable
+        style={[styles.primaryButton, {backgroundColor: theme.colors.text}]}
+        onPress={onPress}
+        accessibilityRole="button">
+        <Text
+          style={[styles.primaryButtonText, {color: theme.colors.background}]}>
+          {label}
+        </Text>
+      </Pressable>
+    </SheetFooter>
   );
 }
 

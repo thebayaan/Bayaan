@@ -9,6 +9,9 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 
 type AudioSource = 'main' | 'mushaf' | 'adhkar' | 'none';
 
+// @ai The main player's states in which it is playing or about to.
+const MAIN_ACTIVE_STATES = ['playing', 'buffering', 'loading'];
+
 class AudioCoordinator {
   private static instance: AudioCoordinator;
   private activeSource: AudioSource = 'none';
@@ -52,10 +55,10 @@ class AudioCoordinator {
     this.pauseAdhkarIfActive();
     if (this.activeSource === 'main') {
       const store = usePlayerStore.getState();
-      if (
-        store.playback.state === 'playing' ||
-        store.playback.state === 'buffering'
-      ) {
+      // @ai 'loading' too: a track that is still loading would start
+      // playing over the verse audio when its load finished. pause() holds
+      // it back.
+      if (MAIN_ACTIVE_STATES.includes(store.playback.state)) {
         store.pause();
         if (__DEV__)
           console.log('[AudioCoordinator] Paused main player for mushaf');
@@ -94,21 +97,32 @@ class AudioCoordinator {
    * Called before the adhkar player plays. Pauses the main and mushaf players.
    */
   adhkarWillPlay(): void {
+    // @ai Like the other two: nothing of ours plays into an open mic.
+    this.stopRecitation();
     const store = usePlayerStore.getState();
-    if (
-      store.playback.state === 'playing' ||
-      store.playback.state === 'buffering'
-    ) {
+    // @ai 'loading' too, as in mushafWillPlay().
+    if (MAIN_ACTIVE_STATES.includes(store.playback.state)) {
       store.pause();
     }
-    const {mushafAudioService} = require('./MushafAudioService');
-    if (mushafAudioService.getIsPlaying()) {
-      mushafAudioService.pause();
-      const {useMushafPlayerStore} = require('@/store/mushafPlayerStore');
-      useMushafPlayerStore.getState().setPlaybackState('paused');
-    }
+    this.pauseMushaf(); // @ai
     this.setActiveSource('adhkar');
   }
+
+  // @ai-start
+  /**
+   * Pauses verse audio in the Mushaf if it is playing, and tells its store.
+   * Used when adhkar takes over, when a word of Word Study plays and when
+   * the sleep timer ends.
+   */
+  pauseMushaf(): void {
+    // Lazy imports to avoid a circular dependency.
+    const {mushafAudioService} = require('./MushafAudioService');
+    if (!mushafAudioService.getIsPlaying()) return;
+    mushafAudioService.pause();
+    const {useMushafPlayerStore} = require('@/store/mushafPlayerStore');
+    useMushafPlayerStore.getState().setPlaybackState('paused');
+  }
+  // @ai-end
 
   /**
    * Called before the recording of one word plays (Word Study, which has a
@@ -121,18 +135,10 @@ class AudioCoordinator {
     this.stopRecitation();
     this.pauseAdhkarIfActive();
     const store = usePlayerStore.getState();
-    if (
-      store.playback.state === 'playing' ||
-      store.playback.state === 'buffering'
-    ) {
+    if (MAIN_ACTIVE_STATES.includes(store.playback.state)) {
       store.pause();
     }
-    const {mushafAudioService} = require('./MushafAudioService');
-    if (mushafAudioService.getIsPlaying()) {
-      mushafAudioService.pause();
-      const {useMushafPlayerStore} = require('@/store/mushafPlayerStore');
-      useMushafPlayerStore.getState().setPlaybackState('paused');
-    }
+    this.pauseMushaf();
   }
 
   private pauseAdhkarIfActive(): void {

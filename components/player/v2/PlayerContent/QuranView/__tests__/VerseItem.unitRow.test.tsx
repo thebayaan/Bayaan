@@ -139,6 +139,8 @@ import {fixtureUnits} from '../__fixtures__/verseUnitsFixtures';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {StyleSheet} from 'react-native'; // @ai
+import {HIGHLIGHT_COLORS} from '@/types/verse-annotations'; // @ai
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
@@ -256,6 +258,7 @@ beforeEach(() => {
     notedVerseKeys: new Set(),
     bookmarkRows: {},
     noteRows: {},
+    highlightRows: {}, // @ai
   } as never);
 });
 
@@ -409,6 +412,37 @@ describe('bookmark and note dots from the stored rows (contract section 3)', () 
     expect(marked('103:1', 'Feather:bookmark')).toBe(true);
   });
 });
+
+// @ai-start
+describe('colour highlight from the stored rows (contract section 3)', () => {
+  const background = (key: string) => {
+    const r = render(row(fatihah, key));
+    const style = StyleSheet.flatten(rowPressable(r).props.style);
+    act(() => r.unmount());
+    return style.backgroundColor;
+  };
+
+  it('a Warsh row at Warsh 1:7 (anchor 1:7:5) tints Warsh 1:7 only', () => {
+    useVerseAnnotationsStore.setState({
+      highlightRows: {
+        '1:7:5': {verseKey: '1:7:5', rewayahId: 'warsh', color: 'green'},
+      },
+    } as never);
+    expect(background('1:7')).toBe(HIGHLIGHT_COLORS.green);
+    expect(background('1:6')).toBeUndefined();
+  });
+
+  it('a Hafs row on Hafs 1:7 tints both Warsh verses holding it', () => {
+    useVerseAnnotationsStore.setState({
+      highlightRows: {
+        '1:7': {verseKey: '1:7', rewayahId: 'hafs', color: 'blue'},
+      },
+    } as never);
+    expect(background('1:6')).toBe(HIGHLIGHT_COLORS.blue);
+    expect(background('1:7')).toBe(HIGHLIGHT_COLORS.blue);
+  });
+});
+// @ai-end
 
 describe('Hafs-aligned content per Hafs verse', () => {
   it('Hafs 1:7: its translation once under Warsh 1:6, the note under both', () => {

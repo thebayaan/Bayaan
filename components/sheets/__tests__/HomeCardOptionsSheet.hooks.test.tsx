@@ -48,6 +48,11 @@ jest.mock('@/services/dataService', () => ({
   getReciterById: jest.fn(),
   getSurahById: () => undefined,
 }));
+jest.mock('@/store/uploadsStore', () => ({
+  useUploadsStore: (select: (state: {recitations: []}) => unknown) =>
+    select({recitations: []}),
+}));
+jest.mock('@/utils/track', () => ({createUserUploadTrack: jest.fn()}));
 jest.mock('@/utils/audioUtils', () => ({generateSmartAudioUrl: jest.fn()}));
 jest.mock('@/utils/artworkUtils', () => ({getReciterArtwork: jest.fn()}));
 jest.mock('@/utils/shareUtils', () => ({

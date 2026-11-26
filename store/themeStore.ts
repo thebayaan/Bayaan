@@ -2,7 +2,7 @@ import {create} from 'zustand';
 import {persist} from 'zustand/middleware';
 import {persistStorage} from '@/utils/storage'; // @ai
 import {ThemeMode, PrimaryColor, Theme, createTheme} from '@/utils/themeUtils';
-import {Appearance, Platform} from 'react-native';
+import {Appearance} from 'react-native'; // @ai
 
 interface ThemeState {
   themeMode: ThemeMode;
@@ -25,7 +25,35 @@ const getEffectiveTheme = (
   return createTheme(mode, primaryColor);
 };
 
+// @ai-start
+// Whether this run of the app has pinned a look on the native side. A cold
+// start has none, so System has nothing to remove then and the native side is
+// left exactly as the OS started it.
+let nativeLookPinned = false;
+
+// Tells the native side which look the app uses, so the keyboard, alerts and
+// glass chrome match. 'light' and 'dark' pin it; 'unspecified' removes the pin
+// and the app follows the device again. React Native takes 'unspecified' on
+// iOS and Android alike. The old `null` left React Native's own cached scheme
+// null on iOS (so screens asking it saw "light" inside a dark app), and was
+// never sent on Android (so System kept the last pinned look until restart).
+const syncNativeColorScheme = (mode: ThemeMode) => {
+  if (mode !== 'system') {
+    nativeLookPinned = true;
+    Appearance.setColorScheme(mode);
+  } else if (nativeLookPinned) {
+    nativeLookPinned = false;
+    Appearance.setColorScheme('unspecified');
+  }
+};
+// @ai-end
+
 // Subscribe to system theme changes outside of the store
+// @ai-start
+// This is also what completes a switch to System: the native side removes the
+// pin a moment after syncNativeColorScheme() asks, and reports the device's
+// scheme here when it differs from the pinned one.
+// @ai-end
 Appearance.addChangeListener(({colorScheme}) => {
   const state = useThemeStore.getState();
 
@@ -45,16 +73,15 @@ export const useThemeStore = create<ThemeState>()(
 
       setThemeMode: mode =>
         set(state => {
-          const newTheme = getEffectiveTheme(mode, state.primaryColor);
           // Sync native UI (keyboard, alerts, liquid glass chrome) with the choice
-          // Android's AppearanceModule.setColorScheme crashes on null — skip the call entirely
-          if (mode === 'system') {
-            if (Platform.OS !== 'android') {
-              Appearance.setColorScheme(null as any);
-            }
-          } else {
-            Appearance.setColorScheme(mode);
-          }
+          // @ai-start
+          syncNativeColorScheme(mode);
+          // Read the scheme after the sync, never before. For System, React
+          // Native still reports the pinned look at this point (the pin comes
+          // off a moment later), so the theme stays as it is and the change
+          // listener above switches it when the device's scheme arrives.
+          const newTheme = getEffectiveTheme(mode, state.primaryColor);
+          // @ai-end
           return {
             themeMode: mode,
             theme: newTheme,
@@ -79,15 +106,11 @@ export const useThemeStore = create<ThemeState>()(
       }),
       onRehydrateStorage: () => state => {
         if (state) {
-          const theme = getEffectiveTheme(state.themeMode, state.primaryColor);
           // Sync native UI with the persisted preference on app launch
-          if (state.themeMode === 'system') {
-            if (Platform.OS !== 'android') {
-              Appearance.setColorScheme(null as any);
-            }
-          } else {
-            Appearance.setColorScheme(state.themeMode);
-          }
+          // @ai-start
+          syncNativeColorScheme(state.themeMode);
+          const theme = getEffectiveTheme(state.themeMode, state.primaryColor);
+          // @ai-end
           useThemeStore.setState({
             ...state,
             theme,

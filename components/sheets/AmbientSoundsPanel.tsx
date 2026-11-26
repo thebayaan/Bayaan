@@ -17,6 +17,7 @@ import {
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
+import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
 // @ai-end
 
 /**
@@ -31,10 +32,13 @@ import {useResponsive} from '@/hooks/useResponsive';
 /**
  * When the sounds close, check if the main Quran player is playing. If it's
  * NOT playing, the user was just sampling: stop ambient playback. If it IS
- * playing, ambient continues alongside the recitation.
+ * playing, ambient continues alongside the recitation. A recitation that is
+ * loading or waiting on a stalled stream counts as playing: closing the
+ * sounds at that moment used to switch off the sound just picked.
  */
 export function stopAmbientSampling(): void {
-  const isMainPlaying = usePlayerStore.getState().playback.state === 'playing';
+  const {state} = usePlayerStore.getState().playback;
+  const isMainPlaying = isActivelyPlaying(state) || state === 'loading';
   const {isEnabled, setEnabled} = useAmbientStore.getState();
   if (!isMainPlaying && isEnabled) {
     ambientAudioService.stop();

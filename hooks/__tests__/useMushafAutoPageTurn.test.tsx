@@ -21,19 +21,27 @@ jest.mock('@/store/mushafPlayerStore', () => {
   };
 });
 // Page 562 ends inside 67:12 at its word 5; 67:12 runs on to page 563.
+// @ai-start
+// Page 604, the last one, ends at 114:6 word 3.
 jest.mock('@/components/mushaf/skia/recitedWord', () => ({
   dkWordPosition: (_words: unknown, index: number) => index + 1,
-  lastWordOnPage: (lines: {page: number}[]) =>
-    lines[0]?.page === 562 ? {verseKey: '67:12', position: 5} : null,
+  lastWordOnPage: (lines: {page: number}[]) => {
+    if (lines[0]?.page === 604) return {verseKey: '114:6', position: 3};
+    return lines[0]?.page === 562 ? {verseKey: '67:12', position: 5} : null;
+  },
 }));
 jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
   digitalKhattDataService: {
-    getPageLines: (page: number) => [{page}],
+    // As the real service: a page outside the mushaf has no lines.
+    getPageLines: (page: number) => (page >= 1 && page <= 604 ? [{page}] : []),
     getVerseWords: () => [],
-    getPageForVerse: (key: string) =>
-      Number(key.split(':')[1]) <= 12 ? 562 : 563,
+    getPageForVerse: (key: string) => {
+      if (key.startsWith('114:')) return 604;
+      return Number(key.split(':')[1]) <= 12 ? 562 : 563;
+    },
   },
 }));
+// @ai-end
 jest.mock('@/services/mushaf/MushafVerseMapService', () => ({
   mushafVerseMapService: {
     getOrderedVerseKeysForPage: (page: number) =>
@@ -51,10 +59,18 @@ import {
   useRecitationTrackingStore,
 } from '@/store/recitationTrackingStore';
 
-function Harness({navigate}: {navigate: (page: number) => void}) {
-  useMushafAutoPageTurn(562, navigate);
+// @ai-start
+function Harness({
+  navigate,
+  page = 562,
+}: {
+  navigate: (page: number) => void;
+  page?: number;
+}) {
+  useMushafAutoPageTurn(page, navigate);
   return null;
 }
+// @ai-end
 
 function recite(verseKey: string, wordIndex: number): void {
   act(() => {
@@ -70,12 +86,14 @@ function recite(verseKey: string, wordIndex: number): void {
 
 let navigate: jest.Mock;
 
-function mount(hidden: boolean): void {
+// @ai-start
+function mount(hidden: boolean, page?: number): void {
   mockSettings.recitationHideText = hidden;
   act(() => {
-    TestRenderer.create(<Harness navigate={navigate} />);
+    TestRenderer.create(<Harness navigate={navigate} page={page} />);
   });
 }
+// @ai-end
 
 beforeEach(() => {
   useRecitationTrackingStore.setState(RECITATION_TRACKING_IDLE);
@@ -109,4 +127,22 @@ describe('useMushafAutoPageTurn while reciting', () => {
     recite('67:13', 0);
     expect(navigate).toHaveBeenCalledWith(563);
   });
+
+  // @ai-start
+  // Page 604 has no next page. Asking the pager for page 605 threw
+  // "scrollToIndex out of range" and showed the app's error screen.
+  it('reciting the last word of the mushaf does not ask for page 605', () => {
+    mount(false, 604);
+    recite('114:6', 1);
+    recite('114:6', 2);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('with the text hidden, the end of the mushaf does not turn either', () => {
+    mount(true, 604);
+    recite('114:6', 2);
+    recite('114:6', 3);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+  // @ai-end
 });

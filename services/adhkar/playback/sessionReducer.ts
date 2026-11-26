@@ -43,6 +43,7 @@ function startSession(
   mode: AdhkarSession['mode'],
   previousToken: number,
   now: number,
+  loop = false, // @ai
 ): AdhkarSession {
   return {
     listId: source.listId,
@@ -50,7 +51,7 @@ function startSession(
     items: source.items,
     index,
     mode,
-    loop: false,
+    loop, // @ai
     status: 'loading',
     error: false,
     trackToken: previousToken + 1,
@@ -73,6 +74,7 @@ function moveTo(
     error: false,
     trackToken: session.trackToken + 1,
     positionSec: 0,
+    durationSec: undefined, // @ai: the previous clip's length
     lastActiveAt: now,
   };
 }
@@ -145,7 +147,19 @@ export function reduceSession(
           now,
         );
       }
-      return startSession(event.source, event.index, 'single', token, now);
+      // @ai-start
+      // Repeat armed on the card before it played: the new session loops
+      // from its first play. The branches above ignore it (the card already
+      // has a session, or the press joins Play All, which never loops).
+      return startSession(
+        event.source,
+        event.index,
+        'single',
+        token,
+        now,
+        event.loop === true,
+      );
+      // @ai-end
     }
     case 'pressPlayAll': {
       if (
@@ -206,7 +220,13 @@ export function reduceSession(
       return {...state, status: 'paused', lastActiveAt: now};
     case 'positionSaved':
       if (!state) return state;
-      return {...state, positionSec: event.positionSec};
+      // @ai-start
+      return {
+        ...state,
+        positionSec: event.positionSec,
+        durationSec: event.durationSec ?? state.durationSec,
+      };
+    // @ai-end
     case 'restored':
       return event.session;
   }

@@ -3,6 +3,8 @@ import {requireOptionalNativeModule} from 'expo';
 
 interface BayaanRestartNative {
   restart: (rtl: boolean) => void;
+  // Missing from a native build older than this JS (an update over the air).
+  launchedFromLauncher?: () => boolean;
 }
 
 // Android only. iOS cannot relaunch an app, and an in-process JS reload crashes
@@ -24,6 +26,19 @@ export function restartApp(rtl: boolean): boolean {
   try {
     native.restart(rtl);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether the screen on show was opened from the launcher, with no link and
+ * no shared file to hand over. restartApp() starts the app again the way the
+ * launcher does, so it would lose either. False when it cannot tell.
+ */
+export function launchedFromLauncher(): boolean {
+  try {
+    return native?.launchedFromLauncher?.() === true;
   } catch {
     return false;
   }

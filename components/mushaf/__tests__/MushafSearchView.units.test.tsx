@@ -291,6 +291,21 @@ describe('Hafs on screen: as before', () => {
     });
   });
 
+  // @ai-start
+  it('two verses of one surah are two history entries; a repeat moves up', async () => {
+    const {renderer} = await renderSearch();
+    for (const query of ['2:1', '2:255', '2:1']) {
+      await search(renderer, query);
+      const [result] = results(renderer);
+      await act(async () => result.press());
+    }
+    expect((await storedHistory()).map(entry => entry.label)).toEqual([
+      'Al-Baqarah 2:1',
+      'Al-Baqarah 2:255',
+    ]);
+  });
+  // @ai-end
+
   it('"106:5" does not exist in Hafs', async () => {
     const {renderer} = await renderSearch();
     await search(renderer, '106:5');

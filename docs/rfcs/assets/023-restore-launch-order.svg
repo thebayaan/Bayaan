@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <title>RFC-023: the order of a launch that restores the reader</title>
+  <rect x="0" y="0" width="760" height="300" fill="#ffffff"/>
+  <text x="20" y="28" font-size="15" font-weight="600" fill="#1f2328">A launch whose last screen was the reader</text>
+  <text x="20" y="48" fill="#57606a">The order of events, not to scale. Times: when the user sees the first page, Samsung Galaxy A10s, median.</text>
+
+  <!-- Today (develop) -->
+  <text x="20" y="86" font-weight="600" fill="#1f2328">Today</text>
+  <text x="20" y="101" fill="#57606a" font-size="11">develop</text>
+  <rect x="90" y="72" width="140" height="34" rx="4" fill="#d0d7de"/>
+  <text x="160" y="88" text-anchor="middle" fill="#1f2328">Splash</text>
+  <text x="160" y="101" text-anchor="middle" fill="#57606a" font-size="11">the Mushaf load inside</text>
+  <rect x="234" y="72" width="140" height="34" rx="4" fill="#eaeef2" stroke="#8c959f" stroke-dasharray="4 3"/>
+  <text x="304" y="88" text-anchor="middle" fill="#1f2328">Home route renders</text>
+  <text x="304" y="101" text-anchor="middle" fill="#57606a" font-size="11">under the reader, unseen</text>
+  <rect x="378" y="72" width="60" height="34" rx="4" fill="#d0d7de"/>
+  <text x="408" y="94" text-anchor="middle" fill="#1f2328">Push</text>
+  <rect x="442" y="72" width="140" height="34" rx="4" fill="#eaeef2" stroke="#8c959f" stroke-dasharray="4 3"/>
+  <text x="512" y="88" text-anchor="middle" fill="#1f2328">Page draws</text>
+  <text x="512" y="101" text-anchor="middle" fill="#57606a" font-size="11">under the splash</text>
+  <rect x="586" y="72" width="154" height="34" rx="4" fill="#0969da"/>
+  <text x="663" y="88" text-anchor="middle" fill="#ffffff" font-weight="600">Splash hides</text>
+  <text x="663" y="101" text-anchor="middle" fill="#ffffff" font-size="11">after runAfterInteractions</text>
+  <text x="663" y="124" text-anchor="middle" fill="#0969da" font-weight="600">15.2 s</text>
+
+  <!-- Proposed -->
+  <text x="20" y="176" font-weight="600" fill="#1f2328">Proposed</text>
+  <text x="20" y="191" fill="#57606a" font-size="11">fork build</text>
+  <rect x="90" y="162" width="140" height="34" rx="4" fill="#d0d7de"/>
+  <text x="160" y="178" text-anchor="middle" fill="#1f2328">Splash</text>
+  <text x="160" y="191" text-anchor="middle" fill="#57606a" font-size="11">verse index, fonts</text>
+  <rect x="234" y="162" width="60" height="34" rx="4" fill="#d0d7de"/>
+  <text x="264" y="184" text-anchor="middle" fill="#1f2328">Push</text>
+  <rect x="298" y="162" width="140" height="34" rx="4" fill="#d0d7de"/>
+  <text x="368" y="178" text-anchor="middle" fill="#1f2328">Splash stays</text>
+  <text x="368" y="191" text-anchor="middle" fill="#57606a" font-size="11">home route draws nothing</text>
+  <rect x="442" y="162" width="140" height="34" rx="4" fill="#0969da"/>
+  <text x="512" y="178" text-anchor="middle" fill="#ffffff" font-weight="600">Page</text>
+  <text x="512" y="191" text-anchor="middle" fill="#ffffff" font-size="11">splash hides at this draw</text>
+  <text x="512" y="214" text-anchor="middle" fill="#0969da" font-weight="600">5.9 s</text>
+  <rect x="586" y="162" width="154" height="34" rx="4" fill="#eaeef2" stroke="#8c959f" stroke-dasharray="4 3"/>
+  <text x="663" y="178" text-anchor="middle" fill="#1f2328">Home route renders</text>
+  <text x="663" y="191" text-anchor="middle" fill="#57606a" font-size="11">1 s after the page</text>
+
+  <text x="20" y="248" fill="#57606a" font-size="12">Today: develop at 9271fb3, 10 launches. Proposed: a fork build with steps 1 and 2 and the revision-1 forms</text>
+  <text x="20" y="264" fill="#57606a" font-size="12">of steps 3–5 (a query cache, a line-fit store per build, a restore latch), 8 launches.</text>
+  <text x="20" y="282" fill="#57606a" font-size="12">Dashed boxes are work that the user does not see.</text>
+</svg>

@@ -79,6 +79,16 @@ describe('start', () => {
     expect(events.started.mock.calls[1][0].source).toBe('queue');
   });
 
+  // The next track was held paused or failed to load: the queue did not go
+  // on by itself, and the listener starts it later.
+  it('says queue when the autoplay after a completion was called off', () => {
+    session.start(TRACK, 0);
+    session.end('completed', {durationMs: DURATION_MS, autoplayNext: true});
+    session.cancelAutoplay();
+    session.start(TRACK, 0);
+    expect(events.started.mock.calls[1][0].source).toBe('queue');
+  });
+
   it('ends an open session first, without an event, and keeps its time', () => {
     session.start(TRACK, 0);
     now += 30_000;

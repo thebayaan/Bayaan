@@ -2,7 +2,11 @@
 import {useEffect, useRef} from 'react';
 import {useRoute} from 'expo-router';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
-import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {
+  SELECTION_FLASH_MS,
+  flashedSelectionClearer,
+  useMushafVerseSelectionStore,
+} from '@/store/mushafVerseSelectionStore';
 import {useMushafWordFlashStore} from '@/store/mushafWordFlashStore';
 import {selectionForAnchor} from '@/services/mushaf/MushafVerseMapService';
 import {
@@ -12,8 +16,9 @@ import {
 
 /**
  * A link to the open Mushaf reader gives its route new params but mounts no
- * new reader: a warm bayaan://mushaf?page=N navigates to the route on top,
- * and a link route pops back to it (components/mushaf/ReaderLinkRedirect.tsx).
+ * new reader: a link route pops back to it
+ * (components/mushaf/ReaderLinkRedirect.tsx), and app/+native-intent.tsx
+ * sends a warm bayaan://mushaf?page=N through a link route too.
  * MushafViewer reads its page only when it mounts, and the screen flashes
  * only the verse it opened on, so send the viewer the page of each later
  * link, with the link's verse: the viewer selects it and clears it after
@@ -38,19 +43,37 @@ export function useReaderLinkPage(
 ): void {
   const route = useRoute();
   const handled = useRef(route.params);
+  // The viewer ends the flash of a verse it is sent. A verse selected here
+  // is not sent to it, so that flash ends here. One timer, cleared on
+  // unmount (not when the effect below re-runs: it does on every render).
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (flashTimer.current !== null) clearTimeout(flashTimer.current);
+    },
+    [],
+  );
   useEffect(() => {
     if (route.params === handled.current) return;
     handled.current = route.params;
     if (!ready) return;
     const {page, surahId, verseKey, anchor, words} = resolveTarget(params);
     const unitSelection = anchor ? selectionForAnchor(anchor) : null;
-    useMushafNavigationStore
-      .getState()
-      .navigateToPage(page, surahId, unitSelection ? undefined : verseKey);
+    useMushafNavigationStore.getState().navigateTo({
+      page,
+      surahId,
+      verseKey: unitSelection ? undefined : verseKey,
+    });
     if (unitSelection) {
       useMushafVerseSelectionStore
         .getState()
         .selectUnits(unitSelection.rewayah, unitSelection.units, page);
+      // Ends only this flash: a verse the reader selects meanwhile stays.
+      if (flashTimer.current !== null) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(
+        flashedSelectionClearer(),
+        SELECTION_FLASH_MS,
+      );
     }
     if (verseKey && words?.length) {
       useMushafWordFlashStore.getState().show(verseKey, words);

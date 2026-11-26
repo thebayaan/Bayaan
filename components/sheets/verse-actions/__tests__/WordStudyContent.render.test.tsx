@@ -10,7 +10,12 @@
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
-import {AccessibilityInfo, ActivityIndicator, Text} from 'react-native';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 import type {WBWWord} from '@/services/wbw/WBWDataService';
 
@@ -35,11 +40,11 @@ jest.mock('../WordCard', () => ({
   CompactWordCard: (props: Record<string, unknown>) =>
     mockRecord('compact', props),
 }));
-jest.mock('react-native-actions-sheet', () => {
+jest.mock('../sheetGestures', () => {
   const ReactActual = jest.requireActual('react');
   const {View} = jest.requireActual('react-native');
   return {
-    ScrollView: ReactActual.forwardRef(
+    SheetScrollView: ReactActual.forwardRef(
       (
         props: {children?: React.ReactNode; onScroll?: unknown},
         ref: unknown,
@@ -54,6 +59,8 @@ jest.mock('react-native-actions-sheet', () => {
         );
       },
     ),
+    SheetFooter: (props: Record<string, unknown>) =>
+      ReactActual.createElement(View, {...props, testID: 'step-bar'}),
   };
 });
 jest.mock('react-native-reanimated', () => ({useReducedMotion: () => false}));
@@ -146,6 +153,7 @@ import {
   resetKeyCommandsForTests,
 } from '@/services/keyboard/keyCommands';
 import {WordStudyContent} from '../WordStudyContent';
+import {verticalScale} from '@/utils/scale';
 import type {WordRef} from '../wordStudy';
 // @ai-start
 import {
@@ -354,6 +362,30 @@ describe('one Hafs verse (1:4)', () => {
     // A single verse: the two tabs, no chips, no caption.
     expect(withRole('tab')).toHaveLength(2);
     expect(texts()).not.toContain('1:4');
+  });
+
+  it('keeps the step bar a sheet footer, spaced as the other footers', async () => {
+    await open(hafs('1:4'));
+    // The sheet never starts a drag from the bar (sheetGestures.tsx), so a
+    // tap on Previous or Next that wobbles is still a tap.
+    const bar = root().find(
+      n => typeof n.type === 'string' && n.props.testID === 'step-bar',
+    );
+    expect(
+      bar.findAll(
+        n => (n.type as unknown) === Text && n.props.children === 'Word 1 of 3',
+      ),
+    ).toHaveLength(1);
+    for (const label of ['Previous word', 'Next word']) {
+      expect(
+        bar.findAll(n => n.props.accessibilityLabel === label).length,
+      ).toBeGreaterThan(0);
+    }
+    // The same space above and below the 44pt buttons as the Translation
+    // and Tafsir footers; the sheet's bottom padding and inset come under.
+    const style = StyleSheet.flatten(bar.props.style);
+    expect(style.paddingTop).toBe(verticalScale(12));
+    expect(style.paddingBottom).toBe(verticalScale(18));
   });
 
   it('steps with Next and Previous, disabled at either end', async () => {

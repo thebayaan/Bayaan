@@ -123,3 +123,14 @@ unchanged; after it, a lock waits only while a phrase or a repeat is in progress
 Upstream main has the same code. On a later release, check whether it is fixed there before
 regenerating the patch. Make it as above, in a scratch git repo laid out as
 `node_modules/@tilawa/core-v1`.
+
+# react-native-actions-sheet drag threshold
+
+`react-native-actions-sheet+10.1.2.patch` raises the sheet's drag gesture
+from 5 pt to 10 pt of movement (`activeOffsetY` and `failOffsetX`). At 5 pt a
+small wobble during a tap on a button or a list row started a sheet drag, and
+the drag cancelled the tap. 10 pt is close to the distance a native scroll
+view waits for. Scrolling inside a sheet is linked to the drag through
+`components/sheets/SheetGestures.tsx`; this patch only changes when the drag
+starts. When upgrading the library, re-check that both offsets are still
+±5 upstream and regenerate the patch.

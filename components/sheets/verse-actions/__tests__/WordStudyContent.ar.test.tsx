@@ -8,12 +8,14 @@
  */
 import React, {act} from 'react';
 import TestRenderer from 'react-test-renderer';
-import {Text} from 'react-native';
+import {ScrollView, StyleSheet, Text, type TextStyle} from 'react-native';
 import i18n from 'i18next';
 import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 
 const mockDk = {words: new Map<string, DKWordInfo[]>()};
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('expo-localization', () => ({
   getLocales: () => [{languageCode: 'ar'}],
 }));
@@ -181,4 +183,93 @@ it('speaks Arabic, with Arabic-Indic digits in the counter and the chips', async
       'كلمات حفص ١٠٣:١',
     ]),
   );
+});
+
+/** The strings drawn in Texts under `node`, in order. */
+function textsUnder(node: TestRenderer.ReactTestInstance): string[] {
+  return node
+    .findAll(n => (n.type as unknown) === Text)
+    .flatMap(n =>
+      [n.props.children]
+        .flat(Infinity)
+        .filter((c): c is string => typeof c === 'string'),
+    );
+}
+
+it('ends with the whole sources notice, with the step bar shown and hidden', async () => {
+  const unit = warsh.unitByKey('103:1');
+  if (!unit) throw new Error('no Warsh 103:1');
+  act(() => {
+    renderer = TestRenderer.create(
+      <WordStudyContent
+        study={{
+          rewayah: 'warsh',
+          parts: selectionWordParts(unitSelection(warsh, [unit])),
+        }}
+      />,
+    );
+  });
+  const settle = async () => {
+    for (let i = 0; i < 6; i++) {
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+  };
+  await settle();
+  if (!renderer) throw new Error('nothing rendered');
+  const screen = renderer.root;
+  const scroll = screen.find(n => (n.type as unknown) === ScrollView);
+  const scrollEnd = () =>
+    StyleSheet.flatten(scroll.props.contentContainerStyle).paddingBottom;
+
+  // Words tab: the notice is the last thing in the scroll, which keeps space
+  // under it, and its lines are tall enough for the Arabic marks (a 17pt
+  // line for 12pt text cut them off at the top and bottom).
+  const notice = i18n.t('sheets:irab.sources');
+  expect(textsUnder(scroll).pop()).toBe(notice);
+  expect(scrollEnd()).toBeGreaterThanOrEqual(24);
+  const noticeStyle = StyleSheet.flatten(
+    screen.find(
+      n => (n.type as unknown) === Text && n.props.children === notice,
+    ).props.style,
+  ) as TextStyle;
+  expect(
+    (noticeStyle.lineHeight ?? 0) / (noticeStyle.fontSize ?? 1),
+  ).toBeGreaterThanOrEqual(1.62);
+
+  // The step bar under the scroll pads its own bottom, above the sheet's.
+  const counter = screen.find(
+    n => (n.type as unknown) === Text && n.props.children === 'الكلمة ١ من ٥',
+  );
+  let bar: TestRenderer.ReactTestInstance | null = counter.parent;
+  while (
+    bar &&
+    !(
+      typeof bar.type === 'string' &&
+      StyleSheet.flatten(bar.props.style)?.borderTopWidth !== undefined
+    )
+  ) {
+    bar = bar.parent;
+  }
+  if (!bar) throw new Error('no step bar');
+  expect(StyleSheet.flatten(bar.props.style).paddingBottom).toBeGreaterThan(0);
+
+  // Books tab: no step bar; the books' notice ends the scroll, with the same
+  // space under it.
+  const booksTab = screen
+    .findAll(
+      n =>
+        typeof n.props.onPress === 'function' &&
+        n.findAll(c => c.props.children === 'كتب الإعراب').length > 0,
+    )
+    .pop();
+  if (!booksTab) throw new Error('no books tab');
+  await act(async () => {
+    booksTab.props.onPress();
+  });
+  await settle();
+  expect(textsUnder(screen)).not.toContain('الكلمة ١ من ٥');
+  expect(textsUnder(scroll).pop()).toBe(i18n.t('sheets:irab.booksSources'));
+  expect(scrollEnd()).toBeGreaterThanOrEqual(24);
 });

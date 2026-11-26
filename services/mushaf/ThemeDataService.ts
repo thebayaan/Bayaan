@@ -1,9 +1,13 @@
 import {mushafVerseMapService} from './MushafVerseMapService';
 
 const quranThemes = require('@/data/quran-themes.json');
+// Arabic titles of the same passages, keyed by each passage's first verse.
+const quranThemesAr = require('@/data/quran-themes.ar.json');
 
 export interface VerseThemeInfo {
   theme: string;
+  /** Arabic title of the theme; absent when the Arabic file has none. */
+  themeAr?: string;
   surah: number;
   ayahFrom: number;
   ayahTo: number;
@@ -36,6 +40,7 @@ class ThemeDataService {
     if (this.initialized) return;
 
     const themes: RawThemeEntry[] = quranThemes.themes;
+    const arabicTitles: Partial<Record<string, string>> = quranThemesAr.themes;
     let currentSurah = -1;
     let themeIndex = 0;
 
@@ -50,6 +55,7 @@ class ThemeDataService {
 
       const info: VerseThemeInfo = {
         theme: entry.theme,
+        themeAr: arabicTitles[entry.verseKeyFrom] || undefined,
         surah: entry.surah,
         ayahFrom: entry.ayahFrom,
         ayahTo: entry.ayahTo,

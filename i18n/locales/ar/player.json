@@ -45,6 +45,8 @@
   "reciterProfile": {
     "shareMessage": "استمع إلى {{name}} على {{appName}}",
     "thisReciter": "هذا القارئ",
+    "notFound": "تعذّر العثور على القارئ",
+    "notFoundHint": "هذا القارئ غير متاح في التطبيق حاليًا.",
     "myUploads": "تلاواتي",
     "sort": {
       "asc": "تصاعدي",
@@ -70,7 +72,26 @@
     "rewayatCount_two": "روايتان",
     "rewayatCount_few": "{{count}} روايات",
     "rewayatCount_many": "{{count}} رواية",
-    "rewayatCount_other": "{{count}} رواية"
+    "rewayatCount_other": "{{count}} رواية",
+    "downloadAll": {
+      "alreadyTitle": "تم التنزيل مسبقًا",
+      "alreadyMessage": "جميع السور المعروضة منزَّلة بالفعل لهذه الرواية.",
+      "stoppedTitle": "توقّف التنزيل",
+      "stoppedMessage_zero": "لم تُنزَّل أي سورة قبل التوقف.",
+      "stoppedMessage_one": "نُزِّلت سورة واحدة قبل التوقف.",
+      "stoppedMessage_two": "نُزِّلت سورتان قبل التوقف.",
+      "stoppedMessage_few": "نُزِّلت {{count}} سور قبل التوقف.",
+      "stoppedMessage_many": "نُزِّلت {{count}} سورة قبل التوقف.",
+      "stoppedMessage_other": "نُزِّلت {{count}} سورة قبل التوقف.",
+      "finishedTitle": "انتهى التنزيل",
+      "finishedMessage": "نجح تنزيل {{downloaded}} وتعذّر تنزيل {{failed}}. اضغط مجددًا لإعادة محاولة الباقي.",
+      "completeTitle": "اكتمل التنزيل",
+      "completeMessage": "جميع سور {{reciter}} متاحة الآن دون اتصال.",
+      "errorTitle": "خطأ في التنزيل",
+      "errorMessage": "ربما تعذّر تنزيل بعض السور.",
+      "stoppedOnLeave": "توقّف تنزيل الكل",
+      "stoppedOnLeaveHint": "افتح صفحة القارئ مجددًا للمتابعة."
+    }
   },
   "adhkar": {
     "otherSection": "أخرى",
@@ -116,6 +137,13 @@
       "pauseAll": "إيقاف الكل مؤقتًا",
       "resumeAll": "استئناف الكل"
     }
+  },
+  "playback": {
+    "failedTitle": "تعذّر تشغيل هذه التلاوة",
+    "failedHint": "يُرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى."
+  },
+  "car": {
+    "ayahOf": "الآية {{ayah}} من {{total}}"
   },
   "a11y": {
     "openPlayer": "يفتح المشغّل الكامل",

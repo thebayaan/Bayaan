@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-actions-sheet/dist/src/index.js b/node_modules/react-native-actions-sheet/dist/src/index.js
+index a5a1305..17d9a4a 100644
+--- a/node_modules/react-native-actions-sheet/dist/src/index.js
++++ b/node_modules/react-native-actions-sheet/dist/src/index.js
+@@ -822,8 +822,8 @@ export default forwardRef(function ActionSheet(_a, ref) {
+                 return onChange(event.absoluteX, event.absoluteY, event.translationY);
+             })
+                 .runOnJS(true)
+-                .activeOffsetY([-5, 5])
+-                .failOffsetX([-5, 5])
++                .activeOffsetY([-10, 10])
++                .failOffsetX([-10, 10])
+                 .onEnd(onEnd);
+     }, [gestureEnabled]);
+     var onTouch = function (event) {

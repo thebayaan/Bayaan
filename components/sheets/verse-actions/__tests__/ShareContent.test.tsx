@@ -20,6 +20,8 @@ import TestRenderer from 'react-test-renderer';
 import {Share} from 'react-native';
 import type {RewayahId} from '@/store/mushafSettingsStore';
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('@shopify/react-native-skia', () => ({
   useCanvasRef: () => ({current: null}),
 }));
@@ -81,6 +83,17 @@ jest.mock('@/utils/translationLookup', () => ({
   getTranslationTextRaw: (verseKey: string) =>
     mockTranslations.get(verseKey) ?? '',
 }));
+
+// @ai-start
+// A downloaded translation's rows in the translations database, per verse.
+const mockDbTranslations = new Map<string, string>();
+jest.mock('@/services/translation/TranslationDbService', () => ({
+  translationDbService: {
+    getTranslation: async (verseKey: string) =>
+      mockDbTranslations.get(verseKey) ?? null,
+  },
+}));
+// @ai-end
 
 // Hafs is the active mushaf rewayah; Warsh words sit in a side cache. Both
 // are in memory, so the text is ready at once.
@@ -158,6 +171,7 @@ jest.mock('@/services/mushaf/RewayahVerseUnitsService', () => {
 // @ai-end
 
 import {ShareContent} from '../ShareContent';
+import {SheetFooter} from '../sheetGestures';
 import {shareUrl} from '@/utils/shareUtils';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -205,12 +219,17 @@ async function press(label: string) {
 
 beforeEach(() => {
   mockTranslations.clear();
+  mockDbTranslations.clear(); // @ai
   (shareUrl as jest.Mock).mockClear();
   shareSpy = jest.spyOn(Share, 'share').mockImplementation(async () => ({
     action: 'sharedAction',
     activityType: undefined,
   }));
-  useMushafSettingsStore.setState({rewayah: 'hafs', mushafRenderer: 'dk_v2'});
+  useMushafSettingsStore.setState({
+    rewayah: 'hafs',
+    mushafRenderer: 'dk_v2',
+    selectedTranslationId: 'saheeh', // @ai
+  });
 });
 
 afterEach(() => {
@@ -307,11 +326,67 @@ describe('Share as Text', () => {
     },
   );
 
+  // @ai-start
+  // The stored translations mark footnotes inline. Shared as they are, the
+  // message read `…the Ever-Living,<sup foot_note="226497">1</sup> the…`.
+  it('shares the translation without its footnote markers', async () => {
+    mockTranslations.set(
+      '2:255',
+      'the Ever-Living,<sup foot_note="226497">1</sup> the Self-Sustaining.<sup foot_note=76482>2</sup>',
+    );
+    open(['2:255'], 'hafs');
+    await press('Share as Text');
+    expect(sharedMessage()).toBe(
+      'HAFS-255a HAFS-255b ۝٢٥٥\n\nthe Ever-Living, the Self-Sustaining.\n\n-- Quran Al-Baqarah 2:255',
+    );
+  });
+  // @ai-end
+
+  // @ai-start
+  // A downloaded translation is looked up in a copy held in memory, which is
+  // not there right after launch. The message then went out with no
+  // translation at all.
+  it('reads a downloaded translation from its database when it is not in memory', async () => {
+    useMushafSettingsStore.setState({selectedTranslationId: 'ur.jalandhry'});
+    mockDbTranslations.set('2:255', 'urdu kursi');
+    open(['2:255'], 'hafs');
+    await press('Share as Text');
+    expect(sharedMessage()).toBe(
+      'HAFS-255a HAFS-255b ۝٢٥٥\n\nurdu kursi\n\n-- Quran Al-Baqarah 2:255',
+    );
+  });
+  // @ai-end
+
   it('uses the same layout for a rewayah, labelled with it', async () => {
     open(['2:255'], 'warsh');
     await press('Share as Text');
     expect(sharedMessage()).toBe(
       'WARSH-255a WARSH-255b ۝٢٥٥\n\n\n\n-- Quran Al-Baqarah 2:255 · Warsh',
     );
+  });
+});
+
+describe('in the sheet', () => {
+  // The sheet's drag starts after 5pt and cancels the press: the buttons
+  // sit in a sheet footer, so a tap on one that wobbles is still a tap. The
+  // switches are native views, which a footer would keep the touch from.
+  it('keeps the sheet drag off the share buttons, not off the switches', () => {
+    open(['2:255'], 'hafs');
+    if (!renderer) throw new Error('nothing rendered');
+    const footers = renderer.root.findAllByType(SheetFooter);
+    expect(footers).toHaveLength(1);
+    for (const label of ['Share as Image', 'Share as Text', 'Share Link']) {
+      expect(
+        footers[0].findAll(
+          n =>
+            typeof n.props.onPress === 'function' &&
+            n.findAll(c => c.props.children === label).length > 0,
+        ).length,
+      ).toBeGreaterThan(0);
+    }
+    const isSwitch = (n: TestRenderer.ReactTestInstance) =>
+      typeof n.props.onValueChange === 'function';
+    expect(renderer.root.findAll(isSwitch).length).toBeGreaterThan(0);
+    expect(footers[0].findAll(isSwitch)).toEqual([]);
   });
 });

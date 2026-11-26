@@ -1,7 +1,9 @@
 // @ai-generated
 import i18n from '@/i18n';
 import {
+  AUDIO_LOAD_FAILED_ERROR,
   RANGE_UNPLAYABLE_ERROR,
+  TIMESTAMPS_LOAD_FAILED_ERROR,
   TIMESTAMPS_UNAVAILABLE_ERROR,
   VERSE_TIMING_UNAVAILABLE_ERROR,
   type PlaybackNoticeText,
@@ -14,6 +16,10 @@ export function playbackErrorText(message: string): string {
       return i18n.t('reader:playback.rangeUnplayable');
     case TIMESTAMPS_UNAVAILABLE_ERROR:
       return i18n.t('reader:playback.timestampsUnavailable');
+    case TIMESTAMPS_LOAD_FAILED_ERROR:
+      return i18n.t('reader:playback.timestampsLoadFailed');
+    case AUDIO_LOAD_FAILED_ERROR:
+      return i18n.t('reader:playback.audioLoadFailed');
     case VERSE_TIMING_UNAVAILABLE_ERROR:
       return i18n.t('reader:playback.verseTimingUnavailable');
     default:

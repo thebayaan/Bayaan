@@ -19,6 +19,7 @@ import {
   useSelectionHighlightColor,
 } from './selectionAnnotations';
 // @ai-end
+import {SheetFooter} from './sheetGestures';
 
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
 
@@ -87,39 +88,47 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
       </View>
 
       <Text style={styles.sectionLabel}>{t('highlight.chooseColor')}</Text>
-      <View style={styles.card}>
-        <View style={styles.colorsGrid}>
-          {COLORS.map(([name, hex]) => {
-            const isActive = currentColor === name;
-            return (
-              <Pressable
-                key={name}
-                style={[
-                  styles.colorCircle,
-                  {backgroundColor: hex},
-                  isActive && styles.colorCircleActive,
-                ]}
-                onPress={() => handleSelectColor(name)}>
-                {isActive ? (
-                  <Feather name="check" size={moderateScale(20)} color="#333" />
-                ) : null}
-              </Pressable>
-            );
-          })}
+      {/* The sheet never drags from the colours or Remove, so a tap on one
+          is always a tap. */}
+      <SheetFooter>
+        <View style={styles.card}>
+          <View style={styles.colorsGrid}>
+            {COLORS.map(([name, hex]) => {
+              const isActive = currentColor === name;
+              return (
+                <Pressable
+                  key={name}
+                  style={[
+                    styles.colorCircle,
+                    {backgroundColor: hex},
+                    isActive && styles.colorCircleActive,
+                  ]}
+                  onPress={() => handleSelectColor(name)}>
+                  {isActive ? (
+                    <Feather
+                      name="check"
+                      size={moderateScale(20)}
+                      color="#333"
+                    />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </View>
 
-      {currentColor ? (
-        <Pressable
-          style={({pressed}) => [
-            styles.removeButton,
-            pressed && {opacity: 0.85},
-          ]}
-          onPress={handleRemove}>
-          <Feather name="x-circle" size={moderateScale(16)} color="#ff4444" />
-          <Text style={styles.removeButtonText}>{t('highlight.remove')}</Text>
-        </Pressable>
-      ) : null}
+        {currentColor ? (
+          <Pressable
+            style={({pressed}) => [
+              styles.removeButton,
+              pressed && {opacity: 0.85},
+            ]}
+            onPress={handleRemove}>
+            <Feather name="x-circle" size={moderateScale(16)} color="#ff4444" />
+            <Text style={styles.removeButtonText}>{t('highlight.remove')}</Text>
+          </Pressable>
+        ) : null}
+      </SheetFooter>
     </View>
   );
 };

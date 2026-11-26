@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useMemo, useState} from 'react'; // @ai
 import {View, StyleSheet, ViewStyle, StyleProp} from 'react-native';
 import {Image} from 'expo-image';
 import {useTheme} from '@/hooks/useTheme';
@@ -62,11 +62,20 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
     );
     // @ai-end
 
+    // @ai-start
+    // A remote photo that cannot be loaded (offline and not cached, a dead
+    // link) left a blank tile. Remember which URL failed and show the
+    // bundled photo, or the icon, in its place. Kept per URL because list
+    // cells are reused for other reciters.
+    const [failedUrl, setFailedUrl] = useState<string | null>(null);
+    const remoteUrl = imageUrl && imageUrl !== failedUrl ? imageUrl : null;
+    // @ai-end
+
     // Prefer the catalog-supplied `imageUrl` over the bundled local headshot.
     // Catalog entries with `image_url` should win so reciters without a bundled
     // asset still render their photo. Local stays as a fallback for reciters
     // whose catalog entry has no image_url.
-    const imageSource = imageUrl ? {uri: imageUrl} : localImageSource; // @ai
+    const imageSource = remoteUrl ? {uri: remoteUrl} : localImageSource; // @ai
 
     return (
       <View style={[styles.container, style]}>
@@ -78,6 +87,7 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
             contentFit="cover"
             recyclingKey={imageUrl || formattedName}
             transition={100}
+            onError={remoteUrl ? () => setFailedUrl(remoteUrl) : undefined} // @ai
             {...(blurRadius ? {blurRadius} : {})}
           />
         ) : (

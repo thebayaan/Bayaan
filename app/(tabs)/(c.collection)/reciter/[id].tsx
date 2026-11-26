@@ -4,10 +4,16 @@ import ReciterProfile from '@/components/reciter-profile/ReciterProfile';
 import {getReciterByIdSync, getReciterBySlug} from '@/services/dataService';
 
 const CollectionReciterProfile: React.FC = () => {
-  const {id, showFavorites} = useLocalSearchParams<{
+  // @ai-start
+  // `rewayatId` is the rewayah the caller wants opened, as on the Home tab's
+  // copy of this route. Without it the profile opened on Hafs (or the last
+  // saved rewayah).
+  const {id, showFavorites, rewayatId} = useLocalSearchParams<{
     id: string;
     showFavorites: string;
+    rewayatId?: string;
   }>();
+  // @ai-end
 
   if (!id) {
     return null; // Handle the absence of id appropriately
@@ -17,7 +23,15 @@ const CollectionReciterProfile: React.FC = () => {
   const resolved = getReciterByIdSync(id) ?? getReciterBySlug(id);
   const reciterId = resolved?.id ?? id;
 
-  return <ReciterProfile id={reciterId} showLoved={showFavorites === 'true'} />;
+  // @ai-start
+  return (
+    <ReciterProfile
+      id={reciterId}
+      showLoved={showFavorites === 'true'}
+      initialRewayatId={rewayatId}
+    />
+  );
+  // @ai-end
 };
 
 export default CollectionReciterProfile;

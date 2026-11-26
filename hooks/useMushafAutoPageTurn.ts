@@ -65,6 +65,11 @@ export function useMushafAutoPageTurn(
     if (hideText ? position <= last.position : position < last.position) {
       return;
     }
+    // @ai-start
+    // The last word of the mushaf has no next page: asking the pager for
+    // page 605 crashed the app when An-Nas was recited to its end.
+    if (digitalKhattDataService.getPageLines(page + 1).length === 0) return;
+    // @ai-end
     lastNavigatedPage.current = page + 1;
     navigateToPage(page + 1);
   }, [recitedWord, navigateToPage, navigateToVerse, hideText]);

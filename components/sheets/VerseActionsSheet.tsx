@@ -15,7 +15,7 @@ import {
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet, {
   type AdaptiveActionSheetProps, // @ai
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -42,12 +42,19 @@ import {
 import Color from 'color';
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+// @ai-start
+import {
+  isReaderOpen,
+  useMushafNavigationStore,
+} from '@/store/mushafNavigationStore';
+// @ai-end
 import {
   resolvePlayFromHere, // @ai
   useTimestampStore,
 } from '@/store/timestampStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {getTranslationTextRaw} from '@/utils/translationLookup';
+import {loadPlainTranslations} from '@/services/translation/plainTranslations'; // @ai
+import {stripTranslationMarkup} from '@/utils/translationMarkup'; // @ai
 import * as Clipboard from 'expo-clipboard';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 // @ai-start
@@ -116,6 +123,7 @@ import {
   type KeyId,
 } from '@/services/keyboard/keyCommands';
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
+import {SheetScrollView} from './verse-actions/sheetGestures';
 
 const surahData = require('@/data/surahData.json');
 
@@ -344,18 +352,27 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   // Hafs verse; any other selection uses the selected translation for every
   // Hafs verse, so one copy never mixes two translations.
   const translationFor = useCallback(
-    (ready: ReadyVerseSelection) => {
+    async (ready: ReadyVerseSelection) => {
       const parts = selectionTranslationParts(ready);
       const callerTranslation =
         parts.length === 1 && parts[0].hafsKey === verseKey
           ? payload?.translation
           : undefined;
+      // Plain text: the stored text carries footnote markers, which pasted
+      // as `<sup foot_note="…">1</sup>` in the middle of the verse.
+      if (callerTranslation) {
+        return joinTranslationParts(parts, () =>
+          stripTranslationMarkup(callerTranslation),
+        );
+      }
+      // Also reads a downloaded translation from its database when it is
+      // not in memory yet (right after launch), instead of copying none.
       return joinTranslationParts(
         parts,
-        hafsKey =>
-          callerTranslation ||
-          getTranslationTextRaw(hafsKey, selectedTranslationId) ||
-          '',
+        await loadPlainTranslations(
+          parts.map(part => part.hafsKey),
+          selectedTranslationId,
+        ),
       );
     },
     [verseKey, payload?.translation, selectedTranslationId],
@@ -513,7 +530,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       await Clipboard.setStringAsync(
         formatVerseCopyText(
           joinVerseTexts(result.texts),
-          translationFor(ready),
+          await translationFor(ready),
           formatQuranCitation(ready.label, result.rewayah),
         ),
       );
@@ -916,6 +933,41 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     hideCurrentSheet();
   }, [hideCurrentSheet]);
 
+  // @ai-start
+  // A result tapped in Similar Verses / Shared Phrases opens that verse in
+  // the mushaf.
+  const handleOpenVerseInReader = useCallback(
+    async (targetVerseKey: string, page: number) => {
+      // Close first and wait for it. Closing clears the mushaf selection
+      // (handleOnClose), about 200 ms later: asked for before that, the
+      // reader jumped to the page but the verse it had just lit went dark.
+      await SheetManager.hide(props.sheetId);
+      if (isReaderOpen()) {
+        // From the full player, the open reader is under it: close the player
+        // too, or the reader jumps and flashes the verse out of sight.
+        if (source === 'player') {
+          usePlayerStore.getState().setSheetMode('hidden');
+        }
+        useMushafNavigationStore
+          .getState()
+          .navigateTo({page, verseKey: targetVerseKey});
+        return;
+      }
+      // No reader is open: the sheet was opened from the audio player. The
+      // request went to a store only the reader reads, so the tap did
+      // nothing, and the request replayed the next time the reader opened.
+      // Open the reader at the verse instead, as the other ways into it do.
+      const [surah, ayah] = targetVerseKey.split(':');
+      usePlayerStore.getState().setSheetMode('hidden');
+      router.push({
+        pathname: '/mushaf',
+        params: {page: String(page), surah, ayah},
+      });
+    },
+    [props.sheetId, source],
+  );
+  // @ai-end
+
   if (!payload) return null;
 
   const isSimilar = activeScreen === 'similar' || activeScreen === 'phrases';
@@ -1120,6 +1172,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     rewayah={resolvedRewayah} // @ai
                     onDone={handleDismiss}
                     hafsReferences={resolvedRewayah !== 'hafs'}
+                    onOpenVerse={handleOpenVerseInReader}
                   />
                 )}
               </>
@@ -1127,9 +1180,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             {/* @ai-end */}
           </>
         ) : wordStudyOnly ? null /* @ai — never the verse menu */ : (
-          <ScrollView
+          <SheetScrollView
             showsVerticalScrollIndicator={false}
-            bounces={false}
             contentContainerStyle={{paddingBottom: moderateScale(10)}}>
             {/* LISTEN */}
             <View style={styles.card}>
@@ -1450,7 +1502,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 </Text>
               </Pressable>
             </View>
-          </ScrollView>
+          </SheetScrollView>
         )}
       </View>
     </ActionSheet>

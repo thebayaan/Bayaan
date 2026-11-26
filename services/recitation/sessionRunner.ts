@@ -8,6 +8,7 @@ import type {
 import type {RecitationStopReason} from '@/services/analytics/events';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
 import {deleteRecitationAssets} from './recitationAssets';
 import {deleteV1Assets} from './v1/assets';
 import {debugTakeAudio} from './debugTake';
@@ -166,20 +167,67 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Pauses Bayaan's own Quran audio; true when something was playing. */
-function pauseQuranAudio(): boolean {
+// @ai The main player's states in which it is playing or about to.
+const MAIN_ACTIVE_STATES = ['playing', 'buffering', 'loading'];
+
+/** What pauseQuranAudio paused that can play on again. */
+interface PausedAudio {
+  /** The main player. */
+  main: boolean;
+  /** The adhkar clip, by its track token. */
+  adhkarToken: number | null;
+}
+
+/** Pauses Bayaan's own audio; null when nothing was playing. */
+function pauseQuranAudio(): PausedAudio | null {
   let paused = false;
+  const resumable: PausedAudio = {main: false, adhkarToken: null};
   const player = usePlayerStore.getState();
-  if (player.playback.state === 'playing') {
+  // @ai-start
+  // Also while it is still loading or waiting for data: left alone, it
+  // started playing into the microphone a moment after the session began.
+  // (Its ambient sound follows its state, so that stops with it.)
+  if (MAIN_ACTIVE_STATES.includes(player.playback.state)) {
+    // @ai-end
     player.pause();
     paused = true;
+    resumable.main = true;
   }
   const mushafPlayer = useMushafPlayerStore.getState();
   if (mushafPlayer.playbackState !== 'idle') {
     mushafPlayer.stop();
     paused = true;
   }
-  return paused;
+  // @ai-start
+  // Adhkar too. On iOS a playing list kept going while the mic listened,
+  // and the recogniser heard it instead of the reciter.
+  const adhkar = useAdhkarSessionStore.getState();
+  if (adhkar.session && adhkar.session.status !== 'paused') {
+    resumable.adhkarToken = adhkar.session.trackToken;
+    adhkar.dispatch({type: 'otherAudioStarted'});
+    paused = true;
+  }
+  // @ai-end
+  return paused ? resumable : null;
+}
+
+/**
+ * A start that failed before the mic opened plays again what it paused,
+ * when that is still paused where it was left: the main player and the
+ * adhkar clip. Verse audio was stopped, not paused, and stays stopped.
+ */
+function resumeQuranAudio(paused: PausedAudio | null): void {
+  if (!paused) return;
+  const player = usePlayerStore.getState();
+  if (paused.main && player.playback.state === 'paused') void player.play();
+  const {session, dispatch} = useAdhkarSessionStore.getState();
+  if (
+    paused.adhkarToken !== null &&
+    session?.status === 'paused' &&
+    session.trackToken === paused.adhkarToken
+  ) {
+    dispatch({type: 'toggle'});
+  }
 }
 
 function startWatchdog(session: ActiveSession): void {
@@ -337,11 +385,26 @@ export async function startSession(
 
   const current = () => run === generation;
   let stage: SessionErrorStage = 'model_load';
+  // What the start paused, played again if it fails before the mic opens.
+  let pausedAudio: PausedAudio | null = null;
   try {
+    // @ai-start
+    // Bayaan's own audio stops first, before the permission prompt and the
+    // model load, which can take a while. Left playing until the mic opened,
+    // an adhkar list reached its next clip in that time, and a clip that
+    // starts ends any listening session: the mic never opened and the adhkar
+    // played on. (A surah moving on to the next one did the same.)
+    pausedAudio = pauseQuranAudio();
+    if (pausedAudio) {
+      await new Promise(resolve => setTimeout(resolve, AFTER_PAUSE_MS));
+      if (!current()) return false;
+    }
+    // @ai-end
     if (!(await requestMicPermission())) {
       if (!current()) return false;
       release(session);
       releaseEngine();
+      resumeQuranAudio(pausedAudio);
       handlers.onUpdate({
         status: 'error',
         stage: 'permission',
@@ -403,6 +466,8 @@ export async function startSession(
     if (!current()) return false;
     release(session);
     releaseEngine();
+    // A mic that failed to open leaves it paused, as it always did.
+    if (stage !== 'mic') resumeQuranAudio(pausedAudio);
     const failedStage =
       error instanceof EngineAcquireError ? error.stage : stage;
     handlers.onUpdate({

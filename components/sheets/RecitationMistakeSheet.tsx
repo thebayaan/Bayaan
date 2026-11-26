@@ -6,6 +6,7 @@ import {useTranslation} from 'react-i18next';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter} from './SheetGestures';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
 import {dkWordPosition} from '@/components/mushaf/skia/recitedWord';
 import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
@@ -122,37 +123,45 @@ export const RecitationMistakeSheet = (
           styles={styles}
           theme={theme}
         />
-        <Pressable
-          style={[styles.primaryButton, {backgroundColor: theme.colors.text}]}
-          onPress={listen}
-          accessibilityRole="button">
-          <Text
-            style={[
-              styles.primaryButtonText,
-              {color: theme.colors.background},
-            ]}>
-            {t('recitationMistake.listen')}
-          </Text>
-        </Pressable>
-        <Text style={styles.note}>{t('recitationMistake.listenNote')}</Text>
-        {mark.status === 'mistake' && (
+        {/* The buttons sit in SheetFooters: a tap that wobbles never turns
+            into a drag of the sheet. */}
+        <SheetFooter>
           <Pressable
-            style={styles.secondaryButton}
-            onPress={readCorrectly}
+            style={[styles.primaryButton, {backgroundColor: theme.colors.text}]}
+            onPress={listen}
             accessibilityRole="button">
-            <Text style={styles.secondaryButtonText}>
-              {t('recitationSummary.readCorrectly')}
+            <Text
+              style={[
+                styles.primaryButtonText,
+                {color: theme.colors.background},
+              ]}>
+              {t('recitationMistake.listen')}
             </Text>
           </Pressable>
+        </SheetFooter>
+        <Text style={styles.note}>{t('recitationMistake.listenNote')}</Text>
+        {mark.status === 'mistake' && (
+          <SheetFooter>
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={readCorrectly}
+              accessibilityRole="button">
+              <Text style={styles.secondaryButtonText}>
+                {t('recitationSummary.readCorrectly')}
+              </Text>
+            </Pressable>
+          </SheetFooter>
         )}
-        <Pressable
-          style={styles.secondaryButton}
-          onPress={() => void SheetManager.hide(props.sheetId)}
-          accessibilityRole="button">
-          <Text style={styles.secondaryButtonText}>
-            {t('recitationMistake.continue')}
-          </Text>
-        </Pressable>
+        <SheetFooter>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => void SheetManager.hide(props.sheetId)}
+            accessibilityRole="button">
+            <Text style={styles.secondaryButtonText}>
+              {t('recitationMistake.continue')}
+            </Text>
+          </Pressable>
+        </SheetFooter>
         <Text style={styles.footnote}>{t('recitationSummary.footnote')}</Text>
       </View>
     </ActionSheet>

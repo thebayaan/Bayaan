@@ -7,6 +7,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter} from './SheetGestures';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {SURAHS} from '@/data/surahData';
 import Color from 'color';
@@ -284,13 +285,14 @@ export const MushafRepeatOptionsSheet = (
         </View>
       </View>
 
-      <View
+      {/* A tap on Start never drags the sheet. */}
+      <SheetFooter
         style={[styles.stickyFooter, {paddingBottom: insets.bottom + ms(4)}]}>
         <Pressable style={styles.playButton} onPress={handleStart}>
           <Ionicons name="play" size={ms(18)} color={theme.colors.background} />
           <Text style={styles.playButtonText}>{t('repeat.start')}</Text>
         </Pressable>
-      </View>
+      </SheetFooter>
     </ActionSheet>
   );
 };

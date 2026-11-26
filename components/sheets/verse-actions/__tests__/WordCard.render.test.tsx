@@ -564,6 +564,24 @@ describe('sections', () => {
     expect(order).toEqual([...order].sort((a, b) => a - b));
   });
 
+  it('keeps the Arabic meaning while the English meanings are off', () => {
+    act(() => useMushafSettingsStore.setState({wbwShowTranslation: false}));
+    const word: StudyWord = {...wordOf(1), verseKey: '1:4', slots: ['1:4:1']};
+    const root = render(
+      <WordCard
+        {...props({
+          word,
+          wbw: {...WBW_2_4_9, position: 1, translation: 'Master'},
+          study: STUDY,
+        })}
+      />,
+    );
+    expect(texts(root)).toEqual(
+      expect.arrayContaining(['Arabic meaning', 'المالك يوم الجزاء']),
+    );
+    expect(allText(root)).not.toContain('Master');
+  });
+
   it('shows no Arabic meaning for a word the entries do not cover', () => {
     const word: StudyWord = {...wordOf(2), verseKey: '1:4', slots: ['1:4:2']};
     const root = render(<WordCard {...props({word, study: STUDY})} />);

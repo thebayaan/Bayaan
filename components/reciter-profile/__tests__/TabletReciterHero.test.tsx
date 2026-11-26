@@ -78,6 +78,9 @@ const photoSize = (renderer: TestRenderer.ReactTestRenderer) =>
     ).props.style,
   ).width;
 
+const isView = (n: TestRenderer.ReactTestInstance) =>
+  (n.type as unknown) === 'View'; // @ai
+
 beforeEach(() => {
   mockWindowWidth = 1032;
 });
@@ -111,6 +114,32 @@ describe('TabletReciterHero', () => {
     );
     expect(favorite?.props.accessibilityState).toEqual({selected: true});
   });
+
+  // @ai-start
+  it('puts the photo beside the name by default', () => {
+    const {renderer} = render();
+    const container = StyleSheet.flatten(
+      renderer.root.findAll(isView)[0].props.style,
+    );
+    expect(container.flexDirection).toBe('row');
+  });
+
+  it('stacks the photo above the name in the pinned column', () => {
+    mockWindowWidth = 1366;
+    const {renderer} = render({layout: 'column'});
+    const container = StyleSheet.flatten(
+      renderer.root.findAll(isView)[0].props.style,
+    );
+    expect(container.flexDirection).toBe('column');
+    expect(container.alignItems).toBe('flex-start');
+    expect(photoSize(renderer)).toBe(240);
+    // The name and the actions take the column width, so a long name wraps.
+    const details = StyleSheet.flatten(
+      renderer.root.findAll(isView)[0].props.children[1].props.style,
+    );
+    expect(details.alignSelf).toBe('stretch');
+  });
+  // @ai-end
 
   it('shows the surah and rewayah counts', () => {
     const {renderer} = render();

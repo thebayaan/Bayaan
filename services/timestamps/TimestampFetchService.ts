@@ -1,7 +1,7 @@
 import branding from '@/config/branding';
 import {RECITERS, type Reciter, type Rewayat} from '@/data/reciterData'; // @ai
 import {timestampDatabaseService} from './TimestampDatabaseService';
-import type {AyahTimestamp} from '@/types/timestamps';
+import type {AyahTimestamp, TimestampSource} from '@/types/timestamps'; // @ai
 
 // RFC-015 — fork-supplied timestamp CDN base. Absent from `branding.js`
 // → fallback to Bayaan's production CDN (byte-equivalent to the
@@ -15,7 +15,9 @@ import type {AyahTimestamp} from '@/types/timestamps';
 // every lookup against R2 / most CDNs that don't normalize doubled
 // slashes. Strip a trailing slash defensively so the runtime matches
 // the contract regardless of the fork-side value.
-const TIMESTAMP_DATA_VERSION = 2;
+// @ai Also saved with each cached surah: a surah cached at another version is
+// fetched again (see TimestampService), so a bump reaches every device.
+export const TIMESTAMP_DATA_VERSION = 2; // @ai exported
 
 const R2_BASE = (
   branding.timestampCdnBase ?? 'https://cdn.thebayaan.com/timestamps'
@@ -166,12 +168,7 @@ class TimestampFetchService {
         // cached — `isSurahCached` keys on (rewayat, surah) and ignores
         // `source`, so a subsequently shipped/updated bundle won't be picked up
         // until the timestamp cache is reset.
-        await timestampDatabaseService.writeTimestamps(
-          rewayatId,
-          surahNumber,
-          local,
-          'local',
-        );
+        await this.saveToCache(rewayatId, surahNumber, local, 'local'); // @ai
         return local;
       }
       // Coverage claimed but data missing/malformed → fall through to the R2
@@ -212,12 +209,7 @@ class TimestampFetchService {
       }
       const data = raw as AyahTimestamp[];
 
-      await timestampDatabaseService.writeTimestamps(
-        rewayatId,
-        surahNumber,
-        data,
-        'r2',
-      );
+      await this.saveToCache(rewayatId, surahNumber, data, 'r2'); // @ai
 
       return data;
     } catch (error) {
@@ -228,6 +220,36 @@ class TimestampFetchService {
       return null;
     }
   }
+
+  // @ai-start
+  /**
+   * Keeps the timings for next time. A save that fails is only a cache that
+   * was not written: the timings in hand are still returned and played.
+   * They used to be thrown away with it, so the surah had no verse tracking
+   * although its timings had been downloaded.
+   */
+  private async saveToCache(
+    rewayatId: string,
+    surahNumber: number,
+    timestamps: AyahTimestamp[],
+    source: TimestampSource,
+  ): Promise<void> {
+    try {
+      await timestampDatabaseService.writeTimestamps(
+        rewayatId,
+        surahNumber,
+        timestamps,
+        source,
+        TIMESTAMP_DATA_VERSION,
+      );
+    } catch (error) {
+      console.warn(
+        `[TimestampFetch] Could not cache ${rewayatId} surah ${surahNumber}:`,
+        error,
+      );
+    }
+  }
+  // @ai-end
 
   private findRewayat(rewayatId: string): Rewayat | undefined {
     for (const reciter of RECITERS) {

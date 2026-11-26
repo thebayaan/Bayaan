@@ -45,7 +45,6 @@ import {
   type NativeSyntheticEvent,
   type ScrollViewInstance,
 } from 'react-native';
-import {ScrollView} from 'react-native-actions-sheet';
 import {useReducedMotion} from 'react-native-reanimated';
 import {useTranslation} from 'react-i18next';
 import Color from 'color';
@@ -72,9 +71,10 @@ import {
   useMushafSettingsStore,
 } from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {moderateScale} from '@/utils/scale';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 import {createIrabStyles, IrabBooksTab, ROW_FROM_RIGHT} from './IrabContent';
+import {SheetFooter, SheetScrollView} from './sheetGestures';
 import {
   hafsWordText,
   useIrabBooks,
@@ -116,6 +116,13 @@ export interface WordStudyContentProps {
 type Tab = 'words' | 'books';
 
 const NO_WORDS: readonly StudyWord[] = [];
+/**
+ * The sources notice's font size and line height. The Arabic UI font (IBM
+ * Plex Sans Arabic) needs 1.5x for its ascent and descent and about 1.62x for
+ * stacked marks; at 17 for 12 a line was cut at its top and bottom edges.
+ */
+const SOURCES_FONT_SIZE = 12;
+const SOURCES_LINE_HEIGHT = 20;
 /** Space kept above the card when a step scrolls back to it. */
 const CARD_SCROLL_MARGIN = 8;
 /** A step waits this long for the card's new place before scrolling to it. */
@@ -584,7 +591,7 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
 
   return (
     <View style={styles.screen}>
-      <ScrollView
+      <SheetScrollView
         ref={scrollRef}
         onScroll={onScroll}
         contentContainerStyle={styles.container}
@@ -601,11 +608,12 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
           ))}
         </View>
         {tab === 'words' ? renderWords() : renderBooks()}
-      </ScrollView>
+      </SheetScrollView>
       {stepping ? (
         // In the Quran's direction in both app languages: Previous on the
-        // physical right, Next on the left, chevrons never mirrored.
-        <View style={styles.stepBar}>
+        // physical right, Next on the left, chevrons never mirrored. The
+        // sheet never drags from the bar, so a tap on it is always a tap.
+        <SheetFooter style={styles.stepBar}>
           <StepButton
             label={t('wordView.previous')}
             accessibilityLabel={t('wordView.previousWord')}
@@ -627,7 +635,7 @@ export const WordStudyContent: React.FC<WordStudyContentProps> = ({
             onPress={() => step(1)}
             styles={styles}
           />
-        </View>
+        </SheetFooter>
       ) : null}
     </View>
   );
@@ -911,19 +919,23 @@ function createStyles(theme: Theme, isTablet: boolean) {
     },
     sources: {
       fontFamily: 'Manrope-Regular',
-      fontSize: moderateScale(12),
-      lineHeight: moderateScale(17),
+      fontSize: moderateScale(SOURCES_FONT_SIZE),
+      lineHeight: moderateScale(SOURCES_LINE_HEIGHT),
       color: secondary,
       marginTop: moderateScale(16),
       paddingHorizontal: moderateScale(4),
       textAlign: 'left',
     },
+    // Its own space above and below the 44pt buttons, as the Translation
+    // and Tafsir footers have; the sheet's bottom padding and safe-area
+    // inset follow it.
     stepBar: {
       flexDirection: ROW_FROM_RIGHT,
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 8,
-      paddingTop: moderateScale(8),
+      paddingTop: verticalScale(12),
+      paddingBottom: verticalScale(18),
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: Color(theme.colors.text).alpha(0.08).toString(),
       backgroundColor: theme.colors.background,

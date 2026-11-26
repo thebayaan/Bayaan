@@ -1,16 +1,17 @@
 import React, {useMemo} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {ScrollView} from 'react-native-actions-sheet';
 import {ScaledSheet, moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
+import {currentLanguageConfig} from '@/i18n/language';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
 import {rewayahThemePassage, type UnitStart} from './verseUnitScreens';
 // @ai-end
+import {SheetScrollView} from './sheetGestures';
 
 const surahData = require('@/data/surahData.json');
 
@@ -48,16 +49,22 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
   if (!themeInfo) {
     return (
       <View style={styles.container}>
-        <ScrollView
+        <SheetScrollView
           style={styles.scrollContent}
           contentContainerStyle={styles.scrollInner}
-          showsVerticalScrollIndicator={false}
-          bounces={true}>
+          showsVerticalScrollIndicator={false}>
           <Text style={styles.emptyText}>{t('themeContent.empty')}</Text>
-        </ScrollView>
+        </SheetScrollView>
       </View>
     );
   }
+
+  // The Arabic title where the language shows Arabic content; the English one
+  // otherwise, and for a passage with no Arabic title.
+  const themeTitle =
+    currentLanguageConfig.bilingualContent === 'ar' && themeInfo.themeAr
+      ? themeInfo.themeAr
+      : themeInfo.theme;
 
   const surah = surahData.find(
     (s: {id: number; name: string; name_arabic: string}) =>
@@ -89,13 +96,12 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <SheetScrollView
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}
-        showsVerticalScrollIndicator={false}
-        bounces={true}>
+        showsVerticalScrollIndicator={false}>
         {/* Theme name */}
-        <Text style={styles.themeName}>{themeInfo.theme}</Text>
+        <Text style={styles.themeName}>{themeTitle}</Text>
 
         {/* Info card */}
         <View style={styles.card}>
@@ -121,7 +127,7 @@ export const ThemeContent: React.FC<ThemeContentProps> = ({
             <Text style={styles.infoValue}>{localizeDigits(verseCount)}</Text>
           </View>
         </View>
-      </ScrollView>
+      </SheetScrollView>
     </View>
   );
 };

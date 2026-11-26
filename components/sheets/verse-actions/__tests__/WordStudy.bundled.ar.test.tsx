@@ -31,6 +31,8 @@ import i18n from 'i18next';
 
 const ROOT = path.join(__dirname, '../../../..');
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../sheetGestures');
 jest.mock('expo-localization', () => ({
   getLocales: () => [{languageCode: 'ar'}],
 }));

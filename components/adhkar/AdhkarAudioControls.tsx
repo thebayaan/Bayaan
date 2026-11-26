@@ -14,7 +14,12 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkarProgress} from '@/hooks/useAdhkarProgress';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore';
-import {useAdhkarSessionSource} from './AdhkarSessionSourceContext';
+// @ai-start
+import {
+  useAdhkarSessionSource,
+  useArmedRepeat,
+} from './AdhkarSessionSourceContext';
+// @ai-end
 import {Theme} from '@/utils/themeUtils';
 import {PlayIcon, PauseIcon, RepeatIcon} from '@/components/Icons';
 import Color from 'color';
@@ -69,19 +74,30 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
       const isLooping = useAdhkarSessionStore(s =>
         isCurrent ? !!s.session?.loop : false,
       );
+      // Hidden while this list plays all: Play on any of its cards then
+      // joins Play All, which never repeats one dhikr.
       const isSingle = useAdhkarSessionStore(
-        s => !isCurrent || s.session?.mode === 'single',
+        s =>
+          !(s.session?.mode === 'all' && s.session.listId === source?.listId),
       );
+      // Repeat can be switched on before this dhikr plays. It used to do
+      // nothing then: the button flashed and Play played the clip once.
+      const [isArmed, setArmed] = useArmedRepeat(dhikrId);
+      const isRepeatOn = isCurrent ? isLooping : isArmed;
       const isPlaying = status === 'playing' || status === 'loading';
       const {currentTime, duration, seek} = useAdhkarProgress(isCurrent);
       const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
 
       const handleToggle = () => {
         if (!source || index < 0) return;
-        dispatch({type: 'pressCard', source, index});
+        dispatch({type: 'pressCard', source, index, loop: isArmed});
+        // From here on the session carries it (or the press did not start
+        // one that can repeat).
+        if (isArmed) setArmed(false);
       };
       const toggleLooping = () => {
         if (isCurrent) dispatch({type: 'toggleLoop'});
+        else setArmed(!isArmed);
       };
 
       // Seeking state for thumb visibility
@@ -203,7 +219,10 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
             <Slider
               style={styles.slider}
               value={isCurrent ? progress : 0}
-              disabled={!isCurrent}
+              // Also off while the clip's length is unknown (a dhikr swiped
+              // to while paused, before its first Play): a drag could not be
+              // turned into a time and would be silently dropped.
+              disabled={!isCurrent || !(duration > 0)}
               onSlidingStart={handleSliderStart}
               onSlidingComplete={handleSlidingComplete}
               minimumValue={0}
@@ -245,23 +264,24 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
             {/* Repeat Toggle Button (single-dhikr playback only) */}
             {isSingle && (
               <TouchableOpacity
+                testID="adhkar-repeat-button"
                 style={[
                   styles.repeatButton,
-                  isLooping && {backgroundColor: activeBackgroundColor},
+                  isRepeatOn && {backgroundColor: activeBackgroundColor},
                 ]}
                 onPress={toggleLooping}
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  isLooping
+                  isRepeatOn
                     ? t('adhkar.a11y.disableRepeat')
                     : t('adhkar.a11y.enableRepeat')
                 }
-                accessibilityState={{selected: isLooping}}>
+                accessibilityState={{selected: isRepeatOn}}>
                 <RepeatIcon
                   size={moderateScale(20)}
                   color={
-                    isLooping ? theme.colors.text : theme.colors.textSecondary
+                    isRepeatOn ? theme.colors.text : theme.colors.textSecondary
                   }
                 />
               </TouchableOpacity>

@@ -3,6 +3,7 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {SheetManager, SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter} from './SheetGestures';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
@@ -64,26 +65,32 @@ export const RecitationIntroSheet = (
             <Text style={styles.pointText}>{point.text}</Text>
           </View>
         ))}
-        <Pressable
-          style={[styles.primaryButton, {backgroundColor: theme.colors.text}]}
-          onPress={() => close(true)}
-          accessibilityRole="button">
-          <Text
-            style={[
-              styles.primaryButtonText,
-              {color: theme.colors.background},
-            ]}>
-            {t('recitationIntro.start')}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={styles.secondaryButton}
-          onPress={() => close(false)}
-          accessibilityRole="button">
-          <Text style={styles.secondaryButtonText}>
-            {t('recitationIntro.notNow')}
-          </Text>
-        </Pressable>
+        {/* The buttons sit in SheetFooters: a tap that wobbles never turns
+            into a drag of the sheet. */}
+        <SheetFooter>
+          <Pressable
+            style={[styles.primaryButton, {backgroundColor: theme.colors.text}]}
+            onPress={() => close(true)}
+            accessibilityRole="button">
+            <Text
+              style={[
+                styles.primaryButtonText,
+                {color: theme.colors.background},
+              ]}>
+              {t('recitationIntro.start')}
+            </Text>
+          </Pressable>
+        </SheetFooter>
+        <SheetFooter>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => close(false)}
+            accessibilityRole="button">
+            <Text style={styles.secondaryButtonText}>
+              {t('recitationIntro.notNow')}
+            </Text>
+          </Pressable>
+        </SheetFooter>
       </View>
     </ActionSheet>
   );

@@ -22,8 +22,11 @@ export function AppKeyCommands(): null {
   const hasTrack = usePlayerStore(
     s => s.queue.tracks[s.queue.currentIndex] != null,
   );
+  // @ai With Repeat All on, next wraps round, as the Next button does.
   const isLastTrack = usePlayerStore(
-    s => s.queue.currentIndex >= s.queue.tracks.length - 1,
+    s =>
+      s.queue.currentIndex >= s.queue.tracks.length - 1 &&
+      s.settings.repeatMode !== 'queue',
   );
   const segments = useSegments();
   const onDialogRoute = segments[0] === 'translations';

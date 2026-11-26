@@ -14,6 +14,7 @@ interface MockListProps {
   data: number[];
   initialScrollIndex: number;
   onContentSizeChange?: (width: number, height: number) => void;
+  viewabilityConfig?: object;
 }
 
 // Shared with the mock factories below (read lazily, after module init).
@@ -136,7 +137,7 @@ jest.mock('../playbackBand', () => ({usePlaybackBand: () => null}));
 jest.mock('../verseUnitDragSelect', () => ({}));
 
 import ContinuousMushafView from '../ContinuousMushafView';
-import {getMushafLayout} from '../../constants';
+import {VERTICAL_READER_VIEWABILITY, getMushafLayout} from '../../constants';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -181,6 +182,11 @@ describe('ContinuousMushafView while the fonts load', () => {
     fontsArrive();
     expect(mockList.mounts).toHaveLength(1);
     expect(mockList.mounts[0].initialScrollIndex).toBe(67);
+    // The rule that keeps the page reported in phone landscape
+    // (verticalReaderViewability.test.ts).
+    expect(mockList.mounts[0].viewabilityConfig).toBe(
+      VERTICAL_READER_VIEWABILITY,
+    );
   });
 
   // FlatList's first onContentSizeChange: the cells of the page asked for

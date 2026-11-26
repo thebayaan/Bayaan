@@ -20,6 +20,8 @@ import TestRenderer from 'react-test-renderer';
 /** The props that the sheet gives the library sheet, last render first. */
 const mockSheetProps: Array<Record<string, unknown>> = [];
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../verse-actions/sheetGestures');
 jest.mock('../verse-actions/SimilarVersesContent', () => ({
   SimilarVersesContent: () => null,
 }));

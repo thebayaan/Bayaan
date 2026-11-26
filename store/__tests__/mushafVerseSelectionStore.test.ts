@@ -8,6 +8,7 @@
  * their Hafs meaning, and is the previous payload for Hafs.
  */
 import {
+  flashedSelectionClearer,
   useMushafVerseSelectionStore,
   verseActionsPayloadForUnits,
   type SelectedVerseUnit,
@@ -173,5 +174,63 @@ describe('verseActionsPayloadForUnits (CONTRACT 4.1)', () => {
         {key: '1:6', anchor: 'nonsense', hafsKeys: ['1:7']},
       ]),
     ).toBeNull();
+  });
+});
+
+// A jump (search, a bookmark, a link) selects its verse for 3 s. The timers
+// that ended those flashes cleared whatever was selected when they fired.
+describe('ending a flash (flashedSelectionClearer)', () => {
+  it('clears the flashed verse', () => {
+    store().selectVerse('2:255', 42);
+    const endFlash = flashedSelectionClearer();
+    endFlash();
+    expect(store().selectedVerseKeys).toEqual([]);
+  });
+
+  it("leaves the reader's own long-press, made during the flash", () => {
+    store().selectVerse('2:255', 42);
+    const endFlash = flashedSelectionClearer();
+    // Long-press on another verse while 2:255 is still lit.
+    store().selectUnits('warsh', [W_1_7], 1);
+    endFlash();
+    expect(store()).toMatchObject({
+      selectedVerseKeys: ['1:7'],
+      selectedRewayah: 'warsh',
+      selectedUnits: [W_1_7],
+    });
+  });
+
+  it('leaves a long-press on the flashed verse itself', () => {
+    store().selectVerse('2:255', 42);
+    const endFlash = flashedSelectionClearer();
+    store().selectVerse('2:255', 42);
+    endFlash();
+    expect(store().selectedVerseKeys).toEqual(['2:255']);
+  });
+
+  it('leaves a drag-select that grew from the flashed verse', () => {
+    store().selectVerse('2:255', 42);
+    const endFlash = flashedSelectionClearer();
+    store().selectVerseRange(['2:255', '2:256'], 42);
+    endFlash();
+    expect(store().selectedVerseKeys).toEqual(['2:255', '2:256']);
+  });
+
+  it('an older flash ending does not cut a newer one short', () => {
+    store().selectVerse('2:255', 42);
+    const endFirst = flashedSelectionClearer();
+    store().selectVerse('36:1', 440);
+    const endSecond = flashedSelectionClearer();
+    endFirst();
+    expect(store().selectedVerseKeys).toEqual(['36:1']);
+    endSecond();
+    expect(store().selectedVerseKeys).toEqual([]);
+  });
+
+  it('with nothing flashed, never clears a later selection', () => {
+    const endFlash = flashedSelectionClearer();
+    store().selectVerse('2:255', 42);
+    endFlash();
+    expect(store().selectedVerseKeys).toEqual(['2:255']);
   });
 });

@@ -11,9 +11,11 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, HeartIcon} from '@/components/Icons';
-import {SheetProps, SheetManager, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {usePlaylists} from '@/hooks/usePlaylists';
+import {showCreatePlaylistSheet} from '@/components/collection/showCreatePlaylistSheet'; // @ai
 import {useLoved} from '@/hooks/useLoved';
 import {PlaylistItem} from '@/components/PlaylistItem';
 import {Feather} from '@expo/vector-icons';
@@ -42,11 +44,26 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
   const userRecitationId = payload?.userRecitationId;
 
   // Calculate loved state
-  const isLovedState = reciterId
-    ? rewayatId
-      ? isLovedWithRewayat(reciterId, surah?.id?.toString() ?? '', rewayatId)
-      : isLoved(reciterId, surah?.id?.toString() ?? '')
-    : false;
+  // @ai-start
+  // An upload is looked up by its own id, so it does not show as loved
+  // because the catalogue recording of the same surah is (or the reverse).
+  const surahIdText = surah?.id?.toString() ?? '';
+  let isLovedState = false;
+  if (reciterId) {
+    if (userRecitationId) {
+      isLovedState = isLovedWithRewayat(
+        reciterId,
+        surahIdText,
+        '',
+        userRecitationId,
+      );
+    } else if (rewayatId) {
+      isLovedState = isLovedWithRewayat(reciterId, surahIdText, rewayatId);
+    } else {
+      isLovedState = isLoved(reciterId, surahIdText);
+    }
+  }
+  // @ai-end
 
   const handleClose = useCallback(() => {
     SheetManager.hide('select-playlist');
@@ -93,11 +110,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
   const handleShowCreatePlaylist = useCallback(async () => {
     if (!surah) return;
 
-    const result = await SheetManager.show('create-playlist', {
-      payload: {
-        existingColors,
-      },
-    });
+    const result = await showCreatePlaylistSheet({existingColors}); // @ai
 
     if (result?.name && result?.color) {
       try {
@@ -175,7 +188,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
             ) : null}
           </View>
 
-          <ScrollView
+          <SheetScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}>
@@ -262,7 +275,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
                 </Text>
               </View>
             )}
-          </ScrollView>
+          </SheetScrollView>
         </View>
       </ActionSheet>
     </>

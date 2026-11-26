@@ -45,7 +45,9 @@ function SurahsScreen() {
         case 'browseAll':
         case 'browseFavorites':
           router.push({
-            pathname: '/(tabs)/(a.home)/reciter/browse',
+            // This tab's own copy of the screen. The Home tab's was used
+            // before, which switched tab and left the user on Home.
+            pathname: '/(tabs)/(b.surahs)/reciter/browse',
             params: {
               view: action === 'browseAll' ? 'all' : 'favorites',
               surahId: surah.id,
@@ -65,9 +67,7 @@ function SurahsScreen() {
           });
           break;
         default:
-          SheetManager.show('select-reciter', {
-            payload: {surahId, source: 'home'},
-          });
+          SheetManager.show('select-reciter', {payload: {surahId}});
       }
       // @ai-end
     },

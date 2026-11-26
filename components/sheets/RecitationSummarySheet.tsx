@@ -1,9 +1,10 @@
 import React, {useState} from 'react';
-import {Pressable, ScrollView, Text, View} from 'react-native';
+import {Pressable, Text, View} from 'react-native';
 import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetFooter, SheetScrollView} from './SheetGestures';
 import {SURAHS} from '@/data/surahData';
 import {useTheme} from '@/hooks/useTheme';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
@@ -92,7 +93,8 @@ export const RecitationSummarySheet = (
     const key = `${flag.surah}:${flag.ayah}`;
     const page = digitalKhattDataService.getPageForVerse(key);
     await SheetManager.hide(props.sheetId);
-    if (page) useMushafNavigationStore.getState().navigateToVerse(key, page);
+    if (page)
+      useMushafNavigationStore.getState().navigateTo({page, verseKey: key}); // @ai
   }
 
   async function retry(flag: {surah: number; ayah: number}): Promise<void> {
@@ -127,7 +129,7 @@ export const RecitationSummarySheet = (
         <Text style={styles.headerTitle}>{t('recitationSummary.title')}</Text>
         {range ? <Text style={styles.range}>{range}</Text> : null}
       </View>
-      <ScrollView
+      <SheetScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}>
         {flags.length === 0 && marks.length === 0 ? (
@@ -199,15 +201,20 @@ export const RecitationSummarySheet = (
           </>
         )}
         <Text style={styles.footnote}>{t('recitationSummary.footnote')}</Text>
-        <Pressable
-          style={[styles.doneButton, {backgroundColor: theme.colors.text}]}
-          onPress={() => void SheetManager.hide(props.sheetId)}
-          accessibilityRole="button">
-          <Text style={[styles.doneText, {color: theme.colors.background}]}>
-            {t('common:actions.done')}
-          </Text>
-        </Pressable>
-      </ScrollView>
+        {/* A tap on Done that wobbles never turns into a drag of the sheet.
+            The rows' buttons stay out of footers, so the list scrolls from
+            them. */}
+        <SheetFooter>
+          <Pressable
+            style={[styles.doneButton, {backgroundColor: theme.colors.text}]}
+            onPress={() => void SheetManager.hide(props.sheetId)}
+            accessibilityRole="button">
+            <Text style={[styles.doneText, {color: theme.colors.background}]}>
+              {t('common:actions.done')}
+            </Text>
+          </Pressable>
+        </SheetFooter>
+      </SheetScrollView>
     </ActionSheet>
   );
 };

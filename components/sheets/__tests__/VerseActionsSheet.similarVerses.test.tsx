@@ -11,6 +11,8 @@ import TestRenderer from 'react-test-renderer';
 
 const mockSimilarProps: Array<Record<string, unknown>> = [];
 
+// The sheet's lists and footers as plain views: no sheet here.
+jest.mock('../verse-actions/sheetGestures');
 jest.mock('../verse-actions/SimilarVersesContent', () => ({
   SimilarVersesContent: (props: Record<string, unknown>) => {
     mockSimilarProps.push(props);
@@ -132,9 +134,13 @@ jest.mock('@/store/verseAnnotationsStore', () => {
 jest.mock('@/store/mushafPlayerStore', () => ({
   useMushafPlayerStore: {getState: () => ({}), setState: jest.fn()},
 }));
+const mockSetSheetMode = jest.fn();
 jest.mock('@/services/player/store/playerStore', () => ({
   usePlayerStore: {
-    getState: () => ({queue: {tracks: [], currentIndex: 0}}),
+    getState: () => ({
+      queue: {tracks: [], currentIndex: 0},
+      setSheetMode: (mode: string) => mockSetSheetMode(mode),
+    }),
   },
 }));
 jest.mock('@/store/timestampStore', () => ({
@@ -206,6 +212,9 @@ import {
   useMushafSettingsStore,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
+import {SheetManager} from 'react-native-actions-sheet';
+import {router} from 'expo-router';
+import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -218,14 +227,17 @@ function root(): TestRenderer.ReactTestInstance {
   return renderer.root;
 }
 
-async function openSheet(rewayah?: RewayahId) {
+async function openSheet(
+  rewayah?: RewayahId,
+  source: 'player' | 'mushaf' = 'player',
+) {
   const props = {
     sheetId: 'verse-actions',
     payload: {
       verseKey: '2:5',
       surahNumber: 2,
       ayahNumber: 5,
-      source: 'player',
+      source,
       rewayah,
     },
   } as React.ComponentProps<typeof VerseActionsSheet>;
@@ -257,6 +269,15 @@ const lastSimilarProps = () => mockSimilarProps[mockSimilarProps.length - 1];
 beforeEach(() => {
   mockSimilarProps.length = 0;
   useMushafSettingsStore.setState({rewayah: 'warsh', mushafRenderer: 'dk_v2'});
+  mockSetSheetMode.mockClear();
+  (router.push as jest.Mock).mockClear();
+  (SheetManager.hide as jest.Mock).mockReset();
+  (SheetManager.hide as jest.Mock).mockImplementation(() => Promise.resolve());
+  useMushafNavigationStore.setState({
+    targetPage: null,
+    targetVerseKey: null,
+    readerCount: 0,
+  });
 });
 
 afterEach(() => {
@@ -290,5 +311,95 @@ it('uses the mushaf rewayah when the payload names none', async () => {
   expect(lastSimilarProps()).toMatchObject({
     section: 'similar',
     rewayah: 'warsh',
+  });
+});
+
+// Tapping a result opens that verse in the mushaf. The request went to a
+// store that only an open reader reads: from the audio player nothing
+// happened, and the request replayed the next time the reader opened. From
+// the mushaf the page jumped, but the sheet's closing (which clears the
+// selection) came after the verse had been lit and put it out again.
+describe('a result tapped in Similar Verses', () => {
+  /** Taps the result 2:255 (on page 42), as the Similar Verses screen does. */
+  async function tapResult(): Promise<void> {
+    press('Similar Verses');
+    const open = lastSimilarProps().onOpenVerse as (
+      verseKey: string,
+      page: number,
+    ) => Promise<void>;
+    await act(async () => {
+      await open('2:255', 42);
+    });
+  }
+
+  const request = () => {
+    const {targetVerseKey, targetPage} = useMushafNavigationStore.getState();
+    return {targetVerseKey, targetPage};
+  };
+
+  it('from the audio player: closes the sheet and the player, and opens the reader at the verse', async () => {
+    await openSheet('hafs');
+    await tapResult();
+    expect(SheetManager.hide).toHaveBeenCalledWith('verse-actions');
+    expect(mockSetSheetMode).toHaveBeenCalledWith('hidden');
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/mushaf',
+      params: {page: '42', surah: '2', ayah: '255'},
+    });
+    // Nothing is left for a reader opened later to replay.
+    expect(request()).toEqual({targetVerseKey: null, targetPage: null});
+  });
+
+  it('from the reader: asks it to go to the verse, without opening a second reader', async () => {
+    const readerClosed = useMushafNavigationStore.getState().readerOpened();
+    await openSheet('hafs', 'mushaf');
+    await tapResult();
+    expect(request()).toEqual({targetVerseKey: '2:255', targetPage: 42});
+    expect(router.push).not.toHaveBeenCalled();
+    expect(mockSetSheetMode).not.toHaveBeenCalled();
+    readerClosed();
+  });
+
+  // The full player can be open over a reader (a widget's bayaan://player
+  // opens it over the screen underneath). The reader jumped and flashed the
+  // verse under the player, so the tap still seemed to do nothing.
+  it('from the audio player over an open reader: closes the player, and asks the reader under it to go to the verse', async () => {
+    const readerClosed = useMushafNavigationStore.getState().readerOpened();
+    await openSheet('hafs', 'player');
+    await tapResult();
+    expect(mockSetSheetMode).toHaveBeenCalledWith('hidden');
+    expect(request()).toEqual({targetVerseKey: '2:255', targetPage: 42});
+    expect(router.push).not.toHaveBeenCalled();
+    readerClosed();
+  });
+
+  it('asks the reader only once the sheet has closed, so its closing cannot clear the flash', async () => {
+    const readerClosed = useMushafNavigationStore.getState().readerOpened();
+    let sheetClosed: () => void = () => undefined;
+    (SheetManager.hide as jest.Mock).mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          sheetClosed = resolve;
+        }),
+    );
+    await openSheet('hafs');
+    press('Similar Verses');
+    const open = lastSimilarProps().onOpenVerse as (
+      verseKey: string,
+      page: number,
+    ) => Promise<void>;
+    let done: Promise<void> = Promise.resolve();
+    await act(async () => {
+      done = open('2:255', 42);
+      await Promise.resolve();
+    });
+    // The sheet is still closing.
+    expect(request()).toEqual({targetVerseKey: null, targetPage: null});
+    await act(async () => {
+      sheetClosed();
+      await done;
+    });
+    expect(request()).toEqual({targetVerseKey: '2:255', targetPage: 42});
+    readerClosed();
   });
 });

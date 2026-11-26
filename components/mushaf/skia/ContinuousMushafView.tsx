@@ -25,7 +25,12 @@ import {
 import {parseAnchorKey} from '@/services/mushaf/RewayahVerseUnits'; // @ai
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {getPageTextIdentity} from './pageOverlays'; // @ai
-import {type MushafLayoutMetrics} from '../constants'; // @ai
+// @ai-start
+import {
+  type MushafLayoutMetrics,
+  VERTICAL_READER_VIEWABILITY,
+} from '../constants';
+// @ai-end
 // @ai-start
 import MushafPageContent from './MushafPageContent';
 import ContinuousQCFPage from './ContinuousQCFPage';
@@ -334,7 +339,7 @@ const ContinuousMushafView = forwardRef<
         showsVerticalScrollIndicator={false}
         scrollsToTop={scrollsToTop} // @ai
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+        viewabilityConfig={VERTICAL_READER_VIEWABILITY} // @ai
         onContentSizeChange={handleContentSizeChange} // @ai
       />
     );

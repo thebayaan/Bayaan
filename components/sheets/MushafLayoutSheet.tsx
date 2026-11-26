@@ -1,8 +1,9 @@
 import React, {useState} from 'react';
 import {useWindowDimensions} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {SheetProps, ScrollView} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
+import {SheetScrollView} from './SheetGestures';
 import {createStyles, MushafLayoutPanel} from './MushafLayoutPanel'; // @ai
 
 // @ai-start
@@ -24,7 +25,7 @@ export const MushafLayoutSheet = (props: SheetProps<'mushaf-layout'>) => {
       <MushafLayoutPanel
         key={resetKey}
         context={props.payload?.context}
-        ScrollComponent={ScrollView}
+        ScrollComponent={SheetScrollView}
       />
     </ActionSheet>
   );

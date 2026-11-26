@@ -1,12 +1,12 @@
 {
  "reading 1 idle": {
   "count": 10,
-  "sha256": "70fdf9d2b56aba99367961cb79362560c88ed2575ee971e1eae99f0d74ed7fe8",
+  "sha256": "91e6269842ac0f2eb57904f3287fc6088cc1b9f54a6117da7acc6d58c28d7005",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 718,
+     "width": 358,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -17,7 +17,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 718,
+     "width": 358,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -106,12 +106,12 @@
  },
  "reading 1 playing": {
   "count": 9,
-  "sha256": "55dc6cf64238d539c8006c59fe85b992b60dbab71a71cff8194b077ec61522bc",
+  "sha256": "a1d3c4b6543dba212f9e199a43013b1bdd67c19dbbc6b59aa1c4585a0741be82",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 718,
+     "width": 358,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -122,7 +122,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 718,
+     "width": 358,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -211,12 +211,12 @@
  },
  "reading 1 paused": {
   "count": 9,
-  "sha256": "645d65f1f642d492f7a9ba2dd709ec58614a28b2d788f9fb63c04102123a2856",
+  "sha256": "dd9ac928138a23aa2a127813647c8b4bfa4cca266d0cb1f067c1d3275bb1ff9d",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 718,
+     "width": 358,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -227,7 +227,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 718,
+     "width": 358,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -316,7 +316,7 @@
  },
  "reading 371 idle": {
   "count": 59,
-  "sha256": "1fa055d0a7de39312aa5620c2d03a2c2dcfe38c650ffa3a050312327a2372485",
+  "sha256": "17a1bf750d024d7e72cd8db9e55be5dac99ae75e0e32d8843e97377f60f4640b",
   "head": [
    [
     "getThemeForVerse",
@@ -338,7 +338,7 @@
  },
  "reading 371 playing": {
   "count": 58,
-  "sha256": "93ac47f0f8f7e871aba0e2de59990e7b5287ce1e0c9a329da389ed81599a2848",
+  "sha256": "1285ac71afc5a14caa236485479883f5f5dbc4a8ced007ff30f826170b082c45",
   "head": [
    [
     "getThemeForVerse",
@@ -360,7 +360,7 @@
  },
  "reading 371 paused": {
   "count": 58,
-  "sha256": "9c24affc85666eb232f137120bc2e0c1be2697b650373e226d3282a8cd07cc3a",
+  "sha256": "c69fc8e4c38c0076380aa422565ddf3db98c00c1f8d2dd36eee5a42a98768373",
   "head": [
    [
     "getThemeForVerse",
@@ -382,12 +382,12 @@
  },
  "reading 403 idle": {
   "count": 6,
-  "sha256": "bb3fa186038fec4190c195914a2b3bb310b31e4fdae289cbe02ac71949bef10a",
+  "sha256": "1bd68d09f18c1c1504cacaaf8e3e87f9379107d7b14ecb14fe9de6a41161faec",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 718,
+     "width": 358,
      "surahNumber": 103,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -398,7 +398,7 @@
     {
      "visible": true,
      "surahNumber": 103,
-     "width": 718,
+     "width": 358,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -487,12 +487,12 @@
  },
  "reading 403 playing": {
   "count": 5,
-  "sha256": "427692281e98840c088e33355cb3bca414fdf5ccc66aaf61d3a5f6e3598c0eac",
+  "sha256": "83b58e89fad991cebb0a62b5048775de622fc54f2ee61af95def46ce96900776",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 718,
+     "width": 358,
      "surahNumber": 103,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -503,7 +503,7 @@
     {
      "visible": true,
      "surahNumber": 103,
-     "width": 718,
+     "width": 358,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -592,12 +592,12 @@
  },
  "reading 403 paused": {
   "count": 5,
-  "sha256": "427692281e98840c088e33355cb3bca414fdf5ccc66aaf61d3a5f6e3598c0eac",
+  "sha256": "83b58e89fad991cebb0a62b5048775de622fc54f2ee61af95def46ce96900776",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 718,
+     "width": 358,
      "surahNumber": 103,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -608,7 +608,7 @@
     {
      "visible": true,
      "surahNumber": 103,
-     "width": 718,
+     "width": 358,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -697,12 +697,12 @@
  },
  "list 1 idle": {
   "count": 6464,
-  "sha256": "f4f7dcd25e51b38ec2d4aea1f6adc1a1029da30c1b5882aff59e35a118c47e6a",
+  "sha256": "828cabc18ab5277e81af502a03b841f30766b0eebf198e09ef0a346484aa0693",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 732.1714285714286,
+     "width": 373.0857142857143,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -713,7 +713,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 732.1714285714286,
+     "width": 373.0857142857143,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -804,12 +804,12 @@
  "list 1 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
  "list 1 playing": {
   "count": 6464,
-  "sha256": "0b79c918b9750191496c12c668ee43900407750b8af12b6db26d181bb0711cdc",
+  "sha256": "38de3f6afe06ee5146c3ee785576c38f1f11c55c59a2c8b2467196f7a93db87e",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 732.1714285714286,
+     "width": 373.0857142857143,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -820,7 +820,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 732.1714285714286,
+     "width": 373.0857142857143,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -965,12 +965,12 @@
  },
  "list 371 idle": {
   "count": 6464,
-  "sha256": "f4f7dcd25e51b38ec2d4aea1f6adc1a1029da30c1b5882aff59e35a118c47e6a",
+  "sha256": "828cabc18ab5277e81af502a03b841f30766b0eebf198e09ef0a346484aa0693",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 732.1714285714286,
+     "width": 373.0857142857143,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -981,7 +981,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 732.1714285714286,
+     "width": 373.0857142857143,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {
@@ -1072,12 +1072,12 @@
  "list 371 data": "40fe33057aec90e686eaa6aa7d2bd449fcded8a1d402276171cfce1fb2301614",
  "list 371 playing": {
   "count": 6464,
-  "sha256": "0b79c918b9750191496c12c668ee43900407750b8af12b6db26d181bb0711cdc",
+  "sha256": "38de3f6afe06ee5146c3ee785576c38f1f11c55c59a2c8b2467196f7a93db87e",
   "head": [
    [
     "SurahDivider",
     {
-     "width": 732.1714285714286,
+     "width": 373.0857142857143,
      "surahNumber": 1,
      "textColor": "#666666",
      "nameColor": "#111111"
@@ -1088,7 +1088,7 @@
     {
      "visible": false,
      "surahNumber": 1,
-     "width": 732.1714285714286,
+     "width": 373.0857142857143,
      "textColor": "#111111",
      "showTajweed": false,
      "fontMgr": {

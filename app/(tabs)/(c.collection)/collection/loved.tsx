@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
+import React, {useCallback, useRef, useMemo} from 'react'; // @ai
 import {
   View,
   Text,
@@ -13,11 +13,7 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
-import {
-  getReciterById,
-  getReciterByIdSync,
-  getSurahById,
-} from '@/services/dataService';
+import {getReciterByIdSync, getSurahById} from '@/services/dataService'; // @ai
 // @ai-start
 import {SurahOptionsProvider} from '@/components/sheets/options/surahOptions';
 import type {SurahOptionsBuilder} from '@/components/sheets/options/SurahOptionsContext';
@@ -43,6 +39,7 @@ import {
   useDownloadQueries,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
+import {bulkDownloadSurahs} from '@/services/player/bulkDownloadSurahs'; // @ai
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -54,6 +51,8 @@ import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {useTranslation} from 'react-i18next';
 import {flipX} from '@/utils/rtl';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
+import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
+import {queueFromIndex} from '@/utils/queueFromIndex'; // @ai
 import {
   CollectionOptionsMenu,
   type CollectionOptionsPayload,
@@ -61,6 +60,8 @@ import {
 // @ai-end
 
 interface LovedTrack {
+  /** The saved entry's own identity; unique in the list. @ai */
+  key: string; // @ai
   reciterId: string;
   surahId: string;
   rewayatId?: string;
@@ -79,6 +80,10 @@ const LovedScreen = () => {
   const listBottomPadding = useLibraryListBottomPadding(); // @ai
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // The iPad sidebar opens this as the first screen of the Collection stack.
+  // Back then has nothing to pop and used to switch to the Home tab, so the
+  // arrow is left out there, as the system header does on iPadOS 26. @ai
+  const isStackRoot = useIsStackRoot(); // @ai
   const {t} = useTranslation(['collection', 'common']);
   const {lovedTracks, toggleLoved, unloveAll} = useLoved();
   const {addToQueue, updateQueue, play, toggleShuffle} = usePlayerActions();
@@ -86,7 +91,7 @@ const LovedScreen = () => {
   const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
   const {
     isDownloaded,
-    isDownloadedWithRewayat,
+    isDownloadedForPlayback,
     isDownloading,
     isDownloadingWithRewayat,
     setDownloading,
@@ -95,9 +100,52 @@ const LovedScreen = () => {
     setDownloadProgress,
   } = {...useDownloadQueries(), ...useDownloadActions()};
 
-  const [lovedData, setLovedData] = useState<LovedTrackData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isDownloadingBulk, setIsDownloadingBulk] = useState(false);
+  // @ai-start
+  // Each loved track with its reciter and surah, read straight from the
+  // catalogue in memory (it is loaded before any screen shows). This used to
+  // be an async reload behind a "Loading…" view on every change, so unloving
+  // one surah blanked the whole screen and threw the list back to the top.
+  //
+  // A surah loved before rewayat were saved has none, and it plays in the
+  // reciter's first rewayah. The row takes that rewayah here, once, so that
+  // playing it, downloading it and its downloaded badge all mean the same
+  // file. "Download all" used to save such a surah under an empty rewayah
+  // that playback never looks up: the row showed as downloaded and then
+  // failed to play offline. An upload keeps no rewayah; it is its own file.
+  const lovedData = useMemo<LovedTrackData[]>(
+    () =>
+      lovedTracks.map(track => {
+        const reciter = getReciterByIdSync(track.reciterId) ?? null;
+        return {
+          track: {
+            // Built from what is saved, not from the rewayah the row takes
+            // below: an old entry and a newer one for the reciter's first
+            // rewayah would otherwise share a key.
+            key: `${track.reciterId}:${track.surahId}:${
+              track.rewayatId || ''
+            }:${track.userRecitationId || ''}`,
+            reciterId: track.reciterId,
+            surahId: track.surahId,
+            rewayatId: track.userRecitationId
+              ? track.rewayatId
+              : track.rewayatId || reciter?.rewayat[0]?.id,
+            userRecitationId: track.userRecitationId,
+          },
+          reciter,
+          surah: getSurahById(parseInt(track.surahId, 10)) ?? null,
+        };
+      }),
+    [lovedTracks],
+  );
+  // What "Download all" is about. Uploads are files on the device already;
+  // downloading one fetched the catalogue recording of its surah instead.
+  const downloadableLoved = useMemo(
+    () => lovedData.filter(item => !item.track.userRecitationId),
+    [lovedData],
+  );
+  // A second tap while a batch runs must not start another one.
+  const bulkDownloadInFlightRef = useRef(false);
+  // @ai-end
 
   // Scroll tracking for sticky header
   const scrollY = useRef(new RNAnimated.Value(0)).current;
@@ -164,64 +212,7 @@ const LovedScreen = () => {
       textAlign: 'center',
       marginBottom: moderateScale(20),
     },
-    loadingText: {
-      fontSize: moderateScale(16),
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
-    },
   });
-
-  // Use ref to track previous lovedTracks content to prevent infinite loops
-  const prevLovedTracksRef = useRef<string>('');
-
-  const loadLovedData = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      // Enrich with surah and reciter data
-      const enrichedData = await Promise.all(
-        lovedTracks.map(async track => {
-          const [reciter, surah] = await Promise.all([
-            getReciterById(track.reciterId),
-            Promise.resolve(getSurahById(parseInt(track.surahId, 10))),
-          ]);
-
-          return {
-            track: {
-              reciterId: track.reciterId,
-              surahId: track.surahId,
-              rewayatId: track.rewayatId,
-              userRecitationId: track.userRecitationId,
-            },
-            reciter: reciter || null,
-            surah: surah || null,
-          };
-        }),
-      );
-
-      setLovedData(enrichedData);
-    } catch (error) {
-      console.error('Failed to load loved tracks:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [lovedTracks]);
-
-  // Load loved tracks data
-  useEffect(() => {
-    // Create a stable string representation of lovedTracks
-    const currentTracksString = JSON.stringify(
-      lovedTracks.map(
-        lt => `${lt.reciterId}:${lt.surahId}:${lt.rewayatId || ''}`,
-      ),
-    );
-
-    // Only reload if the content actually changed
-    if (prevLovedTracksRef.current !== currentTracksString) {
-      prevLovedTracksRef.current = currentTracksString;
-      loadLovedData();
-    }
-  }, [lovedTracks, loadLovedData]);
 
   // Handle surah press to play track
   const handleSurahPress = useCallback(
@@ -232,11 +223,11 @@ const LovedScreen = () => {
           return;
         }
 
+        // @ai The row that was tapped, by its own identity. Matching on
+        // reciter, surah and rewayah could pick another row of the same
+        // recitation (an upload, or an entry saved without a rewayah).
         const selectedIndex = lovedData.findIndex(
-          item =>
-            item.reciter?.id === reciter.id &&
-            item.surah?.id === surah.id &&
-            (item.track.rewayatId || '') === (track.rewayatId || ''),
+          item => item.track.key === track.key,
         );
 
         if (selectedIndex === -1) {
@@ -246,46 +237,50 @@ const LovedScreen = () => {
 
         const artwork = getReciterArtwork(reciter);
 
-        // Build all tracks with selected surah first
-        const reorderedItems = [
-          lovedData[selectedIndex],
-          ...lovedData.slice(selectedIndex + 1),
-          ...lovedData.slice(0, selectedIndex),
-        ];
+        // @ai-start
+        // One entry per loved row in list order, null where a row cannot be
+        // played (its reciter left the catalogue, or its upload was deleted).
+        const rowTracks = lovedData.map(item => {
+          const itemReciter = item.reciter;
+          const itemSurah = item.surah;
+          if (!itemReciter || !itemSurah) return null;
+          if (item.track.userRecitationId) {
+            const upload = useUploadsStore
+              .getState()
+              .recitations.find(r => r.id === item.track.userRecitationId);
+            return upload ? createUserUploadTrack(upload) : null;
+          }
+          const itemRewayatId =
+            item.track.rewayatId || itemReciter.rewayat[0]?.id;
+          return {
+            id: `${itemReciter.id}:${itemSurah.id}`,
+            url: generateSmartAudioUrl(
+              itemReciter,
+              itemSurah.id.toString(),
+              itemRewayatId,
+            ),
+            title: itemSurah.name,
+            artist: itemReciter.name,
+            reciterId: itemReciter.id,
+            artwork: getReciterArtwork(itemReciter),
+            surahId: itemSurah.id.toString(),
+            reciterName: itemReciter.name,
+            rewayatId: itemRewayatId,
+          };
+        });
 
-        const allTracks = reorderedItems
-          .filter(item => item.reciter && item.surah)
-          .map(item => {
-            if (item.track.userRecitationId) {
-              const upload = useUploadsStore
-                .getState()
-                .recitations.find(r => r.id === item.track.userRecitationId);
-              if (upload) return createUserUploadTrack(upload);
-              return null;
-            }
-            const itemRewayatId =
-              item.track.rewayatId || item.reciter!.rewayat[0]?.id;
-            return {
-              id: `${item.reciter!.id}:${item.surah!.id}`,
-              url: generateSmartAudioUrl(
-                item.reciter!,
-                item.surah!.id.toString(),
-                itemRewayatId,
-              ),
-              title: item.surah!.name,
-              artist: item.reciter!.name,
-              reciterId: item.reciter!.id,
-              artwork: getReciterArtwork(item.reciter!),
-              surahId: item.surah!.id.toString(),
-              reciterName: item.reciter!.name,
-              rewayatId: itemRewayatId,
-            };
-          })
-          .filter((qt): qt is NonNullable<typeof qt> => qt !== null);
+        // Nothing to play for the tapped row (its upload was deleted).
+        // Starting the next row instead would play, and record in Continue
+        // Listening, something the user did not tap.
+        if (!rowTracks[selectedIndex]) return;
 
-        if (allTracks.length === 0) return;
+        // Keep the list's order and start at the tapped row. The queue used
+        // to be rotated to put that row first, so Previous could never reach
+        // the rows above it.
+        const queue = queueFromIndex(rowTracks, selectedIndex);
 
-        await updateQueue(allTracks, 0);
+        await updateQueue(queue.tracks, queue.startIndex);
+        // @ai-end
 
         const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
         startNewChain(reciter, surah, 0, 0, rewayatId);
@@ -405,113 +400,68 @@ const LovedScreen = () => {
   }, [lovedData, startNewChain, updateQueue, shuffleEnabled, toggleShuffle]);
 
   // Handle bulk download
+  // @ai-start
   const handleBulkDownload = useCallback(async () => {
-    if (isDownloadingBulk) return;
-    if (lovedData.length === 0) return;
+    if (bulkDownloadInFlightRef.current) return;
 
-    setIsDownloadingBulk(true);
+    const items = downloadableLoved.flatMap(item =>
+      item.reciter && item.surah
+        ? [
+            {
+              surahId: item.surah.id,
+              reciterId: item.track.reciterId,
+              rewayatId: item.track.rewayatId,
+            },
+          ]
+        : [],
+    );
+    if (items.length === 0) return;
 
+    bulkDownloadInFlightRef.current = true;
     try {
-      // Filter out items that are already downloaded
-      const itemsToDownload = lovedData.filter(item => {
-        if (!item.reciter || !item.surah) return false;
-        if (item.track.rewayatId) {
-          return !isDownloadedWithRewayat(
-            item.track.reciterId,
-            item.track.surahId,
-            item.track.rewayatId,
-          );
-        }
-        return !isDownloaded(item.track.reciterId, item.track.surahId);
+      // The same batch the reciter profile uses: it skips what is already
+      // downloaded or downloading, and counts what failed.
+      const summary = await bulkDownloadSurahs(items, {
+        downloadSurah,
+        isDownloaded,
+        // Skips what already plays offline, the way the row's badge counts
+        // it: a surah an older version downloaded without a rewayah plays
+        // that file in the reciter's first rewayah, the one its row takes.
+        isDownloadedWithRewayat: isDownloadedForPlayback,
+        isDownloading,
+        isDownloadingWithRewayat,
+        setDownloading,
+        clearDownloading,
+        addDownload,
+        setDownloadProgress,
       });
 
-      if (itemsToDownload.length === 0) {
+      // This used to say "Download Complete" whatever happened, also when
+      // the device was offline and every surah had failed.
+      if (summary.failed > 0 && summary.downloaded > 0) {
+        Alert.alert(
+          t('lovedScreen.downloadPartialTitle'),
+          t('lovedScreen.downloadPartialMessage', {
+            downloaded: summary.downloaded,
+            failed: summary.failed,
+          }),
+        );
+      } else if (summary.failed > 0) {
+        Alert.alert(
+          t('lovedScreen.downloadErrorTitle'),
+          t('lovedScreen.downloadFailedMessage'),
+        );
+      } else if (summary.downloaded > 0) {
+        Alert.alert(
+          t('lovedScreen.downloadCompleteTitle'),
+          t('lovedScreen.downloadCompleteMessage'),
+        );
+      } else if (summary.skipped === summary.total) {
         Alert.alert(
           t('lovedScreen.alreadyDownloadedTitle'),
           t('lovedScreen.alreadyDownloadedMessage'),
         );
-        setIsDownloadingBulk(false);
-        return;
       }
-
-      // Throttle progress updates to prevent AsyncStorage overload
-      const progressUpdateThrottle = 300; // Only update every 300ms
-      const lastProgressUpdateRef = {current: 0};
-
-      // Download items sequentially with delays to prevent AsyncStorage overload
-      for (let index = 0; index < itemsToDownload.length; index++) {
-        const item = itemsToDownload[index];
-        if (!item.reciter || !item.surah) continue;
-
-        const surahId = parseInt(item.track.surahId, 10);
-        // Generate download ID with rewayatId if provided for proper tracking
-        const downloadId = item.track.rewayatId
-          ? `${item.track.reciterId}-${surahId}-${item.track.rewayatId}`
-          : `${item.track.reciterId}-${surahId}`;
-
-        // Skip if already downloading - use rewayat-aware check if rewayatId is provided
-        const isCurrentlyDownloading = item.track.rewayatId
-          ? isDownloadingWithRewayat(
-              item.track.reciterId,
-              item.track.surahId,
-              item.track.rewayatId,
-            )
-          : isDownloading(item.track.reciterId, item.track.surahId);
-
-        if (isCurrentlyDownloading) {
-          continue;
-        }
-
-        try {
-          setDownloading(downloadId);
-
-          // Download with throttled progress tracking
-          const downloadResult = await downloadSurah(
-            surahId,
-            item.track.reciterId,
-            item.track.rewayatId,
-            progress => {
-              // Throttle progress updates to prevent AsyncStorage queue overflow
-              const now = Date.now();
-              if (
-                now - lastProgressUpdateRef.current <
-                progressUpdateThrottle
-              ) {
-                return;
-              }
-              lastProgressUpdateRef.current = now;
-              setDownloadProgress(downloadId, progress);
-            },
-          );
-
-          // Add to downloads
-          addDownload({
-            reciterId: item.track.reciterId,
-            surahId: item.track.surahId,
-            rewayatId: item.track.rewayatId || '',
-            filePath: downloadResult.filePath,
-            fileSize: downloadResult.fileSize,
-            downloadDate: Date.now(),
-            status: 'completed',
-          });
-
-          clearDownloading(downloadId);
-
-          // Small delay between downloads to let AsyncStorage catch up
-          // Only add delay if not the last item
-          if (index < itemsToDownload.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-        } catch (error) {
-          console.error('Error downloading surah:', error);
-          clearDownloading(downloadId);
-        }
-      }
-
-      Alert.alert(
-        t('lovedScreen.downloadCompleteTitle'),
-        t('lovedScreen.downloadCompleteMessage'),
-      );
     } catch (error) {
       console.error('Error in bulk download:', error);
       Alert.alert(
@@ -519,13 +469,12 @@ const LovedScreen = () => {
         t('lovedScreen.downloadErrorMessage'),
       );
     } finally {
-      setIsDownloadingBulk(false);
+      bulkDownloadInFlightRef.current = false;
     }
   }, [
-    isDownloadingBulk,
-    lovedData,
+    downloadableLoved,
     isDownloaded,
-    isDownloadedWithRewayat,
+    isDownloadedForPlayback,
     isDownloadingWithRewayat,
     isDownloading,
     setDownloading,
@@ -534,9 +483,10 @@ const LovedScreen = () => {
     setDownloadProgress,
     t,
   ]);
+  // @ai-end
 
   // Calculate download state for all loved tracks using custom hook
-  const downloadState = useCollectionDownloadState(lovedData);
+  const downloadState = useCollectionDownloadState(downloadableLoved); // @ai
 
   // Handle options menu
   // @ai-start
@@ -610,7 +560,7 @@ const LovedScreen = () => {
   useCollectionNativeHeader({
     title: t('collectionScreen.loved'),
     scrollY,
-    hasContent: lovedData.length > 0 && !loading,
+    hasContent: lovedData.length > 0, // @ai
     headerRight: lovedData.length > 0 ? renderHeaderRight : undefined,
   });
 
@@ -717,56 +667,30 @@ const LovedScreen = () => {
     );
   };
 
-  const getItemKey = (item: LovedTrackData) =>
-    `${item.track.reciterId}:${item.track.surahId}:${
-      item.track.rewayatId || ''
-    }`;
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
-            <Text style={styles.emptyHeaderTitle}>
-              {t('collectionScreen.loved')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <Text style={styles.loadingText}>{t('common:status.loading')}</Text>
-        </View>
-      </View>
-    );
-  }
+  const getItemKey = (item: LovedTrackData) => item.track.key; // @ai
 
   if (lovedData.length === 0) {
     return (
       <View style={styles.container}>
         {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            <Pressable
-              style={styles.emptyHeaderBack}
-              onPress={() => router.back()}
-              hitSlop={8}>
-              <Feather
-                name="arrow-left"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-                style={flipX}
-              />
-            </Pressable>
+            {/* @ai-start */}
+            {isStackRoot ? (
+              <View style={styles.emptyHeaderBack} />
+            ) : (
+              <Pressable
+                style={styles.emptyHeaderBack}
+                onPress={() => router.back()}
+                hitSlop={8}>
+                <Feather
+                  name="arrow-left"
+                  size={moderateScale(22)}
+                  color={theme.colors.text}
+                  style={flipX}
+                />
+              </Pressable>
+            )}
+            {/* @ai-end */}
             <Text style={styles.emptyHeaderTitle}>
               {t('collectionScreen.loved')}
             </Text>
@@ -796,7 +720,8 @@ const LovedScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="default" />
 
-      {!USE_GLASS && (
+      {/* Not at the stack root: nothing to go back to. @ai */}
+      {!USE_GLASS && !isStackRoot && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,

@@ -1,7 +1,7 @@
 // @ai-generated
 import React, {useCallback, useMemo, useState} from 'react';
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
-import {ScrollView} from 'react-native-actions-sheet';
+import {SheetScrollView} from '@/components/sheets/verse-actions/sheetGestures';
 import {useQuranRootSearch} from '@/hooks/useQuranSearch';
 import type {QuranVerseHit} from '@/utils/search/quranSearch';
 import {
@@ -31,8 +31,9 @@ const noop = () => undefined;
 /**
  * Every word of a root in the Quran, for the word view's root screen inside
  * the verse actions sheet: the root's counts, lemma chips, and its ayahs
- * (30 at a time) with the root's words tinted. A FlashList on the sheet's
- * scroll view, so it scrolls with the sheet's gestures.
+ * (30 at a time) with the root's words tinted. A FlashList on the verse
+ * sheet's list (SheetScrollView): scrolled down, a drag only scrolls the
+ * ayahs; at their top, a drag down moves the sheet.
  */
 export const RootResults: React.FC<RootResultsProps> = ({
   root,
@@ -134,7 +135,7 @@ export const RootResults: React.FC<RootResultsProps> = ({
       renderItem={renderItem}
       keyExtractor={item => item.key}
       getItemType={item => item.type}
-      renderScrollComponent={ScrollView}
+      renderScrollComponent={SheetScrollView}
       keyboardShouldPersistTaps="handled"
     />
   );

@@ -15,6 +15,7 @@ interface UseLoved {
     reciterId: string,
     surahId: string | number,
     rewayatId: string,
+    userRecitationId?: string, // @ai
   ) => boolean;
   toggleLoved: (
     reciterId: string,
@@ -43,12 +44,24 @@ export const useLoved = (): UseLoved => {
     [isLovedBase],
   );
 
+  // @ai-start
   const isLovedWithRewayat = useCallback(
-    (reciterId: string, surahId: string | number, rewayatId: string) => {
-      return isLovedWithRewayatBase(reciterId, surahId.toString(), rewayatId);
+    (
+      reciterId: string,
+      surahId: string | number,
+      rewayatId: string,
+      userRecitationId?: string,
+    ) => {
+      return isLovedWithRewayatBase(
+        reciterId,
+        surahId.toString(),
+        rewayatId,
+        userRecitationId,
+      );
     },
     [isLovedWithRewayatBase],
   );
+  // @ai-end
 
   const toggleLoved = useCallback(
     (
@@ -67,9 +80,22 @@ export const useLoved = (): UseLoved => {
     [toggleLovedBase],
   );
 
+  // @ai-start
+  // An upload is loved as itself: saved without a rewayah and with its own
+  // id, the way the Uploads screen saves it. Passing only its reciter, surah
+  // and rewayah made the player's heart love the catalogue recording
+  // instead, so Loved later played that and not the upload.
   const isTrackLoved = useCallback(
     (track: Track) => {
       if (!track.reciterId || !track.surahId) return false;
+      if (track.userRecitationId) {
+        return isLovedWithRewayat(
+          track.reciterId,
+          track.surahId,
+          '',
+          track.userRecitationId,
+        );
+      }
       const rewayatId = track.rewayatId || '';
       return isLovedWithRewayat(track.reciterId, track.surahId, rewayatId);
     },
@@ -78,12 +104,19 @@ export const useLoved = (): UseLoved => {
 
   const toggleTrackLoved = useCallback(
     (track: Track) => {
+      // An upload with no reciter or surah cannot be shown in Loved, so it
+      // cannot be loved (the Uploads screen does not offer it either).
       if (!track.reciterId || !track.surahId) return;
+      if (track.userRecitationId) {
+        toggleLoved(track.reciterId, track.surahId, '', track.userRecitationId);
+        return;
+      }
       const rewayatId = track.rewayatId || '';
       toggleLoved(track.reciterId, track.surahId, rewayatId);
     },
     [toggleLoved],
   );
+  // @ai-end
 
   const unloveAll = useCallback(() => {
     clearLovedBase();

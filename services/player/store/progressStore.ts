@@ -29,6 +29,43 @@ export const useProgressStore = create<ProgressState>(set => ({
   setSeekPosition: (seekPosition: number | null) => set({seekPosition}),
 }));
 
+// @ai-start
+export interface ShownPlaybackTime {
+  position: number;
+  duration: number;
+}
+
+/**
+ * The player's position and duration, for UI that shows them.
+ *
+ * In the foreground this follows `playerStore.playback`. In the background
+ * it holds the values already shown, so a position tick renders nothing:
+ * Android would queue each update for the first frame on return. On return
+ * it shows the live values. `inactive` (the iOS Control Center) counts as
+ * foreground, so UI that is still on screen keeps updating.
+ *
+ * A component that mounts in the background starts from the live values.
+ */
+export function useShownPlaybackTime(): ShownPlaybackTime {
+  const foreground = useAppForeground();
+  const shownRef = useRef<ShownPlaybackTime | null>(null);
+  const position = usePlayerStore(state =>
+    foreground || !shownRef.current
+      ? state.playback.position
+      : shownRef.current.position,
+  );
+  const duration = usePlayerStore(state =>
+    foreground || !shownRef.current
+      ? state.playback.duration
+      : shownRef.current.duration,
+  );
+  useEffect(() => {
+    shownRef.current = {position, duration};
+  }, [position, duration]);
+  return {position, duration};
+}
+// @ai-end
+
 /**
  * Hook to subscribe to progress updates
  *
@@ -57,16 +94,9 @@ export function useProgress() {
   const durationRef = useRef(duration);
 
   // @ai-start
-  // Subscribe to the two playerStore fields shown here. In the background
-  // each selector returns the value already shown, so the tick renders
-  // nothing: Android would queue each update for the first frame on return.
-  const foreground = useAppForeground();
-  const playbackPosition = usePlayerStore(state =>
-    foreground ? state.playback.position : positionRef.current,
-  );
-  const playbackDuration = usePlayerStore(state =>
-    foreground ? state.playback.duration : durationRef.current,
-  );
+  // Held at the shown values in the background (see useShownPlaybackTime).
+  const {position: playbackPosition, duration: playbackDuration} =
+    useShownPlaybackTime();
   // @ai-end
 
   // Keep refs in sync

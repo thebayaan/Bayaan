@@ -131,6 +131,12 @@ const QueueRow = React.memo(function QueueRow({
       isCurrent &&
       (s.playback.state === 'playing' || s.playback.state === 'buffering'),
   );
+  // Once the queue has ended, its last track sits at 0:00 with nothing
+  // playing: a tap loses no place, and plays it again.
+  const queueEnded = usePlayerStore(
+    s => isCurrent && s.playback.state === 'ended',
+  );
+  const inert = isCurrent && !queueEnded;
   const subtle = Color(colors.text).alpha(0.06).toString();
   const showArtwork =
     !!track.reciterName && track.reciterName !== 'My Recitations';
@@ -155,11 +161,14 @@ const QueueRow = React.memo(function QueueRow({
       <Pressable
         style={({pressed}) => [
           styles.rowBody,
-          pressed && !isCurrent && {opacity: 0.6},
+          pressed && !inert && {opacity: 0.6},
         ]}
-        onPress={() => onPress(index)}
+        // The row of the track that is playing does nothing on a tap, as its
+        // missing pressed state suggests. It used to load the track again,
+        // which sent a 40-minute surah back to 0:00.
+        onPress={inert ? undefined : () => onPress(index)}
         onLongPress={onMore ? () => onMore(track, index) : undefined}
-        accessibilityRole="button"
+        accessibilityRole={inert ? undefined : 'button'}
         accessibilityLabel={`${display.title}, ${display.subtitle}`}
         accessibilityActions={actions}
         onAccessibilityAction={handleAction}>

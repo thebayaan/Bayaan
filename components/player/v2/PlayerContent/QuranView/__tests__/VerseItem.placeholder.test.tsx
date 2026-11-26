@@ -86,6 +86,7 @@ jest.mock('@/store/verseAnnotationsStore', () => {
     useVerseAnnotationsStore: create(() => ({
       bookmarkedVerseKeys: new Set(),
       notedVerseKeys: new Set(),
+      highlights: {}, // @ai — read by the row's colour highlight
     })),
   };
 });

@@ -20,6 +20,7 @@ const mockPlayer = {
   queue: {tracks: [{id: 'a'}, {id: 'b'}] as unknown[], currentIndex: 0},
   loading: {trackLoading: false},
   playback: {state: 'paused', position: 10},
+  settings: {repeatMode: 'none' as 'none' | 'queue' | 'track'}, // @ai
   setSheetMode: jest.fn(),
   play: jest.fn(),
   pause: jest.fn(),
@@ -52,6 +53,7 @@ beforeEach(() => {
   mockPlayer.queue = {tracks: [{id: 'a'}, {id: 'b'}], currentIndex: 0};
   mockPlayer.loading.trackLoading = false;
   mockPlayer.playback = {state: 'paused', position: 10};
+  mockPlayer.settings.repeatMode = 'none'; // @ai
   mockRecitation.playbackState = 'idle';
 });
 
@@ -99,6 +101,16 @@ describe('playback', () => {
     skipTrack(-1);
     expect(mockPlayer.skipToPrevious).toHaveBeenCalled();
   });
+
+  // @ai-start
+  // The shortcut is enabled there (the queue goes round), so it has to act.
+  it('goes round to the first track from the last one with Repeat All', () => {
+    mockPlayer.queue.currentIndex = 1;
+    mockPlayer.settings.repeatMode = 'queue';
+    skipTrack(1);
+    expect(mockPlayer.skipToNext).toHaveBeenCalledTimes(1);
+  });
+  // @ai-end
 
   it('does nothing while a track loads or with no track', () => {
     mockPlayer.loading.trackLoading = true;

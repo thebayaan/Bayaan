@@ -19,6 +19,7 @@ import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import Color from 'color';
 import {computeGridLayout} from '@/utils/gridLayout';
+import {TABLE_MIN_WIDTH} from '../../utils/surahTable';
 // @ai-end
 
 // Define types matching useSettings and ReciterProfile
@@ -47,8 +48,6 @@ interface UpdatedSurahListProps extends SurahListProps {
 }
 
 // @ai-start
-/** Lists at least this wide show the Revelation and Verses columns. */
-export const TABLE_MIN_WIDTH = 720;
 /** SurahItem's leading padding, so the table lines up with the margin. */
 const ROW_INSET = moderateScale(12);
 const TABLET_MIN_CARD_WIDTH = moderateScale(150);
