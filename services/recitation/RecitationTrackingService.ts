@@ -81,8 +81,19 @@ import {
 } from './secondLook/checkWord';
 import {CANCEL_MAY_CANCEL, SECOND_LOOK_ENABLED} from './secondLook/config';
 import {wakesSecondJudge} from './secondJudge/wake';
-import {shownFlags, toShownFlag} from './flags';
+import {flagKey, shownFlags, toShownFlag, type ShownFlag} from './flags';
 import {debugTakeSave, debugTakeStart, trace} from './debugTake';
+import type {V1Engine} from './v1/engine';
+import type {V1Shown} from './v1/marks';
+import {
+  dismissV1,
+  endV1Take,
+  noteV1Cursor,
+  noteV1Message,
+  settleV1Checks,
+  startV1Take,
+  v1TakeActive,
+} from './v1/session';
 import {
   advanceRevealed,
   peekAyah,
@@ -240,8 +251,49 @@ function skippedAyat(): Set<string> {
 }
 
 function publishMarks(): void {
+  // A Tilawa 1.0 take publishes its own marks (publishV1).
+  if (v1TakeActive()) return;
   setState({marks: shownMarks(book, skippedAyat())});
 }
+
+// The Tilawa 1.0 preview (v1/session): its marks, and the whole ayat its skips
+// left out, as the page shows them. Set when its take ends, for the take's record.
+let v1Final: V1Shown | null = null;
+// How long a stop waits for Tilawa 1.0's last decisions and their checks.
+const V1_SETTLE_CHECKS_MS = 3000;
+
+/** The running take's engine when it is the Tilawa 1.0 preview. */
+function v1Engine(): V1Engine | null {
+  const engine = activeSessionPurpose() === 'follow' ? sessionEngine() : null;
+  return engine && 'settle' in engine ? (engine as V1Engine) : null;
+}
+
+/** A skipped-ayah flag for an ayah a Tilawa 1.0 skip left out. */
+function v1AyahFlag(key: string): ShownFlag {
+  const [surah, ayah] = key.split(':').map(Number);
+  const shown = {kind: 'skippedAyah' as const, surah, ayah, word: 0};
+  return {...shown, key: flagKey(shown)};
+}
+
+function publishV1(shown: V1Shown): void {
+  const {flags} = useRecitationTrackingStore.getState();
+  const fresh = shown.skippedAyat
+    .map(v1AyahFlag)
+    .filter(
+      f => !memo?.dismissed.has(f.key) && !flags.some(o => o.key === f.key),
+    );
+  setState({
+    marks: shown.marks,
+    ...(fresh.length > 0 ? {flags: [...flags, ...fresh]} : {}),
+  });
+}
+
+const v1Host = {
+  engine: v1Engine,
+  publish: publishV1,
+  buzz: () => buzz(),
+  trace,
+};
 
 function clearConfirmTimer(): void {
   if (confirmTimer) clearTimeout(confirmTimer);
@@ -541,12 +593,25 @@ function hafsWordPosition(
   );
 }
 
+/** Whether the text is hidden now, for a word with no verdict of its own. */
+function memoHidden(): boolean {
+  return memo?.hidden ?? false;
+}
+
 /** Every judged word of the take, in reading order. */
 function takeWords(): TakeWord[] {
   const out: TakeWord[] = [];
+  // A Tilawa 1.0 take's marks are in its own book, as shown at its end.
+  const v1Marks = v1Final
+    ? new Map(
+        v1Final.marks
+          .filter(m => m.kind !== 'added')
+          .map(m => [markKey(m.surah, m.ayah, m.word), m]),
+      )
+    : null;
   for (const [key, entry] of judged) {
     const {surah, ayah, word, totalWords, state} = entry.change;
-    const mark = book.get(key);
+    const mark = v1Marks ? v1Marks.get(key) : book.get(key);
     const marked =
       mark?.status === 'mistake' || mark?.status === 'corrected' ? mark : null;
     const dismissedKind = dismissedMarks.get(key);
@@ -568,7 +633,26 @@ function takeWords(): TakeWord[] {
       at: entry.at,
     });
   }
-  const added = [...book.values()].filter(
+  // A Tilawa 1.0 mark on a word the cursor never reached (a word or ayah left out).
+  if (v1Marks) {
+    for (const [key, m] of v1Marks) {
+      if (judged.has(key)) continue;
+      out.push({
+        surah: m.surah,
+        ayah: m.ayah,
+        word: hafsWordPosition(m.surah, m.ayah, m.word, m.totalWords),
+        result: dismissedMarks.has(key)
+          ? 'dismissed'
+          : m.status === 'mistake'
+            ? 'mistake'
+            : 'corrected',
+        kind: dismissedMarks.get(key) ?? m.kind,
+        hidden: memoHidden(),
+        at: m.since,
+      });
+    }
+  }
+  const added = (v1Final ? v1Final.marks : [...book.values()]).filter(
     m => m.kind === 'added' && m.status === 'mistake',
   );
   for (const mark of [...added, ...dismissedAdded]) {
@@ -647,6 +731,11 @@ const FALLBACK_EVENTS = new Set(['idle', 'lost', 'locateFailed', 'completed']);
 function handleEvent(msg: EngineMessage): void {
   const state = useRecitationTrackingStore.getState();
   if (state.status !== 'listening') return;
+  if (msg.type === 'v1_mark') {
+    // The Tilawa 1.0 preview's possible mistakes go through the app's check.
+    if (memo?.check) noteV1Message(msg);
+    return;
+  }
   if (msg.type === 'word_verdicts') {
     // Verdicts from before a lock are the search's guesses, the lock's own
     // chunk is judged from replayed audio, and a chunk judging a long stretch
@@ -680,6 +769,25 @@ function handleEvent(msg: EngineMessage): void {
     }
     if (memo?.check && !memo.correction) {
       startCorrection({surah: msg.surah, ayah: msg.ayah});
+    }
+    if (memo?.check && v1TakeActive()) {
+      noteV1Cursor({surah: msg.surah, ayah: msg.ayah, word: msg.word_index});
+      // The take's record: each word the cursor reached, read as written unless
+      // a mark says otherwise when the take ends.
+      const reached = markKey(msg.surah, msg.ayah, msg.word_index);
+      if (!judged.has(reached)) {
+        judged.set(reached, {
+          change: {
+            surah: msg.surah,
+            ayah: msg.ayah,
+            word: msg.word_index,
+            totalWords: msg.total_words,
+            state: 'ok',
+          },
+          hidden: memo.hidden,
+          at: Date.now(),
+        });
+      }
     }
     if (takeLockedAt === null) {
       takeLockedAt = Date.now();
@@ -837,6 +945,13 @@ function onUpdate(update: SessionUpdate): void {
             CANCEL_MAY_CANCEL,
         );
       }
+      v1Final = null;
+      if (memo.check && v1Engine()) {
+        startV1Take(v1Host);
+        trace(
+          'Tilawa 1.0 preview: each of its marks is checked before it shows',
+        );
+      }
       analyticsService.trackRecitationTrackingStarted({
         hint_surah_id: takeHint?.surah ?? null,
         model_loaded: update.modelWasLoaded,
@@ -852,6 +967,11 @@ function onUpdate(update: SessionUpdate): void {
     case 'off': {
       clearConfirmTimer();
       forgetJudgeWakes();
+      const v1Shown = endV1Take();
+      if (v1Shown) {
+        v1Final = v1Shown;
+        publishV1(v1Shown);
+      }
       // What is due by its own rules shows, as no answer can come now. So does a
       // mark still waiting for its second look: a check that gets no answer must
       // not hide it. The reader has stopped, so no vibration.
@@ -889,6 +1009,14 @@ function onUpdate(update: SessionUpdate): void {
 }
 
 const handlers: SessionHandlers = {
+  // Tilawa 1.0 decides some mistakes only at the end of its session: end it while
+  // the take still listens, so they reach the page checked, with the take's audio.
+  beforeStop: async reason => {
+    const engine = v1Engine();
+    if (!engine || !v1TakeActive() || !SUMMARY_REASONS.has(reason)) return;
+    await engine.settle();
+    await settleV1Checks(V1_SETTLE_CHECKS_MS);
+  },
   onUpdate,
   onEvent: msg => {
     if (take) take = takeEvent(take, msg, Date.now());
@@ -913,14 +1041,25 @@ const handlers: SessionHandlers = {
       saveTake(record);
       lastTakeId = record.id;
       if (checked?.checked && SUMMARY_REASONS.has(reason)) {
-        const flags = shownFlags(record.flags, checked.dismissed);
-        const marks: RecitationSummaryMark[] = shownMarks(
-          book,
-          new Set(
-            flags
-              .filter(f => f.kind === 'skippedAyah')
-              .map(f => `${f.surah}:${f.ayah}`),
-          ),
+        const takeFlags = shownFlags(record.flags, checked.dismissed);
+        const v1Flags = (v1Final?.skippedAyat ?? [])
+          .map(v1AyahFlag)
+          .filter(
+            f =>
+              !checked.dismissed.has(f.key) &&
+              !takeFlags.some(o => o.key === f.key),
+          );
+        const flags = [...takeFlags, ...v1Flags];
+        const marks: RecitationSummaryMark[] = (
+          v1Final?.marks ??
+          shownMarks(
+            book,
+            new Set(
+              flags
+                .filter(f => f.kind === 'skippedAyah')
+                .map(f => `${f.surah}:${f.ayah}`),
+            ),
+          )
         ).map(m => ({
           surah: m.surah,
           ayah: m.ayah,
@@ -962,7 +1101,14 @@ export async function startRecitationTracking(
   takeHint = hint;
   takePage = new Set(pageVerseKeys);
   setState({...RECITATION_TRACKING_IDLE, status: 'loading'});
-  await startSession({purpose: 'follow', hint}, handlers);
+  await startSession(
+    {
+      purpose: 'follow',
+      hint,
+      engine: useMushafSettingsStore.getState().recitationEngine ?? 'v1',
+    },
+    handlers,
+  );
 }
 
 /** Stops listening and clears the highlight. Safe to call when idle. */
@@ -1076,6 +1222,7 @@ export async function dismissRecitationMark(target: {
   if (!mark) return;
   setState({marks: marks.filter(m => m !== mark)});
   trace(`dismissed ${mark.surah}:${mark.ayah} word ${mark.word + 1}`);
+  if (v1TakeActive()) dismissV1(mark, mark.kind);
   const key = wordMarkKey(mark);
   if (isTakeActive(status)) {
     dismissedMarks.set(key, mark.kind);

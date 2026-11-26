@@ -78,6 +78,26 @@ For now that file is built into the app's JavaScript, with no licence file besid
 That is a known gap: before a public release it must be delivered with the model and
 its licence file, as the model is.
 
+## Recitation follow-along preview (Tilawa 1.0)
+
+Behind a developer setting (off by default), follow-along can run **Tilawa 1.0**
+instead (https://github.com/yazinsai/tilawa).
+
+- **SDK:** `@tilawa/core` 1.0.0-rc.1, listed in `package.json` as `@tilawa/core-v1`. MIT.
+- **Model:** `spliced-clean-1-int8.onnx`, from the Tilawa `models-v1` release. It is
+  not bundled: the app downloads it on first use. Licensed under **Creative Commons
+  Attribution 4.0** (https://creativecommons.org/licenses/by/4.0/), © Tilawa
+  contributors.
+  - Its model card says it is not derived from Quran-Lab, so NPL-1.2 does not apply
+    to it.
+  - It was distilled from Muaalem v3.2 and trained on open recitation sets, including
+    `tarteel-ai/tlog` (CC-BY-4.0) and QUA (QUD-Technologies). QUA's dataset licence asks
+    that features built on it stay free, ungated and without interrupting ads, as
+    follow-along already is.
+- **Reference:** `ref-v2.json`, downloaded from the 1.0.0-rc.0 tag (1.0.0-rc.1 ships the
+  same file). It holds the Tanzil Quran text (Creative Commons Attribution 3.0) with its
+  phonemes. The app uses it only to number words; it never shows that text.
+
 ## Recitation second look model (quran-asr-small)
 
 Before follow-along marks a word as a mistake, it checks the word with

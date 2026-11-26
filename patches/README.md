@@ -107,6 +107,23 @@ published package in a scratch git repo laid out as `node_modules/@tilawa/core`:
 in the repo to do this: its `prepare` script rebuilds it from source that is not
 there. Check the result on a clean copy with `patch-package --error-on-fail`.
 
+# @tilawa/core-v1 (Tilawa 1.0) follower
+
+`@tilawa+core-v1+1.0.0-rc.1.patch` adds one line of code to `dist/engine/tracker.js`.
+1.0.0-rc.1 holds off a lock right after a phrase (the isti'adha, a basmala) ends, by
+`phraseCut`, an offset into the heard phonemes that only acquisition cleared. When the first
+lock landed in the same 1 s acquisition cell as the end of such a phrase, the offset stayed
+for the rest of the take. Every later lock found by search (after a jump, a misfit, or a
+basmala into a surah other than the next one) then waited until the search window, at most
+48 phonemes, held 10 phonemes past the offset: late, or never once the offset was 39 or
+more. `startLocal` now clears it with the rest of the acquisition state. The first lock is
+unchanged; after it, a lock waits only while a phrase or a repeat is in progress, as in
+1.0.0-rc.0. `services/recitation/v1/__tests__/enginePatch.test.ts` replays such a take.
+
+Upstream main has the same code. On a later release, check whether it is fixed there before
+regenerating the patch. Make it as above, in a scratch git repo laid out as
+`node_modules/@tilawa/core-v1`.
+
 # react-native-actions-sheet drag threshold
 
 `react-native-actions-sheet+10.1.2.patch` raises the sheet's drag gesture

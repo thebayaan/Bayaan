@@ -10,6 +10,7 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useAdhkarSessionStore} from '@/store/adhkarSessionStore'; // @ai
 import {deleteRecitationAssets} from './recitationAssets';
+import {deleteV1Assets} from './v1/assets';
 import {debugTakeAudio} from './debugTake';
 import type {
   EngineMessage,
@@ -23,6 +24,7 @@ import {
   scheduleUnload,
   setEngineListener,
   unloadRecitationModel,
+  type EngineChoice,
 } from './engineHost';
 import {
   requestMicPermission,
@@ -92,6 +94,12 @@ export interface SessionHandlers {
   onEvent: (msg: EngineMessage) => void;
   /** After the stop: the mic is closed and the engine flushed. */
   onFinish: (finish: SessionFinish) => void;
+  /**
+   * Called once when a listening session is asked to stop, before anything is
+   * released: the engine hears no more audio, but its events still arrive. A stop
+   * waits for it, at most BEFORE_STOP_MS.
+   */
+  beforeStop?: (reason: RecitationStopReason) => Promise<void>;
 }
 
 export interface SessionOptions {
@@ -105,6 +113,8 @@ export interface SessionOptions {
   expected?: ExpectedPassage | null;
   /** Correction mode: skipped-ayah and look-alike rules at the end. */
   structural?: boolean;
+  /** Which follower: 'v0' (Tilawa 0.4, the default) or 'v1' (the 1.0 preview). */
+  engine?: EngineChoice;
 }
 
 /** What configureSession can change on the running session. */
@@ -124,6 +134,8 @@ const AFTER_PAUSE_MS = 300;
 const MIC_SILENT_MS = 3000;
 // An interruption that has not ended after this long ends the session.
 export const INTERRUPTION_GIVE_UP_MS = 60 * 1000;
+// The longest a stop waits for the session's beforeStop.
+export const BEFORE_STOP_MS = 5000;
 
 interface ActiveSession {
   purpose: SessionPurpose;
@@ -135,6 +147,8 @@ interface ActiveSession {
   paused: boolean;
   /** Held by the reader (holdSession): the mic stays open, unheard. */
   held: boolean;
+  /** A stop has begun: a second one waits for it. */
+  stopping: boolean;
   lastChunkAt: number;
   appStateSub: NativeEventSubscription | null;
   watchdog: ReturnType<typeof setInterval> | null;
@@ -344,6 +358,7 @@ export async function startSession(
     listening: false,
     paused: false,
     held: false,
+    stopping: false,
     lastChunkAt: 0,
     appStateSub: null,
     watchdog: null,
@@ -400,14 +415,17 @@ export async function startSession(
       return false;
     }
     if (!current()) return false;
-    const {engine, wasLoaded} = await acquireEngine({
-      onDownload: progress => {
-        if (current()) handlers.onUpdate({status: 'downloading', progress});
+    const {engine, wasLoaded} = await acquireEngine(
+      {
+        onDownload: progress => {
+          if (current()) handlers.onUpdate({status: 'downloading', progress});
+        },
+        onLoad: () => {
+          if (current()) handlers.onUpdate({status: 'loading'});
+        },
       },
-      onLoad: () => {
-        if (current()) handlers.onUpdate({status: 'loading'});
-      },
-    });
+      options.engine ?? 'v0',
+    );
     if (!current()) return abandon();
     session.engine = engine;
     if (pauseQuranAudio()) {
@@ -470,9 +488,39 @@ export async function startSession(
 export async function stopSession(reason: RecitationStopReason): Promise<void> {
   generation++;
   const session = active;
-  if (!session) {
+  if (!session || session.stopping) {
     if (stopping) await stopping;
     return;
+  }
+  session.stopping = true;
+  const run = stopRun(session, reason);
+  stopping = run;
+  try {
+    await run;
+  } finally {
+    if (stopping === run) stopping = null;
+  }
+}
+
+async function stopRun(
+  session: ActiveSession,
+  reason: RecitationStopReason,
+): Promise<void> {
+  const before = session.handlers.beforeStop;
+  if (session.listening && before) {
+    // No more audio for the engine; its events still reach the handlers.
+    session.held = true;
+    await new Promise<void>(resolve => {
+      const timer = setTimeout(resolve, BEFORE_STOP_MS);
+      before(reason)
+        .catch(error => {
+          console.warn('[recitation] before the stop', error);
+        })
+        .finally(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+    });
   }
   const stats = session.listening ? (session.engine?.getStats() ?? null) : null;
   release(session);
@@ -482,13 +530,7 @@ export async function stopSession(reason: RecitationStopReason): Promise<void> {
     listened: session.listening,
     stats,
   });
-  const finishing = finish(session, reason);
-  stopping = finishing;
-  try {
-    await finishing;
-  } finally {
-    if (stopping === finishing) stopping = null;
-  }
+  await finish(session, reason);
 }
 
 async function finish(
@@ -536,4 +578,5 @@ export async function removeRecitationModel(): Promise<void> {
   await stopSession('model_removed');
   await unloadRecitationModel();
   await deleteRecitationAssets();
+  await deleteV1Assets();
 }
