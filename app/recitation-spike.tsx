@@ -34,6 +34,8 @@ import {
   type CancelMayCancel,
 } from '@/services/recitation/secondLook/config';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import type {EngineChoice} from '@/services/recitation/engineHost';
+import {V1_DOWNLOAD_MB} from '@/services/recitation/v1/assets';
 
 // Phase 0 spike for offline recitation tracking (Tilawa). Hidden screen,
 // reachable from the dev menu or bayaan://recitation-spike. Not user-facing.
@@ -82,6 +84,8 @@ function RecitationSpikeScreen(): React.JSX.Element {
   const [word, setWord] = useState<WordState | null>(null);
   const [transcript, setTranscript] = useState('');
   const [stats, setStats] = useState<RecitationStats | null>(null);
+  const engineChoice = useMushafSettingsStore(s => s.recitationEngine);
+  const setEngineChoice = useMushafSettingsStore(s => s.setRecitationEngine);
   const cancelChoice = useMushafSettingsStore(s => s.recitationCancelMayCancel);
   const setCancelChoice = useMushafSettingsStore(
     s => s.setRecitationCancelMayCancel,
@@ -262,6 +266,32 @@ function RecitationSpikeScreen(): React.JSX.Element {
     );
   }
 
+  function renderEngineChoice(
+    label: string,
+    choice: EngineChoice,
+  ): React.JSX.Element {
+    const on = (engineChoice ?? 'v1') === choice;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.button,
+          {backgroundColor: on ? theme.colors.text : card},
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{selected: on}}
+        accessibilityLabel={`Follower: ${label}`}
+        onPress={() => setEngineChoice(choice)}>
+        <Text
+          style={[
+            styles.buttonText,
+            {color: on ? theme.colors.background : theme.colors.text},
+          ]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+
   function renderStat(label: string, value: string): React.JSX.Element {
     return (
       <View style={styles.statRow} key={label}>
@@ -294,6 +324,13 @@ function RecitationSpikeScreen(): React.JSX.Element {
       </Text>
       {renderCancelChoice('all marks', 'all')}
       {renderCancelChoice('skipped marks only', 'skipped')}
+
+      <Text style={[styles.body, {color: theme.colors.text}]}>
+        The follower, from the next take in the mushaf (1.0 downloads about{' '}
+        {V1_DOWNLOAD_MB} MB the first time):
+      </Text>
+      {renderEngineChoice('Tilawa 1.0, every mark checked (default)', 'v1')}
+      {renderEngineChoice('Tilawa 0.4 (before)', 'v0')}
 
       {phase === 'needs-download' &&
         renderButton(
