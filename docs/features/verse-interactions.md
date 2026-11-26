@@ -55,8 +55,6 @@ Service Layer (VerseAnnotationService.ts)
   ↓
 Zustand Stores (verseSelectionStore.ts, verseAnnotationsStore.ts)
   ↓
-Hooks (useVerseSelection, useVerseAnnotations, useVerseActions)
-  ↓
 UI (VerseItem, QuranView, Bottom Sheets)
 ```
 
@@ -248,17 +246,7 @@ interface VerseAnnotationsState {
 
 ## 5. Hooks
 
-### `hooks/useVerseSelection.ts`
-
-Thin wrapper over `verseSelectionStore`. Returns `selectedVerseKey`, `selectVerse`, `clearSelection`, `isSelected(verseKey)`.
-
-### `hooks/useVerseActions.ts`
-
-Zero-re-render action-only hook (follows `usePlayerActions` pattern). Returns memoized functions: `toggleBookmark`, `upsertNote`, `deleteNote`, `setHighlight`, `removeHighlight`, `showActionsSheet`.
-
-### `hooks/useVerseAnnotations.ts`
-
-Used by QuranView. Takes `surahNumber`, calls `loadAnnotationsForSurah` on change, returns `isBookmarked`, `hasNote`, `getHighlightColor` functions.
+There are no verse hooks. The UI reads `verseSelectionStore` and `verseAnnotationsStore` directly with selectors (for example `useVerseSelectionStore(s => s.selectVerse)` in `VerseItem`), and the sheets write through the annotations store. The first plan had `hooks/useVerseSelection.ts`, `hooks/useVerseAnnotations.ts` and `hooks/useVerseActions.ts`. Nothing imported them, so they were removed.
 
 ---
 
@@ -290,7 +278,7 @@ Existing `onPress` remains as a stub, reserved for future play-from-verse.
 
 **File:** `components/player/v2/PlayerContent/QuranView/index.tsx`
 
-- Subscribe to `useVerseSelection` and `useVerseAnnotations(currentSurah)`
+- Subscribe to `verseSelectionStore` and `verseAnnotationsStore` with selectors
 - Call `loadAnnotationsForSurah` when `currentSurah` changes
 - Pass annotation props to each VerseItem in `renderItem`
 - `onLongPress` calls `selectVerse()` + `SheetManager.show('verse-actions', { payload })`
@@ -378,11 +366,6 @@ store/
   verseSelectionStore.ts
   verseAnnotationsStore.ts
 
-hooks/
-  useVerseSelection.ts
-  useVerseActions.ts
-  useVerseAnnotations.ts
-
 components/
   sheets/
     VerseActionsSheet.tsx
@@ -416,12 +399,9 @@ services/AppInitializer.ts                                  — register verse a
 
 ### Step 2: Selection UX
 
-1. Create `useVerseSelection` hook
-2. Create `useVerseAnnotations` hook
-3. Create `useVerseActions` hook
-4. Update `VerseItem` with selection/annotation props
-5. Update `QuranView` to wire stores
-6. Update `PlayerContent` to clear selection on surah change
+1. Update `VerseItem` with selection/annotation props
+2. Update `QuranView` to wire stores
+3. Update `PlayerContent` to clear selection on surah change
 
 ### Step 3: Actions Sheet
 
