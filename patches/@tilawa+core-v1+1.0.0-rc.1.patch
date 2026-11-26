@@ -1,0 +1,16 @@
+diff --git a/node_modules/@tilawa/core-v1/dist/engine/tracker.js b/node_modules/@tilawa/core-v1/dist/engine/tracker.js
+index 911dd79..2d1afd3 100644
+--- a/node_modules/@tilawa/core-v1/dist/engine/tracker.js
++++ b/node_modules/@tilawa/core-v1/dist/engine/tracker.js
+@@ -801,6 +801,11 @@ export function createTracker(index, options = {}) {
+         afterBasmala = null;
+         afterPhrase = false;
+         twin = null;
++        // Bayaan patch: phraseCut is an acquisition offset into `observed`, and only
++        // trimHistory cleared it, which never runs once locked. A first lock in the cell
++        // where a phrase ended kept it for the rest of the take, and assessOutsidePhrases
++        // then held off later locks (a jump, a new surah after a basmala, a recovery).
++        phraseCut = 0;
+         keepLast(0);
+     };
+     /** Memorization holds the expected bookmark where a jump left it; free mode follows the reciter. */
