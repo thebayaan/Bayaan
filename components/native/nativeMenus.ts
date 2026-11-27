@@ -1,9 +1,17 @@
 // @ai-generated
 import {Platform} from 'react-native';
 
-/** Native menus exist on iOS and Android; web keeps its sheets. */
-export const nativeMenusAvailable =
-  Platform.OS === 'ios' || Platform.OS === 'android';
+/**
+ * Native menus are iOS only. Android keeps its bottom sheets: the Compose
+ * dropdowns read poorly next to the rest of the app. Web keeps its sheets.
+ */
+export const nativeMenusAvailable = Platform.OS === 'ios';
+
+/**
+ * Native ••• and context menus on phones. Off, phones go back to their
+ * bottom sheets and only tablets get native menus.
+ */
+export const phoneMenusEnabled = true;
 
 /**
  * Long-press and secondary-click menus on list rows and cards (iPad). One

@@ -30,9 +30,14 @@ const fallbackSurahNames: Record<number, string> = {};
 
 interface HeaderProps {
   onOptionsPress: () => void;
+  /** A native menu laid over the ••• button; it then takes the tap. */
+  optionsMenu?: React.ReactNode;
 }
 
-export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
+export const Header: React.FC<HeaderProps> = ({
+  onOptionsPress,
+  optionsMenu,
+}) => {
   const {theme} = useTheme();
   const a11y = usePlayerA11y(); // @ai
   const {isTablet} = useResponsive();
@@ -187,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
         {...pillProps}>
         <Pressable
           style={styles.glassButtonInner}
-          onPress={onOptionsPress}
+          onPress={optionsMenu ? undefined : onOptionsPress}
           {...a11y.moreOptions}>
           {USE_GLASS ? (
             <SymbolView
@@ -203,6 +208,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
               color={theme.colors.text}
             />
           )}
+          {optionsMenu}
         </Pressable>
       </PillWrapper>
     </View>
