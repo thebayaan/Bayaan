@@ -5,6 +5,7 @@ import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
 import {Feather} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
@@ -59,8 +60,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
             style={styles.backButton}
             onPress={() => router.back()}
             hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}
@@ -94,7 +94,9 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
       {/* Action Buttons */}
       <View style={[styles.actionButtons, forceLTR]}>
         {!USE_GLASS && onOptionsPress && (
-          <Pressable style={styles.circleButton} onPress={onOptionsPress}>
+          <Pressable
+            style={styles.circleButton}
+            onPress={optionsMenu ? undefined : onOptionsPress}>
             <Feather
               name="more-horizontal"
               size={moderateScale(20)}

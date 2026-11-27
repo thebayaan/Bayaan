@@ -7,7 +7,11 @@ import {PlayIcon} from '@/components/Icons';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {ProgressTrack} from '@/components/ProgressTrack'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
@@ -17,7 +21,7 @@ import {useShownPlaybackTime} from '@/services/player/store/progressStore'; // @
 import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {useRouter, Link} from 'expo-router';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useUploadsStore} from '@/store/uploadsStore';
 import {createUserUploadTrack} from '@/utils/track';
 import {createStyles} from '@/components/cards/recentCardStyles';
@@ -286,13 +290,14 @@ export const RecentReciterCard = ({
   // On iPad the card is a context menu (long press or secondary click).
   const contextMenu = useNativeOptionsMenu('longPress');
   const handleLongPress = useCallback(() => {
-    SheetManager.show('home-card-options', {payload: optionsPayload});
+    showSheet('home-card-options', {payload: optionsPayload});
   }, [optionsPayload]);
   const onLongPress = contextMenu ? undefined : handleLongPress;
   // @ai-end
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
 
   const CardWrapper = USE_GLASS ? GlassView : View;
 
@@ -304,7 +309,11 @@ export const RecentReciterCard = ({
         width != null && {width},
       ]}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
+        ? {
+            glassEffectStyle: 'regular',
+            colorScheme: glassColorScheme,
+            tintColor: glassTint, // @ai
+          }
         : {})}>
       {/* Background layers (fallback for non-glass) */}
       {!USE_GLASS && (

@@ -2,7 +2,7 @@ import React from 'react';
 import {Animated, Pressable, View} from 'react-native';
 import {moderateScale, ScaledSheet} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
-import {Feather} from '@expo/vector-icons';
+import {BackIcon, SearchIcon, ShareIcon} from '@/components/ActionIcons'; // @ai
 import {useRouter} from 'expo-router';
 // @ai-start
 import {flipX} from '@/utils/rtl';
@@ -16,6 +16,8 @@ interface NavigationButtonsProps {
   iconsZIndex: Animated.Value;
   onSearchPress: () => void;
   onSharePress?: () => void;
+  /** Drawn after search, e.g. the view-and-sort menu. @ai */
+  extra?: React.ReactNode;
 }
 
 // @ai-start
@@ -25,6 +27,7 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
   iconsZIndex,
   onSearchPress,
   onSharePress,
+  extra,
 }) => {
   const router = useRouter();
   const {theme} = useTheme();
@@ -42,8 +45,7 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
           },
         ]}>
         <Pressable onPress={() => router.back()}>
-          <Feather
-            name="arrow-left"
+          <BackIcon
             size={moderateScale(24)}
             color={theme.colors.text}
             style={flipX}
@@ -65,20 +67,15 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
             onPress={onSharePress}
             hitSlop={8}
             style={{marginRight: moderateScale(16)}}>
-            <Feather
-              name="share"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
+            <ShareIcon size={moderateScale(20)} color={theme.colors.text} />
           </Pressable>
         )}
         <Pressable onPress={onSearchPress} hitSlop={8}>
-          <Feather
-            name="search"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
+          <SearchIcon size={moderateScale(20)} color={theme.colors.text} />
         </Pressable>
+        {extra ? (
+          <View style={{marginStart: moderateScale(18)}}>{extra}</View>
+        ) : null}
       </Animated.View>
     </>
   );

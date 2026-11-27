@@ -45,10 +45,9 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore'; // @ai
 import {showToast} from '@/utils/toastUtils'; // @ai
 import {isRTL} from '@/utils/rtl'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
-import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
-import {USE_GLASS} from '@/hooks/useGlassProps';
+import {USE_GLASS, useGlassTint} from '@/hooks/useGlassProps';
 import {
   peekOnPage,
   LIVE_MIC_COLOR,
@@ -60,6 +59,7 @@ import {stopRecitationTracking} from '@/services/recitation/RecitationTrackingSe
 import {playbackNoticeText} from '@/i18n/playback';
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 export type MushafScreenParams = {
@@ -231,7 +231,7 @@ function MushafReader({
   useEffect(() => {
     if (!playerOptions) return;
     useMushafPlayerStore.setState({currentPage: page});
-    SheetManager.show('mushaf-player-options', {payload: {currentPage: page}});
+    showSheet('mushaf-player-options', {payload: {currentPage: page}});
   }, [playerOptions, page]);
 
   // Set verse highlight on mount, auto-clear after 3s, clear on unmount
@@ -312,6 +312,15 @@ const surahNameOf = (surah: number): string =>
 // refused playback requests.
 export function MushafToolbar() {
   const {t} = useTranslation(['reader', 'common']);
+  // @ai-start
+  // iOS draws these glass circles; in dark mode the prominent style fills
+  // them with the shared glass tint, so they darken with it.
+  const isDark = useTheme().theme.isDarkMode;
+  const glassTint = useGlassTint();
+  const buttonLook = isDark
+    ? ({variant: 'prominent', tintColor: glassTint} as const)
+    : {};
+  // @ai-end
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentPage = useMushafPlayerStore(s => s.currentPage);
   const mic = useRecitationMic(currentPage || 1);
@@ -366,7 +375,7 @@ export function MushafToolbar() {
   const handlePlay = useCallback(() => {
     const page = useMushafPlayerStore.getState().currentPage || 1;
     useMushafPlayerStore.setState({currentPage: page});
-    SheetManager.show('mushaf-player-options', {
+    showSheet('mushaf-player-options', {
       payload: {currentPage: page},
     });
   }, []);
@@ -395,7 +404,7 @@ export function MushafToolbar() {
 
   const handleOptions = useCallback(() => {
     const page = useMushafPlayerStore.getState().currentPage || 1;
-    SheetManager.show('mushaf-player-options', {
+    showSheet('mushaf-player-options', {
       payload: {currentPage: page},
     });
   }, []);
@@ -412,6 +421,7 @@ export function MushafToolbar() {
     return (
       <Stack.Toolbar>
         <Stack.Toolbar.Button
+          {...buttonLook} // @ai
           icon="stop.fill"
           onPress={() => void stopRecitationTracking()}>
           {t('recitation.stop')}
@@ -419,6 +429,7 @@ export function MushafToolbar() {
         <Stack.Toolbar.Spacer />
         {hideText && (
           <Stack.Toolbar.Button
+            {...buttonLook} // @ai
             icon="chevron.left.2"
             accessibilityLabel={t('recitation.nextAyah')}
             onPress={() => peekOnPage('ayah', currentPage || 1)}>
@@ -427,6 +438,7 @@ export function MushafToolbar() {
         )}
         {hideText && (
           <Stack.Toolbar.Button
+            {...buttonLook} // @ai
             icon="chevron.left"
             accessibilityLabel={t('recitation.nextWord')}
             onPress={() => peekOnPage('word', currentPage || 1)}>
@@ -444,6 +456,7 @@ export function MushafToolbar() {
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
         <Stack.Toolbar.Button
+          {...buttonLook} // @ai
           icon={hideText ? 'eye.slash' : 'eye'}
           onPress={toggleHideText}>
           {hideText ? t('recitation.showText') : t('recitation.hideText')}
@@ -456,15 +469,22 @@ export function MushafToolbar() {
     // Idle: [Search] — spacer — [Play] — spacer — [Options]
     return (
       <Stack.Toolbar>
-        <Stack.Toolbar.Button icon="magnifyingglass" onPress={handleSearch}>
+        <Stack.Toolbar.Button
+          {...buttonLook}
+          icon="magnifyingglass"
+          onPress={handleSearch}>
           {t('common:actions.search')}
         </Stack.Toolbar.Button>
         <Stack.Toolbar.Spacer />
-        <Stack.Toolbar.Button icon="play.fill" onPress={handlePlay}>
+        <Stack.Toolbar.Button
+          {...buttonLook}
+          icon="play.fill"
+          onPress={handlePlay}>
           {t('common:actions.play')}
         </Stack.Toolbar.Button>
         {mic.enabled && (
           <Stack.Toolbar.Button
+            {...buttonLook} // @ai
             icon={
               mic.busy
                 ? 'hourglass'
@@ -480,7 +500,10 @@ export function MushafToolbar() {
           </Stack.Toolbar.Button>
         )}
         <Stack.Toolbar.Spacer />
-        <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
+        <Stack.Toolbar.Button
+          {...buttonLook}
+          icon="ellipsis"
+          onPress={handleOptions}>
           {t('toolbar.options')}
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
@@ -495,6 +518,7 @@ export function MushafToolbar() {
   // declared the other way round there.
   const previousButton = (
     <Stack.Toolbar.Button
+      {...buttonLook}
       icon="backward.end.fill"
       onPress={handlePrev}
       disabled={verseNavDisabled}
@@ -502,6 +526,7 @@ export function MushafToolbar() {
   );
   const nextButton = (
     <Stack.Toolbar.Button
+      {...buttonLook}
       icon="forward.end.fill"
       onPress={handleNext}
       disabled={verseNavDisabled}
@@ -512,12 +537,16 @@ export function MushafToolbar() {
   // Active: [Stop] — spacer — [Prev] [Play/Pause] [Next] — spacer — [Options]
   return (
     <Stack.Toolbar>
-      <Stack.Toolbar.Button icon="stop.fill" onPress={handleStop}>
+      <Stack.Toolbar.Button
+        {...buttonLook}
+        icon="stop.fill"
+        onPress={handleStop}>
         {t('toolbar.stop')}
       </Stack.Toolbar.Button>
       <Stack.Toolbar.Spacer />
       {isRTL ? nextButton : previousButton /* @ai */}
       <Stack.Toolbar.Button
+        {...buttonLook}
         icon={isPlaying ? 'pause.fill' : 'play.fill'}
         onPress={handlePlayPause}
         disabled={isLoading}>
@@ -525,7 +554,10 @@ export function MushafToolbar() {
       </Stack.Toolbar.Button>
       {isRTL ? previousButton : nextButton /* @ai */}
       <Stack.Toolbar.Spacer />
-      <Stack.Toolbar.Button icon="ellipsis.circle" onPress={handleOptions}>
+      <Stack.Toolbar.Button
+        {...buttonLook}
+        icon="ellipsis"
+        onPress={handleOptions}>
         {t('toolbar.options')}
       </Stack.Toolbar.Button>
     </Stack.Toolbar>

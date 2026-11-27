@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useLayoutEffect,
 } from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {
   View,
   Text,
@@ -22,7 +23,7 @@ import {
   useNavigation,
   useFocusEffect,
 } from 'expo-router';
-import {Feather} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useAdhkar} from '@/hooks/useAdhkar';
@@ -346,7 +347,8 @@ const DhikrReaderScreen: React.FC = () => {
           )}
         </View>
       ),
-      headerRight: () => (
+      ...tintedHeaderRight(() => (
+        // @ai
         <Pressable
           onPress={handleShareDhikr}
           hitSlop={8}
@@ -354,13 +356,9 @@ const DhikrReaderScreen: React.FC = () => {
             padding: moderateScale(4),
             paddingHorizontal: moderateScale(8),
           }}>
-          <Feather
-            name="share"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
+          <ShareIcon size={moderateScale(20)} color={theme.colors.text} />
         </Pressable>
-      ),
+      )),
     });
   }, [
     navigation,

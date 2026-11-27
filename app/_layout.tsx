@@ -1,5 +1,6 @@
 // @ai-start
 import i18n from '@/i18n';
+import {tintedRootBackOptions} from '@/components/TintedHeader'; // @ai
 import {uiFontFiles} from '@/i18n/fonts';
 import {bootstrapDirection} from '@/i18n/language';
 import {restartIfDirectionMismatched} from '@/i18n/restart';
@@ -64,7 +65,6 @@ import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {ExpoAudioProvider} from '@/services/audio';
 import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
-import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService'; // @ai
@@ -85,6 +85,8 @@ import * as Sentry from '@sentry/react-native';
 import {usePhoneOrientation} from '@/hooks/usePhoneOrientation'; // @ai
 import {ConfirmationDialogHost} from '@/components/native/ConfirmationDialogHost'; // @ai
 import {readVersionInfo} from '@/utils/appVersion'; // @ai
+import {NativeSheetHost} from '@/components/native/NativeSheetHost'; // @ai
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -424,7 +426,7 @@ function RootLayout() {
           resetShareIntent();
           await hideSplash();
           showToast(i18n.t('app.fileImported'));
-          SheetManager.show('organize-recitation', {
+          showSheet('organize-recitation', {
             payload: {recitation},
           });
         } else {
@@ -559,6 +561,7 @@ function RootLayout() {
                   <NetworkStatusMonitor />
                   <PlaybackFailureNotice />
                   <ConfirmationDialogHost /* @ai: iPad confirmations */ />
+                  <NativeSheetHost /* @ai: native sheets (iPhone) */ />
                   <SheetProvider>
                     {/* @ai-start */}
                     <ReaderRestoreContext.Provider value={dispatchRestore}>
@@ -641,6 +644,8 @@ function RootLayout() {
                                         }),
                                     headerShadowVisible: false,
                                     headerBackButtonDisplayMode: 'minimal',
+                                    // @ai: may open first (from a link)
+                                    ...tintedRootBackOptions(),
                                   }
                             }
                           />

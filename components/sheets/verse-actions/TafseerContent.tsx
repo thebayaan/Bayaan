@@ -6,7 +6,6 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {router} from 'expo-router';
-import {SheetManager} from 'react-native-actions-sheet';
 import {lightHaptics} from '@/utils/haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {StackedVolumesIcon} from '@/components/Icons';
@@ -34,6 +33,7 @@ import {
   unitPagerPage,
   type UnitStart,
 } from './verseUnitScreens';
+import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 import {SheetFooter, SheetScrollView} from './sheetGestures';
 
@@ -230,7 +230,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
             style={styles.emptyState}
             onPress={() => {
               lightHaptics();
-              SheetManager.hideAll();
+              hideAllSheets();
               usePlayerStore.getState().setSheetMode('hidden');
               setTimeout(() => {
                 router.push('/translations'); // @ai
@@ -275,10 +275,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
                   return (
                     <Pressable
                       key={meta.identifier}
-                      style={({pressed}) => [
-                        styles.selectorOption,
-                        pressed && styles.selectorOptionPressed,
-                      ]}
+                      style={[styles.selectorOption]}
                       onPress={() => handleSelectTafseer(meta.identifier)}>
                       <View style={styles.selectorOptionContent}>
                         <Text
@@ -511,9 +508,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(10),
       paddingHorizontal: moderateScale(14),
-    },
-    selectorOptionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     selectorOptionContent: {
       flex: 1,

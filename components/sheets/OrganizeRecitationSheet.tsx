@@ -15,11 +15,12 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {useResponsive} from '@/hooks/useResponsive';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetFooter, SheetScrollView} from './SheetGestures';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {useUploadsStore} from '@/store/uploadsStore';
 import {
   searchSurahs,
@@ -51,6 +52,8 @@ import {
   getSurahMeaning,
   localizeDigits,
 } from '@/i18n/format';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 type RecitationType = 'surah' | 'other';
@@ -129,6 +132,7 @@ export const OrganizeRecitationSheet = (
   const insets = useSafeAreaInsets();
   const {isTablet} = useResponsive();
   const contentEndPadding = CONTENT_END_SPACE + (isTablet ? 0 : insets.bottom);
+  const sheetBottomPadding = useSheetBottomPadding(contentEndPadding); // @ai
 
   const payload = props.payload;
   const recitation = payload?.recitation;
@@ -325,7 +329,7 @@ export const OrganizeRecitationSheet = (
       style: style || null,
       recordingType,
     });
-    await SheetManager.hide('organize-recitation');
+    await hideSheet('organize-recitation');
   }, [
     recitation,
     hasChanges,
@@ -347,12 +351,12 @@ export const OrganizeRecitationSheet = (
     if (!recitation) return;
     Keyboard.dismiss();
     await deleteRecitation(recitation.id);
-    await SheetManager.hide('organize-recitation');
+    await hideSheet('organize-recitation');
   }, [recitation, deleteRecitation]);
 
   const handleClose = useCallback(() => {
     Keyboard.dismiss();
-    SheetManager.hide('organize-recitation');
+    hideSheet('organize-recitation');
   }, []);
 
   const handleTypeSelect = useCallback((newType: RecitationType) => {
@@ -529,7 +533,7 @@ export const OrganizeRecitationSheet = (
         onContentSizeChange={handleContentSizeChange}
         contentContainerStyle={[
           styles.contentContainer,
-          {paddingBottom: contentEndPadding},
+          {paddingBottom: sheetBottomPadding},
           keyboardHeight > 0 && {paddingBottom: keyboardHeight},
         ]}>
         {/* File Info */}
@@ -613,8 +617,7 @@ export const OrganizeRecitationSheet = (
             ) : (
               <>
                 <View style={styles.searchInputContainer}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
@@ -791,8 +794,7 @@ export const OrganizeRecitationSheet = (
             ) : (
               <>
                 <View style={styles.searchInputContainer}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />

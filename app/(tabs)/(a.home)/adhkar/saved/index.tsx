@@ -6,6 +6,7 @@ import React, {
   useLayoutEffect,
   useRef,
 } from 'react';
+import {tintedHeaderRight} from '@/components/TintedHeader'; // @ai
 import {View, Text, FlatList, Pressable, StyleSheet} from 'react-native';
 import {useRouter, useNavigation, useFocusEffect, Link} from 'expo-router';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
@@ -285,7 +286,8 @@ const SavedAdhkarScreen: React.FC = () => {
           </Text>
         </View>
       ),
-      headerRight: () => (
+      ...tintedHeaderRight(() => (
+        // @ai
         <View style={{paddingHorizontal: moderateScale(4)}}>
           <PlayAllButton
             onPress={handlePlayAll}
@@ -293,7 +295,7 @@ const SavedAdhkarScreen: React.FC = () => {
             disabled={isLoading || adhkarList.length === 0}
           />
         </View>
-      ),
+      )),
     });
   }, [
     navigation,

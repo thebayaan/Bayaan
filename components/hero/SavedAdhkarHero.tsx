@@ -8,7 +8,11 @@ import {Theme} from '@/utils/themeUtils';
 import {HeroSection} from './HeroSection';
 import {Link} from 'expo-router';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import Svg, {Circle, Path, Defs, RadialGradient, Stop} from 'react-native-svg';
 import {pickHeroTheme, HeroColorTheme} from '@/components/hero/heroThemes';
 // @ai-start
@@ -150,6 +154,7 @@ const SavedAdhkarCard = ({savedCount, style, wide}: SavedAdhkarCardProps) => {
   const {theme} = useTheme();
   const {t} = useTranslation('home');
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const heroTheme = useMemo(() => pickHeroTheme(), []);
   const styles = useMemo(
     () => createStyles(theme, heroTheme),
@@ -211,7 +216,8 @@ const SavedAdhkarCard = ({savedCount, style, wide}: SavedAdhkarCardProps) => {
             <GlassView
               style={styles.glassInner}
               glassEffectStyle="regular"
-              colorScheme={glassColorScheme}>
+              colorScheme={glassColorScheme}
+              tintColor={glassTint}>
               {cardContent}
             </GlassView>
           </Link.AppleZoom>

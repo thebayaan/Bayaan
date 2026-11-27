@@ -12,6 +12,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {SheetScrollView} from './sheetGestures';
+import {useNativeSheetId} from '@/components/native/nativeSheetContext'; // @ai
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {qulDataService} from '@/services/mushaf/QulDataService';
@@ -35,6 +36,7 @@ import type {SimilarAyah, MutashabihatPhrase} from '@/types/qul';
 import {flipX, isRTL, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const surahData = require('@/data/surahData.json') as Array<{
@@ -95,6 +97,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const inNativeSheet = useNativeSheetId() !== null; // @ai
   const {t} = useTranslation(['sheets', 'common']);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
@@ -210,7 +213,8 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
 
   return (
     <SheetScrollView
-      style={styles.scrollContent}
+      // @ai: a native sheet is full height; the list fills it.
+      style={inNativeSheet ? styles.fill : styles.scrollContent}
       showsVerticalScrollIndicator={false}
       onLayout={handleContentLayout}>
       {/* @ai-start */}
@@ -299,10 +303,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                   return (
                     <View key={match.verseKey}>
                       <Pressable
-                        style={({pressed}) => [
-                          styles.matchRow,
-                          pressed && styles.matchRowPressed,
-                        ]}
+                        style={[styles.matchRow]}
                         onPress={() => toggleVerse(match.verseKey)}>
                         <Feather
                           name={isVerseExpanded ? 'chevron-up' : 'chevron-down'}
@@ -393,10 +394,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
               return (
                 <Pressable
                   key={similar.matchedVerseKey}
-                  style={({pressed}) => [
-                    styles.similarCard,
-                    pressed && styles.similarCardPressed,
-                  ]}
+                  style={[styles.similarCard]}
                   onPress={() => handleVersePress(similar.matchedVerseKey)}>
                   <View style={styles.similarHeader}>
                     <Text style={styles.similarRef}>
@@ -450,6 +448,7 @@ const createStyles = (theme: Theme) =>
       flexShrink: 1,
       maxHeight: verticalScale(450),
     },
+    fill: {flex: 1}, // @ai
     section: {
       marginBottom: verticalScale(16),
     },
@@ -516,9 +515,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(4),
       borderRadius: moderateScale(8),
     },
-    matchRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     matchRef: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-SemiBold',
@@ -574,9 +570,6 @@ const createStyles = (theme: Theme) =>
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
       padding: moderateScale(14),
       marginBottom: moderateScale(8),
-    },
-    similarCardPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     similarHeader: {
       flexDirection: 'row',

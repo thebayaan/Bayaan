@@ -146,7 +146,10 @@ jest.mock('react-native-reanimated', () => {
 });
 jest.mock('expo-router', () => ({
   useRouter: () => ({back: jest.fn()}),
-  useNavigation: () => ({setOptions: jest.fn(), addListener: jest.fn()}),
+  useNavigation: () => ({
+    setOptions: jest.fn(),
+    addListener: jest.fn(() => () => {}),
+  }),
 }));
 jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
 jest.mock('@/hooks/useTheme', () => ({
@@ -173,9 +176,14 @@ jest.mock('@/hooks/useReadingThemeColors', () => ({
 jest.mock('@/hooks/useResponsive', () => ({
   useResponsive: () => ({isTablet: false}),
 }));
+// @ai: the reader's layout transition runs on Reanimated; pass through.
+jest.mock('@/components/mushaf-options/ReaderLayoutTransition', () => ({
+  ReaderLayoutTransition: ({children}: {children: React.ReactNode}) => children,
+}));
 jest.mock('@/hooks/useGlassProps', () => ({
+  useGlassTint: () => undefined,
   get USE_GLASS() {
-    return mockGlass.on;
+    return mockGlass?.on ?? false;
   },
   useGlassColorScheme: () => 'light',
 }));

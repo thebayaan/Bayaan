@@ -1,136 +1,153 @@
-import React, {useState, useMemo, useCallback, useRef, useEffect} from 'react';
+// @ai-generated
+/**
+ * Browse › All reciters: a screen for choosing a reciter by ear. Home
+ * suggests what to listen to and the Search tab finds anything by name;
+ * here every reciter is listed A–Z (or as small cards), the common rewayat
+ * filter in one tap, and each reciter's ••• opens, shares, plays or
+ * shuffles everything they recorded, or adds them to favourites.
+ * Opened for a surah ("Choose a reciter"), it lists only the reciters who
+ * have it, puts your own first, and a tap plays the surah.
+ */
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
   Keyboard,
-  TouchableWithoutFeedback,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
 } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  LinearTransition,
-} from 'react-native-reanimated';
-import {moderateScale} from '@/utils/scale';
-import {Feather} from '@expo/vector-icons';
+import type {ViewInstance} from 'react-native';
+import {FlashList, type FlashListRef} from '@shopify/flash-list';
+import {Feather, MaterialIcons} from '@expo/vector-icons';
+import {SymbolView} from 'expo-symbols';
 import Color from 'color';
-import {SearchInput} from '@/components/SearchInput';
-import {RECITERS, Reciter, Rewayat} from '@/data/reciterData';
-import {Theme} from '@/utils/themeUtils';
-import BrowseGrid from './BrowseGrid';
-import FilterModal, {FilterOptions} from './FilterModal';
-import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import {useRouter} from 'expo-router';
-import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {createTracksForReciter} from '@/utils/track';
-import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
-import {getSurahById} from '@/services/dataService';
-import {getLocalReciterImage} from '@/utils/reciterImageLookup'; // @ai
-import Header from '@/components/Header';
-import {useSettings} from '@/hooks/useSettings';
-// @ai-start
-import {
-  QIRAAT_TEACHERS,
-  resolveRewayatName,
-  getRewayatPersonLabel,
-} from '@/data/rewayat';
-import {rankReciters} from '@/utils/search/catalog'; // @ai
-import {pickRewayatId} from '@/utils/rewayatPreference'; // @ai
-import {sortRecitersByName} from '@/utils/sortReciters'; // @ai
-// @ai-end
-import {resolveRewayahFromName} from '@/services/rewayah/RewayahIdentity';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useGlassHeaderHeight} from '@/hooks/useGlassHeaderHeight'; // @ai
-import branding from '@/config/branding';
-import {USE_GLASS} from '@/hooks/useGlassProps';
-import {useBottomInset} from '@/hooks/useBottomInset';
-import {useReciterProfilePathname} from '@/hooks/useTabReciterPath'; // @ai
-import {useResponsive} from '@/hooks/useResponsive'; // @ai
-// @ai-start
+import {useNavigation, useRouter} from 'expo-router';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {useTranslation} from 'react-i18next';
-// @ai-end
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {moderateScale} from '@/utils/scale';
+import type {Theme} from '@/utils/themeUtils';
+import {RECITERS, type Reciter, type Rewayat} from '@/data/reciterData';
+import {resolveRewayatName} from '@/data/rewayat';
+import {
+  getQari,
+  getQariLabel,
+  getNarratorLabel,
+  resolveRewayahFromName,
+  type RewayahId,
+} from '@/services/rewayah/RewayahIdentity';
+import {getReciterDisplayName} from '@/i18n/format';
+import {getLocalReciterImage} from '@/utils/reciterImageLookup';
+import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {useSettings} from '@/hooks/useSettings';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {useDownloadStore} from '@/services/player/store/downloadStore';
+import {getSurahById} from '@/services/dataService';
+import {createTracksForReciter} from '@/utils/track';
+import {pickRewayatId, sortRewayat} from '@/utils/rewayatPreference';
+import {useBottomInset} from '@/hooks/useBottomInset';
+import {useReciterProfilePathname} from '@/hooks/useTabReciterPath';
+import {useResponsive} from '@/hooks/useResponsive';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+import branding from '@/config/branding';
+import Header from '@/components/Header';
+import {tintedHeaderRight} from '@/components/TintedHeader';
+import {SearchIcon} from '@/components/ActionIcons';
+import {NativeMenu} from '@/components/native/NativeMenu';
+import {nativeMenusAvailable} from '@/components/native/nativeMenus';
+import type {NativeMenuEntry} from '@/components/native/menuTypes';
+import {CollectionSearchField} from '@/components/collection/CollectionScreenHeader';
+import {
+  PANEL_MARGIN,
+  PANEL_ROW_PADDING,
+} from '@/components/collection/CollectionPanel';
+import {
+  GROUPED_HEADER_GAP,
+  GROUPED_SECTION_GAP,
+  groupedHeaderStyle,
+} from '@/components/settings/SettingsList';
+import {useCollectionViewPref} from '@/store/collectionViewStore';
+import {showSheet} from '@/components/sheets/sheetControl';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {reciterShareUrl, shareUrl} from '@/utils/shareUtils';
+import {shuffleArray} from '@/utils/arrayUtils';
+import {
+  CARD_GAP,
+  ReciterCard,
+  ReciterPanelRow,
+  type ReciterItemProps,
+} from './ReciterBrowseItems';
+import {AlphabetRail, RAIL_GUTTER} from './AlphabetRail';
+import {
+  CHIP_REWAYAT,
+  LETTERS_FROM,
+  buildBrowseItems,
+  filterReciters,
+  letterSections,
+  reciterLine,
+  rewayahChipLabel,
+  rewayahCounts,
+  type BrowseItem,
+  type BrowseSection,
+  type BrowseSort,
+} from './reciterBrowseModel';
 
-// @ai-start
-/** Windows this wide use the `expanded` layout (ipad-standards §2). */
-const EXPANDED_MIN_WIDTH = 900;
-/** Longest the search field gets on iPad (listening/03, Browse all). */
-const TABLET_SEARCH_MAX_WIDTH = 480;
-const CHIP_MARGIN = moderateScale(2);
-// @ai-end
+/** The rewayah chip row: 8 above, a 32pt chip, 4 below. */
+const CHIPS_HEIGHT = moderateScale(44);
+/** Card width the column count aims for. */
+const CARD_MIN_WIDTH = moderateScale(104);
 
 interface BrowseRecitersProps {
   theme: Theme;
   onBack: () => void;
   surahId?: number;
   title?: string;
+  /** Opens filtered to a rewayah (Home's "Explore by rewayah" cards). */
   initialTeacher?: string;
   initialStudent?: string;
   /**
-   * RFC-012 — initial value for the `has-photo` filter chip. When the
-   * chip is enabled in `branding.searchFilters`, this prop seeds its
-   * starting state. Defaults to `false` (chip un-toggled).
+   * RFC-012: tiles can open the list with only reciters that have a photo.
+   * Applies only when `has-photo` is in `branding.searchFilters`.
    */
   initialHasPhoto?: boolean;
 }
 
-// Fallback: extract teacher from a rewayat name by splitting on "A'n"
-function fallbackTeacher(name: string): string | undefined {
-  const parts = name.split("A'n");
-  return parts.length > 1 ? parts[1].trim() : undefined;
+/** The rewayah a Home "Explore by rewayah" card names, by teacher/student. */
+function rewayahFromPeople(
+  teacher?: string,
+  student?: string,
+): RewayahId | null {
+  if (!teacher) return null;
+  for (const reciter of RECITERS) {
+    for (const rewaya of reciter.rewayat) {
+      const entry = rewaya.name ? resolveRewayatName(rewaya.name) : undefined;
+      if (!entry || entry.teacher !== teacher) continue;
+      if (student && entry.student !== student) continue;
+      const id = resolveRewayahFromName(rewaya.name);
+      if (id) return id;
+    }
+  }
+  return null;
 }
 
-// Fallback: extract student from a rewayat name by splitting on "A'n"
-function fallbackStudent(name: string): string | undefined {
-  const parts = name.split("A'n");
-  return parts.length > 1 ? parts[0].trim() : undefined;
+function recordingFor(
+  reciter: Reciter,
+  rewayah: RewayahId | null,
+): Rewayat | undefined {
+  if (!rewayah) return undefined;
+  return reciter.rewayat.find(r => resolveRewayahFromName(r.name) === rewayah);
 }
 
-// Resolve teacher for a DB rewayat name using the registry, with fallback
-function resolveTeacher(dbName: string): string | undefined {
-  return resolveRewayatName(dbName)?.teacher ?? fallbackTeacher(dbName);
-}
-
-// Resolve student for a DB rewayat name using the registry, with fallback
-function resolveStudent(dbName: string): string | undefined {
-  return resolveRewayatName(dbName)?.student ?? fallbackStudent(dbName);
-}
-
-// Get primary teachers — canonical order from registry
-const getPrimaryTeachers = (): string[] => {
-  return [...QIRAAT_TEACHERS];
-};
-
-// Helper to get students for a teacher
-const getStudentsForTeacher = (
-  teacherName: string,
-  recitersData: Reciter[],
-): string[] => {
-  const students = new Set<string>();
-  recitersData.forEach(reciter => {
-    reciter.rewayat.forEach(rewaya => {
-      if (rewaya.name) {
-        const teacher = resolveTeacher(rewaya.name);
-        if (teacher === teacherName) {
-          const student = resolveStudent(rewaya.name);
-          if (student) {
-            students.add(student);
-          }
-        }
-      }
-    });
-  });
-  return Array.from(students).sort();
-};
-
-interface Chip {
-  label: string;
-  type: 'all' | 'teacher' | 'student' | 'separator';
-  isSelected: boolean;
-}
-
-// @ai-start
 export default function BrowseReciters({
   theme,
   onBack,
@@ -141,821 +158,904 @@ export default function BrowseReciters({
   initialHasPhoto = false,
 }: BrowseRecitersProps) {
   const router = useRouter();
-  const profilePathname = useReciterProfilePathname(); // @ai
-  const {t} = useTranslation('home');
-  const {updateQueue} = usePlayerActions();
+  const navigation = useNavigation();
+  const profilePathname = useReciterProfilePathname();
+  const {t} = useTranslation(['home', 'common', 'sheets']);
+  const {updateQueue, toggleShuffle} = usePlayerActions();
   const startNewChain = useRecentlyPlayedStore(s => s.startNewChain);
-  const pickingRef = useRef(false);
   const {setReciterPreference} = useSettings();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
+  const {isTablet} = useResponsive();
+  const {width: windowWidth, height: windowHeight} = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  // @ai-start
-  // iPad: one header row (search, filter, count), chips that wrap on wide
-  // windows, and a grid in page margins. Phones keep the layout below.
-  const {isTablet, width: windowWidth} = useResponsive();
-  const pageMargin = isTablet
-    ? windowWidth >= EXPANDED_MIN_WIDTH
-      ? 32
-      : 24
-    : undefined;
-  const wrapChips = isTablet && windowWidth >= EXPANDED_MIN_WIDTH;
-  // @ai-end
+  const pickingRef = useRef(false);
+  const listRef = useRef<FlashListRef<BrowseItem>>(null);
+  const headerHeight = useHeaderHeight();
 
-  // On iOS, the native Stack header handles the top area; on Android, use custom Header
-  const useNativeHeader = USE_GLASS;
-  const iosHeaderHeight = useGlassHeaderHeight(useNativeHeader); // @ai
-
-  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(
-    initialTeacher || null,
+  // ── Filters, view and sort ────────────────────────────────────────────
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [rewayah, setRewayah] = useState<RewayahId | null>(() =>
+    rewayahFromPeople(initialTeacher, initialStudent),
   );
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(
-    initialStudent || null,
-  );
+  const [completeOnly, setCompleteOnly] = useState(false);
+  const [downloadedOnly, setDownloadedOnly] = useState(false);
+  const hasPhotoOnly =
+    initialHasPhoto && !!branding.searchFilters?.includes('has-photo');
+  const {
+    view: storedView,
+    sort: storedSort,
+    setView,
+    setSort,
+  } = useCollectionViewPref('browseReciters');
+  const view = storedView === 'grid' ? 'cards' : 'list';
+  const sort: BrowseSort = storedSort === 'recent' ? 'recent' : 'name';
 
-  // RFC-012 — composable filter chips. Each dimension in
-  // `branding.searchFilters` (when configured) gets its own piece of
-  // state + a toggleable chip in the strip below the search input.
-  // v1 ships `has-photo` end-to-end; `rewaya` / `has-surah` stay on
-  // their existing bespoke implementations and migrate later.
-  const hasPhotoEnabled = !!branding.searchFilters?.includes('has-photo');
-  const [hasPhoto, setHasPhoto] = useState<boolean>(
-    hasPhotoEnabled && initialHasPhoto,
-  );
-
-  const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({
-    styles: [],
-    rewayat: [],
-    sortBy: 'featured',
-  });
-  useFavoriteReciters();
-
-  // Get cached primary teachers (computed once at module level)
-  const primaryTeachers = getPrimaryTeachers();
-
-  // Use refs to track actual values for callbacks
-  const teacherRef = useRef<string | null>(null);
-  const studentRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    teacherRef.current = selectedTeacher;
-  }, [selectedTeacher]);
-
-  useEffect(() => {
-    studentRef.current = selectedStudent;
-  }, [selectedStudent]);
-
-  const dynamicFilterChips = useMemo((): Chip[] => {
-    const chips: Chip[] = [];
-    const isAllSelected = !selectedTeacher && !selectedStudent;
-
-    chips.push({
-      label: t('browse.allChip'),
-      type: 'all',
-      isSelected: isAllSelected,
-    });
-
-    if (!selectedTeacher) {
-      primaryTeachers.forEach(teacher => {
-        chips.push({label: teacher, type: 'teacher', isSelected: false});
-      });
-    } else {
-      const studentsOfSelectedTeacher = getStudentsForTeacher(
-        selectedTeacher,
-        RECITERS,
-      );
-
-      if (!selectedStudent) {
-        studentsOfSelectedTeacher.forEach(student => {
-          chips.push({label: student, type: 'student', isSelected: false});
-        });
-
-        if (studentsOfSelectedTeacher.length > 0) {
-          chips.push({
-            label: t('browse.rewayahSeparator'),
-            type: 'separator',
-            isSelected: false,
-          });
-        }
-
-        chips.push({
-          label: selectedTeacher,
-          type: 'teacher',
-          isSelected: true,
-        });
-      } else {
-        if (studentsOfSelectedTeacher.includes(selectedStudent)) {
-          chips.push({
-            label: selectedStudent,
-            type: 'student',
-            isSelected: true,
-          });
-          chips.push({
-            label: t('browse.rewayahSeparator'),
-            type: 'separator',
-            isSelected: false,
-          });
-          chips.push({
-            label: selectedTeacher,
-            type: 'teacher',
-            isSelected: true,
-          });
-        }
-      }
-    }
-    return chips;
-  }, [selectedTeacher, selectedStudent, primaryTeachers, t]);
-
-  const filteredReciters = useMemo(() => {
-    // Used by the RFC-012 `has-photo` filter. "Has photo" matches
-    // a card whose user-visible artwork resolves to something — either a
-    // catalog `image_url` OR a bundled local headshot fallback.
-    const hasImage = (reciter: Reciter): boolean => {
-      if (reciter.image_url) return true;
-      return !!getLocalReciterImage(reciter.name); // @ai
-    };
-
-    let result = [...RECITERS];
-
-    if (surahId) {
-      result = result.filter(reciter => {
-        return reciter.rewayat.some(rewaya =>
-          rewaya.surah_list?.includes(surahId),
-        );
-      });
-    }
-
-    // @ai-start
-    const searchRank = searchQuery.trim()
-      ? new Map(rankReciters(searchQuery).map((reciter, i) => [reciter.id, i]))
-      : null;
-    if (searchRank) {
-      result = result.filter(reciter => searchRank.has(reciter.id));
-    }
-    // @ai-end
-
-    if (selectedTeacher) {
-      result = result.filter(reciter =>
-        reciter.rewayat.some(rewaya => {
-          if (!rewaya.name) return false;
-          const teacher = resolveTeacher(rewaya.name);
-          if (teacher !== selectedTeacher) return false;
-          if (selectedStudent) {
-            const student = resolveStudent(rewaya.name);
-            return student === selectedStudent;
-          }
-          return true;
-        }),
-      );
-    }
-
-    if (advancedFilters.styles.length > 0) {
-      result = result.filter(reciter =>
-        reciter.rewayat.some(rewaya => {
-          if (!rewaya.style) return false;
-          return advancedFilters.styles.some(style => {
-            if (
-              style.toLowerCase() === 'murattal' &&
-              rewaya.style.toLowerCase().startsWith('murattal')
-            ) {
-              return true;
-            }
-            return rewaya.style.toLowerCase() === style.toLowerCase();
-          });
-        }),
-      );
-    }
-
-    if (advancedFilters.rewayat.length > 0) {
-      // Chips use canonical RewayahId slugs as their key (FilterModal
-      // getAvailableRewayahChips); match by resolving each rewaya.name to
-      // its canonical slug and falling back to the raw name for the
-      // un-resolvable cases (combined-recording entries, etc.).
-      result = result.filter(reciter =>
-        reciter.rewayat.some(rewaya => {
-          if (!rewaya.name) return false;
-          const key = resolveRewayahFromName(rewaya.name) ?? rewaya.name;
-          return advancedFilters.rewayat.includes(key);
-        }),
-      );
-    }
-
-    // RFC-012 — `has-photo` filter dimension. No-op when the chip
-    // isn't enabled in branding or the user hasn't toggled it on.
-    if (hasPhoto) {
-      result = result.filter(hasImage);
-    }
-
-    // @ai-start
-    // Search keeps its relevance order. Otherwise the list is one A–Z run;
-    // being featured or having a photo does not move a reciter up.
-    if (searchRank) {
-      return result.sort(
-        (a, b) => (searchRank.get(a.id) ?? 0) - (searchRank.get(b.id) ?? 0),
-      );
-    }
-    return sortRecitersByName(result);
-    // @ai-end
-  }, [
-    selectedTeacher,
-    selectedStudent,
-    searchQuery,
-    surahId,
-    advancedFilters,
-    hasPhoto,
-    hasPhotoEnabled,
-  ]);
-
-  const handleFilterModalPress = () => {
-    setIsFilterModalVisible(true);
-  };
-
-  const handleChipPress = useCallback((chip: Chip) => {
-    if (chip.type === 'all') {
-      setSelectedTeacher(null);
-      setSelectedStudent(null);
-    } else if (chip.type === 'teacher') {
-      if (chip.label === teacherRef.current) {
-        setSelectedTeacher(null);
-        setSelectedStudent(null);
-      } else {
-        setSelectedTeacher(chip.label);
-        setSelectedStudent(null);
-      }
-    } else if (chip.type === 'student') {
-      if (chip.label === studentRef.current) {
-        setSelectedStudent(null);
-      } else {
-        setSelectedStudent(chip.label);
-      }
-    }
-  }, []);
-
-  const handleApplyAdvancedFilters = (filters: FilterOptions) => {
-    setAdvancedFilters(filters);
-  };
-
-  const handleClearFilters = () => {
-    setSelectedTeacher(null);
-    setSelectedStudent(null);
-    setSearchQuery('');
-    setAdvancedFilters({
-      styles: [],
-      rewayat: [],
-      sortBy: 'featured',
-    });
-    // RFC-012 — reset the composable chip state too.
-    setHasPhoto(false);
-  };
-
-  const handleSearchFocus = () => {
-    setIsSearchFocused(true);
-  };
-
-  const handleSearchBlur = useCallback(() => {
-    setIsSearchFocused(false);
-  }, []);
-
-  const handleSearchCancel = useCallback(() => {
-    setSearchQuery('');
-    setIsSearchFocused(false);
+  const stopSearching = useCallback(() => {
+    setSearching(false);
+    setQuery('');
     Keyboard.dismiss();
   }, []);
 
-  const hasActiveFilters = useMemo(() => {
-    return (
-      selectedTeacher !== null ||
-      selectedStudent !== null ||
-      searchQuery.trim() !== '' ||
-      advancedFilters.styles.length > 0 ||
-      advancedFilters.rewayat.length > 0 ||
-      advancedFilters.sortBy !== 'featured' ||
-      hasPhoto // RFC-012 — `has-photo` chip counts as active
-    );
-  }, [
-    selectedTeacher,
-    selectedStudent,
-    searchQuery,
-    advancedFilters,
-    hasPhoto,
-  ]);
+  const clearFilters = useCallback(() => {
+    setRewayah(null);
+    setCompleteOnly(false);
+    setDownloadedOnly(false);
+    setQuery('');
+  }, []);
 
-  const handleReciterPress = useCallback(
-    async (reciter: Reciter) => {
-      Keyboard.dismiss();
+  // ── Data ──────────────────────────────────────────────────────────────
+  const {favoriteReciters, isFavoriteReciter, toggleFavorite} =
+    useFavoriteReciters();
+  const downloads = useDownloadStore(s => s.downloads);
+  const downloadedIds = useMemo(
+    () =>
+      new Set(
+        downloads.filter(d => d.status === 'completed').map(d => d.reciterId),
+      ),
+    [downloads],
+  );
 
-      const currentTeacher = teacherRef.current;
-      const currentStudent = studentRef.current;
+  // Reciters the screen can show at all (a surah narrows it).
+  const pool = useMemo(() => {
+    let list: Reciter[] = RECITERS;
+    if (surahId) {
+      list = list.filter(r =>
+        r.rewayat.some(rewaya => rewaya.surah_list?.includes(surahId)),
+      );
+    }
+    if (hasPhotoOnly) {
+      list = list.filter(r => !!r.image_url || !!getLocalReciterImage(r.name));
+    }
+    return list;
+  }, [surahId, hasPhotoOnly]);
 
-      let selectedRewayatId: string | undefined;
-
-      if (currentTeacher || currentStudent) {
-        let matchingRewayat: Rewayat | undefined;
-
-        if (currentTeacher && currentStudent) {
-          matchingRewayat = reciter.rewayat.find(rewaya => {
-            if (!rewaya.name) return false;
-            const teacher = resolveTeacher(rewaya.name);
-            const student = resolveStudent(rewaya.name);
-            return teacher === currentTeacher && student === currentStudent;
-          });
-        }
-
-        if (!matchingRewayat && currentTeacher) {
-          matchingRewayat = reciter.rewayat.find(rewaya => {
-            if (!rewaya.name) return false;
-            return resolveTeacher(rewaya.name) === currentTeacher;
-          });
-        }
-
-        if (matchingRewayat?.id) {
-          selectedRewayatId = matchingRewayat.id;
-          setReciterPreference(reciter.id, matchingRewayat.id);
-        }
-      }
-
-      if (surahId) {
-        // @ai-start
-        // One pick closes this screen once. Going back used to wait for the
-        // audio to load, so the screen sat there for seconds on a slow
-        // connection; a second tap, or the user's own Back, then popped an
-        // extra screen when the late back() fired.
-        if (pickingRef.current) return;
-        pickingRef.current = true;
-        try {
-          const surah = getSurahById(surahId);
-          const rewayatId = pickRewayatId(
-            reciter.rewayat,
-            [
-              selectedRewayatId,
-              useSettings.getState().reciterPreferences[reciter.id],
-            ],
-            surahId,
-          );
-          if (!surah || !rewayatId) {
-            pickingRef.current = false;
-            return;
-          }
-
-          const tracks = await createTracksForReciter(
-            reciter,
-            [surah],
-            rewayatId,
-          );
-
-          startNewChain(reciter, surah, 0, 0, rewayatId);
-          router.back();
-          // Not awaited: it starts playback itself once the audio has
-          // loaded and reports a failed load on its own.
-          updateQueue(tracks, 0).catch(error => {
-            console.error('Error playing surah:', error);
-          });
-        } catch (error) {
-          pickingRef.current = false;
-          console.error('Error playing surah:', error);
-        }
-        // @ai-end
-      } else {
-        router.push({
-          pathname: profilePathname, // @ai
-          params: {
-            id: reciter.id,
-            ...(selectedRewayatId ? {rewayatId: selectedRewayatId} : {}),
-          },
-        });
-      }
-    },
+  const reciters = useMemo(
+    () =>
+      filterReciters(
+        pool,
+        {
+          query: searching ? query : '',
+          rewayah,
+          completeOnly,
+          downloadedOnly,
+          downloadedIds,
+        },
+        sort,
+      ),
     [
-      setReciterPreference,
-      surahId,
-      updateQueue,
-      router,
-      startNewChain,
-      profilePathname,
+      pool,
+      searching,
+      query,
+      rewayah,
+      completeOnly,
+      downloadedOnly,
+      downloadedIds,
+      sort,
     ],
   );
 
-  const handleOutsidePress = useCallback(() => {
-    if (isSearchFocused) {
-      Keyboard.dismiss();
-      handleSearchBlur();
+  // ── Rewayah chips ─────────────────────────────────────────────────────
+  const allRewayat = useMemo(() => rewayahCounts(pool), [pool]);
+  const chipRewayat = useMemo(() => {
+    // Android has no native menu for "More", so every rewayah is a chip.
+    const top = nativeMenusAvailable
+      ? allRewayat.slice(0, CHIP_REWAYAT)
+      : allRewayat;
+    const ids = top.map(r => r.id);
+    if (rewayah && !ids.includes(rewayah)) ids.push(rewayah);
+    return ids;
+  }, [allRewayat, rewayah]);
+  const moreRewayat = useMemo(
+    () =>
+      nativeMenusAvailable ? allRewayat.slice(CHIP_REWAYAT).map(r => r.id) : [],
+    [allRewayat],
+  );
+  const moreEntries = useMemo<NativeMenuEntry[]>(() => {
+    const groups = new Map<string, RewayahId[]>();
+    for (const id of moreRewayat) {
+      const qari = getQari(id);
+      groups.set(qari, [...(groups.get(qari) ?? []), id]);
     }
-  }, [isSearchFocused, handleSearchBlur]);
+    return [...groups].map(([qari, ids]) => ({
+      id: `qari:${qari}`,
+      // Headings start with a capital ("Al-Kisa'i", not "al-Kisa'i"). @ai
+      title: capitalise(
+        getQariLabel(qari as Parameters<typeof getQariLabel>[0]),
+      ),
+      items: ids.map(id => ({
+        id: `rewayah:${id}`,
+        title: getNarratorLabel(id),
+        checked: rewayah === id,
+      })),
+    }));
+  }, [moreRewayat, rewayah]);
 
-  // Resolve the matching rewayat ID for a given reciter based on current teacher/student filter
-  const getRewayatIdForReciter = useCallback(
-    (reciter: Reciter): string | undefined => {
-      const teacher = selectedTeacher;
-      const student = selectedStudent;
-      if (!teacher && !student) return undefined;
+  // ── Sections and list items ───────────────────────────────────────────
+  const isSearch = searching && query.trim().length > 0;
+  const byLetter =
+    !isSearch && sort === 'name' && reciters.length >= LETTERS_FROM;
+  const sections = useMemo<BrowseSection[]>(() => {
+    const list = letterSections(reciters, byLetter);
+    if (!surahId || isSearch) return list;
+    // Choosing for a surah: your favourites that have it come first.
+    const shown = new Set(reciters.map(r => r.id));
+    const yours = favoriteReciters
+      .filter(f => shown.has(f.id))
+      .map(f => reciters.find(r => r.id === f.id)!)
+      .filter(Boolean);
+    if (yours.length === 0) return list;
+    return [
+      {key: 'yours', title: t('browse.yourReciters'), reciters: yours},
+      ...list.map(section =>
+        section.title ? section : {...section, title: t('browse.reciters')},
+      ),
+    ];
+  }, [reciters, byLetter, surahId, isSearch, favoriteReciters, t]);
 
-      let match =
-        teacher && student
-          ? reciter.rewayat.find(r => {
-              if (!r.name) return false;
-              return (
-                resolveTeacher(r.name) === teacher &&
-                resolveStudent(r.name) === student
-              );
-            })
-          : undefined;
-
-      if (!match && teacher) {
-        match = reciter.rewayat.find(
-          r => r.name && resolveTeacher(r.name) === teacher,
-        );
-      }
-
-      return match?.id;
-    },
-    [selectedTeacher, selectedStudent],
+  const pageMargin = isTablet ? moderateScale(24) : PANEL_MARGIN;
+  const columns = Math.max(
+    3,
+    Math.floor(
+      (windowWidth - pageMargin * 2 + CARD_GAP) / (CARD_MIN_WIDTH + CARD_GAP),
+    ),
+  );
+  const cardWidth =
+    (windowWidth - pageMargin * 2 - CARD_GAP * (columns - 1)) / columns;
+  const items = useMemo(
+    () => buildBrowseItems(sections, view, columns),
+    [sections, view, columns],
+  );
+  const letters = useMemo(
+    () =>
+      byLetter && view === 'list'
+        ? sections.filter(s => s.letter).map(s => s.letter!)
+        : [],
+    [byLetter, view, sections],
   );
 
-  // Top offset: native header height on iOS, 0 on Android (custom Header handles it)
-  const topOffset = useNativeHeader ? iosHeaderHeight : 0;
+  const jumpToLetter = useCallback(
+    (letter: string) => {
+      const index = items.findIndex(
+        item => item.type === 'header' && item.letter === letter,
+      );
+      // With the glass header the list scrolls under it, so a section's
+      // letter would land behind the header without this offset.
+      if (index >= 0) {
+        listRef.current?.scrollToIndex({
+          index,
+          animated: false,
+          viewOffset: USE_GLASS ? -headerHeight : 0,
+        });
+      }
+    },
+    [items, headerHeight],
+  );
 
-  // @ai-start
-  // Chips line up with the search field on iPad; the chip's own margin is
-  // taken off the page margin.
-  const chipInset =
-    pageMargin !== undefined
-      ? {paddingHorizontal: pageMargin - CHIP_MARGIN}
-      : undefined;
-  const chipItems = (
-    <>
-      {dynamicFilterChips.map(chip => (
-        <Animated.View
-          key={chip.label + chip.type}
-          entering={FadeIn.duration(300)}
-          exiting={FadeOut.duration(200)}
-          layout={LinearTransition.duration(300)}>
-          {chip.type === 'separator' ? (
-            <View style={styles.separatorChip}>
-              <Text style={styles.separatorChipText}>{chip.label}</Text>
-            </View>
-          ) : (
-            <Pressable
-              accessibilityRole="togglebutton"
-              accessibilityLabel={getRewayatPersonLabel(chip.label)}
-              accessibilityState={{selected: chip.isSelected}}
-              style={({pressed}) => [
-                styles.filterChip,
-                chip.isSelected && styles.filterChipActive,
-                pressed && styles.filterChipPressed,
-              ]}
-              onPress={() => {
-                Keyboard.dismiss();
-                handleChipPress(chip);
-              }}>
-              <Text
-                style={[
-                  styles.filterChipText,
-                  chip.isSelected && styles.filterChipTextActive,
-                ]}>
-                {getRewayatPersonLabel(chip.label)}
-              </Text>
-            </Pressable>
-          )}
-        </Animated.View>
-      ))}
-      {/* RFC-012 — composable chip(s) from `branding.searchFilters`.
-       * v1 ships `has-photo` end-to-end; other dimensions render
-       * once they're wired through (or live as bespoke chips above). */}
-      {hasPhotoEnabled && (
-        <Animated.View
-          entering={FadeIn.duration(300)}
-          layout={LinearTransition.duration(300)}>
-          <Pressable
-            accessibilityRole="togglebutton"
-            accessibilityLabel={t('browse.hasPhoto')}
-            accessibilityState={{selected: hasPhoto}}
-            style={({pressed}) => [
-              styles.filterChip,
-              hasPhoto && styles.filterChipActive,
-              pressed && styles.filterChipPressed,
-            ]}
-            onPress={() => {
-              Keyboard.dismiss();
-              setHasPhoto(v => !v);
-            }}>
-            <Text
-              style={[
-                styles.filterChipText,
-                hasPhoto && styles.filterChipTextActive,
-              ]}>
-              {t('browse.hasPhoto')}
-            </Text>
-          </Pressable>
-        </Animated.View>
+  // ── Opening and picking ───────────────────────────────────────────────
+  const handleReciterPress = useCallback(
+    async (reciter: Reciter) => {
+      Keyboard.dismiss();
+      const match = recordingFor(reciter, rewayah);
+      if (match?.id) setReciterPreference(reciter.id, match.id);
+
+      if (!surahId) {
+        router.push({
+          pathname: profilePathname,
+          params: {id: reciter.id, ...(match?.id ? {rewayatId: match.id} : {})},
+        });
+        return;
+      }
+      // One pick closes this screen once, without waiting for the audio:
+      // a second tap or the user's own Back used to pop an extra screen.
+      if (pickingRef.current) return;
+      pickingRef.current = true;
+      try {
+        const surah = getSurahById(surahId);
+        const rewayatId = pickRewayatId(
+          reciter.rewayat,
+          [match?.id, useSettings.getState().reciterPreferences[reciter.id]],
+          surahId,
+        );
+        if (!surah || !rewayatId) {
+          pickingRef.current = false;
+          return;
+        }
+        const tracks = await createTracksForReciter(
+          reciter,
+          [surah],
+          rewayatId,
+        );
+        startNewChain(reciter, surah, 0, 0, rewayatId);
+        router.back();
+        // Not awaited: it starts playback once the audio has loaded and
+        // reports a failed load on its own.
+        updateQueue(tracks, 0).catch(error => {
+          console.error('Error playing surah:', error);
+        });
+      } catch (error) {
+        pickingRef.current = false;
+        console.error('Error playing surah:', error);
+      }
+    },
+    [
+      rewayah,
+      surahId,
+      setReciterPreference,
+      router,
+      profilePathname,
+      startNewChain,
+      updateQueue,
+    ],
+  );
+
+  // ── Header ────────────────────────────────────────────────────────────
+  const menuEntries = useMemo<NativeMenuEntry[]>(
+    () => [
+      {
+        id: 'view',
+        items: [
+          // @ai: Grid first and by default, named as in Collection
+          {
+            id: 'view:cards',
+            title: t('browse.viewGrid'),
+            systemImage: 'square.grid.2x2',
+            checked: view === 'cards',
+          },
+          {
+            id: 'view:list',
+            title: t('browse.viewList'),
+            systemImage: 'list.bullet',
+            checked: view === 'list',
+          },
+        ],
+      },
+      {
+        id: 'sort',
+        title: t('browse.sortBy'),
+        items: [
+          {
+            id: 'sort:name',
+            title: t('browse.sortName'),
+            checked: sort === 'name',
+          },
+          {
+            id: 'sort:recent',
+            title: t('browse.sortRecent'),
+            checked: sort === 'recent',
+          },
+        ],
+      },
+      {
+        id: 'show',
+        title: t('browse.showOnly'),
+        items: [
+          {
+            id: 'show:complete',
+            title: t('browse.completeQuran'),
+            checked: completeOnly,
+          },
+          {
+            id: 'show:downloaded',
+            title: t('browse.downloaded'),
+            checked: downloadedOnly,
+          },
+        ],
+      },
+    ],
+    [view, sort, completeOnly, downloadedOnly, t],
+  );
+  const onMenuSelect = useCallback(
+    (id: string) => {
+      const [kind, value] = id.split(':');
+      if (kind === 'view') setView(value === 'cards' ? 'grid' : 'list');
+      else if (kind === 'sort') setSort(value);
+      else if (value === 'complete') setCompleteOnly(on => !on);
+      else if (value === 'downloaded') setDownloadedOnly(on => !on);
+    },
+    [setView, setSort],
+  );
+  const filtered = completeOnly || downloadedOnly;
+
+  const headerActions = (
+    <View style={styles.headerActions}>
+      <Pressable
+        onPress={() => setSearching(true)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={t('common:actions.search')}>
+        <SearchIcon size={moderateScale(20)} color={theme.colors.text} />
+      </Pressable>
+      {nativeMenusAvailable ? (
+        <NativeMenu
+          entries={menuEntries}
+          onSelect={onMenuSelect}
+          accessibilityLabel={t('browse.viewMenu')}>
+          <View>
+            {Platform.OS === 'ios' ? (
+              <SymbolView
+                name="line.3.horizontal.decrease"
+                size={moderateScale(20)}
+                tintColor={theme.colors.text}
+                weight="medium"
+              />
+            ) : (
+              <MaterialIcons
+                name="sort"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            )}
+            {filtered ? <View style={styles.menuDot} /> : null}
+          </View>
+        </NativeMenu>
+      ) : (
+        <Pressable
+          onPress={() => setView(view === 'list' ? 'grid' : 'list')}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={
+            view === 'list' ? t('browse.viewGrid') : t('browse.viewList')
+          }>
+          <Feather
+            name={view === 'list' ? 'grid' : 'list'}
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
       )}
-    </>
+    </View>
+  );
+
+  const screenTitle = title ?? t('browse.reciters');
+  useLayoutEffect(() => {
+    if (!USE_GLASS) return;
+    navigation.setOptions({
+      ...(title ? {} : {headerTitle: screenTitle}),
+      ...tintedHeaderRight(searching ? undefined : () => headerActions),
+    });
+  });
+
+  // ── Reciter options ───────────────────────────────────────────────────
+  /** Every surah the reciter recorded in the rewayah in view, queued. */
+  const playReciter = useCallback(
+    async (reciter: Reciter, shuffle: boolean) => {
+      const rewayatId =
+        // Same order and candidates as the profile, so Play all plays the
+        // recording that Open shows. @ai
+        pickRewayatId(sortRewayat(reciter.rewayat), [
+          recordingFor(reciter, rewayah)?.id,
+          useSettings.getState().reciterPreferences[reciter.id],
+        ]) ?? reciter.rewayat[0]?.id;
+      const recording = reciter.rewayat.find(r => r.id === rewayatId);
+      if (!rewayatId || !recording) return;
+      const surahIds =
+        recording.surah_list?.filter((id): id is number => id !== null) ?? [];
+      let surahs = surahIds
+        .map(id => getSurahById(id))
+        .filter((surah): surah is NonNullable<typeof surah> => !!surah);
+      if (surahs.length === 0) return;
+      if (shuffle) {
+        surahs = shuffleArray([...surahs]);
+        if (!usePlayerStore.getState().settings.shuffle) toggleShuffle();
+      }
+      try {
+        const tracks = await createTracksForReciter(reciter, surahs, rewayatId);
+        await updateQueue(tracks, 0);
+        startNewChain(reciter, surahs[0], 0, 0, rewayatId);
+      } catch (error) {
+        console.error('Error playing reciter:', error);
+      }
+    },
+    [rewayah, toggleShuffle, updateQueue, startNewChain],
+  );
+
+  const shareReciter = useCallback(
+    (reciter: Reciter) => {
+      shareUrl(
+        reciterShareUrl(reciter.slug ?? reciter.id),
+        t('sheets:homeCardOptions.shareReciter', {
+          reciter: getReciterDisplayName(reciter),
+          appName: branding.appName,
+        }),
+      );
+    },
+    [t],
+  );
+
+  const optionEntries = useCallback(
+    (reciter: Reciter): NativeMenuEntry[] => {
+      const favorite = isFavoriteReciter(reciter.id);
+      return [
+        {
+          id: 'play',
+          items: [
+            {id: 'playAll', title: t('browse.playAll'), systemImage: 'play'},
+            {
+              id: 'shuffleAll',
+              title: t('browse.shuffleAll'),
+              systemImage: 'shuffle',
+            },
+          ],
+        },
+        {
+          id: 'reciter',
+          items: [
+            {
+              id: 'open',
+              title: t('browse.openReciter'),
+              systemImage: 'person',
+            },
+            {
+              id: 'favorite',
+              title: favorite
+                ? t('sheets:homeCardOptions.removeReciterFromFavorites')
+                : t('sheets:homeCardOptions.addReciterToFavorites'),
+              systemImage: favorite ? 'star.fill' : 'star',
+            },
+            {
+              id: 'share',
+              title: t('common:actions.share'),
+              systemImage: 'square.and.arrow.up',
+            },
+          ],
+        },
+      ];
+    },
+    [isFavoriteReciter, t],
+  );
+
+  const onOption = useCallback(
+    (reciter: Reciter, id: string) => {
+      if (id === 'playAll') playReciter(reciter, false);
+      else if (id === 'shuffleAll') playReciter(reciter, true);
+      else if (id === 'open') handleReciterPress(reciter);
+      else if (id === 'favorite') toggleFavorite(reciter);
+      else if (id === 'share') shareReciter(reciter);
+    },
+    [playReciter, handleReciterPress, toggleFavorite, shareReciter],
+  );
+
+  // iOS draws the options as a native menu on the ••• button. Android
+  // opens the same rows in the reciter options sheet Home uses.
+  const renderOptions = useCallback(
+    (reciter: Reciter, button: React.ReactNode) =>
+      nativeMenusAvailable ? (
+        <NativeMenu
+          title={getReciterDisplayName(reciter)}
+          entries={optionEntries(reciter)}
+          onSelect={id => onOption(reciter, id)}
+          accessibilityLabel={t('browse.reciterOptions', {
+            name: getReciterDisplayName(reciter),
+          })}
+          trigger="tap">
+          {button}
+        </NativeMenu>
+      ) : (
+        button
+      ),
+    [optionEntries, onOption, t],
+  );
+  const openOptionsSheet = useCallback(
+    (reciter: Reciter) => {
+      showSheet('home-card-options', {
+        payload: {
+          reciterId: reciter.id,
+          reciterName: getReciterDisplayName(reciter),
+          variant: 'reciter',
+          onOpen: () => handleReciterPress(reciter),
+          onPlayAll: () => playReciter(reciter, false),
+          onShuffleAll: () => playReciter(reciter, true),
+        },
+      });
+    },
+    [handleReciterPress, playReciter],
+  );
+
+  // ── Rendering ─────────────────────────────────────────────────────────
+  const itemProps = useCallback(
+    (reciter: Reciter): ReciterItemProps => ({
+      reciter,
+      name: getReciterDisplayName(reciter),
+      line: reciterLine(reciter, count => t('browse.surahCount', {count})),
+      downloaded: downloadedIds.has(reciter.id),
+      trailing: surahId ? 'play' : 'options',
+      onPress: handleReciterPress,
+      renderOptions,
+      onOptions: nativeMenusAvailable ? undefined : openOptionsSheet,
+    }),
+    [
+      t,
+      downloadedIds,
+      surahId,
+      handleReciterPress,
+      renderOptions,
+      openOptionsSheet,
+    ],
+  );
+
+  const railShown = letters.length > 0 && !searching;
+  // @ai-start
+  // The rail is centred between the header and the bars over the bottom of
+  // the list (mini player, tab bar). Under the native tabs the safe area
+  // already covers both bars, and `bottomInset` would count them again.
+  // Elsewhere `bottomInset` counts from the bottom of the window, but this
+  // screen may already end above the tab bar, so only the part that overlaps
+  // it is taken off.
+  const rootRef = useRef<ViewInstance>(null);
+  const [screenBottom, setScreenBottom] = useState<number | null>(null);
+  const measureScreenBottom = useCallback(() => {
+    rootRef.current?.measureInWindow((_x, y, _w, h) => setScreenBottom(y + h));
+  }, []);
+  const railBottom = Math.max(
+    moderateScale(16),
+    USE_GLASS
+      ? insets.bottom
+      : bottomInset - (windowHeight - (screenBottom ?? windowHeight)),
   );
   // @ai-end
+  const renderItem = useCallback(
+    ({item}: {item: BrowseItem}) => {
+      if (item.type === 'header') {
+        return (
+          <Text
+            style={[groupedHeaderStyle(theme), styles.sectionHeader]}
+            accessibilityRole="header">
+            {item.title}
+          </Text>
+        );
+      }
+      if (item.type === 'row') {
+        // With the A–Z rail showing, the panel ends short of it so the
+        // letters get their own column beside the rows. @ai
+        return (
+          <View style={railShown ? styles.railGutter : undefined}>
+            <ReciterPanelRow
+              {...itemProps(item.reciter)}
+              first={item.first}
+              last={item.last}
+            />
+          </View>
+        );
+      }
+      return (
+        <View style={[styles.cardRow, {paddingHorizontal: pageMargin}]}>
+          {item.reciters.map(reciter => (
+            <ReciterCard
+              key={reciter.id}
+              {...itemProps(reciter)}
+              width={cardWidth}
+            />
+          ))}
+        </View>
+      );
+    },
+    [theme, styles, itemProps, pageMargin, cardWidth, railShown],
+  );
+
+  const chips = (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={[
+        styles.chips,
+        // Letter headers bring their own gap; bare rows and cards need one.
+        items[0] && items[0].type !== 'header' && styles.chipsAboveRows,
+      ]}>
+      <Chip
+        label={t('home:browse.allChip')}
+        selected={rewayah === null}
+        onPress={() => setRewayah(null)}
+        styles={styles}
+      />
+      {chipRewayat.map(id => (
+        <Chip
+          key={id}
+          label={rewayahChipLabel(id, chipRewayat)}
+          selected={rewayah === id}
+          onPress={() => setRewayah(current => (current === id ? null : id))}
+          styles={styles}
+        />
+      ))}
+      {moreEntries.length > 0 ? (
+        <NativeMenu
+          entries={moreEntries}
+          title={t('browse.moreRewayat')}
+          onSelect={id => {
+            const value = id.split(':')[1] as RewayahId;
+            setRewayah(current => (current === value ? null : value));
+          }}
+          accessibilityLabel={t('browse.moreRewayatTitle')}>
+          <View style={[styles.chip, styles.moreChip]}>
+            <Text style={styles.chipText}>{t('browse.moreRewayat')}</Text>
+            <Feather
+              name="chevron-down"
+              size={moderateScale(13)}
+              color={theme.colors.text}
+            />
+          </View>
+        </NativeMenu>
+      ) : null}
+    </ScrollView>
+  );
+
+  const listHeader = (
+    <View>
+      {!USE_GLASS && !searching ? (
+        <View style={styles.inlineTitleRow}>
+          <Text style={styles.inlineTitle} accessibilityRole="header">
+            {screenTitle}
+          </Text>
+          {headerActions}
+        </View>
+      ) : null}
+      {searching ? (
+        <CollectionSearchField
+          value={query}
+          onChangeText={setQuery}
+          onCancel={stopSearching}
+          placeholder={t('browse.searchReciters')}
+          style={styles.searchField}
+        />
+      ) : null}
+      {chips}
+    </View>
+  );
+
+  const empty =
+    items.length === 0 ? (
+      <View style={styles.empty}>
+        <View style={styles.emptyIcon}>
+          <Feather
+            name={isSearch ? 'search' : 'users'}
+            size={moderateScale(26)}
+            color={Color(theme.colors.text).alpha(0.5).toString()}
+          />
+        </View>
+        <Text style={styles.emptyTitle} accessibilityRole="header">
+          {isSearch
+            ? t('browse.noResultsTitle', {query: query.trim()})
+            : t('browse.noMatchTitle')}
+        </Text>
+        <Text style={styles.emptyBody}>
+          {isSearch ? t('browse.noResultsBody') : t('browse.noMatchBody')}
+        </Text>
+        {!isSearch ? (
+          <Pressable
+            onPress={clearFilters}
+            accessibilityRole="button"
+            style={({pressed}) => [
+              styles.emptyButton,
+              pressed && {opacity: 0.7},
+            ]}>
+            <Text style={styles.emptyButtonText}>{t('browse.showAll')}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    ) : null;
 
   return (
-    <TouchableWithoutFeedback onPress={handleOutsidePress}>
-      <View style={styles.container}>
-        {/* Android: custom Header; iOS: native Stack header handles this */}
-        {!useNativeHeader && (
-          <Header
-            title={title ?? t('browse.browseAll')}
-            onBack={onBack}
-            showBlur={true}
-            containerStyle={{zIndex: 2}}
-          />
-        )}
-
-        {/* Search and Filter Bar */}
-        <View
-          style={[
-            styles.searchFilterContainer,
-            pageMargin !== undefined && [
-              styles.tabletSearchRow,
-              {paddingHorizontal: pageMargin},
-            ], // @ai
-            {
-              marginTop: useNativeHeader
-                ? topOffset
-                : insets.top + moderateScale(56),
-            },
-          ]}>
-          <SearchInput
-            placeholder={t('browse.searchReciters')}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onCancel={handleSearchCancel}
-            showCancelButton={isSearchFocused}
-            iconColor={theme.colors.text}
-            iconOpacity={0.25}
-            placeholderTextColor={Color(theme.colors.text)
-              .alpha(0.35)
-              .toString()}
-            textColor={theme.colors.text}
-            backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
-            borderColor={Color(theme.colors.text).alpha(0.06).toString()}
-            onFocus={handleSearchFocus}
-            onBlur={handleSearchBlur}
-            onSubmitEditing={Keyboard.dismiss}
-            containerStyle={
-              isTablet
-                ? styles.tabletSearchInput
-                : {paddingHorizontal: 0, flex: 1}
-            } // @ai
-          />
-          {(isTablet || !isSearchFocused) && (
-            <Pressable
-              style={({pressed}) => [
-                styles.filterButton,
-                pressed && styles.filterButtonPressed,
-              ]}
-              onPress={handleFilterModalPress}
-              accessibilityRole="button" // @ai
-              accessibilityLabel={t('filters.title')}>
-              <Feather
-                name="sliders"
-                size={moderateScale(18)}
-                color={Color(theme.colors.text).alpha(0.7).toString()}
-              />
-            </Pressable>
-          )}
-          {/* @ai-start */}
-          {/* iPad: the count trails the row and Clear All sits beside it,
-              in place of the phone's line under the chips. */}
-          {isTablet && (
-            <View style={styles.tabletCount}>
-              <Text style={styles.tabletCountText} numberOfLines={1}>
-                {t('browse.reciterCount', {count: filteredReciters.length})}
-              </Text>
-              {hasActiveFilters && (
-                <Pressable
-                  style={({pressed}) => [
-                    styles.clearFiltersButton,
-                    pressed && {opacity: 0.6},
-                  ]}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    handleClearFilters();
-                  }}
-                  accessibilityRole="button">
-                  <Text style={styles.clearFiltersText}>
-                    {t('browse.clearAll')}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          )}
-          {/* @ai-end */}
-        </View>
-
-        {/* Filter Chips */}
-        <View style={styles.filterSectionsContainer}>
-          {/* @ai-start */}
-          {/* Wide iPad windows wrap the chips so every qira'at teacher is
-              visible; elsewhere they scroll in one row. */}
-          {wrapChips ? (
-            <View
-              style={[
-                styles.filterBarContainer,
-                styles.filterBarWrap,
-                chipInset,
-              ]}>
-              {chipItems}
-            </View>
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[styles.filterBarContainer, chipInset]}
-              keyboardShouldPersistTaps="handled">
-              {chipItems}
-            </ScrollView>
-          )}
-          {/* @ai-end */}
-        </View>
-
-        {/* Active Filters Indicator */}
-        {hasActiveFilters && !isTablet && (
-          <View style={styles.activeFiltersContainer}>
-            <Text style={styles.activeFiltersText}>
-              {t('browse.recitersFound', {count: filteredReciters.length})}
-            </Text>
-            <Pressable
-              style={({pressed}) => [
-                styles.clearFiltersButton,
-                pressed && {opacity: 0.6},
-              ]}
-              onPress={() => {
-                Keyboard.dismiss();
-                handleClearFilters();
-              }}>
-              <Text style={styles.clearFiltersText}>
-                {t('browse.clearAll')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Content */}
-        <View style={styles.contentContainer}>
-          <BrowseGrid
-            reciters={filteredReciters}
-            onReciterPress={handleReciterPress}
-            theme={theme}
-            keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={() => Keyboard.dismiss()}
-            getRewayatIdForReciter={getRewayatIdForReciter}
-            linkToProfile={!surahId}
-            profilePathname={profilePathname} // @ai
-            bottomInset={bottomInset}
-            tabletMargin={pageMargin} // @ai
-          />
-        </View>
-
-        {/* Filter Modal */}
-        <FilterModal
-          visible={isFilterModalVisible}
-          onClose={() => {
-            setIsFilterModalVisible(false);
-            Keyboard.dismiss();
-          }}
-          onApplyFilters={handleApplyAdvancedFilters}
-          theme={theme}
-          initialFilters={advancedFilters}
+    <View ref={rootRef} style={styles.container} onLayout={measureScreenBottom}>
+      {!USE_GLASS ? (
+        <Header
+          title={screenTitle}
+          onBack={onBack}
+          showBlur
+          containerStyle={{zIndex: 2}}
         />
-      </View>
-    </TouchableWithoutFeedback>
+      ) : null}
+      <FlashList
+        // A new view, order or filter is a new list, so it starts from the
+        // top instead of keeping an offset that may point past its end.
+        // (Scrolling there by hand cannot: the glass header's inset makes
+        // the top a negative offset, which the scroll view clamps to 0.)
+        key={[view, sort, completeOnly, downloadedOnly].join('|')}
+        ref={listRef}
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={item => item.key}
+        getItemType={item => item.type}
+        extraData={itemProps}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={empty}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
+        contentContainerStyle={{
+          paddingTop: USE_GLASS ? 0 : insets.top + moderateScale(56),
+          paddingBottom: Math.max(moderateScale(80), bottomInset),
+        }}
+        drawDistance={moderateScale(400)}
+      />
+      {railShown ? (
+        <AlphabetRail
+          letters={letters}
+          onLetter={jumpToLetter}
+          // Below the rewayah chips too, so a long rail (Arabic carries
+          // both alphabets) never runs over them. @ai
+          insetTop={
+            (USE_GLASS ? headerHeight : insets.top + moderateScale(56)) +
+            CHIPS_HEIGHT
+          }
+          insetBottom={railBottom}
+        />
+      ) : null}
+    </View>
   );
 }
-// @ai-end
+
+function Chip({
+  label,
+  selected,
+  onPress,
+  styles,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <Pressable
+      onPress={() => {
+        Keyboard.dismiss();
+        onPress();
+      }}
+      accessibilityRole="togglebutton"
+      accessibilityState={{selected}}
+      style={({pressed}) => [
+        styles.chip,
+        selected && styles.chipSelected,
+        pressed && {opacity: 0.7},
+      ]}>
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    searchFilterContainer: {
+    container: {flex: 1, backgroundColor: theme.colors.background},
+    headerActions: {
       flexDirection: 'row',
-      paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(6),
-      gap: moderateScale(8),
-      zIndex: 1,
-    },
-    filterButton: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderRadius: moderateScale(12),
-      padding: moderateScale(10),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      height: moderateScale(44),
-      width: moderateScale(44),
-      justifyContent: 'center',
       alignItems: 'center',
+      gap: moderateScale(20),
+      paddingHorizontal: moderateScale(6),
     },
-    filterButtonPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+    menuDot: {
+      position: 'absolute',
+      top: -moderateScale(2),
+      end: -moderateScale(3),
+      width: moderateScale(7),
+      height: moderateScale(7),
+      borderRadius: moderateScale(4),
+      backgroundColor: theme.colors.text,
     },
-    contentContainer: {
-      flex: 1,
-      marginTop: moderateScale(8),
-      zIndex: 1,
-    },
-    filterSectionsContainer: {},
-    filterBarContainer: {
-      flexDirection: 'row',
-      gap: moderateScale(8),
-      paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(6),
-    },
-    filterChip: {
-      paddingHorizontal: moderateScale(12),
-      paddingVertical: moderateScale(6),
-      borderRadius: moderateScale(16),
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      marginHorizontal: CHIP_MARGIN, // @ai
-    },
-    filterChipActive: {
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
-    },
-    filterChipPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    filterChipText: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textTertiary,
-    },
-    filterChipTextActive: {
-      color: theme.colors.text,
-      fontFamily: 'Manrope-SemiBold',
-    },
-    activeFiltersContainer: {
+    inlineTitleRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(4),
+      paddingBottom: moderateScale(4),
     },
-    activeFiltersText: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textTertiary,
-    },
-    clearFiltersButton: {
-      paddingHorizontal: moderateScale(8),
-      paddingVertical: moderateScale(4),
-    },
-    clearFiltersText: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Medium',
+    inlineTitle: {
+      fontSize: moderateScale(28),
+      fontFamily: 'Manrope-ExtraBold',
       color: theme.colors.text,
     },
-    separatorChip: {
-      paddingHorizontal: moderateScale(6),
-      paddingVertical: moderateScale(6),
-      borderRadius: moderateScale(16),
-      backgroundColor: 'transparent',
-      marginHorizontal: moderateScale(2),
-      justifyContent: 'center',
-      alignItems: 'center',
+    searchField: {
+      paddingHorizontal: moderateScale(16),
+      paddingTop: moderateScale(4),
+      paddingBottom: moderateScale(4),
     },
-    separatorChipText: {
-      fontSize: moderateScale(14),
-      fontFamily: 'Amiri-Regular',
-      color: theme.colors.textTertiary,
-      fontStyle: 'italic',
+    chips: {
+      flexDirection: 'row',
+      gap: moderateScale(6),
+      paddingHorizontal: moderateScale(16),
+      paddingTop: moderateScale(8),
+      paddingBottom: moderateScale(4),
     },
-    // @ai-start
-    tabletSearchRow: {
-      alignItems: 'center',
-      gap: 12,
-    },
-    tabletSearchInput: {
-      paddingHorizontal: 0,
-      flex: 1,
-      maxWidth: TABLET_SEARCH_MAX_WIDTH,
-    },
-    // The auto margin pushes the count to the trailing edge once the field
-    // has reached its maximum width.
-    tabletCount: {
-      marginStart: 'auto',
+    chipsAboveRows: {paddingBottom: moderateScale(14)},
+    chip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: moderateScale(3),
+      paddingHorizontal: moderateScale(13),
+      height: moderateScale(32),
+      borderRadius: moderateScale(16),
+      backgroundColor: Color(theme.colors.text).alpha(0.07).toString(),
     },
-    tabletCountText: {
-      fontSize: 13,
+    chipSelected: {backgroundColor: theme.colors.text},
+    moreChip: {
+      backgroundColor: 'transparent',
+      borderWidth: StyleSheet.hairlineWidth * 2,
+      borderColor: Color(theme.colors.text).alpha(0.18).toString(),
+    },
+    chipText: {
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textSecondary,
+      color: theme.colors.text,
     },
-    filterBarWrap: {
-      flexWrap: 'wrap',
+    chipTextSelected: {color: theme.colors.background},
+    railGutter: {paddingEnd: RAIL_GUTTER},
+    sectionHeader: {
+      paddingHorizontal: PANEL_MARGIN + PANEL_ROW_PADDING,
+      paddingTop: GROUPED_SECTION_GAP,
+      paddingBottom: GROUPED_HEADER_GAP,
     },
-    // @ai-end
+    cardRow: {
+      flexDirection: 'row',
+      gap: CARD_GAP,
+      marginBottom: CARD_GAP,
+    },
+    empty: {
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(32),
+      paddingTop: moderateScale(64),
+      gap: moderateScale(8),
+    },
+    emptyIcon: {
+      width: moderateScale(64),
+      height: moderateScale(64),
+      borderRadius: moderateScale(32),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: moderateScale(6),
+      backgroundColor: Color(theme.colors.text).alpha(0.07).toString(),
+    },
+    emptyTitle: {
+      fontSize: moderateScale(17),
+      fontFamily: 'Manrope-ExtraBold',
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    emptyBody: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.6).toString(),
+      textAlign: 'center',
+      lineHeight: moderateScale(19),
+    },
+    emptyButton: {
+      marginTop: moderateScale(10),
+      paddingHorizontal: moderateScale(22),
+      height: moderateScale(42),
+      borderRadius: moderateScale(12),
+      justifyContent: 'center',
+      backgroundColor: theme.colors.text,
+    },
+    emptyButtonText: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-ExtraBold',
+      color: theme.colors.background,
+    },
   });
+
+function capitalise(text: string): string {
+  return text.charAt(0).toLocaleUpperCase() + text.slice(1);
+}

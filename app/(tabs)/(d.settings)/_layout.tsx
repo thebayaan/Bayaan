@@ -1,4 +1,6 @@
 import {Stack, useRouter, useSegments} from 'expo-router';
+import {tintedBackOptions} from '@/components/TintedHeader'; // @ai
+import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import branding from '@/config/branding';
@@ -28,7 +30,7 @@ export const unstable_settings = {initialRouteName: 'index'};
 // Every page sits in the 640pt settings column on iPad (ipad-standards §5.3).
 const SCREEN_LAYOUT = capScreensExcept([], SETTINGS_PAGE_MAX_WIDTH);
 
-export default function SettingsLayout() {
+function SettingsLayout() {
   const {theme} = useTheme();
   const {t} = useTranslation(['settings', 'common']);
   const {isTablet, width} = useResponsive();
@@ -62,6 +64,7 @@ export default function SettingsLayout() {
           title,
           animation: 'none' as const,
           headerBackVisible: false,
+          unstable_headerLeftItems: () => [], // @ai: no tinted back either
           gestureEnabled: false,
         }
       : {title};
@@ -70,6 +73,7 @@ export default function SettingsLayout() {
     <Stack
       screenLayout={isTablet ? SCREEN_LAYOUT : undefined}
       screenOptions={{
+        ...tintedBackOptions, // @ai
         headerShown: true,
         freezeOnBlur: true,
         headerTintColor: theme.colors.text,
@@ -170,3 +174,5 @@ const styles = StyleSheet.create({
   },
 });
 // @ai-end
+
+export default withTabBarScrim(SettingsLayout); // @ai

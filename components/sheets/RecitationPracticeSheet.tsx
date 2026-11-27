@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, Pressable, Text, View} from 'react-native';
-import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
+import {type SheetProps} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import ActionSheet, {
@@ -28,6 +28,8 @@ import {
 import {usePracticeStore, type PracticeErrorCode} from '@/store/practiceStore';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 // A short practice take on one target (Retry from the summary): recite it
 // from memory, peek if needed, then see whether anything is still worth
@@ -68,6 +70,8 @@ export const RecitationPracticeSheet = (
 ): React.JSX.Element | null => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation(['sheets', 'common']);
   const target = props.payload?.target;
   const status = usePracticeStore(s => s.status);
@@ -115,7 +119,7 @@ export const RecitationPracticeSheet = (
         <Text style={styles.headerTitle}>{t('practice.title')}</Text>
         <Text style={styles.subtitle}>{label}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <Text style={styles.prompt}>{t('practice.reciteFromMemory')}</Text>
         <Pressable
           style={styles.secondaryButton}
@@ -183,7 +187,7 @@ export const RecitationPracticeSheet = (
         <SheetFooter>
           <Pressable
             style={styles.secondaryButton}
-            onPress={() => void SheetManager.hide(props.sheetId)}
+            onPress={() => void hideSheet('recitation-practice')}
             accessibilityRole="button">
             <Text style={styles.secondaryButtonText}>
               {t('common:actions.done')}

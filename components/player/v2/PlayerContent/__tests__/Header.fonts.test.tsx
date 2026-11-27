@@ -53,6 +53,7 @@ jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({theme: {colors: {text: '#111111'}}}),
 }));
 jest.mock('@/hooks/useGlassProps', () => ({
+  useGlassTint: () => undefined,
   USE_GLASS: false,
   useGlassColorScheme: () => 'light',
 }));

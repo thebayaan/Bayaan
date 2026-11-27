@@ -9,7 +9,11 @@ import {SuperCategory} from '@/types/adhkar';
 import {ADHKAR_CATEGORY_IMAGES} from '@/constants/adhkarImages';
 import {Link} from 'expo-router';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 // @ai-start
 import {getSuperCategoryDisplayTitle} from '@/utils/adhkarUtils';
 // @ai-end
@@ -52,6 +56,7 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
 }: AdhkarBentoCardProps) {
   const {theme} = useTheme();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const isDarkMode = theme.isDarkMode;
 
   // Subtle gradient incorporating the category's color (same pattern as ExploreView)
@@ -106,7 +111,8 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
             <GlassView
               style={styles.glassInner}
               glassEffectStyle="regular"
-              colorScheme={glassColorScheme}>
+              colorScheme={glassColorScheme}
+              tintColor={glassTint}>
               {cardContent}
             </GlassView>
           </Link.AppleZoom>

@@ -24,8 +24,18 @@ import {createTrack, createUserUploadTrack} from '@/utils/track';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import {PlaylistHeader} from './PlaylistHeader';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
+// @ai-start
+import {CollectionScreenHeader} from '@/components/collection/CollectionScreenHeader';
+import {SurahCover} from '@/components/collection/CollectionArt';
+import {
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PanelRow,
+} from '@/components/collection/CollectionPanel';
+import {PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {flipX} from '@/utils/rtl';
+// @ai-end
 import {useRouter} from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {UserPlaylist} from '@/services/database/DatabaseService';
@@ -101,6 +111,13 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     },
     listContentContainer: {
       flexGrow: 1,
+    },
+    // @ai
+    headerActions: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     emptyText: {
       fontSize: moderateScale(16),
@@ -399,13 +416,17 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     shouldClearPlaylistRef.current = true;
-    SheetManager.show('playlist-context', {payload: playlistOptions});
+    showSheet('playlist-context', {payload: playlistOptions});
   }, [playlistOptions]);
   // @ai-end
 
   const renderHeaderRight = useCallback(
     () => (
-      <Pressable onPress={handleOptionsPress} hitSlop={8}>
+      <Pressable
+        onPress={handleOptionsPress}
+        hitSlop={8}
+        accessibilityRole="button" // @ai
+        accessibilityLabel={t('collectionScreen.actions.moreOptions')}>
         <Feather
           name="more-horizontal"
           size={moderateScale(20)}
@@ -416,7 +437,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         )}
       </Pressable>
     ),
-    [handleOptionsPress, theme.colors.text, nativeMenus, playlistOptions],
+    [handleOptionsPress, theme.colors.text, nativeMenus, playlistOptions, t],
   );
 
   useCollectionNativeHeader({
@@ -457,7 +478,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
   const handleShowTrackOptions = useCallback(
     (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
-      SheetManager.show('surah-options', {
+      showSheet('surah-options', {
         payload: buildTrackOptions(track, reciter, surah),
       });
     },
@@ -465,37 +486,107 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
   );
   // @ai-end
 
+  // @ai-start
+  // Laid out like the other Collection screens: the playlist's mosaic and
+  // count, its name, Play, then Shuffle.
+  const coverSurahs = useMemo(
+    () =>
+      playlistData
+        .slice(0, 4)
+        .map(item => item.surah?.id ?? Number(item.track.surahId)),
+    [playlistData],
+  );
   const ListHeaderComponent = useCallback(() => {
     if (!playlist) return null;
-
+    const hasItems = playlistData.length > 0;
     return (
-      <PlaylistHeader
-        title={playlist.name}
-        subtitle={t('common:counts.surahs', {count: playlistData.length})}
-        onPlayPress={handlePlayAll}
-        onShufflePress={handleShuffle}
-        onOptionsPress={USE_GLASS ? undefined : handleOptionsPress}
-        optionsMenu={
-          nativeMenus && playlistOptions ? (
-            <PlaylistOptionsMenu payload={playlistOptions} />
-          ) : undefined
+      <CollectionScreenHeader
+        category="playlists"
+        preview={
+          coverSurahs.length > 0
+            ? {kind: 'mosaic', surahIds: coverSurahs}
+            : null
         }
-        theme={theme}
+        title={playlist.name}
+        meta={
+          playlist.description
+            ? t('collectionScreen.meta.pair', {
+                a: t('common:counts.surahs', {count: playlistData.length}),
+                b: playlist.description,
+              })
+            : t('common:counts.surahs', {count: playlistData.length})
+        }
+        primary={{
+          label: t('collectionScreen.actions.playAll'),
+          icon: (
+            <PlayIcon
+              color={theme.colors.background}
+              size={moderateScale(15)}
+            />
+          ),
+          onPress: handlePlayAll,
+          disabled: !hasItems,
+        }}
+        secondary={[
+          {
+            label: t('common:actions.shuffle'),
+            icon: (
+              <ShuffleIcon color={theme.colors.text} size={moderateScale(15)} />
+            ),
+            onPress: handleShuffle,
+            disabled: !hasItems,
+          },
+        ]}
+        actions={
+          // No native header here: back on the start, ••• on the end.
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('common:actions.back')}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+                style={flipX}
+              />
+            </Pressable>
+            <Pressable
+              onPress={handleOptionsPress}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('collectionScreen.actions.moreOptions')}>
+              <Feather
+                name="more-horizontal"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+              {nativeMenus && playlistOptions ? (
+                <PlaylistOptionsMenu payload={playlistOptions} />
+              ) : null}
+            </Pressable>
+          </View>
+        }
       />
     );
   }, [
     playlist,
     playlistData.length,
+    coverSurahs,
     handlePlayAll,
     handleShuffle,
     handleOptionsPress,
     nativeMenus,
     playlistOptions,
+    router,
+    styles.headerActions,
     theme,
     t,
   ]);
+  // @ai-end
 
-  const renderItem: ListRenderItem<PlaylistDataItem> = ({item}) => {
+  const renderItem: ListRenderItem<PlaylistDataItem> = ({item, index}) => {
     const {track, reciter, surah} = item;
 
     if (!reciter || !surah) {
@@ -503,18 +594,29 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     }
 
     return (
-      <SurahOptionsRow payload={buildTrackOptions(track, reciter, surah)}>
-        <TrackItem
-          reciterId={track.reciterId}
-          surahId={track.surahId}
-          rewayatId={track.rewayatId}
-          userRecitationId={track.userRecitationId}
-          onPress={() => handleSurahPress(track, reciter, surah)}
-          onPlayPress={() => handleSurahPress(track, reciter, surah)}
-          onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
-          onLongPress={() => handleShowTrackOptions(track, reciter, surah)}
-        />
-      </SurahOptionsRow>
+      <PanelRow first={index === 0} last={index === playlistData.length - 1}>
+        <SurahOptionsRow payload={buildTrackOptions(track, reciter, surah)}>
+          <TrackItem
+            transparent // @ai
+            showSurahNumber={false} // @ai
+            art={
+              <SurahCover
+                surahId={surah.id}
+                size={PANEL_ART_SIZE}
+                radius={PANEL_ART_RADIUS}
+              />
+            }
+            reciterId={track.reciterId}
+            surahId={track.surahId}
+            rewayatId={track.rewayatId}
+            userRecitationId={track.userRecitationId}
+            onPress={() => handleSurahPress(track, reciter, surah)}
+            onPlayPress={() => handleSurahPress(track, reciter, surah)}
+            onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
+            onLongPress={() => handleShowTrackOptions(track, reciter, surah)}
+          />
+        </SurahOptionsRow>
+      </PanelRow>
     );
   };
 
@@ -557,7 +659,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         data={playlistData}
         renderItem={renderItem}
         keyExtractor={item => item.track.id}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={ListHeaderComponent() ?? undefined} // @ai
         contentContainerStyle={[
           styles.listContentContainer,
           {paddingBottom: listBottomPadding}, // @ai

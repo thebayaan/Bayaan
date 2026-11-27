@@ -8,10 +8,15 @@ import {
   TextStyle,
 } from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
+import {ReaderOptionsIcon} from '@/components/ActionIcons'; // @ai
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
@@ -66,6 +71,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   const {theme} = useTheme();
   const a11y = usePlayerA11y(); // @ai
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const {updateSettings} = usePlayerActions();
   const playbackRate = usePlayerStore(s => s.playback.rate);
   const settings = usePlayerStore(s => s.settings);
@@ -100,6 +106,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
     ? {
         glassEffectStyle: 'regular' as const,
         colorScheme: glassColorScheme,
+        tintColor: glassTint,
         isInteractive: true,
       }
     : {};
@@ -112,8 +119,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             onPress={handleMushafLayoutPress}
             {...a11y.displayOptions}
             style={styles.glassButtonInner}>
-            <Ionicons
-              name="options-outline"
+            <ReaderOptionsIcon
               size={moderateScale(20)}
               color={defaultIconColor}
             />

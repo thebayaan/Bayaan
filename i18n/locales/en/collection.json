@@ -6,13 +6,119 @@
     "itemsCount_one": "{{count}} item",
     "itemsCount_other": "{{count}} items",
     "empty": {
-      "playlists": "Create your first playlist",
-      "reciters": "No favorites yet",
-      "downloads": "No downloads yet",
-      "loved": "No loved surahs yet",
-      "bookmarks": "No bookmarks yet",
-      "notes": "No notes yet",
-      "uploads": "No uploads yet"
+      "playlists": "Group surahs for a routine",
+      "reciters": "Tap Favorite on a reciter’s page",
+      "downloads": "Download surahs to listen offline",
+      "loved": "Tap the heart on any surah",
+      "bookmarks": "Long-press a verse in the Mushaf",
+      "notes": "Long-press a verse to add a note",
+      "uploads": "Add audio from Files"
+    },
+    "groups": {
+      "listening": "Listening",
+      "reading": "Reading",
+      "yours": "Yours"
+    },
+    "summary": {
+      "two": "{{a}}, {{b}}",
+      "more_one": "{{a}}, {{b}} and {{count}} more",
+      "more_other": "{{a}}, {{b}} and {{count}} more",
+      "downloads": "{{surahs}} · {{size}}",
+      "quote": "“{{text}}”",
+      "sizeMB": "{{size}} MB",
+      "sizeGB": "{{size}} GB",
+      "countThenNames": "{{countText}} · {{names}}",
+      "separator": ", ",
+      "firstAndMoreReciters_one": "{{a}} and {{count}} more",
+      "firstAndMoreReciters_other": "{{a}} and {{count}} more"
+    },
+    "view": {
+      "grid": "Grid",
+      "list": "List",
+      "sortBy": "Sort by",
+      "menuLabel": "View and sort"
+    },
+    "sort": {
+      "dateLoved": "Date loved",
+      "dateDownloaded": "Date downloaded",
+      "dateAdded": "Date added",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "surahOrder": "Surah order",
+      "reciter": "Reciter",
+      "title": "Title",
+      "updated": "Last updated",
+      "dateCreated": "Date created",
+      "size": "Size",
+      "name": "Name"
+    },
+    "search": {
+      "placeholder": "Search your collection",
+      "placeholderIn": "Search {{name}}",
+      "matches_one": "{{count}} match",
+      "matches_other": "{{count}} matches",
+      "noResults": "Nothing matches “{{query}}”",
+      "hint": "Try a surah, a reciter, a verse like 2:255, or words from your notes",
+      "includes": "Includes {{name}}",
+      "all": "All",
+      "seeAll": "See all {{total}} in {{name}}"
+    },
+    "meta": {
+      "pair": "{{a}} · {{b}}",
+      "inSurahs": "{{ayahs}} in {{surahs}}",
+      "notes_one": "{{count}} note",
+      "notes_other": "{{count}} notes"
+    },
+    "actions": {
+      "playAll": "Play all",
+      "moreOptions": "More options"
+    },
+    "downloads": {
+      "byReciter": "By reciter",
+      "allSurahs": "All surahs",
+      "groupingLabel": "Show downloads"
+    },
+    "emptyState": {
+      "loved": {
+        "meta": "No surahs yet",
+        "heading": "Nothing loved yet",
+        "message": "Tap the heart on the player or on any surah to keep it here.",
+        "link": "Browse reciters"
+      },
+      "playlists": {
+        "meta": "No playlists yet",
+        "heading": "Make your first playlist",
+        "message": "Group surahs for a routine, like Al-Kahf on Friday or before sleep.",
+        "button": "New playlist"
+      },
+      "downloads": {
+        "meta": "Nothing downloaded",
+        "heading": "Listen without a connection",
+        "message": "Tap Download on a surah or a reciter to keep it on this phone.",
+        "link": "Browse surahs"
+      },
+      "bookmarks": {
+        "meta": "No verses yet",
+        "heading": "Mark verses to come back to",
+        "message": "In the Mushaf, long-press a verse and choose Bookmark.",
+        "link": "Open the Mushaf"
+      },
+      "notes": {
+        "meta": "No notes yet",
+        "heading": "Keep your thoughts on a verse",
+        "message": "In the Mushaf, long-press a verse and choose Add note.",
+        "link": "Open the Mushaf"
+      },
+      "reciters": {
+        "meta": "No reciters yet",
+        "heading": "Keep your reciters close",
+        "message": "Tap Favorite on a reciter’s page, or add a few now."
+      },
+      "uploads": {
+        "meta": "No recitations yet",
+        "heading": "Bring your own recordings",
+        "message": "Add audio from Files, then tag the surah and reciter."
+      }
     }
   },
   "bookmarksScreen": {

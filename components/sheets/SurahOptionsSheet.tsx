@@ -10,12 +10,13 @@ import {
   ProfileIcon,
   LearnAboutIcon,
 } from '@/components/Icons';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
 import {SheetScrollView} from './SheetGestures';
 import {Feather, Ionicons} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
@@ -33,6 +34,8 @@ import {
   getSurahDisplayName,
   getSurahMeaning,
 } from '@/i18n/format';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // Import surah info data
@@ -62,6 +65,11 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
 // @ai-start
 export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const {theme} = useTheme();
+  // The last card's margin, unless the playlist card (no margin) ends it.
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    props.payload?.onRemoveFromPlaylist ? 0 : moderateScale(8),
+  ); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
@@ -102,7 +110,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('surah-options');
+    hideSheet('surah-options');
   }, []);
 
   // @ai-start
@@ -166,7 +174,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
           <SheetScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}>
-            <View style={styles.infoContent}>
+            <View
+              style={[styles.infoContent, {paddingBottom: sheetBottomPadding}]}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>
                   {getSurahDisplayName(surah)}
@@ -189,7 +198,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
           </SheetScrollView>
         </>
       ) : (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
           <View style={styles.header}>
             <Text style={styles.surahName}>{getSurahDisplayName(surah)}</Text>
             <Text style={styles.surahTranslation}>
@@ -199,11 +208,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
 
           <View style={styles.card}>
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleToggleLove}>
               <HeartIcon
                 color={theme.colors.text}
@@ -224,11 +229,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleDownload}>
               {isCurrentlyDownloading ? (
                 <CircularProgress
@@ -260,11 +261,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !onAddToQueue && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !onAddToQueue && styles.optionDisabled]}
               onPress={handleAddToQueue}>
               <View style={styles.rotatedIcon}>
                 <QueueIcon
@@ -285,11 +282,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleAddToPlaylist}>
               <Feather
                 name="plus-circle"
@@ -308,14 +301,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             {reciterId && rewayatId && (
               <>
                 <View style={styles.divider} />
-                <Pressable
-                  style={({pressed}) => [
-                    styles.option,
-                    pressed && styles.optionPressed,
-                  ]}
-                  onPress={handleShare}>
-                  <Feather
-                    name="share"
+                <Pressable style={[styles.option]} onPress={handleShare}>
+                  <ShareIcon
                     size={moderateScale(18)}
                     color={theme.colors.text}
                   />
@@ -329,12 +316,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             {reciterId && !payload?.hideGoToReciter && (
               <>
                 <View style={styles.divider} />
-                <Pressable
-                  style={({pressed}) => [
-                    styles.option,
-                    pressed && styles.optionPressed,
-                  ]}
-                  onPress={handleGoToReciter}>
+                <Pressable style={[styles.option]} onPress={handleGoToReciter}>
                   <ProfileIcon
                     color={theme.colors.text}
                     size={moderateScale(18)}
@@ -349,12 +331,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
 
             <View style={styles.divider} />
 
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleViewInfo}>
+            <Pressable style={[styles.option]} onPress={handleViewInfo}>
               <LearnAboutIcon
                 size={moderateScale(18)}
                 color={theme.colors.text}
@@ -368,10 +345,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
           {onRemoveFromPlaylist && (
             <View style={styles.destructiveCard}>
               <Pressable
-                style={({pressed}) => [
-                  styles.optionDestructive,
-                  pressed && styles.optionDestructivePressed,
-                ]}
+                style={[styles.optionDestructive]}
                 onPress={handleRemoveFromPlaylist}>
                 <Feather
                   name="minus-circle"
@@ -460,9 +434,6 @@ const createStyles = (theme: Theme) =>
     optionDisabled: {
       opacity: 0.5,
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),
@@ -481,9 +452,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionDestructivePressed: {
-      backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,

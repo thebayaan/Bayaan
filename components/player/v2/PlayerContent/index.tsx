@@ -1,7 +1,11 @@
 import React, {useState, useCallback, useEffect} from 'react';
 import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import Animated, {
   useSharedValue,
@@ -40,6 +44,7 @@ interface PlayerContentProps {
   onAmbientPress: () => void;
   onOptionsPress: () => void;
   onFollowAlongPress: () => void;
+  optionsMenu?: React.ReactNode;
 }
 
 const ANIMATION_DURATION = 300;
@@ -54,10 +59,12 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onAmbientPress,
   onOptionsPress,
   onFollowAlongPress,
+  optionsMenu,
 }) => {
   const {theme} = useTheme();
   const readingColors = useReadingThemeColors();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const [showQueue, setShowQueue] = useState(false);
   const {
     updateQueue,
@@ -267,11 +274,12 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
               style={styles.cardGlass}
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}
+              tintColor={glassTint}
             />
           ) : (
             <FrostedView style={StyleSheet.absoluteFill} />
           )}
-          <Header onOptionsPress={onOptionsPress} />
+          <Header onOptionsPress={onOptionsPress} optionsMenu={optionsMenu} />
         </Animated.View>
       </GestureDetector>
 
@@ -293,6 +301,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
               style={styles.cardGlass}
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}
+              tintColor={glassTint}
             />
           ) : (
             <FrostedView style={StyleSheet.absoluteFill} />

@@ -12,7 +12,11 @@ import {
 import {GestureDetector} from 'react-native-gesture-handler';
 import {GlassView} from 'expo-glass-effect';
 import {FrostedView} from '@/components/FrostedView';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerA11y} from '@/hooks/usePlayerA11y';
 import {usePlayerDismissGesture} from '../PlayerDismissContext';
@@ -56,6 +60,7 @@ export function TransportCard({
   const {theme} = useTheme();
   const a11y = usePlayerA11y();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const dismissGesture = usePlayerDismissGesture();
   const transport = usePlayerTransport();
   const meta = useNowPlayingMeta();
@@ -79,6 +84,7 @@ export function TransportCard({
             style={[StyleSheet.absoluteFill, styles.material]}
             glassEffectStyle="regular"
             colorScheme={glassColorScheme}
+            tintColor={glassTint}
           />
         ) : (
           <FrostedView style={[StyleSheet.absoluteFill, styles.material]} />

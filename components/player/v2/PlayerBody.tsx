@@ -1,6 +1,5 @@
 // @ai-generated
 import React, {useCallback, useMemo} from 'react';
-import {SheetManager} from 'react-native-actions-sheet';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {SURAHS} from '@/data/surahData';
@@ -14,11 +13,12 @@ import {keyCommandsSupported} from '@/services/keyboard/keyCommands';
 import PlayerContent from './PlayerContent';
 import {TabletPlayerLayout} from './tablet/TabletPlayerLayout';
 // @ai-start
-import {nativeMenusAvailable} from '@/components/native/nativeMenus';
+import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {
   PlayerOptionsMenu,
   type PlayerOptionsPayload,
 } from '@/components/sheets/options/playerOptions';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 /**
@@ -28,6 +28,7 @@ import {
  */
 export const PlayerBody = () => {
   const {isTablet} = useResponsive();
+  const nativeOptionsMenu = useNativeOptionsMenu('tap'); // @ai
   const remainingTime = useSleepTimerRemaining();
   const {navigateToReciterProfile} = useReciterNavigation();
 
@@ -66,7 +67,7 @@ export const PlayerBody = () => {
 
   // Handlers for showing sheets via SheetManager
   const handleShowSpeedSheet = useCallback(() => {
-    SheetManager.show('playback-speed', {
+    showSheet('playback-speed', {
       payload: {
         currentSpeed: playbackRate,
         onSpeedChange: handleSpeedChange,
@@ -75,7 +76,7 @@ export const PlayerBody = () => {
   }, [playbackRate, handleSpeedChange]);
 
   const handleShowSleepTimerSheet = useCallback(() => {
-    SheetManager.show('sleep-timer', {
+    showSheet('sleep-timer', {
       payload: {
         sleepTimer: remainingTime || 0,
         remainingTime,
@@ -86,18 +87,18 @@ export const PlayerBody = () => {
   }, [remainingTime, handleSleepTimerChange, handleTurnOffTimer]);
 
   const handleShowMushafLayoutSheet = useCallback(() => {
-    SheetManager.show('mushaf-layout', {payload: {context: 'player'}});
+    showSheet('mushaf-layout', {payload: {context: 'player'}});
   }, []);
 
   const handleShowAmbientSheet = useCallback(() => {
-    SheetManager.show('ambient-sounds');
+    showSheet('ambient-sounds');
   }, []);
 
   const followAlongAvailable = useRewayatFollowAlong(currentTrack?.rewayatId);
 
   const handleFollowAlongPress = useCallback(() => {
     if (!followAlongAvailable) {
-      SheetManager.show('follow-along');
+      showSheet('follow-along');
       return;
     }
 
@@ -153,12 +154,14 @@ export const PlayerBody = () => {
 
   const handleShowOptionsSheet = useCallback(() => {
     if (optionsPayload) {
-      SheetManager.show('player-options', {payload: optionsPayload});
+      showSheet('player-options', {payload: optionsPayload});
     }
   }, [optionsPayload]);
 
   const optionsMenu =
-    isTablet && nativeMenusAvailable && optionsPayload ? (
+    nativeOptionsMenu &&
+    optionsPayload &&
+    (optionsPayload.surah || optionsPayload.isUserUpload) ? (
       <PlayerOptionsMenu payload={optionsPayload} layout="overlay" />
     ) : null;
   // @ai-end
@@ -178,7 +181,7 @@ export const PlayerBody = () => {
   const body = isTablet ? (
     <TabletPlayerLayout {...handlers} optionsMenu={optionsMenu} />
   ) : (
-    <PlayerContent {...handlers} />
+    <PlayerContent {...handlers} optionsMenu={optionsMenu} />
   );
 
   return (

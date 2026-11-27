@@ -1,4 +1,5 @@
 import React, {useCallback, useMemo} from 'react';
+import {CollectionEmptyPanel} from '@/components/collection/CollectionEmptyState'; // @ai
 import {
   View,
   Text,
@@ -17,7 +18,7 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById} from '@/services/dataService';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {UploadCard} from './UploadCard';
 import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -285,7 +286,7 @@ export const UploadsTabContent = React.forwardRef<
 
     const handleOrganize = useCallback(
       (item: UploadedRecitation) => {
-        SheetManager.show('organize-recitation', {
+        showSheet('organize-recitation', {
           payload: {recitation: item, prefillReciterId: reciterId},
         });
       },
@@ -307,7 +308,7 @@ export const UploadsTabContent = React.forwardRef<
 
     const handleShowOptions = useCallback(
       (item: UploadedRecitation, index: number) => {
-        SheetManager.show('upload-options', {
+        showSheet('upload-options', {
           payload: buildUploadOptions(item, index),
         });
       },
@@ -347,7 +348,7 @@ export const UploadsTabContent = React.forwardRef<
         // so closing it without saving left the new upload untagged, and it
         // vanished from the page it had just been added on.
         await updateTags(recitation.id, {reciterId});
-        SheetManager.show('organize-recitation', {
+        showSheet('organize-recitation', {
           payload: {
             recitation: {...recitation, reciterId},
             prefillReciterId: reciterId,
@@ -415,31 +416,22 @@ export const UploadsTabContent = React.forwardRef<
       [handleAddRecitation, theme.colors.textSecondary, styles, t],
     );
 
+    // @ai: the empty panel from the Collection screens, in Uploads' colour.
     const emptyState = useMemo(
       () => (
-        <View style={styles.emptyContainer}>
-          <Feather
-            name="mic"
-            size={moderateScale(40)}
-            color={theme.colors.textSecondary}
-          />
-          <Text style={styles.emptyTitle}>{t('uploads.emptyTitle')}</Text>
-          <Text style={styles.emptySubtitle}>{t('uploads.emptySubtitle')}</Text>
-          <Pressable
-            style={styles.emptyAddButton}
-            onPress={handleAddRecitation}>
-            <Feather
-              name="plus"
-              size={moderateScale(16)}
-              color={theme.colors.textSecondary}
-            />
-            <Text style={styles.addButtonText}>
-              {t('uploads.addRecitation')}
-            </Text>
-          </Pressable>
-        </View>
+        <CollectionEmptyPanel
+          category="uploads"
+          heading={t('uploads.emptyHeading')}
+          message={t('uploads.emptyMessage')}
+          link={{
+            label: t('uploads.addRecitation'),
+            onPress: handleAddRecitation,
+          }}
+          style={styles.emptyPanel}
+          ghostRows={1}
+        />
       ),
-      [handleAddRecitation, theme.colors.textSecondary, styles, t],
+      [handleAddRecitation, styles, t],
     );
 
     // Inline rendering mode: no FlatList, items rendered directly in parent ScrollView
@@ -614,23 +606,8 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(8),
       alignSelf: 'stretch' as const,
     },
-    emptyContainer: {
-      alignItems: 'center',
-      paddingVertical: moderateScale(40),
-      paddingHorizontal: moderateScale(20),
-      gap: moderateScale(8),
-    },
-    emptyTitle: {
-      fontSize: moderateScale(16),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
+    emptyPanel: {
       marginTop: moderateScale(8),
-    },
-    emptySubtitle: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
     },
     addButton: {
       flexDirection: 'row',
@@ -639,17 +616,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(12),
       marginBottom: moderateScale(8),
       marginHorizontal: moderateScale(16),
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      gap: moderateScale(8),
-    },
-    emptyAddButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      alignSelf: 'stretch',
-      paddingVertical: moderateScale(12),
-      marginTop: moderateScale(8),
       borderRadius: moderateScale(12),
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       gap: moderateScale(8),

@@ -18,11 +18,11 @@ import {Platform} from 'react-native';
 import type {SkParagraph} from '@shopify/react-native-skia';
 import {Gesture} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
-import {SheetManager} from 'react-native-actions-sheet';
 import type {DKLine} from '@/services/mushaf/DigitalKhattDataService';
 import {useRecitationTrackingStore} from '@/store/recitationTrackingStore';
 import {markAtChar} from './recitationTap';
 import {useVerseUnitDragSelect, type LineCharHit} from './verseUnitDragSelect';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 /** Where a page's text canvas sits in the page, and where its lines are. */
 export interface PageTextLayout {
@@ -191,7 +191,7 @@ export function usePageTextGestures(
         const mark =
           hit && line ? markAtChar(line, hit.charIndex, marks) : null;
         if (mark) {
-          void SheetManager.show('recitation-mistake', {payload: {mark}});
+          void showSheet('recitation-mistake', {payload: {mark}});
           return;
         }
       }

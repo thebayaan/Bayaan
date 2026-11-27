@@ -1,4 +1,6 @@
 import {Stack} from 'expo-router';
+import {tintedBackOptions} from '@/components/TintedHeader'; // @ai
+import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 // @ai-start
 import {useTranslation} from 'react-i18next';
 // @ai-end
@@ -21,12 +23,13 @@ const SCREEN_LAYOUT = capScreensExcept([
 export const unstable_settings = {initialRouteName: 'index'};
 
 // @ai-start
-export default function HomeLayout() {
+function HomeLayout() {
   const {t} = useTranslation('home');
   return (
     <Stack
       screenLayout={SCREEN_LAYOUT} // @ai
       screenOptions={{
+        ...tintedBackOptions, // @ai
         headerShown: true,
         freezeOnBlur: true,
         headerTransparent: true,
@@ -82,3 +85,5 @@ export default function HomeLayout() {
   );
 }
 // @ai-end
+
+export default withTabBarScrim(HomeLayout); // @ai

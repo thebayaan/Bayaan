@@ -18,8 +18,13 @@ import {
   FLOATING_UI_HORIZONTAL_MARGIN,
 } from '@/utils/constants';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
+import {useFloatingPillStyle} from '@/hooks/useFloatingPillStyle'; // @ai
 import {useResponsive} from '@/hooks/useResponsive';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -28,12 +33,17 @@ import {isActivelyPlaying} from '@/services/player/utils/isActivelyPlaying';
 // @ai-end
 
 const capsuleRadius = (height: number) => height / 2;
+// @ai: the capsule is the artwork plus this inset on every side, so the
+// round artwork is concentric with it (diameter = 2 * (radius - inset)).
+const ARTWORK_SIZE = moderateScale(36, 0.2);
+const ARTWORK_INSET = moderateScale(7, 0.2);
 
 // @ai-start
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
   const {t} = useTranslation(['player', 'common']);
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
   const queueTracks = usePlayerStore(state => state.queue.tracks);
@@ -84,25 +94,16 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     }
   }, [isLoadingTrack, isPlaying, pause, play]);
 
+  const pillStyle = useFloatingPillStyle(); // @ai
   const containerStyle = useMemo(
     () => ({
+      ...pillStyle,
       position: 'absolute' as const,
       bottom: getFloatingPlayerBottomPosition(insets.bottom),
       left: FLOATING_UI_HORIZONTAL_MARGIN,
       right: FLOATING_UI_HORIZONTAL_MARGIN,
-      borderRadius: moderateScale(100),
-      overflow: 'hidden' as const,
-      borderWidth: USE_GLASS ? 0 : 1,
-      borderColor: USE_GLASS
-        ? undefined
-        : Color(theme.colors.text).alpha(0.1).toString(),
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 8,
     }),
-    [theme.colors.text, insets.bottom],
+    [pillStyle, insets.bottom],
   );
 
   if (!shouldShow) return null;
@@ -118,7 +119,11 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     <Container
       style={containerStyle}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular' as const, colorScheme: glassColorScheme}
+        ? {
+            glassEffectStyle: 'regular' as const,
+            colorScheme: glassColorScheme,
+            tintColor: glassTint,
+          }
         : {})}>
       {/* a11y — the row is a plain View, not a grouping Pressable, so the
           play/pause control is INDIVIDUALLY focusable by TalkBack / VoiceOver
@@ -128,10 +133,12 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
         <View ref={anchorRef} style={styles.content}>
           <Pressable
             onPress={handlePress}
-            style={styles.body}
-            android_ripple={{color: 'rgba(0, 0, 0, 0.1)', borderless: false}}
+            // @ai: an opacity dip, not the Android ripple
+            style={({pressed}) => [styles.body, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel={`${getTrackDisplayTitle(currentTrack)}, ${getTrackArtistDisplay(currentTrack)}`}
+            accessibilityLabel={`${getTrackDisplayTitle(
+              currentTrack,
+            )}, ${getTrackArtistDisplay(currentTrack)}`}
             accessibilityHint={t('a11y.openPlayer')}>
             <ReciterImage
               reciterName={currentTrack.reciterName}
@@ -185,9 +192,15 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: moderateScale(14, 0.2),
-    paddingVertical: moderateScale(7, 0.2),
+    // The artwork sits as far from the start edge as from the top and
+    // bottom, so its circle shares the capsule's centre.
+    paddingStart: ARTWORK_INSET,
+    paddingEnd: moderateScale(14, 0.2),
+    paddingVertical: ARTWORK_INSET,
     gap: moderateScale(10, 0.2),
+  },
+  pressed: {
+    opacity: 0.6,
   },
   body: {
     // a11y — the expand-to-full-player hit target (artwork + track info). A row
@@ -200,9 +213,9 @@ const styles = StyleSheet.create({
     gap: moderateScale(10, 0.2),
   },
   artwork: {
-    width: moderateScale(36, 0.2),
-    height: moderateScale(36, 0.2),
-    borderRadius: moderateScale(8, 0.2),
+    width: ARTWORK_SIZE,
+    height: ARTWORK_SIZE,
+    borderRadius: ARTWORK_SIZE / 2,
     overflow: 'hidden',
     flexShrink: 0,
   },

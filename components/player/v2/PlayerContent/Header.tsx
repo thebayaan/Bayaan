@@ -1,7 +1,11 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {moderateScale} from '@/utils/scale';
 import {SymbolView} from 'expo-symbols';
@@ -30,13 +34,19 @@ const fallbackSurahNames: Record<number, string> = {};
 
 interface HeaderProps {
   onOptionsPress: () => void;
+  /** A native menu laid over the ••• button; it then takes the tap. */
+  optionsMenu?: React.ReactNode;
 }
 
-export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
+export const Header: React.FC<HeaderProps> = ({
+  onOptionsPress,
+  optionsMenu,
+}) => {
   const {theme} = useTheme();
   const a11y = usePlayerA11y(); // @ai
   const {isTablet} = useResponsive();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const {setSheetMode} = usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
 
@@ -144,6 +154,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
     ? {
         glassEffectStyle: 'regular' as const,
         colorScheme: glassColorScheme,
+        tintColor: glassTint,
         isInteractive: true,
       }
     : {};
@@ -187,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
         {...pillProps}>
         <Pressable
           style={styles.glassButtonInner}
-          onPress={onOptionsPress}
+          onPress={optionsMenu ? undefined : onOptionsPress}
           {...a11y.moreOptions}>
           {USE_GLASS ? (
             <SymbolView
@@ -203,6 +214,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
               color={theme.colors.text}
             />
           )}
+          {optionsMenu}
         </Pressable>
       </PillWrapper>
     </View>

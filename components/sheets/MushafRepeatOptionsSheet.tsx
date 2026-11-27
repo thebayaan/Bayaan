@@ -5,7 +5,7 @@ import {Ionicons} from '@expo/vector-icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetFooter} from './SheetGestures';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -15,6 +15,7 @@ import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
 import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -113,7 +114,7 @@ export const MushafRepeatOptionsSheet = (
     store.setRangeRepeatCount(rangeRepeat);
 
     const firstKey = `${surahNumber}:${fromAyah}`;
-    SheetManager.hide('mushaf-repeat-options');
+    hideSheet('mushaf-repeat-options');
     store.startPlayback(page, firstKey);
   }, [surahNumber, fromAyah, toAyah, rate, verseRepeat, rangeRepeat, page]);
 

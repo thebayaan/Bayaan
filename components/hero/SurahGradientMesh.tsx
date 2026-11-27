@@ -57,6 +57,8 @@ interface SurahGradientMeshProps {
   // the blob positions (they're % based).
   viewBoxWidth?: number;
   viewBoxHeight?: number;
+  /** Multiplies the blob opacities, for small tiles that need more colour. @ai */
+  intensity?: number;
 }
 
 /**
@@ -69,13 +71,14 @@ export function SurahGradientMesh({
   isDark,
   viewBoxWidth = 400,
   viewBoxHeight = 155,
+  intensity = 1, // @ai
 }: SurahGradientMeshProps): React.ReactElement {
   const uid = useId();
   const id = (n: number): string => `bayaan-mesh-${uid}-${n}`;
 
-  const mainOpacity = isDark ? 0.12 : 0.15;
-  const tertiaryOpacity = isDark ? 0.08 : 0.1;
-  const quaternaryOpacity = isDark ? 0.06 : 0.08;
+  const mainOpacity = Math.min(1, (isDark ? 0.12 : 0.15) * intensity);
+  const tertiaryOpacity = Math.min(1, (isDark ? 0.08 : 0.1) * intensity);
+  const quaternaryOpacity = Math.min(1, (isDark ? 0.06 : 0.08) * intensity);
 
   return (
     <Svg

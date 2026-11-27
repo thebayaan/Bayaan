@@ -15,11 +15,12 @@ import {
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet, {
   type AdaptiveActionSheetProps, // @ai
 } from '@/components/sheets/AdaptiveActionSheet';
 import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {qulDataService} from '@/services/mushaf/QulDataService';
@@ -40,6 +41,11 @@ import {
   ShareIcon,
 } from '@/components/Icons';
 import Color from 'color';
+import {
+  GROUPED_CARD_RADIUS,
+  SETTINGS_ROW_INSET,
+  groupedSeparatorColor,
+} from '@/components/settings/SettingsList'; // @ai
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 // @ai-start
@@ -124,6 +130,13 @@ import {
 } from '@/services/keyboard/keyCommands';
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 import {SheetScrollView} from './verse-actions/sheetGestures';
+import {
+  hideSheet as hideAnySheet,
+  showSheet,
+} from '@/components/sheets/sheetControl'; // @ai
+import {useNativeSheetLevel} from '@/components/native/nativeSheetContext'; // @ai
+import {setNativeSheetDetents} from '@/components/native/nativeSheets'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 const surahData = require('@/data/surahData.json');
 
@@ -253,6 +266,7 @@ const pendingStyles = StyleSheet.create({
 
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(30)); // @ai
   const {height: windowHeight} = useWindowDimensions(); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
@@ -289,11 +303,23 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setActiveScreenRaw(screen);
   }, []);
 
+  // @ai-start
+  // A native sheet sizes this view to its detent, so the menu fills it and
+  // scrolls instead of running past the bottom edge.
+  const nativeLevel = useNativeSheetLevel();
+  const inNativeSheet = nativeLevel !== null;
+  // Hides a native sheet too (sheetControl), resolving once it is gone.
+  const hideSheet = useCallback(
+    (): Promise<unknown> => hideAnySheet('verse-actions'),
+    [],
+  );
+  // @ai-end
+
   const hideCurrentSheet = useCallback(() => {
-    SheetManager.hide(props.sheetId).catch(error => {
+    hideSheet().catch(error => {
       console.warn('[VerseActionsSheet] Failed to hide sheet:', error);
     });
-  }, [props.sheetId]);
+  }, [hideSheet]);
 
   const payload = props.payload;
   const verseKey = payload?.verseKey ?? '';
@@ -459,12 +485,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     } catch (error) {
       console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
     }
-    await SheetManager.hide(props.sheetId);
+    await hideSheet();
   }, [
     readySelection, // @ai
     requireSelection, // @ai
     isBookmarked,
-    props.sheetId,
+    hideSheet,
   ]);
 
   const handleHighlight = useCallback(async () => {
@@ -534,7 +560,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           formatQuranCitation(ready.label, result.rewayah),
         ),
       );
-      await SheetManager.hide(props.sheetId);
+      await hideSheet();
     } finally {
       setIsCopying(false);
     }
@@ -546,7 +572,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     arabicTexts,
     resolvedRewayah,
     translationFor,
-    props.sheetId,
+    hideSheet,
   ]);
   // @ai-end
 
@@ -665,8 +691,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           pendingStartVerseKey: firstKey,
         });
         if (units) store.setPendingStart(units[0]); // @ai
-        await SheetManager.hide(props.sheetId);
-        SheetManager.show('mushaf-player-options', {
+        await hideSheet();
+        showSheet('mushaf-player-options', {
           payload: {currentPage: page},
         });
         return;
@@ -719,7 +745,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       hideCurrentSheet();
       store.startPlayback(page, units ? units[0] : firstKey); // @ai
     },
-    [readySelection, requireSelection, props.sheetId, hideCurrentSheet], // @ai
+    [readySelection, requireSelection, hideSheet, hideCurrentSheet], // @ai
   );
 
   const handlePlaySelection = useCallback(
@@ -743,9 +769,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleShowFollowAlong = useCallback(async () => {
     lightHaptics();
-    await SheetManager.hide(props.sheetId);
-    SheetManager.show('follow-along');
-  }, [props.sheetId]);
+    await hideSheet();
+    showSheet('follow-along');
+  }, [hideSheet]);
 
   const handlePlayerPlayFromHere = useCallback(async () => {
     lightHaptics();
@@ -778,6 +804,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     }
     // Every Hafs verse the reciter verse recites (Warsh 2:1 = Hafs 2:1 + 2:2)
     useTimestampStore.getState().setCurrentAyah(target.tracking);
+    // Scrolling to pick the verse turned follow-along off; playing from it
+    // turns it back on, so the verse is highlighted and followed. @ai
+    useTimestampStore.getState().setIsLocked(true);
     // @ai-end
 
     hideCurrentSheet();
@@ -815,7 +844,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       playerState.pause();
     }
 
-    await SheetManager.hide(props.sheetId);
+    await hideSheet();
     playerState.setSheetMode('hidden');
 
     useMushafPlayerStore.setState({pendingStartVerseKey: firstKey});
@@ -837,7 +866,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       },
     });
     // @ai-end
-  }, [readySelection, requireSelection, props.sheetId]); // @ai
+  }, [readySelection, requireSelection, hideSheet]); // @ai
 
   // @ai-start
   // Root search from Word Study: the root's ayahs in the sheet. Back returns
@@ -941,7 +970,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       // Close first and wait for it. Closing clears the mushaf selection
       // (handleOnClose), about 200 ms later: asked for before that, the
       // reader jumped to the page but the verse it had just lit went dark.
-      await SheetManager.hide(props.sheetId);
+      await hideSheet();
       if (isReaderOpen()) {
         // From the full player, the open reader is under it: close the player
         // too, or the reader jumps and flashes the verse out of sight.
@@ -964,8 +993,23 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         params: {page: String(page), surah, ayah},
       });
     },
-    [props.sheetId, source],
+    [hideSheet, source],
   );
+  // @ai-end
+
+  // @ai-start
+  // In a native sheet the menu, Highlight and Share size the sheet to
+  // themselves; the full-screen views, the similar-verse lists and the note
+  // (keyboard) take full height.
+  const needsFullHeight =
+    activeScreen !== null &&
+    activeScreen !== 'highlight' &&
+    activeScreen !== 'share';
+  const nativeKey = nativeLevel?.key;
+  useEffect(() => {
+    if (nativeKey === undefined) return;
+    setNativeSheetDetents(nativeKey, needsFullHeight ? ['large'] : null);
+  }, [nativeKey, needsFullHeight]);
   // @ai-end
 
   if (!payload) return null;
@@ -991,7 +1035,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       gestureEnabled={true}
       onRequestClose={handleRequestClose} // @ai
       onClose={handleOnClose}>
-      <View style={[styles.container, activeScreen && {flex: 1}]}>
+      <View
+        style={[
+          styles.container,
+          // @ai: in a native sheet the menu scrolls to the screen edge and
+          // ends with the inset itself (below); the container adds nothing.
+          {paddingBottom: inNativeSheet ? 0 : sheetBottomPadding},
+          activeScreen && (!inNativeSheet || needsFullHeight) && {flex: 1},
+        ]}>
         {/* @ai-start: Word Study only names no verse: no header, no menu */}
         {!activeScreen && !wordStudyOnly && (
           <View style={styles.header}>
@@ -1017,8 +1068,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   pressed && {opacity: 0.6},
                 ]}
                 hitSlop={8}>
-                <Feather
-                  name="chevron-left"
+                <BackIcon
                   size={moderateScale(16)}
                   color={theme.colors.text}
                   style={flipX}
@@ -1067,74 +1117,82 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 style={isFullScreen ? {flex: 1} : undefined}
               />
             ) : isFullScreen ? (
-              <View style={{flex: 1}}>
-                {activeScreen === 'translation' && (
-                  <TranslationContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'tafseer' && (
-                  <TafseerContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'theme' && (
-                  <ThemeContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    unitStart={unitStart}
-                    onBack={handleBack}
-                  />
-                )}
-                {activeScreen === 'wbw' && (
-                  <WBWContent
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    rewayah={resolvedRewayah}
-                    unitStart={unitStart}
-                    onOpenWord={handleOpenWord} // @ai
-                    onBack={handleBack}
-                  />
-                )}
-                {/* @ai-start */}
-                {/* The selected verses' words, in the sheet's rewayah
+              <View style={styles.screenSlot}>
+                {/* @ai: the screen fills the slot exactly, whatever its
+                    content's height, so its list scrolls and its footer
+                    stays on screen (long verses pushed it off before). */}
+                <View style={StyleSheet.absoluteFill}>
+                  {activeScreen === 'translation' && (
+                    <TranslationContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      rewayah={resolvedRewayah}
+                      unitStart={unitStart}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'tafseer' && (
+                    <TafseerContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      rewayah={resolvedRewayah}
+                      unitStart={unitStart}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'theme' && (
+                    <ThemeContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      unitStart={unitStart}
+                      onBack={handleBack}
+                    />
+                  )}
+                  {activeScreen === 'wbw' && (
+                    <WBWContent
+                      surahNumber={surahNumber}
+                      ayahNumber={ayahNumber}
+                      rewayah={resolvedRewayah}
+                      unitStart={unitStart}
+                      onOpenWord={handleOpenWord} // @ai
+                      onBack={handleBack}
+                    />
+                  )}
+                  {/* @ai-start */}
+                  {/* The selected verses' words, in the sheet's rewayah
                     (another rewayah steps through its Hafs words), or Word
                     Study only's words. A root opens root search below. */}
-                {activeScreen === 'words' && wordStudy && (
-                  <WordStudyContent
-                    study={wordStudy}
-                    initialWord={wordTarget}
-                    onRootPress={handleRootPress}
-                  />
-                )}
-                {activeScreen === 'root' && rootTarget && (
-                  <RootSearchContent
-                    sheetId={props.sheetId}
-                    root={rootTarget.root}
-                    initialLemma={rootTarget.lemma ?? undefined}
-                    rewayah={resolvedRewayah}
-                  />
-                )}
-                {/* @ai-end */}
-                {activeScreen === 'community-reflections' && readySelection && (
-                  // Reflections are per Hafs verse: the one holding the
-                  // verse's first word; the badge is the verse's own label.
-                  <CommunityReflectionsContent
-                    surahNumber={readySelection.linkVerse.surah}
-                    ayahNumber={readySelection.linkVerse.ayah}
-                    label={
-                      readySelection.units ? readySelection.label : undefined
-                    }
-                  />
-                )}
+                  {activeScreen === 'words' && wordStudy && (
+                    <WordStudyContent
+                      study={wordStudy}
+                      initialWord={wordTarget}
+                      onRootPress={handleRootPress}
+                    />
+                  )}
+                  {activeScreen === 'root' && rootTarget && (
+                    <RootSearchContent
+                      sheetId={props.sheetId}
+                      root={rootTarget.root}
+                      initialLemma={rootTarget.lemma ?? undefined}
+                      rewayah={resolvedRewayah}
+                    />
+                  )}
+                  {/* @ai-end */}
+                  {activeScreen === 'community-reflections' &&
+                    readySelection && (
+                      // Reflections are per Hafs verse: the one holding the
+                      // verse's first word; the badge is the verse's own label.
+                      <CommunityReflectionsContent
+                        surahNumber={readySelection.linkVerse.surah}
+                        ayahNumber={readySelection.linkVerse.ayah}
+                        label={
+                          readySelection.units
+                            ? readySelection.label
+                            : undefined
+                        }
+                      />
+                    )}
+                </View>
               </View>
             ) : readySelection ? (
               <>
@@ -1164,16 +1222,27 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   />
                 )}
                 {isSimilar && qulKey && (
-                  <SimilarVersesContent
-                    verseKey={qulKey}
-                    surahNumber={surahNumber}
-                    ayahNumber={ayahNumber}
-                    section={activeScreen === 'similar' ? 'similar' : 'phrases'}
-                    rewayah={resolvedRewayah} // @ai
-                    onDone={handleDismiss}
-                    hafsReferences={resolvedRewayah !== 'hafs'}
-                    onOpenVerse={handleOpenVerseInReader}
-                  />
+                  // @ai: in a native sheet it fills its slot exactly, as the
+                  // full screens do
+                  <View style={inNativeSheet ? styles.screenSlot : undefined}>
+                    <View
+                      style={
+                        inNativeSheet ? StyleSheet.absoluteFill : undefined
+                      }>
+                      <SimilarVersesContent
+                        verseKey={qulKey}
+                        surahNumber={surahNumber}
+                        ayahNumber={ayahNumber}
+                        section={
+                          activeScreen === 'similar' ? 'similar' : 'phrases'
+                        }
+                        rewayah={resolvedRewayah} // @ai
+                        onDone={handleDismiss}
+                        hafsReferences={resolvedRewayah !== 'hafs'}
+                        onOpenVerse={handleOpenVerseInReader}
+                      />
+                    </View>
+                  </View>
                 )}
               </>
             ) : null}
@@ -1182,15 +1251,15 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         ) : wordStudyOnly ? null /* @ai — never the verse menu */ : (
           <SheetScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{paddingBottom: moderateScale(10)}}>
+            contentContainerStyle={{
+              paddingBottom:
+                moderateScale(10) + (inNativeSheet ? sheetBottomPadding : 0),
+            }}>
             {/* LISTEN */}
             <View style={styles.card}>
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={
                   source === 'player'
                     ? isCurrentTrackTimestamped()
@@ -1208,10 +1277,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={
                   source === 'player'
                     ? isCurrentTrackTimestamped()
@@ -1233,10 +1299,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             <View style={styles.card}>
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleToggleBookmark}>
                 <Feather
                   name={isBookmarked ? 'minus-circle' : 'bookmark'}
@@ -1252,10 +1315,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleHighlight}>
                 {isHighlighted ? (
                   <Feather
@@ -1278,10 +1338,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleNote}>
                 <PageQuillIcon
                   size={moderateScale(18)}
@@ -1297,10 +1354,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             <View style={styles.card}>
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleTranslation}>
                 <MaterialCommunityIcons
                   name="translate"
@@ -1316,10 +1370,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleTafseer}>
                     <StackedVolumesIcon
                       size={moderateScale(18)}
@@ -1336,10 +1387,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleTheme}>
                     <GroupedLinesIcon
                       size={moderateScale(18)}
@@ -1356,10 +1404,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleWBW}>
                     <BreakdownIcon
                       size={moderateScale(18)}
@@ -1377,10 +1422,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button"
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleWordStudy}>
                 <MaterialCommunityIcons
                   name="file-tree-outline"
@@ -1401,10 +1443,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleCommunityReflections}>
                     <MaterialCommunityIcons
                       name="comment-quote-outline"
@@ -1422,10 +1461,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleSimilarVerses}>
                     <MirrorWavesIcon
                       size={moderateScale(18)}
@@ -1442,10 +1478,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <View style={styles.divider} />
                   <Pressable
                     accessibilityRole="button" // @ai
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
+                    style={[styles.option]}
                     onPress={handleSharedPhrases}>
                     <ChainLinksIcon
                       size={moderateScale(18)}
@@ -1463,10 +1496,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             <View style={styles.card}>
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleCopy}
                 // @ai-start
                 disabled={isCopying}
@@ -1491,10 +1521,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               <View style={styles.divider} />
               <Pressable
                 accessibilityRole="button" // @ai
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
+                style={[styles.option]}
                 onPress={handleShare}>
                 <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
                 <Text style={styles.optionText}>
@@ -1527,6 +1554,7 @@ const createStyles = (theme: Theme) =>
       width: moderateScale(40),
       height: 2.5,
     },
+    screenSlot: {flex: 1}, // @ai
     container: {
       paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(30),
@@ -1549,28 +1577,28 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textTertiary,
       textAlign: 'center',
     },
+    // @ai-start: the grouped panel look the Mushaf settings sheet uses
     card: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(12),
+      backgroundColor: theme.isDarkMode
+        ? Color('#ffffff').alpha(0.07).toString()
+        : Color(theme.colors.text).alpha(0.05).toString(),
+      borderRadius: GROUPED_CARD_RADIUS,
+      borderCurve: 'continuous',
       overflow: 'hidden',
-      marginBottom: moderateScale(8),
+      marginBottom: moderateScale(12),
     },
     divider: {
-      height: 1,
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      marginHorizontal: moderateScale(14),
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: groupedSeparatorColor(theme),
+      marginHorizontal: SETTINGS_ROW_INSET,
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(11),
-      paddingHorizontal: moderateScale(14),
+      paddingVertical: moderateScale(12),
+      paddingHorizontal: SETTINGS_ROW_INSET,
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
+    // @ai-end
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),

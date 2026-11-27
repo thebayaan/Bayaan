@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useMemo} from 'react'; // @ai
+import React, {useCallback, useRef, useMemo, useState} from 'react'; // @ai
 import {
   View,
   Text,
@@ -8,11 +8,11 @@ import {
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {useLocalSearchParams} from 'expo-router'; // @ai
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
-import {ReciterDownloadsListItem} from '@/components/ReciterDownloadsListItem';
 import {DownloadedSurah} from '@/services/player/store/downloadStore';
 import {
   useDownloadActions,
@@ -25,8 +25,9 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createDownloadedTrack} from '@/utils/track';
 import {moderateScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
-import {DownloadIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
-import {SheetManager} from 'react-native-actions-sheet';
+import {PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {BackIcon} from '@/components/ActionIcons'; // @ai
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-start
 import {confirmDestructive} from '@/utils/confirmDestructive';
 // @ai-end
@@ -35,8 +36,16 @@ import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 // @ai-start
-import {flipX, forceLTR, latinLetterSpacing} from '@/utils/rtl';
+import {flipX, latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
+import {CollectionEmptyState} from '@/components/collection/CollectionEmptyState'; // @ai
+import {
+  PANEL_ART_RADIUS,
+  PANEL_ART_SIZE,
+  PANEL_MARGIN,
+  PANEL_ROW_PADDING,
+  PanelRow,
+} from '@/components/collection/CollectionPanel'; // @ai
 import {getReciterDisplayName} from '@/i18n/format';
 import {useLibraryListBottomPadding} from '@/hooks/useBottomInset'; // @ai
 import {useIsStackRoot} from '@/components/tablet/useIsStackRoot'; // @ai
@@ -50,6 +59,26 @@ import {
   DownloadOptionsMenu,
   type DownloadOptionsPayload,
 } from '@/components/sheets/options/downloadOptions';
+import {
+  CollectionHeaderActions,
+  CollectionScreenHeader,
+  CollectionSearchField,
+} from '@/components/collection/CollectionScreenHeader';
+import {SurahCover} from '@/components/collection/CollectionArt';
+import {
+  CollectionGridTile,
+  GRID_GAP,
+  GRID_PADDING,
+  useGridTileWidth,
+} from '@/components/collection/CollectionGridTile';
+import {NativeSegmentedControl} from '@/components/native/NativeSegmentedControl';
+import {ReciterImage} from '@/components/ReciterImage';
+import {
+  useCollectionViewPref,
+  useCollectionViewStore,
+} from '@/store/collectionViewStore';
+import {getSurahDisplayName, localizeDigits} from '@/i18n/format';
+import {matchesQuery} from '@/utils/collectionSearch';
 // @ai-end
 // @ai-end
 
@@ -59,12 +88,25 @@ interface DownloadDataItem {
   surah: Surah | null;
 }
 
-interface GroupedItem {
-  type: 'single' | 'group';
-  reciterId: string;
-  downloadData?: DownloadDataItem;
-  downloadCount?: number;
-}
+// @ai-start
+/** One row or tile of the list, in either grouping and either view. */
+type GroupedItem =
+  | {
+      type: 'reciter';
+      reciterId: string;
+      reciter: Reciter | null;
+      count: number;
+      bytes: number;
+    }
+  | {
+      type: 'track';
+      downloadData: DownloadDataItem;
+      inGroup: boolean;
+      /** Ends of its rounded panel in the list view. */
+      first: boolean;
+      last: boolean;
+    };
+// @ai-end
 
 // @ai-start
 export default function DownloadsScreen() {
@@ -101,6 +143,74 @@ export default function DownloadsScreen() {
   const nativeMenus = useNativeOptionsMenu(); // @ai
 
   // @ai-start
+  const {view, sort} = useCollectionViewPref('downloads');
+  const grouping = useCollectionViewStore(s => s.downloadsGrouping);
+  const setGrouping = useCollectionViewStore(s => s.setDownloadsGrouping);
+  // @ai A search typed on the Collection tab arrives as `q`.
+  const {q: initialQuery} = useLocalSearchParams<{q?: string}>(); // @ai
+  const [searching, setSearching] = useState(Boolean(initialQuery));
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const reciterTileWidth = useGridTileWidth(3);
+  const surahTileWidth = useGridTileWidth(3);
+  const formatSize = useCallback(
+    (bytes: number) =>
+      bytes >= 1024 * 1024 * 1024
+        ? t('collectionScreen.summary.sizeGB', {
+            size: localizeDigits((bytes / (1024 * 1024 * 1024)).toFixed(1)),
+          })
+        : t('collectionScreen.summary.sizeMB', {
+            size: localizeDigits(
+              Math.max(1, Math.round(bytes / (1024 * 1024))),
+            ),
+          }),
+    [t],
+  );
+  // The order picked in the view and sort menu; Play all follows it.
+  const sortedData = useMemo(() => {
+    const list = [...downloadData];
+    if (sort === 'surah') {
+      list.sort(
+        (a, b) =>
+          Number(a.download.surahId) - Number(b.download.surahId) ||
+          (a.reciter ? getReciterDisplayName(a.reciter) : '').localeCompare(
+            b.reciter ? getReciterDisplayName(b.reciter) : '',
+          ),
+      );
+    } else if (sort === 'size') {
+      list.sort(
+        (a, b) => (b.download.fileSize || 0) - (a.download.fileSize || 0),
+      );
+    } else {
+      list.sort(
+        (a, b) =>
+          (b.download.downloadDate || 0) - (a.download.downloadDate || 0),
+      );
+    }
+    return list;
+  }, [downloadData, sort]);
+  const visibleData = useMemo(
+    () =>
+      searching && query.trim()
+        ? sortedData.filter(d =>
+            matchesQuery(query, [
+              d.surah ? getSurahDisplayName(d.surah) : '',
+              d.surah?.name,
+              d.surah?.translated_name_english,
+              d.reciter ? getReciterDisplayName(d.reciter) : '',
+              d.reciter?.name,
+              d.download.surahId,
+            ]),
+          )
+        : sortedData,
+    [sortedData, searching, query],
+  );
+  const totalBytes = useMemo(
+    () => downloads.reduce((sum, d) => sum + (d.fileSize || 0), 0),
+    [downloads],
+  );
+  // @ai-end
+
+  // @ai-start
   const optionsPayload = useMemo<CollectionOptionsPayload>(
     () => ({
       title: t('common:terms.downloads'),
@@ -129,22 +239,33 @@ export default function DownloadsScreen() {
   );
 
   const handleOptionsMenu = useCallback(() => {
-    SheetManager.show('collection-options', {payload: optionsPayload});
+    showSheet('collection-options', {payload: optionsPayload});
   }, [optionsPayload]);
 
   const renderHeaderRight = useCallback(
-    () => (
-      <CollectionOptionsMenu payload={optionsPayload}>
-        <Pressable onPress={handleOptionsMenu} hitSlop={8}>
-          <Feather
-            name="more-horizontal"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </CollectionOptionsMenu>
-    ),
-    [optionsPayload, handleOptionsMenu, theme.colors.text],
+    () =>
+      searching ? null : (
+        <CollectionHeaderActions
+          screen="downloads"
+          onSearch={() => setSearching(true)}
+          extra={
+            <CollectionOptionsMenu payload={optionsPayload}>
+              <Pressable
+                onPress={handleOptionsMenu}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('collectionScreen.actions.moreOptions')}>
+                <Feather
+                  name="more-horizontal"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+            </CollectionOptionsMenu>
+          }
+        />
+      ),
+    [optionsPayload, handleOptionsMenu, theme.colors.text, searching],
   );
   // @ai-end
 
@@ -162,6 +283,33 @@ export default function DownloadsScreen() {
           flex: 1,
           backgroundColor: theme.colors.background,
         },
+        // @ai-start
+        groupHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: moderateScale(12),
+          // Lines up with the rows' artwork; about 35pt between panels.
+          paddingHorizontal: PANEL_MARGIN + PANEL_ROW_PADDING,
+          paddingTop: moderateScale(28),
+          paddingBottom: moderateScale(8),
+        },
+        groupFace: {
+          width: moderateScale(40),
+          height: moderateScale(40),
+          borderRadius: moderateScale(20),
+        },
+        groupName: {
+          fontSize: moderateScale(16),
+          fontFamily: theme.fonts.bold,
+          color: theme.colors.text,
+        },
+        groupMeta: {
+          fontSize: moderateScale(12),
+          fontFamily: theme.fonts.medium,
+          color: theme.colors.textSecondary,
+          marginTop: moderateScale(1),
+        },
+        // @ai-end
         headerContainer: {
           width: '100%',
           overflow: 'hidden',
@@ -305,35 +453,66 @@ export default function DownloadsScreen() {
     [theme, insets.top],
   );
 
-  const groupedItems = useMemo(() => {
+  // @ai-start
+  const groupedItems = useMemo<GroupedItem[]>(() => {
+    if (grouping === 'surah') {
+      return visibleData.map((downloadData, i) => ({
+        type: 'track',
+        downloadData,
+        inGroup: false,
+        first: i === 0,
+        last: i === visibleData.length - 1,
+      }));
+    }
+    // By reciter: a heading (or tile) for each reciter, its surahs under
+    // it in the list. Reciters keep the order of their first surah in the
+    // sort, so "Size" puts the reciter whose downloads are largest first.
+    const order: string[] = [];
     const byReciter: Record<string, DownloadDataItem[]> = {};
-    for (const item of downloadData) {
+    for (const item of visibleData) {
       const rid = item.download.reciterId;
       if (!byReciter[rid]) {
         byReciter[rid] = [];
+        order.push(rid);
       }
       byReciter[rid].push(item);
     }
-
+    if (sort === 'size') {
+      const size = (rid: string) =>
+        byReciter[rid].reduce((n, d) => n + (d.download.fileSize || 0), 0);
+      order.sort((a, b) => size(b) - size(a));
+    } else if (sort === 'surah') {
+      const name = (rid: string) => {
+        const r = byReciter[rid][0].reciter;
+        return r ? getReciterDisplayName(r) : rid;
+      };
+      order.sort((a, b) => name(a).localeCompare(name(b)));
+    }
     const items: GroupedItem[] = [];
-    for (const [reciterId, reciterDownloads] of Object.entries(byReciter)) {
-      if (reciterDownloads.length === 1) {
-        items.push({
-          type: 'single',
-          reciterId,
-          downloadData: reciterDownloads[0],
-        });
-      } else {
-        items.push({
-          type: 'group',
-          reciterId,
-          downloadCount: reciterDownloads.length,
-        });
+    for (const rid of order) {
+      const group = byReciter[rid];
+      items.push({
+        type: 'reciter',
+        reciterId: rid,
+        reciter: group[0].reciter,
+        count: group.length,
+        bytes: group.reduce((n, d) => n + (d.download.fileSize || 0), 0),
+      });
+      if (view === 'list') {
+        group.forEach((downloadData, i) =>
+          items.push({
+            type: 'track',
+            downloadData,
+            inGroup: true,
+            first: i === 0,
+            last: i === group.length - 1,
+          }),
+        );
       }
     }
-
     return items;
-  }, [downloadData]);
+  }, [visibleData, grouping, view, sort]);
+  // @ai-end
 
   const handleSurahPress = useCallback(
     async (download: DownloadedSurah, reciter: Reciter, surah: Surah) => {
@@ -393,7 +572,7 @@ export default function DownloadsScreen() {
 
   const handleShowOptions = useCallback(
     (download: DownloadedSurah, reciter: Reciter, surah: Surah) => {
-      SheetManager.show('download-options', {
+      showSheet('download-options', {
         payload: buildDownloadOptions(download, reciter, surah),
       });
     },
@@ -473,7 +652,7 @@ export default function DownloadsScreen() {
 
   const handleReciterGroupOptions = useCallback(
     (reciterId: string) => {
-      SheetManager.show('collection-options', {
+      showSheet('collection-options', {
         payload: buildReciterGroupOptions(reciterId),
       });
     },
@@ -536,172 +715,223 @@ export default function DownloadsScreen() {
   const hasDownloads = downloadData.length > 0;
 
   if (downloads.length === 0) {
+    // @ai The empty screen keeps the full screen's frame.
     return (
-      <View style={styles.container}>
-        {!USE_GLASS && (
-          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-            {/* @ai-start */}
-            {isStackRoot ? (
-              <View style={styles.emptyHeaderBack} />
-            ) : (
-              <Pressable
-                style={styles.emptyHeaderBack}
-                onPress={() => router.back()}
-                hitSlop={8}>
-                <Feather
-                  name="arrow-left"
-                  size={moderateScale(22)}
-                  color={theme.colors.text}
-                  style={flipX}
-                />
-              </Pressable>
-            )}
-            {/* @ai-end */}
-            <Text style={styles.emptyHeaderTitle}>
-              {t('common:terms.downloads')}
-            </Text>
-            <View style={styles.emptyHeaderBack} />
-          </View>
-        )}
-        <View style={styles.emptyContent}>
-          <View style={styles.emptyIcon}>
-            <DownloadIcon
-              color={theme.colors.textSecondary}
-              size={moderateScale(48)}
-              filled={true}
-            />
-          </View>
-          <Text style={styles.emptyTitle}>
-            {t('collectionScreen.empty.downloads')}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {t('downloadsScreen.emptySubtitle')}
-          </Text>
-        </View>
-      </View>
+      <CollectionEmptyState
+        category="downloads"
+        title={t('common:terms.downloads')}
+        meta={t('collectionScreen.emptyState.downloads.meta')}
+        heading={t('collectionScreen.emptyState.downloads.heading')}
+        message={t('collectionScreen.emptyState.downloads.message')}
+        showBack={!isStackRoot}
+        link={{
+          label: t('collectionScreen.emptyState.downloads.link'),
+          onPress: () => router.push('/(tabs)/(b.surahs)' as never),
+        }}
+      />
     );
   }
 
-  const ListHeaderComponent = () => {
-    return (
-      <View style={styles.headerContainer}>
-        <View style={styles.contentArea}>
-          <View style={styles.contentCenter}>
-            <View style={styles.heroIconContainer}>
-              <View style={styles.heroIconInner}>
-                <DownloadIcon
-                  color={theme.colors.text}
-                  size={moderateScale(30)}
-                  filled={true}
-                />
-              </View>
-            </View>
-            <Text style={styles.title}>{t('common:terms.downloads')}</Text>
-            <Text style={styles.subtitle}>
-              {t('downloadsScreen.surahsDownloaded', {count: downloads.length})}
+  // @ai-start
+  const groupingControl = (
+    <NativeSegmentedControl
+      values={[
+        t('collectionScreen.downloads.allSurahs'),
+        t('collectionScreen.downloads.byReciter'),
+      ]}
+      selectedIndex={grouping === 'surah' ? 0 : 1}
+      onChange={index => setGrouping(index === 0 ? 'surah' : 'reciter')}
+      accessibilityLabel={t('collectionScreen.downloads.groupingLabel')}
+      style={{marginTop: moderateScale(14), height: moderateScale(34)}}
+    />
+  );
+  const listHeader = searching ? (
+    <View
+      style={{
+        paddingHorizontal: GRID_PADDING,
+        paddingTop: USE_GLASS ? moderateScale(8) : insets.top + 8,
+        paddingBottom: moderateScale(12),
+      }}>
+      <CollectionSearchField
+        value={query}
+        onChangeText={setQuery}
+        onCancel={() => {
+          setSearching(false);
+          setQuery('');
+        }}
+        placeholder={t('collectionScreen.search.placeholderIn', {
+          name: t('common:terms.downloads'),
+        })}
+        resultLabel={
+          query.trim()
+            ? t('collectionScreen.search.matches', {count: visibleData.length})
+            : undefined
+        }
+      />
+      {groupingControl}
+    </View>
+  ) : (
+    <CollectionScreenHeader
+      category="downloads"
+      preview={null}
+      title={t('common:terms.downloads')}
+      meta={t('collectionScreen.meta.pair', {
+        a: t('common:counts.surahs', {count: downloads.length}),
+        b: formatSize(totalBytes),
+      })}
+      primary={{
+        label: t('collectionScreen.actions.playAll'),
+        icon: (
+          <PlayIcon color={theme.colors.background} size={moderateScale(15)} />
+        ),
+        onPress: handlePlayAll,
+        disabled: !hasDownloads,
+      }}
+      secondary={[
+        {
+          label: t('common:actions.shuffle'),
+          icon: (
+            <ShuffleIcon color={theme.colors.text} size={moderateScale(15)} />
+          ),
+          onPress: handleShuffle,
+          disabled: !hasDownloads,
+        },
+      ]}
+      actions={renderHeaderRight()}>
+      {groupingControl}
+    </CollectionScreenHeader>
+  );
+  // @ai-end
+
+  // @ai-start
+  const renderItem: ListRenderItem<GroupedItem> = ({item}) => {
+    if (item.type === 'reciter') {
+      const name = item.reciter
+        ? getReciterDisplayName(item.reciter)
+        : item.reciterId;
+      const subtitle = t('collectionScreen.meta.pair', {
+        a: t('common:counts.surahs', {count: item.count}),
+        b: formatSize(item.bytes),
+      });
+      const open = () =>
+        router.push(`/collection/reciter-downloads/${item.reciterId}`);
+      if (view === 'grid') {
+        return (
+          <CollectionGridTile
+            width={reciterTileWidth}
+            art={
+              <ReciterImage
+                imageUrl={item.reciter?.image_url ?? undefined}
+                reciterName={item.reciter?.name ?? ''}
+                style={{
+                  width: reciterTileWidth,
+                  height: reciterTileWidth,
+                  borderRadius: moderateScale(18),
+                }}
+                profileIconSize={reciterTileWidth * 0.3}
+              />
+            }
+            title={name}
+            subtitle={subtitle}
+            onPress={open}
+            onLongPress={() => handleReciterGroupOptions(item.reciterId)}
+          />
+        );
+      }
+      return (
+        <Pressable
+          onPress={open}
+          onLongPress={() => handleReciterGroupOptions(item.reciterId)}
+          accessibilityRole="button"
+          accessibilityLabel={`${name}, ${subtitle}`}
+          style={({pressed}) => [
+            styles.groupHeader,
+            pressed && {opacity: 0.6},
+          ]}>
+          <ReciterImage
+            imageUrl={item.reciter?.image_url ?? undefined}
+            reciterName={item.reciter?.name ?? ''}
+            style={styles.groupFace}
+            profileIconSize={moderateScale(16)}
+          />
+          <View style={{flex: 1, minWidth: 0}}>
+            <Text style={styles.groupName} numberOfLines={1}>
+              {name}
+            </Text>
+            <Text style={styles.groupMeta} numberOfLines={1}>
+              {subtitle}
             </Text>
           </View>
-        </View>
-
-        <View style={[styles.actionButtons, forceLTR]}>
-          {!USE_GLASS && (
-            <Pressable
-              style={[
-                styles.circleButton,
-                !hasDownloads && styles.disabledButton,
-              ]}
-              onPress={hasDownloads ? handleOptionsMenu : undefined}
-              disabled={!hasDownloads}>
-              <Feather
-                name="more-horizontal"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              {hasDownloads && (
-                <CollectionOptionsMenu
-                  payload={optionsPayload}
-                  layout="overlay"
-                />
-              )}
-            </Pressable>
-          )}
-          <Pressable
-            style={[
-              styles.circleButton,
-              styles.playButton,
-              !hasDownloads && styles.disabledButton,
-            ]}
-            onPress={hasDownloads ? handlePlayAll : undefined}
-            disabled={!hasDownloads}>
-            <View style={styles.playIconContainer}>
-              <PlayIcon
-                color={theme.colors.background}
-                size={moderateScale(16)}
-              />
-            </View>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.circleButton,
-              !hasDownloads && styles.disabledButton,
-            ]}
-            onPress={hasDownloads ? handleShuffle : undefined}
-            disabled={!hasDownloads}>
-            <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-          </Pressable>
-        </View>
-      </View>
-    );
-  };
-
-  const renderItem: ListRenderItem<GroupedItem> = ({item}) => {
-    if (item.type === 'group') {
-      return (
-        <ReciterDownloadsListItem
-          reciterId={item.reciterId}
-          downloadCount={item.downloadCount!}
-          onPress={() =>
-            router.push(`/collection/reciter-downloads/${item.reciterId}`)
-          }
-          onOptionsPress={() => handleReciterGroupOptions(item.reciterId)}
-          onLongPress={() => handleReciterGroupOptions(item.reciterId)}
-          optionsMenu={
-            nativeMenus ? (
-              <CollectionOptionsMenu
-                payload={buildReciterGroupOptions(item.reciterId)}
-                layout="overlay"
-              />
-            ) : undefined
-          }
-        />
+          <Feather
+            name="chevron-right"
+            size={moderateScale(18)}
+            color={theme.colors.textSecondary}
+            style={flipX}
+          />
+        </Pressable>
       );
     }
 
-    const {download, reciter, surah} = item.downloadData!;
+    const {download, reciter, surah} = item.downloadData;
 
     if (!reciter || !surah) {
       return null;
     }
 
-    return (
-      <TrackItem
-        reciterId={download.reciterId}
-        surahId={download.surahId}
-        rewayatId={download.rewayatId}
-        onPress={() => handleSurahPress(download, reciter, surah)}
-        onPlayPress={() => handleSurahPress(download, reciter, surah)}
-        onOptionsPress={() => handleShowOptions(download, reciter, surah)}
-        onLongPress={() => handleShowOptions(download, reciter, surah)}
-        optionsMenu={
-          nativeMenus ? (
-            <DownloadOptionsMenu
-              payload={buildDownloadOptions(download, reciter, surah)}
+    if (view === 'grid') {
+      return (
+        <CollectionGridTile
+          width={surahTileWidth}
+          art={
+            <SurahCover
+              surahId={surah.id}
+              size={surahTileWidth}
+              radius={moderateScale(14)}
             />
-          ) : undefined
-        }
-      />
+          }
+          title={getSurahDisplayName(surah)}
+          subtitle={getReciterDisplayName(reciter)}
+          onPress={() => handleSurahPress(download, reciter, surah)}
+          onLongPress={() => handleShowOptions(download, reciter, surah)}
+        />
+      );
+    }
+
+    return (
+      <PanelRow first={item.first} last={item.last}>
+        <TrackItem
+          transparent
+          // Under its reciter's heading the name would repeat. @ai
+          hideReciterName={item.inGroup}
+          reciterId={download.reciterId}
+          surahId={download.surahId}
+          rewayatId={download.rewayatId}
+          // The cover already says which surah it is. @ai
+          art={
+            <SurahCover
+              surahId={surah.id}
+              size={PANEL_ART_SIZE}
+              radius={PANEL_ART_RADIUS}
+            />
+          }
+          showSurahNumber={false}
+          onPress={() => handleSurahPress(download, reciter, surah)}
+          onPlayPress={() => handleSurahPress(download, reciter, surah)}
+          onOptionsPress={() => handleShowOptions(download, reciter, surah)}
+          onLongPress={() => handleShowOptions(download, reciter, surah)}
+          optionsMenu={
+            nativeMenus ? (
+              <DownloadOptionsMenu
+                payload={buildDownloadOptions(download, reciter, surah)}
+              />
+            ) : undefined
+          }
+        />
+      </PanelRow>
     );
   };
+  const columns = view === 'grid' ? 3 : 1;
+  // @ai-end
 
   return (
     <View style={styles.container}>
@@ -719,8 +949,7 @@ export default function DownloadsScreen() {
             },
           ]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather
-              name="arrow-left"
+            <BackIcon
               size={moderateScale(24)}
               color={theme.colors.text}
               style={flipX}
@@ -730,14 +959,29 @@ export default function DownloadsScreen() {
       )}
 
       <RNAnimated.FlatList
+        key={`${grouping}-${view}`} // @ai columns can't change in place
         data={groupedItems}
         renderItem={renderItem}
+        // @ai-start
         keyExtractor={item =>
-          item.type === 'group'
-            ? `group-${item.reciterId}`
-            : `single-${item.reciterId}-${item.downloadData!.download.surahId}`
+          item.type === 'reciter'
+            ? `reciter-${item.reciterId}`
+            : `track-${item.downloadData.download.reciterId}-${item.downloadData.download.surahId}-${item.downloadData.download.rewayatId}`
         }
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={listHeader}
+        numColumns={columns}
+        columnWrapperStyle={
+          columns > 1
+            ? {
+                gap: GRID_GAP,
+                paddingHorizontal: GRID_PADDING,
+                marginBottom: moderateScale(18),
+              }
+            : undefined
+        }
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        // @ai-end
         contentContainerStyle={[
           styles.listContentContainer,
           {paddingBottom: listBottomPadding}, // @ai

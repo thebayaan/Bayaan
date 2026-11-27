@@ -8,7 +8,11 @@ import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 import Color from 'color';
 import {GlassView} from 'expo-glass-effect';
 import {Link} from 'expo-router';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 // @ai-start
 import {latinLetterSpacing} from '@/utils/rtl';
@@ -104,9 +108,6 @@ function createStyles(theme: Theme, width: number, height: number) {
       borderWidth: 0,
       backgroundColor: 'transparent',
     },
-    pressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     tabletContent: {
       height: TABLET_CAPTION_HEIGHT,
       paddingHorizontal: 10,
@@ -154,6 +155,7 @@ const BrowseReciterCard = React.memo(
   }: BrowseReciterCardProps) => {
     const {t} = useTranslation('home');
     const glassColorScheme = useGlassColorScheme();
+    const glassTint = useGlassTint(); // @ai
     const styles = useMemo(
       () => createStyles(theme, width, height),
       [theme, width, height],
@@ -215,11 +217,7 @@ const BrowseReciterCard = React.memo(
           onLongPress={onLongPress}
           accessibilityRole="button"
           accessibilityLabel={getReciterDisplayName(reciter)}
-          style={({pressed}) =>
-            USE_GLASS
-              ? undefined
-              : [styles.container, pressed && styles.pressed]
-          }>
+          style={USE_GLASS ? undefined : [styles.container]}>
           {USE_GLASS ? (
             <GlassView
               style={StyleSheet.flatten([
@@ -227,7 +225,8 @@ const BrowseReciterCard = React.memo(
                 styles.glassContainer,
               ])}
               glassEffectStyle="regular"
-              colorScheme={glassColorScheme}>
+              colorScheme={glassColorScheme}
+              tintColor={glassTint}>
               {content}
             </GlassView>
           ) : (
@@ -248,7 +247,8 @@ const BrowseReciterCard = React.memo(
                   styles.glassContainer,
                 ])}
                 glassEffectStyle="regular"
-                colorScheme={glassColorScheme}>
+                colorScheme={glassColorScheme}
+                tintColor={glassTint}>
                 {content}
               </GlassView>
             </Link.AppleZoom>

@@ -56,11 +56,7 @@ export const ThemePicker: React.FC = () => {
         return (
           <Pressable
             key={option.mode}
-            style={({pressed}) => [
-              styles.option,
-              isActive && styles.optionActive,
-              pressed && !isActive && styles.optionPressed,
-            ]}
+            style={[styles.option, isActive && styles.optionActive]}
             onPress={() => handleSelect(option.mode)}>
             <Icon size={moderateScale(20)} color={iconColor} />
             <Text style={[styles.label, isActive && styles.labelActive]}>
@@ -94,9 +90,6 @@ const createStyles = (theme: Theme) =>
     optionActive: {
       backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
       borderColor: Color(theme.colors.text).alpha(0.15).toString(),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     label: {
       fontSize: moderateScale(11.5),

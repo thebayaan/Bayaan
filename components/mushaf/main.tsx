@@ -6,6 +6,14 @@ import React, {
   useEffect,
   useLayoutEffect, // @ai
 } from 'react';
+// @ai-start
+import {
+  HEADER_ITEM_SIZE,
+  HEADER_PILL_PADDING,
+  tintedHeaderRight,
+  tintedRootBackOptions,
+} from '@/components/TintedHeader';
+// @ai-end
 import {useKeepAwake} from 'expo-keep-awake';
 import {
   View,
@@ -19,6 +27,7 @@ import {
   useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
+import type {ViewInstance} from 'react-native'; // @ai
 import {useResponsive} from '@/hooks/useResponsive';
 import {FlatList} from 'react-native-gesture-handler';
 import Animated, {
@@ -27,14 +36,19 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import {useRouter, useNavigation} from 'expo-router';
+import type {NativeStackNavigationProp} from 'expo-router/native-stack'; // @ai
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
-import {Ionicons, Feather} from '@expo/vector-icons';
+import {Ionicons} from '@expo/vector-icons';
+import {ReaderOptionsIcon, ShareIcon} from '@/components/ActionIcons'; // @ai
 import {mushafShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
-import {SheetManager} from 'react-native-actions-sheet';
 import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint,
+} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
 import {BackButton} from '@/components/BackButton';
 import MushafSearchView from './MushafSearchView';
@@ -114,7 +128,28 @@ import {ReadingSettingsPopover} from '@/components/popovers/ToolPopovers'; // @a
 import {sameSpread, spreadPageToShow} from './spreadPage'; // @ai
 // @ai-end
 
+// @ai-start
+// The header's two actions sit in fixed slots, so the action pill has a
+// known width; the back item takes the same width and the title centers.
+const HEADER_ACTION_SLOT = moderateScale(36);
+const HEADER_SIDE_WIDTH = 2 * HEADER_ACTION_SLOT + 2 * HEADER_PILL_PADDING;
+// iOS insets the bar's side items 20pt from the screen edges; the title
+// keeps this much clear of them.
+const HEADER_EDGE_INSET = 20;
+const HEADER_TITLE_GAP = moderateScale(6);
+const headerSlotStyle = {
+  width: HEADER_ACTION_SLOT,
+  height: HEADER_ITEM_SIZE,
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
+// @ai-end
 const TOTAL_PAGES = 604;
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
+// @ai-start
+import {ReaderLayoutTransition} from '@/components/mushaf-options/ReaderLayoutTransition';
+import {readingLayoutOf} from '@/components/mushaf-options/readingLayout';
+// @ai-end
 const ANIMATION_DURATION = 300;
 
 // ============================================================================
@@ -708,6 +743,7 @@ export default function MushafViewer({
   const {theme, isDarkMode} = useTheme();
   const readingColors = useReadingThemeColors();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const viewMode = useMushafSettingsStore(s => s.viewMode);
   const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
@@ -725,6 +761,11 @@ export default function MushafViewer({
     : Color(theme.colors.border).lighten(0.3).toString();
   const router = useRouter();
   const navigation = useNavigation();
+  // @ai: the stack's own events (transitionEnd) for the title pill
+  const stackNavigation =
+    useNavigation<
+      NativeStackNavigationProp<Record<string, object | undefined>>
+    >();
   const flatListRef = useRef<FlatList>(null);
   const continuousListRef = useRef<ContinuousListViewHandle>(null);
   const insets = useSafeAreaInsets();
@@ -732,6 +773,48 @@ export default function MushafViewer({
   const rawHeaderHeight = useHeaderHeight(); // @ai
   const {isTablet} = useResponsive();
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
+  // @ai: the header title's box, between the two side items
+  const headerTitleWidth =
+    windowWidth -
+    2 * (HEADER_EDGE_INSET + HEADER_SIDE_WIDTH + HEADER_TITLE_GAP);
+  // How far the title pill is moved onto the screen's midline.
+  const [titleShift, setTitleShift] = useState(0);
+  const titleShiftRef = useRef(0);
+  const titlePillRef = useRef<ViewInstance>(null);
+  // Hidden until measured once the screen has settled: measured during the
+  // push, its window position includes the slide and the shift is wrong.
+  const [titleReady, setTitleReady] = useState(false);
+  const titleSettledRef = useRef(false);
+  const centerTitlePill = useCallback(() => {
+    if (!titleSettledRef.current) return;
+    titlePillRef.current?.measureInWindow((x, _y, w) => {
+      // x includes the current shift; take it out to get where it lands.
+      const landed = x - titleShiftRef.current + w / 2;
+      const next = Math.round((windowWidth / 2 - landed) * 2) / 2;
+      if (Math.abs(next - titleShiftRef.current) < 0.5) return;
+      titleShiftRef.current = next;
+      setTitleShift(next);
+    });
+  }, [windowWidth]);
+  useEffect(() => {
+    if (!USE_GLASS) return;
+    const settle = () => {
+      if (titleSettledRef.current) return;
+      titleSettledRef.current = true;
+      // A frame for the header's own layout, then measure and show.
+      requestAnimationFrame(() => {
+        centerTitlePill();
+        requestAnimationFrame(() => setTitleReady(true));
+      });
+    };
+    const unsubscribe = stackNavigation.addListener('transitionEnd', settle);
+    // Opened without a push transition (first screen): settle anyway.
+    const fallback = setTimeout(settle, 700);
+    return () => {
+      unsubscribe();
+      clearTimeout(fallback);
+    };
+  }, [stackNavigation, centerTitlePill]);
   // A paged, `inverted` FlatList preserves its pixel scroll offset when its
   // items resize, so the visible page drifts to a different index (old offset
   // ÷ new item width); `initialScrollIndex` is mount-only and never re-fires.
@@ -974,7 +1057,7 @@ export default function MushafViewer({
 
   // @ai-start
   const openReadingSettingsSheet = useCallback(() => {
-    SheetManager.show('mushaf-layout', {payload: {context: 'mushaf'}});
+    showSheet('mushaf-layout', {payload: {context: 'mushaf'}});
   }, []);
   // @ai-end
 
@@ -997,83 +1080,24 @@ export default function MushafViewer({
       ? {
           glassEffectStyle: 'regular' as const,
           colorScheme: glassColorScheme,
-          tintColor: isDarkMode ? 'rgba(0,0,0,0.5)' : undefined,
+          tintColor: glassTint,
         }
       : {};
-    navigation.setOptions({
-      headerShown: true,
-      headerBackVisible: true,
-      headerSearchBarOptions: undefined,
-      headerTitle: () => (
-        <TitleWrapper
-          {...titleWrapperProps}
-          style={{
-            borderRadius: moderateScale(14),
-            paddingHorizontal: moderateScale(14),
-            paddingVertical: moderateScale(6),
-            overflow: 'hidden' as const,
-          }}>
-          <Pressable
-            onPress={() => setIsSearchMode(true)}
-            accessibilityRole="button"
-            accessibilityLabel={t('mushaf.searchSurahs')}
-            style={{alignItems: 'center'}}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: moderateScale(4),
-              }}>
-              <Text
-                style={{
-                  fontSize: moderateScale(16),
-                  fontFamily: 'Manrope-SemiBold',
-                  color: theme.colors.text,
-                }}
-                numberOfLines={1}>
-                {getSurahDisplayName(SURAHS[currentSurahId - 1])}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={moderateScale(14)}
-                color={theme.colors.textSecondary}
-              />
-            </View>
-            <Text
-              style={{
-                fontSize: moderateScale(12),
-                fontFamily: 'Manrope-Regular',
-                color: theme.colors.textSecondary,
-              }}>
-              {t('mushaf.headerMeta', {
-                page: currentPage,
-                juz: getJuzForPage(currentPage),
-                rewayah: getRewayahShortLabel(rewayah),
-              })}
-            </Text>
-          </Pressable>
-        </TitleWrapper>
-      ),
-      headerLeft: undefined,
-      headerRight: () => (
+    const headerRightButtons = // @ai
+      (
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: moderateScale(20),
-            paddingHorizontal: moderateScale(6),
           }}>
           <Pressable
             onPress={handleSharePage}
+            style={headerSlotStyle} // @ai
             hitSlop={8}
             accessibilityRole="button" // @ai
             accessibilityLabel={t('mushaf.sharePage')} // @ai
           >
-            <Feather
-              name="share"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
+            <ShareIcon size={moderateScale(20)} color={theme.colors.text} />
           </Pressable>
           {/* @ai-start */}
           {/* iPad: a popover anchored to the button. Elsewhere: the sheet. */}
@@ -1084,11 +1108,11 @@ export default function MushafViewer({
               <Pressable
                 onPress={onPress}
                 hitSlop={8}
+                style={headerSlotStyle} // @ai
                 accessibilityRole="button"
                 accessibilityLabel={t('mushaf.settings')}>
-                <Ionicons
-                  name="options-outline"
-                  size={moderateScale(22)}
+                <ReaderOptionsIcon
+                  size={moderateScale(20)}
                   color={theme.colors.text}
                 />
               </Pressable>
@@ -1096,7 +1120,86 @@ export default function MushafViewer({
           </ReadingSettingsPopover>
           {/* @ai-end */}
         </View>
+      );
+    navigation.setOptions({
+      headerShown: true,
+      headerBackVisible: true,
+      // @ai: may open first (restored, or from a link)
+      ...tintedRootBackOptions(HEADER_SIDE_WIDTH),
+      headerSearchBarOptions: undefined,
+      headerTitle: () => (
+        // @ai: the native title box and React's layout of it disagree on
+        // its width, so the pill lands off center (more for longer names).
+        // It measures where it lands and shifts onto the screen's midline;
+        // its width is capped at the space between the side items, so a
+        // long name truncates.
+        <View
+          ref={titlePillRef}
+          onLayout={USE_GLASS ? centerTitlePill : undefined}
+          style={
+            USE_GLASS
+              ? {
+                  transform: [{translateX: titleShift}],
+                  opacity: titleReady ? 1 : 0,
+                }
+              : undefined
+          }>
+          <TitleWrapper
+            {...titleWrapperProps}
+            style={{
+              borderRadius: moderateScale(14),
+              paddingHorizontal: moderateScale(14),
+              paddingVertical: moderateScale(6),
+              overflow: 'hidden' as const,
+              maxWidth: USE_GLASS ? headerTitleWidth : undefined, // @ai
+            }}>
+            <Pressable
+              onPress={() => setIsSearchMode(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('mushaf.searchSurahs')}
+              style={{alignItems: 'center'}}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: moderateScale(4),
+                }}>
+                <Text
+                  style={{
+                    fontSize: moderateScale(16),
+                    fontFamily: 'Manrope-SemiBold',
+                    color: theme.colors.text,
+                    flexShrink: 1, // @ai: truncate a long name
+                  }}
+                  numberOfLines={1}>
+                  {getSurahDisplayName(SURAHS[currentSurahId - 1])}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={moderateScale(14)}
+                  color={theme.colors.textSecondary}
+                />
+              </View>
+              <Text
+                style={{
+                  fontSize: moderateScale(12),
+                  fontFamily: 'Manrope-Regular',
+                  color: theme.colors.textSecondary,
+                }}
+                numberOfLines={1}>
+                {t('mushaf.headerMeta', {
+                  page: currentPage,
+                  juz: getJuzForPage(currentPage),
+                  rewayah: getRewayahShortLabel(rewayah),
+                })}
+              </Text>
+            </Pressable>
+          </TitleWrapper>
+        </View>
       ),
+      headerLeft: undefined,
+      // @ai: back and actions in our tinted glass on glass devices
+      ...tintedHeaderRight(() => headerRightButtons),
     });
   }, [
     openReadingSettingsSheet,
@@ -1110,6 +1213,11 @@ export default function MushafViewer({
     isDarkMode,
     navigation,
     t,
+    glassTint, // @ai
+    headerTitleWidth, // @ai
+    titleShift, // @ai
+    titleReady, // @ai
+    centerTitlePill, // @ai
   ]);
 
   // @ai-start
@@ -1519,104 +1627,46 @@ export default function MushafViewer({
       )}
       {/* @ai-end */}
       {/* Content area: horizontal FlatList or vertical continuous view */}
-      {isVertical && viewMode === 'mushaf' ? (
-        <ContinuousMushafView
-          key={readerListKey('mushaf-scroll', metrics.screenWidth)} // @ai
-          ref={continuousListRef}
-          textColor={readingColors.text}
-          dividerColor={readingColors.textSecondary}
-          onTap={toggleImmersive}
-          initialPage={currentPage}
-          onCurrentPageChange={handleContinuousPageChange}
-          metrics={scrollMetrics} // @ai
-          scrollsToTop={scrollsToTop} // @ai
-          onFirstContent={onFirstContent} // @ai
-        />
-      ) : isVertical && viewMode === 'list' ? (
-        <ContinuousListView
-          key={readerListKey('list-scroll', metrics.screenWidth)} // @ai
-          ref={continuousListRef}
-          textColor={readingColors.text}
-          labelColor={readingColors.textSecondary}
-          borderColor={edgeBorderColor}
-          onTap={toggleImmersive}
-          initialPage={currentPage}
-          onCurrentPageChange={handleContinuousPageChange}
-          width={readingPageSize.width} // @ai
-          scrollsToTop={scrollsToTop} // @ai
-          onFirstContent={onFirstContent} // @ai
-        />
-      ) : metrics.facingPages && viewMode === 'mushaf' ? (
-        <FlatList
-          key={readerListKey('spreads', metrics.screenWidth)} // @ai
-          ref={flatListRef}
-          data={spreads}
-          renderItem={({item}) => (
-            <DKSpreadView
-              pageNumber={item.right}
-              leftPageNumber={item.left}
-              textColor={readingColors.text}
-              labelColor={readingColors.textSecondary}
-              borderColor={edgeBorderColor}
-              cardColor={pageBg}
-              bgColor={edgeBg}
-              edgeBg={edgeBg}
-              isBookLayout={isBookLayout}
-              metrics={metrics}
-              onTap={toggleImmersive}
-              onFirstContent={firstContentOf(item.right, item.left)} // @ai
-            />
-          )}
-          keyExtractor={item => `spread-${item.right}`}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialScrollIndex={Math.min(
-            pageToSpreadIndex(currentPage),
-            SPREAD_COUNT - 1,
-          )}
-          getItemLayout={(_, index) => ({
-            length: metrics.screenWidth,
-            offset: metrics.screenWidth * index,
-            index,
-          })}
-          inverted={!isRTL}
-          style={appLayoutDirection}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          windowSize={7}
-          maxToRenderPerBatch={3}
-          initialNumToRender={1}
-          decelerationRate="fast"
-        />
-      ) : (
-        <FlatList
-          key={readerListKey('pages', metrics.screenWidth)} // @ai
-          ref={flatListRef}
-          data={pages}
-          renderItem={({item}) => {
-            if (viewMode === 'list') {
-              return (
-                <ReadingPageView
-                  pageNumber={item}
-                  textColor={readingColors.text}
-                  surahLabel={getSurahNamesForPage(item)}
-                  juzLabel={getJuzLabelForPage(item)}
-                  pageLabel={localizeDigits(item)}
-                  labelColor={readingColors.textSecondary}
-                  borderColor={edgeBorderColor}
-                  cardColor={pageBg}
-                  bgColor={edgeBg}
-                  isBookLayout={isBookLayout}
-                  onTap={toggleImmersive}
-                  pageSize={readingPageSize} // @ai
-                  onFirstContent={firstContentOf(item)} // @ai
-                />
-              );
-            }
-            return (
+      {/* @ai: slides the new layout in and cross-fades a theme change */}
+      <ReaderLayoutTransition
+        layout={readingLayoutOf(viewMode, scrollDirection, pageLayout)}
+        background={readingColors.background}>
+        {isVertical && viewMode === 'mushaf' ? (
+          <ContinuousMushafView
+            key={readerListKey('mushaf-scroll', metrics.screenWidth)} // @ai
+            ref={continuousListRef}
+            textColor={readingColors.text}
+            dividerColor={readingColors.textSecondary}
+            onTap={toggleImmersive}
+            initialPage={currentPage}
+            onCurrentPageChange={handleContinuousPageChange}
+            metrics={scrollMetrics} // @ai
+            scrollsToTop={scrollsToTop} // @ai
+            onFirstContent={onFirstContent} // @ai
+          />
+        ) : isVertical && viewMode === 'list' ? (
+          <ContinuousListView
+            key={readerListKey('list-scroll', metrics.screenWidth)} // @ai
+            ref={continuousListRef}
+            textColor={readingColors.text}
+            labelColor={readingColors.textSecondary}
+            borderColor={edgeBorderColor}
+            onTap={toggleImmersive}
+            initialPage={currentPage}
+            onCurrentPageChange={handleContinuousPageChange}
+            width={readingPageSize.width} // @ai
+            scrollsToTop={scrollsToTop} // @ai
+            onFirstContent={onFirstContent} // @ai
+          />
+        ) : metrics.facingPages && viewMode === 'mushaf' ? (
+          <FlatList
+            key={readerListKey('spreads', metrics.screenWidth)} // @ai
+            ref={flatListRef}
+            data={spreads}
+            renderItem={({item}) => (
               <DKSpreadView
-                pageNumber={item}
+                pageNumber={item.right}
+                leftPageNumber={item.left}
                 textColor={readingColors.text}
                 labelColor={readingColors.textSecondary}
                 borderColor={edgeBorderColor}
@@ -1626,30 +1676,93 @@ export default function MushafViewer({
                 isBookLayout={isBookLayout}
                 metrics={metrics}
                 onTap={toggleImmersive}
-                onFirstContent={firstContentOf(item)} // @ai
+                onFirstContent={firstContentOf(item.right, item.left)} // @ai
               />
-            );
-          }}
-          keyExtractor={item => item.toString()}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialScrollIndex={Math.min(currentPage - 1, TOTAL_PAGES - 1)}
-          getItemLayout={(_, index) => ({
-            length: metrics.screenWidth,
-            offset: metrics.screenWidth * index,
-            index,
-          })}
-          inverted={!isRTL}
-          style={appLayoutDirection}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          windowSize={7}
-          maxToRenderPerBatch={3}
-          initialNumToRender={1}
-          decelerationRate="fast"
-        />
-      )}
+            )}
+            keyExtractor={item => `spread-${item.right}`}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={Math.min(
+              pageToSpreadIndex(currentPage),
+              SPREAD_COUNT - 1,
+            )}
+            getItemLayout={(_, index) => ({
+              length: metrics.screenWidth,
+              offset: metrics.screenWidth * index,
+              index,
+            })}
+            inverted={!isRTL}
+            style={appLayoutDirection}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            windowSize={7}
+            maxToRenderPerBatch={3}
+            initialNumToRender={1}
+            decelerationRate="fast"
+          />
+        ) : (
+          <FlatList
+            key={readerListKey('pages', metrics.screenWidth)} // @ai
+            ref={flatListRef}
+            data={pages}
+            renderItem={({item}) => {
+              if (viewMode === 'list') {
+                return (
+                  <ReadingPageView
+                    pageNumber={item}
+                    textColor={readingColors.text}
+                    surahLabel={getSurahNamesForPage(item)}
+                    juzLabel={getJuzLabelForPage(item)}
+                    pageLabel={localizeDigits(item)}
+                    labelColor={readingColors.textSecondary}
+                    borderColor={edgeBorderColor}
+                    cardColor={pageBg}
+                    bgColor={edgeBg}
+                    isBookLayout={isBookLayout}
+                    onTap={toggleImmersive}
+                    pageSize={readingPageSize} // @ai
+                    onFirstContent={firstContentOf(item)} // @ai
+                  />
+                );
+              }
+              return (
+                <DKSpreadView
+                  pageNumber={item}
+                  textColor={readingColors.text}
+                  labelColor={readingColors.textSecondary}
+                  borderColor={edgeBorderColor}
+                  cardColor={pageBg}
+                  bgColor={edgeBg}
+                  edgeBg={edgeBg}
+                  isBookLayout={isBookLayout}
+                  metrics={metrics}
+                  onTap={toggleImmersive}
+                  onFirstContent={firstContentOf(item)} // @ai
+                />
+              );
+            }}
+            keyExtractor={item => item.toString()}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={Math.min(currentPage - 1, TOTAL_PAGES - 1)}
+            getItemLayout={(_, index) => ({
+              length: metrics.screenWidth,
+              offset: metrics.screenWidth * index,
+              index,
+            })}
+            inverted={!isRTL}
+            style={appLayoutDirection}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            windowSize={7}
+            maxToRenderPerBatch={3}
+            initialNumToRender={1}
+            decelerationRate="fast"
+          />
+        )}
+      </ReaderLayoutTransition>
 
       {/* ================================================================ */}
       {/* Normal mode header — fades out when immersive                    */}
@@ -1736,8 +1849,7 @@ export default function MushafViewer({
                         onPress={onPress}
                         accessibilityRole="button"
                         accessibilityLabel={t('mushaf.settings')}>
-                        <Ionicons
-                          name="options-outline"
+                        <ReaderOptionsIcon
                           size={moderateScale(22)}
                           color={theme.colors.text}
                         />

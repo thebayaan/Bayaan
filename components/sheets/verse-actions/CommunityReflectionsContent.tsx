@@ -155,10 +155,7 @@ function ReflectionRow({reflection, styles, theme}: ReflectionRowProps) {
         author: reflection.author.name,
       })}
       disabled={!isWebUrl}
-      style={({pressed}) => [
-        styles.reflectionCard,
-        pressed && styles.reflectionCardPressed,
-      ]}
+      style={[styles.reflectionCard]}
       onPress={handleOpen}>
       <View style={styles.reflectionHeader}>
         <Text style={styles.authorName} numberOfLines={1}>
@@ -269,9 +266,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderWidth: 1,
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    reflectionCardPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     reflectionHeader: {
       flexDirection: 'row',

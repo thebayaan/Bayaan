@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {Pressable, Text, View} from 'react-native';
-import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
+import {type SheetProps} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
@@ -19,6 +19,8 @@ import type {
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 import {recitationMarkRef} from './recitationMarkRef';
+import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 // After a take: the ayat recited, the words marked while reciting (and the
 // ones corrected), and the possible slips worth checking, each with Show and
@@ -55,6 +57,8 @@ export const RecitationSummarySheet = (
 ): React.JSX.Element | null => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation(['sheets', 'common']);
   const summary = props.payload?.summary;
   const [flags, setFlags] = useState<readonly ShownFlag[]>(
@@ -92,14 +96,14 @@ export const RecitationSummarySheet = (
   async function show(flag: {surah: number; ayah: number}): Promise<void> {
     const key = `${flag.surah}:${flag.ayah}`;
     const page = digitalKhattDataService.getPageForVerse(key);
-    await SheetManager.hide(props.sheetId);
+    await hideSheet('recitation-summary');
     if (page)
       useMushafNavigationStore.getState().navigateTo({page, verseKey: key}); // @ai
   }
 
   async function retry(flag: {surah: number; ayah: number}): Promise<void> {
-    await SheetManager.hide(props.sheetId);
-    SheetManager.show('recitation-practice', {
+    await hideSheet('recitation-summary');
+    showSheet('recitation-practice', {
       payload: {
         target: {
           expected: {surah: flag.surah, ayah: flag.ayah, ayahEnd: flag.ayah},
@@ -131,7 +135,10 @@ export const RecitationSummarySheet = (
       </View>
       <SheetScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.container}>
+        contentContainerStyle={[
+          styles.container,
+          {paddingBottom: sheetBottomPadding},
+        ]}>
         {flags.length === 0 && marks.length === 0 ? (
           <Text style={styles.nothing}>{t('recitationSummary.nothing')}</Text>
         ) : null}
@@ -207,7 +214,7 @@ export const RecitationSummarySheet = (
         <SheetFooter>
           <Pressable
             style={[styles.doneButton, {backgroundColor: theme.colors.text}]}
-            onPress={() => void SheetManager.hide(props.sheetId)}
+            onPress={() => void hideSheet('recitation-summary')}
             accessibilityRole="button">
             <Text style={[styles.doneText, {color: theme.colors.background}]}>
               {t('common:actions.done')}

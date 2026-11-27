@@ -36,8 +36,8 @@ import {
 import {RECITATION_AVAILABLE} from '@/services/recitation/recitationAvailability';
 import type {SearchHint} from '@tilawa/core';
 import {SURAHS} from '@/data/surahData';
-import {SheetManager} from 'react-native-actions-sheet';
 import {useRecitationMarkAnnouncements} from './useRecitationMarkAnnouncements';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 const LEAVE_MUSHAF_UNLOAD_MS = 60 * 1000;
 
@@ -54,7 +54,7 @@ function pageVerseKeys(page: number): readonly string[] {
 
 /** First run: explain the feature before the mic prompt and the download. */
 async function confirmIntro(): Promise<boolean> {
-  const start = await SheetManager.show('recitation-intro');
+  const start = await showSheet('recitation-intro');
   return start === true;
 }
 
@@ -84,7 +84,7 @@ export function useRecitationFollowAlong(currentPage: number): void {
   useEffect(() => {
     if (!summary) return;
     clearRecitationSummary();
-    void SheetManager.show('recitation-summary', {payload: {summary}});
+    void showSheet('recitation-summary', {payload: {summary}});
   }, [summary]);
 
   useEffect(() => {

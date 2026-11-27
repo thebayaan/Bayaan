@@ -21,8 +21,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {Feather, Ionicons} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {moderateScale} from '@/utils/scale';
-import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {
@@ -51,6 +51,7 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 // @ai-start
 const surahNameOf = (surah: number): string =>
   surah >= 1 && surah <= 114 ? getSurahDisplayName(SURAHS[surah - 1]) : '';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 interface MushafPlayerBarProps {
@@ -124,7 +125,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
       store.startPlayback(currentPage);
     } else {
       useMushafPlayerStore.setState({currentPage});
-      SheetManager.show('mushaf-player-options', {
+      showSheet('mushaf-player-options', {
         payload: {currentPage},
       });
     }
@@ -154,14 +155,14 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 
   const handleOptions = useCallback(() => {
     useMushafPlayerStore.setState({currentPage});
-    SheetManager.show('mushaf-player-options', {
+    showSheet('mushaf-player-options', {
       payload: {currentPage},
     });
   }, [currentPage]);
 
   const handleChangeReciter = useCallback(() => {
     useMushafPlayerStore.setState({timestampError: null, currentPage});
-    SheetManager.show('mushaf-player-options', {
+    showSheet('mushaf-player-options', {
       payload: {currentPage},
     });
   }, [currentPage]);
@@ -286,11 +287,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           onPress={onSearch}
           accessibilityRole="button"
           accessibilityLabel={t('common:actions.search')}>
-          <Feather
-            name="search"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
+          <SearchIcon size={moderateScale(20)} color={theme.colors.text} />
         </Pressable>
 
         <View style={styles.controlsCenter}>

@@ -26,6 +26,7 @@ import {AddToCollectionSheet} from './AddToCollectionSheet';
 import {AmbientSoundsSheet} from './AmbientSoundsSheet';
 import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 import {VerseActionsSheet} from './VerseActionsSheet';
+import {registerNativeSheet} from './sheetControl'; // @ai
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafReciterPickerSheet} from './MushafReciterPickerSheet'; // @ai
@@ -41,6 +42,8 @@ import type {PracticeTarget} from '@/services/recitation/practice/types';
 import type {RecitationSummary} from '@/store/recitationTrackingStore';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
 import {AdhkarSessionOptionsSheet} from './AdhkarSessionOptionsSheet';
+import {ReciterFiltersSheet} from './ReciterFiltersSheet'; // @ai
+import type {FilterOptions} from '@/components/browse/FilterModal'; // @ai
 import {installRewayahFallbackNotice} from './rewayahFallbackNotice'; // @ai
 import type {SurahOptionsPayload} from './options/surahOptions'; // @ai
 import type {PlayerOptionsPayload} from './options/playerOptions'; // @ai
@@ -70,6 +73,7 @@ registerSheet('upload-options', UploadOptionsSheet);
 registerSheet('add-to-collection', AddToCollectionSheet);
 registerSheet('ambient-sounds', AmbientSoundsSheet);
 registerSheet('collection-options', CollectionOptionsSheet);
+registerSheet('reciter-filters', ReciterFiltersSheet); // @ai
 registerSheet('verse-actions', VerseActionsSheet);
 // @ai-start
 // Copy, share, highlight and similar verses live inside 'verse-actions'.
@@ -90,6 +94,78 @@ registerSheet('recitation-mistake', RecitationMistakeSheet);
 // The word sheet ('word-detail') was retired: a word long-press opens
 // 'verse-actions' on Word Study at that word.
 // @ai-end
+
+// @ai-start
+// Presented as native sheets on iPhone (showSheet); every sheet is listed.
+registerNativeSheet('verse-actions', VerseActionsSheet, {detents: 'fit'});
+registerNativeSheet('mushaf-layout', MushafLayoutSheet);
+// Playback settings is a form that needs the room; it opens full height.
+registerNativeSheet('mushaf-player-options', MushafPlayerOptionsSheet, {
+  detents: ['large'],
+});
+registerNativeSheet('mushaf-repeat-options', MushafRepeatOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('mushaf-reciter-picker', MushafReciterPickerSheet);
+registerNativeSheet('follow-along', FollowAlongSheet);
+registerNativeSheet('ambient-sounds', AmbientSoundsSheet, {
+  detents: 'fit',
+});
+// Menus size to their content.
+registerNativeSheet('surah-options', SurahOptionsSheet, {detents: 'fit'});
+registerNativeSheet('home-card-options', HomeCardOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('download-options', DownloadOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('upload-options', UploadOptionsSheet, {detents: 'fit'});
+registerNativeSheet('add-to-collection', AddToCollectionSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('select-playlist', SelectPlaylistSheet, {detents: 'fit'});
+// Forms: sized to their content, full height while the keyboard is up.
+registerNativeSheet('create-playlist', CreatePlaylistSheet, {detents: 'fit'});
+registerNativeSheet('favorite-reciters', FavoriteRecitersSheet, {
+  detents: ['large'],
+});
+registerNativeSheet('select-reciter', SelectReciterSheet, {detents: 'fit'});
+registerNativeSheet('collection-options', CollectionOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('playlist-context', PlaylistContextSheet, {detents: 'fit'});
+registerNativeSheet('player-options', PlayerOptionsSheet, {detents: 'fit'});
+registerNativeSheet('rewayat-info', RewayatInfoSheet);
+registerNativeSheet('adhkar-layout', AdhkarLayoutSheet);
+registerNativeSheet('adhkar-copy-options', AdhkarCopyOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('adhkar-session-options', AdhkarSessionOptionsSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('playback-speed', PlaybackSpeedSheet, {detents: 'fit'});
+registerNativeSheet('sleep-timer', SleepTimerSheet, {detents: 'fit'});
+registerNativeSheet('verse-note', VerseNoteSheet, {detents: 'fit'});
+registerNativeSheet('organize-recitation', OrganizeRecitationSheet, {
+  detents: ['large'],
+});
+// Browse › Reciters filters: a form with many chips, full height.
+registerNativeSheet('reciter-filters', ReciterFiltersSheet, {
+  detents: ['large'],
+});
+// Recitation tracking: short prompts and results, sized to their content.
+registerNativeSheet('recitation-intro', RecitationIntroSheet, {detents: 'fit'});
+registerNativeSheet('which-ayah', WhichAyahSheet, {detents: 'fit'});
+registerNativeSheet('recitation-summary', RecitationSummarySheet, {
+  detents: 'fit',
+});
+registerNativeSheet('recitation-practice', RecitationPracticeSheet, {
+  detents: 'fit',
+});
+registerNativeSheet('recitation-mistake', RecitationMistakeSheet, {
+  detents: 'fit',
+});
+// @ai-end
 registerSheet('home-card-options', HomeCardOptionsSheet);
 registerSheet('adhkar-session-options', AdhkarSessionOptionsSheet);
 
@@ -102,6 +178,12 @@ installRewayahFallbackNotice();
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
   interface Sheets {
+    // @ai-start
+    'reciter-filters': SheetDefinition<{
+      payload: {initialFilters: FilterOptions};
+      returnValue: FilterOptions | undefined;
+    }>;
+    // @ai-end
     'surah-options': SheetDefinition<{
       payload: SurahOptionsPayload; // @ai
     }>;

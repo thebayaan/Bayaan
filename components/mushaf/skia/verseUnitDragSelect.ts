@@ -23,7 +23,6 @@
 import {useCallback, useMemo, useRef} from 'react';
 import {Platform} from 'react-native';
 import * as Haptics from 'expo-haptics';
-import {SheetManager} from 'react-native-actions-sheet';
 import {
   mushafVerseMapService,
   selectionForUnitKeys,
@@ -34,6 +33,7 @@ import {
 } from '@/store/mushafVerseSelectionStore';
 import {showToast} from '@/utils/toastUtils';
 import i18n from '@/i18n';
+import {showVerseActions} from '@/components/sheets/showVerseActions'; // @ai
 
 /** Where a touch lands in a page's line text. */
 export interface LineCharHit {
@@ -158,7 +158,7 @@ export function useVerseUnitDragSelect(
       : null;
     if (!payload) return;
 
-    SheetManager.show('verse-actions', {payload});
+    showVerseActions(payload);
     startKeyRef.current = null;
     currentKeyRef.current = null;
   }, []);

@@ -14,6 +14,10 @@ import {moderateScale, verticalScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
+import {
+  GROUPED_CARD_RADIUS,
+  SETTINGS_ROW_INSET,
+} from '@/components/settings/SettingsList'; // @ai
 import {Feather} from '@expo/vector-icons';
 import {
   MushafPagePillIcon,
@@ -512,10 +516,7 @@ const TextWeightControl: React.FC<TextWeightControlProps> = ({
           <React.Fragment key={option}>
             {idx > 0 && <View style={styles.divider} />}
             <Pressable
-              style={({pressed}) => [
-                styles.radioRow,
-                pressed && styles.radioRowPressed,
-              ]}
+              style={[styles.radioRow]}
               onPress={() => onChange(option)}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: isSelected}}>
@@ -745,6 +746,8 @@ interface MushafSettingsContentProps {
   showTitle?: boolean;
   context?: 'mushaf' | 'player';
   onOpenThemePicker?: () => void;
+  /** What the content sits on: a Settings page or a sheet. @ai */
+  surface?: 'page' | 'sheet';
 }
 
 // @ai-start
@@ -753,10 +756,14 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   showTitle = true,
   context,
   onOpenThemePicker,
+  surface = 'page',
 }) => {
   const {theme, themeMode} = useTheme();
   const {t} = useTranslation('settings');
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(
+    () => createStyles(theme, surface === 'sheet'),
+    [theme, surface],
+  );
   const {indexedTajweedData, isLoading: isTajweedLoading} = useTajweedStore();
 
   const {
@@ -909,10 +916,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </Text>
           <View style={styles.card}>
             <Pressable
-              style={({pressed}) => [
-                styles.settingRow,
-                pressed && styles.settingRowPressed,
-              ]}
+              style={[styles.settingRow]}
               onPress={() => setViewMode('mushaf')}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: viewMode === 'mushaf'}}>
@@ -933,10 +937,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             </Pressable>
             <View style={styles.divider} />
             <Pressable
-              style={({pressed}) => [
-                styles.settingRow,
-                pressed && styles.settingRowPressed,
-              ]}
+              style={[styles.settingRow]}
               onPress={() => setViewMode('list')}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: viewMode === 'list'}}>
@@ -962,10 +963,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </Text>
           <View style={styles.card}>
             <Pressable
-              style={({pressed}) => [
-                styles.settingRow,
-                pressed && styles.settingRowPressed,
-              ]}
+              style={[styles.settingRow]}
               onPress={() => setScrollDirection('horizontal')}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: scrollDirection === 'horizontal'}}>
@@ -986,10 +984,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             </Pressable>
             <View style={styles.divider} />
             <Pressable
-              style={({pressed}) => [
-                styles.settingRow,
-                pressed && styles.settingRowPressed,
-              ]}
+              style={[styles.settingRow]}
               onPress={() => setScrollDirection('vertical')}
               accessibilityRole="radio" // @ai
               accessibilityState={{checked: scrollDirection === 'vertical'}}>
@@ -1018,10 +1013,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               </Text>
               <View style={styles.card}>
                 <Pressable
-                  style={({pressed}) => [
-                    styles.settingRow,
-                    pressed && styles.settingRowPressed,
-                  ]}
+                  style={[styles.settingRow]}
                   onPress={() => setPageLayout('fullscreen')}
                   accessibilityRole="radio" // @ai
                   accessibilityState={{checked: pageLayout === 'fullscreen'}}>
@@ -1042,10 +1034,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 </Pressable>
                 <View style={styles.divider} />
                 <Pressable
-                  style={({pressed}) => [
-                    styles.settingRow,
-                    pressed && styles.settingRowPressed,
-                  ]}
+                  style={[styles.settingRow]}
                   onPress={() => setPageLayout('book')}
                   accessibilityRole="radio" // @ai
                   accessibilityState={{checked: pageLayout === 'book'}}>
@@ -1075,12 +1064,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         {t('mushafSettings.readingThemeHeader')}
       </Text>
       <View style={styles.card}>
-        <Pressable
-          style={({pressed}) => [
-            styles.settingRow,
-            pressed && styles.settingRowPressed,
-          ]}
-          onPress={onOpenThemePicker}>
+        <Pressable style={[styles.settingRow]} onPress={onOpenThemePicker}>
           <Text style={styles.settingRowLabel}>
             {themeMode === 'system'
               ? t('mushafSettings.system')
@@ -1120,10 +1104,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{checked: wbwShowTranslation}}
-          style={({pressed}) => [
-            styles.settingRow,
-            pressed && styles.settingRowPressed,
-          ]}
+          style={[styles.settingRow]}
           onPress={toggleWBWTranslation}>
           <Text style={styles.settingRowLabel}>
             {t('mushafSettings.englishMeanings')}
@@ -1140,10 +1121,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{checked: wbwShowTransliteration}}
-          style={({pressed}) => [
-            styles.settingRow,
-            pressed && styles.settingRowPressed,
-          ]}
+          style={[styles.settingRow]}
           onPress={toggleWBWTransliteration}>
           <Text style={styles.settingRowLabel}>
             {t('mushafSettings.transliteration')}
@@ -1394,9 +1372,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             <React.Fragment key={option.value}>
               {idx > 0 && <View style={styles.divider} />}
               <Pressable
-                style={({pressed}) => [
+                style={[
                   styles.radioRow,
-                  pressed && styles.radioRowPressed,
                   isHafsOnly && styles.radioRowDisabled, // @ai
                 ]}
                 disabled={isHafsOnly} // @ai
@@ -1651,11 +1628,7 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
   return (
     <View style={styles.card}>
       <Pressable
-        style={({pressed}) => [
-          styles.settingRow,
-          pressed && styles.settingRowPressed,
-          disabled && styles.radioRowDisabled,
-        ]}
+        style={[styles.settingRow, disabled && styles.radioRowDisabled]}
         accessibilityRole="button"
         accessibilityState={{expanded, disabled}}
         accessibilityLabel={
@@ -1692,10 +1665,7 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
               <React.Fragment key={id}>
                 {idx > 0 && <View style={styles.divider} />}
                 <Pressable
-                  style={({pressed}) => [
-                    styles.radioRow,
-                    pressed && styles.radioRowPressed,
-                  ]}
+                  style={[styles.radioRow]}
                   onPress={() => onSelect(id)}>
                   <View
                     style={[
@@ -1794,10 +1764,7 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
       {legend.entries.length > 0 && <View style={styles.divider} />}
       {legend.entries.length > 0 && (
         <Pressable
-          style={({pressed}) => [
-            styles.settingRow,
-            pressed && styles.settingRowPressed,
-          ]}
+          style={[styles.settingRow]}
           onPress={() => setShowLegend(!showLegend)}>
           <Feather
             name="info"
@@ -1867,29 +1834,34 @@ const UNAVAILABLE_REWAYAH_IDS: readonly RewayahId[] = ALL_REWAYAH_IDS.filter(
 );
 
 // @ai-start
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, onSheet: boolean) =>
   StyleSheet.create({
     container: {
       padding: moderateScale(16),
     },
+    // @ai-start: the shared Settings card and header (SettingsList)
+    // A white card disappears on a light sheet; a sheet gets a faint tint.
     card: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(14),
-      paddingHorizontal: moderateScale(14),
+      backgroundColor: theme.isDarkMode
+        ? Color('#ffffff').alpha(0.07).toString()
+        : onSheet
+          ? Color(theme.colors.text).alpha(0.05).toString()
+          : '#ffffff',
+      borderRadius: GROUPED_CARD_RADIUS,
+      borderCurve: 'continuous',
+      paddingHorizontal: SETTINGS_ROW_INSET,
       overflow: 'hidden',
-      marginBottom: verticalScale(16),
+      marginBottom: moderateScale(22),
     },
     sectionHeader: {
-      fontSize: moderateScale(10.5),
+      textAlign: 'left',
+      fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textTertiary,
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
-      marginBottom: verticalScale(4),
-      marginLeft: moderateScale(4),
+      color: Color(theme.colors.text).alpha(0.55).toString(),
+      marginBottom: moderateScale(8),
+      marginStart: moderateScale(18),
     },
+    // @ai-end
     sectionSubHeader: {
       fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
@@ -1914,14 +1886,14 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
     },
     optionLabel: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
+      fontSize: theme.typography.mediumSize, // @ai
+      fontFamily: 'Manrope-SemiBold', // @ai
+      color: theme.colors.text, // @ai
       marginRight: moderateScale(10),
     },
     divider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.14).toString(), // @ai
     },
     switchStyle: {
       transform: [{scaleX: 0.8}, {scaleY: 0.8}],
@@ -2039,12 +2011,10 @@ const createStyles = (theme: Theme) =>
     radioRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      minHeight: moderateScale(52), // @ai
       paddingVertical: verticalScale(12),
-      paddingHorizontal: moderateScale(14),
-      marginHorizontal: -moderateScale(14),
-    },
-    radioRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      paddingHorizontal: moderateScale(18),
+      marginHorizontal: -moderateScale(18),
     },
     radioRowDisabled: {
       opacity: 0.45,
@@ -2072,9 +2042,9 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     radioLabel: {
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
+      fontSize: theme.typography.mediumSize, // @ai
+      fontFamily: 'Manrope-SemiBold', // @ai
+      color: theme.colors.text, // @ai
     },
     radioLabelSelected: {
       color: theme.colors.text,
@@ -2097,9 +2067,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(14),
       marginHorizontal: -moderateScale(14),
       gap: moderateScale(12),
-    },
-    settingRowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     settingRowLabel: {
       flex: 1,

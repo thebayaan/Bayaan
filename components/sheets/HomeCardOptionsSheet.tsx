@@ -3,9 +3,11 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
+import {ShareIcon} from '@/components/ActionIcons'; // @ai
 import Color from 'color';
 import {
   PlayIcon,
@@ -13,6 +15,7 @@ import {
   ProfileIcon,
   HeartIcon,
   StarIcon,
+  ShuffleIcon,
 } from '@/components/Icons';
 // @ai-start
 import {useTranslation} from 'react-i18next';
@@ -20,6 +23,7 @@ import {
   useHomeCardOptions,
   type HomeCardOptionsPayload,
 } from './options/homeCardOptions';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
@@ -42,10 +46,14 @@ const HomeCardOptionsContent = ({
   payload: HomeCardOptionsPayload;
 }) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    moderateScale(8),
+  ); // @ai
   const styles = createStyles(theme);
-  const {t} = useTranslation(['sheets', 'common']);
+  const {t} = useTranslation(['sheets', 'common', 'home']);
   const handleClose = useCallback(() => {
-    SheetManager.hide('home-card-options');
+    hideSheet('home-card-options');
   }, []);
   const {
     variant,
@@ -77,7 +85,7 @@ const HomeCardOptionsContent = ({
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -88,12 +96,7 @@ const HomeCardOptionsContent = ({
               hiding a group (an upload's card hides the ones that cannot
               apply to it) never leaves a divider at the edge. */}
           {variant === 'recent' && (
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleContinuePlaying}>
+            <Pressable style={[styles.option]} onPress={handleContinuePlaying}>
               <PlayIcon color={iconColor} size={iconSize} />
               <Text style={styles.optionText}>
                 {t('homeCardOptions.continuePlaying')}
@@ -105,12 +108,7 @@ const HomeCardOptionsContent = ({
             <>
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleAddToQueue}>
+              <Pressable style={[styles.option]} onPress={handleAddToQueue}>
                 <View style={styles.rotatedIcon}>
                   <QueueIcon color={iconColor} size={iconSize} filled={true} />
                 </View>
@@ -121,30 +119,54 @@ const HomeCardOptionsContent = ({
             </>
           )}
 
+          {/* @ai-start Browse › All reciters adds Play all and Shuffle all. */}
+          {payload.onPlayAll && payload.onShuffleAll && (
+            <>
+              <Pressable
+                style={[styles.option]}
+                onPress={() => {
+                  handleClose();
+                  payload.onPlayAll?.();
+                }}>
+                <PlayIcon color={iconColor} size={iconSize} />
+                <Text style={styles.optionText}>
+                  {t('home:browse.playAll')}
+                </Text>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable
+                style={[styles.option]}
+                onPress={() => {
+                  handleClose();
+                  payload.onShuffleAll?.();
+                }}>
+                <ShuffleIcon color={iconColor} size={iconSize} />
+                <Text style={styles.optionText}>
+                  {t('home:browse.shuffleAll')}
+                </Text>
+              </Pressable>
+            </>
+          )}
+          {/* @ai-end */}
+
           {canUseReciter && (
             <>
-              {variant === 'recent' && <View style={styles.divider} />}
+              {(variant === 'recent' || !!payload.onPlayAll) && (
+                <View style={styles.divider} />
+              )}
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleGoToReciter}>
+              <Pressable style={[styles.option]} onPress={handleGoToReciter}>
                 <ProfileIcon color={iconColor} size={iconSize} filled={false} />
                 <Text style={styles.optionText}>
-                  {t('homeCardOptions.goToReciter')}
+                  {payload.onOpen
+                    ? t('home:browse.openReciter')
+                    : t('homeCardOptions.goToReciter')}
                 </Text>
               </Pressable>
 
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleToggleFavorite}>
+              <Pressable style={[styles.option]} onPress={handleToggleFavorite}>
                 <StarIcon
                   color={iconColor}
                   size={iconSize}
@@ -163,12 +185,7 @@ const HomeCardOptionsContent = ({
             <>
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleToggleLoved}>
+              <Pressable style={[styles.option]} onPress={handleToggleLoved}>
                 <HeartIcon
                   color={iconColor}
                   size={moderateScale(22)}
@@ -183,12 +200,7 @@ const HomeCardOptionsContent = ({
 
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleAddToPlaylist}>
+              <Pressable style={[styles.option]} onPress={handleAddToPlaylist}>
                 <Feather name="plus-circle" size={iconSize} color={iconColor} />
                 <Text style={styles.optionText}>
                   {t('homeCardOptions.addToCollection')}
@@ -201,13 +213,8 @@ const HomeCardOptionsContent = ({
             <>
               <View style={styles.divider} />
 
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleShare}>
-                <Feather name="share" size={iconSize} color={iconColor} />
+              <Pressable style={[styles.option]} onPress={handleShare}>
+                <ShareIcon size={iconSize} color={iconColor} />
                 <Text style={styles.optionText}>
                   {t('common:actions.share')}
                 </Text>
@@ -219,10 +226,7 @@ const HomeCardOptionsContent = ({
         {variant === 'recent' && (
           <View style={styles.destructiveCard}>
             <Pressable
-              style={({pressed}) => [
-                styles.optionDestructive,
-                pressed && styles.optionDestructivePressed,
-              ]}
+              style={[styles.optionDestructive]}
               onPress={handleRemoveFromRecents}>
               <Feather name="minus-circle" size={iconSize} color="#ff4444" />
               <Text style={styles.optionTextDestructive}>
@@ -296,9 +300,6 @@ export const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),
@@ -320,9 +321,6 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionDestructivePressed: {
-      backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,

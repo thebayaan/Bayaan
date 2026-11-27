@@ -5,7 +5,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet, {
   useSheetWidth,
 } from '@/components/sheets/AdaptiveActionSheet';
@@ -21,6 +21,8 @@ import RenderHtml, {
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, getSurahMeaning} from '@/i18n/format';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
+import {showSheet, hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const surahInfo = require('@/data/surahInfo.json');
@@ -49,6 +51,7 @@ const renderHtmlDefaultProps: Partial<RenderHTMLProps> = {
 // @ai-start
 export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation(['sheets', 'common']);
   // Size HTML from the sheet, which stops at 560pt on iPad. @ai
@@ -106,7 +109,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('download-options');
+    hideSheet('download-options');
   }, []);
 
   const handlePlay = useCallback(() => {
@@ -126,7 +129,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
   const handleAddToPlaylist = useCallback(() => {
     if (!reciterId || !surah) return;
-    SheetManager.show('select-playlist', {
+    showSheet('select-playlist', {
       payload: {
         surah,
         reciterId,
@@ -187,7 +190,8 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
           <SheetScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}>
-            <View style={styles.infoContent}>
+            <View
+              style={[styles.infoContent, {paddingBottom: sheetBottomPadding}]}>
               <View style={styles.surahInfoHeader}>
                 <Text style={styles.surahInfoName}>{surahName}</Text>
                 {surahMeaning ? (
@@ -208,7 +212,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
           </SheetScrollView>
         </>
       ) : (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
           <View style={styles.header}>
             <Text style={styles.surahName}>{surahName}</Text>
             {surahMeaning ? (
@@ -217,12 +221,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
           </View>
 
           <View style={styles.card}>
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handlePlay}>
+            <Pressable style={[styles.option]} onPress={handlePlay}>
               <PlayIcon color={theme.colors.text} size={moderateScale(18)} />
               <Text style={styles.optionText}>{t('options.playNow')}</Text>
             </Pressable>
@@ -230,11 +229,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleToggleLove}>
               <HeartIcon
                 color={theme.colors.text}
@@ -254,12 +249,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
             <View style={styles.divider} />
 
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleAddToQueue}>
+            <Pressable style={[styles.option]} onPress={handleAddToQueue}>
               <View style={styles.rotatedIcon}>
                 <QueueIcon
                   color={theme.colors.text}
@@ -273,11 +263,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
             <View style={styles.divider} />
 
             <Pressable
-              style={({pressed}) => [
-                styles.option,
-                !reciterId && styles.optionDisabled,
-                pressed && styles.optionPressed,
-              ]}
+              style={[styles.option, !reciterId && styles.optionDisabled]}
               onPress={handleAddToPlaylist}>
               <Feather
                 name="plus-circle"
@@ -295,12 +281,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
             <View style={styles.divider} />
 
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleViewInfo}>
+            <Pressable style={[styles.option]} onPress={handleViewInfo}>
               <Feather
                 name="info"
                 size={moderateScale(18)}
@@ -314,10 +295,7 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
 
           <View style={styles.destructiveCard}>
             <Pressable
-              style={({pressed}) => [
-                styles.optionDestructive,
-                pressed && styles.optionDestructivePressed,
-              ]}
+              style={[styles.optionDestructive]}
               onPress={handleRemoveDownload}>
               <Feather
                 name="trash-2"
@@ -405,9 +383,6 @@ const createStyles = (theme: Theme) =>
     optionDisabled: {
       opacity: 0.5,
     },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
     optionText: {
       flex: 1,
       fontSize: moderateScale(14),
@@ -423,9 +398,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionDestructivePressed: {
-      backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,

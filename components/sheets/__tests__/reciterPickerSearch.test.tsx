@@ -51,8 +51,12 @@ jest.mock('@/hooks/useFavoriteReciters', () => ({
 }));
 jest.mock('@/store/mushafPlayerStore', () => ({
   useMushafPlayerStore: Object.assign(
-    (select: (state: {availableReciters: AvailableReciter[]}) => unknown) =>
-      select({availableReciters: mockAvailable}),
+    (
+      select: (state: {
+        availableReciters: AvailableReciter[];
+        recentRewayatIds: string[];
+      }) => unknown,
+    ) => select({availableReciters: mockAvailable, recentRewayatIds: []}), // @ai
     {getState: () => ({computeAvailableReciters: jest.fn()})},
   ),
 }));

@@ -25,7 +25,6 @@ import {
   getDkFontFamily, // @ai
   useMushafSettingsStore,
 } from '@/store/mushafSettingsStore';
-import {SheetManager} from 'react-native-actions-sheet';
 import {SheetFooter, SheetScrollView} from './sheetGestures';
 import {loadPlainTranslations} from '@/services/translation/plainTranslations'; // @ai
 import {
@@ -59,6 +58,7 @@ import type {RewayahId} from '@/store/mushafSettingsStore';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName} from '@/i18n/format';
+import {hideAllSheets} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // @ai-start
@@ -258,7 +258,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         `-- ${formatQuranCitation(verseRefText, result.rewayah)}`,
       ].join('\n\n');
       await Share.share({message});
-      SheetManager.hideAll();
+      hideAllSheets();
     } finally {
       setIsPreparingText(false);
     }
@@ -299,7 +299,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       formatQuranCitation(shareRefs(ready).linkRefText, rewayah),
     );
     // @ai-end
-    SheetManager.hideAll();
+    hideAllSheets();
   }, [requireSelection, shareRefs, isDarkMode, rewayah]); // @ai
   // @ai-end
 

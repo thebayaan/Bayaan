@@ -13,11 +13,15 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
 import {RECITERS} from '@/data/reciterData';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {useResponsive} from '@/hooks/useResponsive';
 import {TabletDialog} from '@/components/layout/TabletDialog';
+import {useVisibleAfterNativeSheets} from '@/components/native/useVisibleAfterNativeSheets'; // @ai
 
 /** Card height on iPad; the chips scroll inside it. */
 const TABLET_HEIGHT = 640;
@@ -34,6 +38,13 @@ interface FilterModalProps {
   onApplyFilters: (filters: FilterOptions) => void;
   theme: Theme;
   initialFilters?: FilterOptions;
+  // @ai-start
+  /**
+   * Draws only the panel, for a sheet that hosts it (the iPhone native
+   * sheet, ReciterFiltersSheet), with this much space under the buttons.
+   */
+  embedded?: {footerBottomPadding: number};
+  // @ai-end
 }
 
 export interface FilterOptions {
@@ -238,8 +249,20 @@ export default function FilterModal({
   onApplyFilters,
   theme,
   initialFilters,
+  embedded, // @ai
 }: FilterModalProps) {
+  const modalVisible = useVisibleAfterNativeSheets(visible); // @ai
   const insets = useSafeAreaInsets();
+  // @ai-start
+  // Inside the Modal on iOS the hook reports a far larger bottom inset than
+  // the home indicator, which left an empty band under Reset/Apply; the
+  // window's own inset is the one the panel sits on.
+  const footerBottom =
+    Platform.OS === 'ios'
+      ? (initialWindowMetrics?.insets.bottom ?? insets.bottom) +
+        moderateScale(12)
+      : insets.bottom + moderateScale(30);
+  // @ai-end
   const {isTablet} = useResponsive();
   const {t} = useTranslation(['home', 'common']);
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -400,9 +423,11 @@ export default function FilterModal({
           style={[
             styles.footerContainer,
             {
-              paddingBottom: isTablet
+              paddingBottom: embedded
+                ? embedded.footerBottomPadding // @ai
+                : isTablet
                 ? moderateScale(20)
-                : insets.bottom + moderateScale(30),
+                : footerBottom, // @ai
             },
           ]}>
           <View style={styles.footer}>
@@ -428,11 +453,13 @@ export default function FilterModal({
     </View>
   );
 
+  if (embedded) return panel; // @ai
+
   // iPad: a centered card that fades in, not a full-width panel from the
   // bottom edge.
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       transparent
       animationType={isTablet ? 'fade' : 'slide'}
       onRequestClose={onClose}>

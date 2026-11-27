@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react';
 import {Pressable, Text, View} from 'react-native';
-import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
+import {type SheetProps} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTranslation} from 'react-i18next';
 import ActionSheet, {
@@ -26,6 +26,8 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
 import {recitationMarkRef} from './recitationMarkRef';
+import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 // A word marked while reciting, tapped on the page: what may have happened,
 // the word as it is written, and its ayah. The recitation is held while the
@@ -52,7 +54,7 @@ async function playAyah(surah: number, ayah: number): Promise<void> {
       currentPage: page,
       pendingStartVerseKey: key,
     });
-    SheetManager.show('mushaf-player-options', {
+    showSheet('mushaf-player-options', {
       payload: {currentPage: page},
     });
     return;
@@ -68,6 +70,8 @@ export const RecitationMistakeSheet = (
 ): React.JSX.Element | null => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation(['sheets', 'common']);
   const mark = props.payload?.mark;
 
@@ -94,14 +98,14 @@ export const RecitationMistakeSheet = (
 
   async function listen(): Promise<void> {
     if (!mark) return;
-    await SheetManager.hide(props.sheetId);
+    await hideSheet('recitation-mistake');
     await playAyah(mark.surah, mark.ayah);
   }
 
   async function readCorrectly(): Promise<void> {
     if (!mark) return;
     await dismissRecitationMark(mark);
-    await SheetManager.hide(props.sheetId);
+    await hideSheet('recitation-mistake');
   }
 
   return (
@@ -115,7 +119,7 @@ export const RecitationMistakeSheet = (
         <Text style={styles.headerTitle}>{message}</Text>
         <Text style={styles.ref}>{t(where.key, where.values)}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <MarkedText
           mark={mark}
           verseKey={verseKey}
@@ -155,7 +159,7 @@ export const RecitationMistakeSheet = (
         <SheetFooter>
           <Pressable
             style={styles.secondaryButton}
-            onPress={() => void SheetManager.hide(props.sheetId)}
+            onPress={() => void hideSheet('recitation-mistake')}
             accessibilityRole="button">
             <Text style={styles.secondaryButtonText}>
               {t('recitationMistake.continue')}

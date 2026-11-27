@@ -1,5 +1,7 @@
 import {Stack} from 'expo-router';
 import {USE_GLASS} from '@/hooks/useGlassProps'; // @ai
+import {tintedBackOptions} from '@/components/TintedHeader'; // @ai
+import {withTabBarScrim} from '@/components/TabBarScrim'; // @ai
 import {capScreensExcept} from '@/components/layout/MaxWidthContainer';
 
 // Grids and shelves take the whole pane on iPad; other screens stay in the
@@ -12,11 +14,12 @@ const SCREEN_LAYOUT = capScreensExcept(['index', 'reciter/browse']); // @ai
 export const unstable_settings = {initialRouteName: 'index'};
 // @ai-end
 
-export default function SurahsLayout() {
+function SurahsLayout() {
   return (
     <Stack
       screenLayout={SCREEN_LAYOUT} // @ai
       screenOptions={{
+        ...tintedBackOptions, // @ai
         headerShown: true,
         freezeOnBlur: true,
         headerTransparent: true,
@@ -41,3 +44,5 @@ export default function SurahsLayout() {
     </Stack>
   );
 }
+
+export default withTabBarScrim(SurahsLayout); // @ai

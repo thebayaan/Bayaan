@@ -49,6 +49,7 @@ jest.mock('@/components/FrostedView', () => {
   return {FrostedView: MockView};
 });
 jest.mock('@/hooks/useGlassProps', () => ({
+  useGlassTint: () => undefined,
   USE_GLASS: false,
   useGlassColorScheme: () => 'light',
 }));

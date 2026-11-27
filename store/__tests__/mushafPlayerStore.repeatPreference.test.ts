@@ -226,6 +226,7 @@ describe("a verse's one-off Repeat", () => {
       rate: 1,
       savedVerseRepeatCount: 1,
       savedRangeRepeatCount: 1,
+      recentRewayatIds: ['hafs-clean'], // @ai: the Listen sheet's Recent
     });
 
     await launch();
@@ -351,6 +352,7 @@ describe('state saved before the choice was kept apart', () => {
         rate: 1.5,
         savedVerseRepeatCount: 1,
         savedRangeRepeatCount: 1,
+        recentRewayatIds: [], // @ai: the Listen sheet's Recent
       },
       version: 1,
     });

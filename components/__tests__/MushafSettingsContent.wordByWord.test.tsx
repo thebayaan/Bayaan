@@ -14,6 +14,7 @@ jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({
     theme: {
       isDarkMode: false,
+      typography: {mediumSize: 14, smallSize: 12},
       colors: {
         text: '#111111',
         textSecondary: '#666666',

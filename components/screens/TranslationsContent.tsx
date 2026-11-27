@@ -44,7 +44,6 @@ import {useBottomInset} from '@/hooks/useBottomInset';
 import {AVAILABLE_TRANSLATIONS} from '@/data/availableTranslations';
 import {AVAILABLE_TAFASEER} from '@/data/availableTafaseer';
 // @ai-start
-import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import i18n from '@/i18n';
 import {localizeDigits} from '@/i18n/format';
@@ -54,6 +53,7 @@ import {
   compareTafaseer,
   getTafseerDisplayName,
   isPreferredTafseerLanguage,
+  shownActiveTafseerId,
 } from '@/i18n/tafseer';
 // @ai-end
 
@@ -487,6 +487,11 @@ export default function TranslationsContent({
 
   const tafseerData = useMemo((): FlatItem[] => {
     const items: FlatItem[] = [];
+    // @ai: only a downloaded selection is lifted into the active card
+    const activeId = shownActiveTafseerId(
+      selectedTafseerId,
+      tafseerDownloadedIds,
+    );
 
     const allRows: RowItem[] = [];
 
@@ -526,8 +531,7 @@ export default function TranslationsContent({
         ? allRows
             .filter(
               row =>
-                row.id !== selectedTafseerId &&
-                isPreferredTafseerLanguage(row.language),
+                row.id !== activeId && isPreferredTafseerLanguage(row.language),
             )
             .sort(compareTafaseer)
         : [];
@@ -548,10 +552,7 @@ export default function TranslationsContent({
     // Available section — downloaded items (excluding active)
     const availableRows = allRows
       .filter(
-        r =>
-          r.isDownloaded &&
-          r.id !== selectedTafseerId &&
-          !preferredIds.has(r.id),
+        r => r.isDownloaded && r.id !== activeId && !preferredIds.has(r.id),
       )
       .sort(compareTafaseer);
 
@@ -604,18 +605,20 @@ export default function TranslationsContent({
   const getItemType = useCallback((item: FlatItem) => item.type, []);
 
   const translationKeyExtractor = useCallback(
-    (item: FlatItem, _index: number) => {
+    (item: FlatItem, index: number) => {
+      // Two groups can share a title (a reader's own language first, then
+      // the same language again among the rest), so headers key by position.
       if (item.type === 'meta-header' || item.type === 'lang-header') {
-        return `trans-header-${item.title}`;
+        return `trans-header-${index}-${item.title}`;
       }
       return `trans-${item.id}`;
     },
     [],
   );
 
-  const tafseerKeyExtractor = useCallback((item: FlatItem, _index: number) => {
+  const tafseerKeyExtractor = useCallback((item: FlatItem, index: number) => {
     if (item.type === 'meta-header' || item.type === 'lang-header') {
-      return `tafseer-header-${item.title}`;
+      return `tafseer-header-${index}-${item.title}`;
     }
     return `tafseer-${item.id}`;
   }, []);
@@ -646,15 +649,16 @@ export default function TranslationsContent({
             </Text>
             <Text style={styles.activeCardLanguage}>{activeLang}</Text>
           </View>
-          <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>
-              {t('translations.active')}
-            </Text>
-          </View>
+          <Feather
+            name="check"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+            accessibilityLabel={t('translations.active')}
+          />
         </View>
       </>
     );
-  }, [selectedTranslationId, downloadedMeta, styles, t]);
+  }, [selectedTranslationId, downloadedMeta, styles, t, theme]);
 
   const tafseerListHeader = useMemo(() => {
     if (!selectedTafseerId) return null;
@@ -680,22 +684,27 @@ export default function TranslationsContent({
               )}
             </Text>
           </View>
-          <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>
-              {t('translations.active')}
-            </Text>
-          </View>
+          <Feather
+            name="check"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+            accessibilityLabel={t('translations.active')}
+          />
         </View>
       </>
     );
-  }, [selectedTafseerId, tafseerDownloaded, styles, t]);
+  }, [selectedTafseerId, tafseerDownloaded, styles, t, theme]);
 
   // --- Render ---
   const renderHeaderItem = useCallback(
-    (item: FlatItem) => {
+    (item: FlatItem, followsCard: boolean) => {
       if (item.type === 'meta-header') {
         return (
-          <View style={styles.metaHeaderContainer}>
+          <View
+            style={[
+              styles.metaHeaderContainer,
+              followsCard && styles.metaHeaderAfterCard,
+            ]}>
             <Text style={styles.metaHeader}>{item.title}</Text>
           </View>
         );
@@ -715,7 +724,8 @@ export default function TranslationsContent({
 
   const renderTranslationItem = useCallback(
     ({item}: ListRenderItemInfo<FlatItem>) => {
-      if (item.type !== 'row') return renderHeaderItem(item);
+      // The active translation's card always sits above the list. @ai
+      if (item.type !== 'row') return renderHeaderItem(item, true);
       return renderTranslationRow(item);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -723,12 +733,14 @@ export default function TranslationsContent({
   );
 
   const renderTafseerItem = useCallback(
-    ({item}: ListRenderItemInfo<FlatItem>) => {
-      if (item.type !== 'row') return renderHeaderItem(item);
+    ({item, index}: ListRenderItemInfo<FlatItem>) => {
+      if (item.type !== 'row') {
+        return renderHeaderItem(item, tafseerListHeader !== null || index > 0);
+      }
       return renderTafseerRow(item);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [styles, theme, renderHeaderItem, renderTafseerRow],
+    [styles, theme, renderHeaderItem, renderTafseerRow, tafseerListHeader],
   );
 
   function renderTranslationRow(item: RowItem) {
@@ -751,7 +763,7 @@ export default function TranslationsContent({
     return (
       <View style={cardStyle}>
         <Pressable
-          style={({pressed}) => [styles.row, pressed && styles.rowPressed]}
+          style={[styles.row]}
           onPress={() => {
             if (isReady) {
               handleSelectTranslation(item.id);
@@ -780,7 +792,13 @@ export default function TranslationsContent({
             </View>
           ) : isReady ? (
             <View style={styles.rowActions}>
-              {isActive && <View style={styles.selectedDot} />}
+              {isActive && (
+                <Feather
+                  name="check"
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+              )}
               {isDeletable && (
                 <Pressable
                   style={styles.deleteButton}
@@ -832,7 +850,7 @@ export default function TranslationsContent({
     return (
       <View style={cardStyle}>
         <Pressable
-          style={({pressed}) => [styles.row, pressed && styles.rowPressed]}
+          style={[styles.row]}
           onPress={() => {
             if (isReady) {
               handleSelectTafseer(item.id);
@@ -867,7 +885,13 @@ export default function TranslationsContent({
             </View>
           ) : isReady ? (
             <View style={styles.rowActions}>
-              {isActive && <View style={styles.selectedDot} />}
+              {isActive && (
+                <Feather
+                  name="check"
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+              )}
               {isDeletable && (
                 <Pressable
                   style={styles.deleteButton}
@@ -1052,123 +1076,108 @@ const createStyles = (theme: Theme) =>
 
     // Fabric mirrors logical left alignment in RTL. Explicitly use the
     // leading edge for catalogue text rather than native 'natural' alignment.
-    // Section headers — meta (ACTIVE TRANSLATION)
+    // @ai: the Settings section, card and row look (SettingsList): sentence-case
+    // 12 pt headers, 8 pt to the card, 22 pt to the next header, 24 pt cards,
+    // 56 pt rows with 14 pt SemiBold titles.
     metaHeaderContainer: {
-      paddingHorizontal: moderateScale(18),
-      paddingTop: moderateScale(12),
-      paddingBottom: moderateScale(6),
+      paddingHorizontal: moderateScale(16) + moderateScale(18),
+      paddingTop: moderateScale(8),
+      paddingBottom: moderateScale(8),
+    },
+    metaHeaderAfterCard: {
+      paddingTop: moderateScale(22),
     },
     metaHeader: {
       textAlign: 'left',
-      fontSize: moderateScale(10.5),
+      fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textTertiary,
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
+      color: Color(theme.colors.text).alpha(0.55).toString(),
     },
 
-    // Section headers — language group (ENGLISH, ARABIC)
+    // Language group headers (English, Arabic)
     langHeaderContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: moderateScale(18),
-      paddingTop: moderateScale(20),
+      paddingHorizontal: moderateScale(16) + moderateScale(18),
+      paddingTop: moderateScale(22),
       paddingBottom: moderateScale(8),
       gap: moderateScale(6),
     },
     langHeader: {
-      fontSize: moderateScale(10.5),
+      fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textTertiary,
-      letterSpacing: latinLetterSpacing(1.2),
-      textTransform: 'uppercase',
+      color: Color(theme.colors.text).alpha(0.55).toString(),
     },
     langCount: {
-      fontSize: moderateScale(10),
+      fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-Regular',
-      color: theme.colors.textTertiary,
+      color: Color(theme.colors.text).alpha(0.35).toString(),
     },
 
     // Active card
     activeCard: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: moderateScale(16),
       marginHorizontal: moderateScale(16),
-      padding: moderateScale(14),
-      borderRadius: moderateScale(14),
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      minHeight: moderateScale(56),
+      paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(18),
+      borderRadius: moderateScale(24),
+      backgroundColor: theme.isDarkMode
+        ? Color('#ffffff').alpha(0.07).toString()
+        : '#ffffff',
     },
     activeCardText: {
       flex: 1,
     },
     activeCardName: {
       textAlign: 'left',
-      fontSize: moderateScale(15),
+      fontSize: theme.typography.mediumSize,
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
+      color: theme.colors.text,
     },
     activeCardLanguage: {
       textAlign: 'left',
-      fontSize: moderateScale(11.5),
+      fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-Regular',
-      color: theme.colors.textTertiary,
+      color: Color(theme.colors.text).alpha(0.5).toString(),
       marginTop: moderateScale(2),
     },
-    activeBadge: {
-      paddingHorizontal: moderateScale(10),
-      paddingVertical: moderateScale(4),
-      borderRadius: moderateScale(8),
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
-    },
-    activeBadgeText: {
-      fontSize: moderateScale(10.5),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textSecondary,
-      letterSpacing: latinLetterSpacing(0.3),
-    },
 
-    // Card grouping
+    // Card grouping: one card per language, drawn row by row
     cardRow: {
       marginHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderLeftWidth: 1,
-      borderRightWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      backgroundColor: theme.isDarkMode
+        ? Color('#ffffff').alpha(0.07).toString()
+        : '#ffffff',
       overflow: 'hidden',
     },
     cardRowFirst: {
-      borderTopWidth: 1,
-      borderTopLeftRadius: moderateScale(12),
-      borderTopRightRadius: moderateScale(12),
+      borderTopLeftRadius: moderateScale(24),
+      borderTopRightRadius: moderateScale(24),
     },
     cardRowLast: {
-      borderBottomWidth: 1,
-      borderBottomLeftRadius: moderateScale(12),
-      borderBottomRightRadius: moderateScale(12),
+      borderBottomLeftRadius: moderateScale(24),
+      borderBottomRightRadius: moderateScale(24),
     },
     cardRowMiddle: {},
     cardRowOnly: {
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(24),
     },
     cardDivider: {
-      height: 1,
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      marginHorizontal: moderateScale(14),
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: Color(theme.colors.text).alpha(0.14).toString(),
+      marginHorizontal: moderateScale(18),
     },
 
     // Rows
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(12),
-      paddingHorizontal: moderateScale(14),
-    },
-    rowPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      minHeight: moderateScale(56),
+      paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(18),
     },
     rowActions: {
       flexDirection: 'row',
@@ -1178,36 +1187,27 @@ const createStyles = (theme: Theme) =>
     deleteButton: {
       padding: moderateScale(6),
       borderRadius: moderateScale(8),
-      marginLeft: moderateScale(6),
+      marginStart: moderateScale(6),
     },
     rowContent: {
       flex: 1,
-      marginRight: moderateScale(10),
+      marginEnd: moderateScale(10),
     },
     rowName: {
       textAlign: 'left',
-      fontSize: moderateScale(13.5),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
-    },
-    rowNameActive: {
+      fontSize: theme.typography.mediumSize,
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
     },
+    rowNameActive: {
+      fontFamily: 'Manrope-Bold',
+    },
     rowNativeName: {
       textAlign: 'left',
-      fontSize: moderateScale(11.5),
+      fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-Regular',
-      color: theme.colors.textTertiary,
-      marginTop: moderateScale(1),
-    },
-
-    // Selected dot indicator
-    selectedDot: {
-      width: moderateScale(8),
-      height: moderateScale(8),
-      borderRadius: moderateScale(4),
-      backgroundColor: theme.colors.text,
+      color: Color(theme.colors.text).alpha(0.5).toString(),
+      marginTop: moderateScale(2),
     },
 
     // Progress
@@ -1217,14 +1217,14 @@ const createStyles = (theme: Theme) =>
       gap: moderateScale(6),
     },
     progressText: {
-      fontSize: moderateScale(11),
+      fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textTertiary,
     },
 
     // Empty
     emptyText: {
-      fontSize: moderateScale(13),
+      fontSize: theme.typography.smallSize,
       fontFamily: 'Manrope-Regular',
       color: theme.colors.textTertiary,
       textAlign: 'center',

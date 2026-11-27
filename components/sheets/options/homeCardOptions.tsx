@@ -1,6 +1,6 @@
 // @ai-generated
 import React, {useCallback} from 'react';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {useRouter} from 'expo-router';
 import {useTranslation} from 'react-i18next';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
@@ -37,6 +37,13 @@ export interface HomeCardOptionsPayload {
   userRecitationId?: string; // @ai
   variant: 'recent' | 'reciter';
   onContinuePlaying?: () => void;
+  // @ai-start
+  /** Browse › All reciters: opens the profile in its own tab's stack. */
+  onOpen?: () => void;
+  /** Browse › All reciters: plays or shuffles everything they recorded. */
+  onPlayAll?: () => void;
+  onShuffleAll?: () => void;
+  // @ai-end
 }
 
 /**
@@ -104,16 +111,21 @@ export function useHomeCardOptions(
 
   const handleClose = close;
 
+  const onOpen = payload.onOpen; // @ai
   const handleGoToReciter = useCallback(() => {
     handleClose();
     if (actionReciterId === undefined) return; // @ai
+    if (onOpen) {
+      setTimeout(onOpen, 300); // @ai
+      return;
+    }
     setTimeout(() => {
       router.push({
         pathname: '/(tabs)/(a.home)/reciter/[id]',
         params: {id: actionReciterId}, // @ai
       });
     }, 300);
-  }, [handleClose, router, actionReciterId]); // @ai
+  }, [handleClose, router, actionReciterId, onOpen]); // @ai
 
   const handleToggleFavorite = useCallback(async () => {
     // @ai-start
@@ -205,7 +217,7 @@ export function useHomeCardOptions(
     }
     handleClose();
     setTimeout(() => {
-      SheetManager.show('select-playlist', {
+      showSheet('select-playlist', {
         payload: {
           surah,
           reciterId: actionReciterId,
@@ -289,7 +301,7 @@ export function useHomeCardOptions(
   }, [handleClose, payload]);
 
   const title =
-    variant === 'recent' ? (displaySurahName ?? reciterName) : reciterName;
+    variant === 'recent' ? displaySurahName ?? reciterName : reciterName;
   const subtitle = variant === 'recent' ? reciterName : undefined;
 
   return {

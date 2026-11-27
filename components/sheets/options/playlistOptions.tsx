@@ -1,10 +1,10 @@
 // @ai-generated
 import React from 'react';
 import {confirmDestructive} from '@/utils/confirmDestructive'; // @ai
-import {SheetManager} from 'react-native-actions-sheet';
 import {useTranslation} from 'react-i18next';
 import type {NativeMenuEntry} from '@/components/native/menuTypes';
 import {OptionsMenuView, type OptionsMenuProps} from './OptionsMenu';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 
 export interface PlaylistOptionsPayload {
   playlistId: string;
@@ -62,7 +62,7 @@ export function PlaylistOptionsMenu({
       case 'edit':
         return payload.onEdit?.();
       case 'download':
-        SheetManager.show('playlist-context', {
+        showSheet('playlist-context', {
           payload: {...payload, startDownload: true},
         });
         return;

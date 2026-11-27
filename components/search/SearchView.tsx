@@ -21,7 +21,7 @@ import {
   type CatalogSearchResult,
 } from '@/utils/search/catalog';
 // @ai-end
-import {Feather} from '@expo/vector-icons';
+import {SearchIcon} from '@/components/ActionIcons'; // @ai
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {ReciteToSearchRow} from '@/components/search/ReciteToSearchRow';
@@ -35,7 +35,7 @@ import {resolveSurahPlaybackAction} from '@/utils/surahPlaybackChoice'; // @ai
 import {StyleSheet} from 'react-native';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {SheetManager} from 'react-native-actions-sheet';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 import {ExploreView} from '@/components/search/ExploreView';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {useResponsive} from '@/hooks/useResponsive'; // @ai
@@ -586,7 +586,7 @@ export function SearchView({
           });
           break;
         default:
-          SheetManager.show('select-reciter', {payload: {surahId}});
+          showSheet('select-reciter', {payload: {surahId}});
       }
       // @ai-end
     },
@@ -632,7 +632,7 @@ export function SearchView({
     (result: SearchResult) => {
       dismissKeyboard();
       const payload = buildSurahOptions(result.item as Surah);
-      if (payload) SheetManager.show('surah-options', {payload});
+      if (payload) showSheet('surah-options', {payload});
     },
     [buildSurahOptions, dismissKeyboard],
   );
@@ -792,8 +792,7 @@ export function SearchView({
               </View>
             ) : !recentsLoaded ? null : ( // not "none" while they are being read
               <View style={styles.emptyState}>
-                <Feather
-                  name="search"
+                <SearchIcon
                   size={moderateScale(36)}
                   color={Color(theme.colors.textSecondary)
                     .alpha(0.12)
@@ -868,8 +867,7 @@ export function SearchView({
                 </View>
               ) : searchResults.length === 0 && quranRows.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Feather
-                    name="search"
+                  <SearchIcon
                     size={moderateScale(36)}
                     color={Color(theme.colors.textSecondary)
                       .alpha(0.12)

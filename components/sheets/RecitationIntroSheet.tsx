@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {SheetManager, SheetProps} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetFooter} from './SheetGestures';
 import {Feather} from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTheme} from '@/hooks/useTheme';
 import {formatNumber} from '@/i18n/format';
 import {Theme} from '@/utils/themeUtils';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 interface IntroPoint {
   icon: React.ComponentProps<typeof Feather>['name'];
@@ -27,6 +29,8 @@ export const RecitationIntroSheet = (
 ): React.JSX.Element => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation('sheets');
   const follower = useMushafSettingsStore(s => s.recitationEngine);
   const points: readonly IntroPoint[] = [
@@ -42,7 +46,7 @@ export const RecitationIntroSheet = (
   ];
 
   function close(start: boolean): void {
-    void SheetManager.hide(props.sheetId, {payload: start});
+    void hideSheet('recitation-intro', {payload: start});
   }
 
   return (
@@ -54,7 +58,7 @@ export const RecitationIntroSheet = (
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('recitationIntro.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         {points.map(point => (
           <View key={point.icon} style={styles.point}>
             <Feather

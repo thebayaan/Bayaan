@@ -36,6 +36,7 @@ import DotIndicator from './DotIndicator';
 // @ai-start
 import {useTranslation} from 'react-i18next';
 import {appLayoutDirection, isRTL} from '@/utils/rtl';
+import {useVisibleAfterNativeSheets} from '@/components/native/useVisibleAfterNativeSheets'; // @ai
 // @ai-end
 
 const PAGES_MIN_HEIGHT = moderateScale(280); // @ai
@@ -49,6 +50,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   const {theme} = useTheme();
   const {t} = useTranslation(['settings', 'common']);
   const [visible, setVisible] = useState(false);
+  const modalVisible = useVisibleAfterNativeSheets(visible); // @ai
   const [currentPage, setCurrentPage] = useState(0);
   const [pages, setPages] = useState<OnboardingPage[]>(getOnboardingPages());
   const flatListRef = useRef<FlatList<OnboardingPage>>(null);
@@ -199,7 +201,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
 
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       transparent
       animationType="fade"
       onRequestClose={handleClose}>

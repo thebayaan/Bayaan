@@ -3,7 +3,8 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
+import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
@@ -14,6 +15,7 @@ import {showCreatePlaylistSheet} from '@/components/collection/showCreatePlaylis
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
@@ -21,6 +23,7 @@ export const AddToCollectionSheet = (
   props: SheetProps<'add-to-collection'>,
 ) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40)); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const {importFile, importFiles} = useUploadsStore();
@@ -32,13 +35,13 @@ export const AddToCollectionSheet = (
   );
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('add-to-collection');
+    hideSheet('add-to-collection');
   }, []);
 
   const handleAddFavoriteReciter = useCallback(() => {
     handleClose();
     setTimeout(() => {
-      SheetManager.show('favorite-reciters');
+      showSheet('favorite-reciters');
     }, 300);
   }, [handleClose]);
 
@@ -82,18 +85,13 @@ export const AddToCollectionSheet = (
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.header}>
           <Text style={styles.title}>{t('addToCollection.title')}</Text>
         </View>
 
         <View style={styles.card}>
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleNewUpload}>
+          <Pressable style={[styles.option]} onPress={handleNewUpload}>
             <Feather
               name="mic"
               size={moderateScale(18)}
@@ -106,12 +104,7 @@ export const AddToCollectionSheet = (
 
           <View style={styles.divider} />
 
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleNewPlaylist}>
+          <Pressable style={[styles.option]} onPress={handleNewPlaylist}>
             <PlaylistIcon color={theme.colors.text} size={moderateScale(18)} />
             <Text style={styles.optionText}>
               {t('addToCollection.createPlaylist')}
@@ -120,12 +113,7 @@ export const AddToCollectionSheet = (
 
           <View style={styles.divider} />
 
-          <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-            onPress={handleAddFavoriteReciter}>
+          <Pressable style={[styles.option]} onPress={handleAddFavoriteReciter}>
             <Feather
               name="star"
               size={moderateScale(18)}
@@ -191,9 +179,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(11),
       paddingHorizontal: moderateScale(14),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,

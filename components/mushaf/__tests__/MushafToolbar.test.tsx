@@ -60,7 +60,10 @@ jest.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({theme: {colors: {background: '#fff', text: '#111'}}}),
 }));
 
-jest.mock('@/hooks/useGlassProps', () => ({USE_GLASS: true}));
+jest.mock('@/hooks/useGlassProps', () => ({
+  USE_GLASS: true,
+  useGlassTint: () => 'rgba(0,0,0,0.3)',
+}));
 
 jest.mock('@/components/mushaf/main', () => ({
   __esModule: true,
@@ -274,7 +277,8 @@ describe('after Stop', () => {
       payload: {currentPage: 300},
     });
     mockShowSheet.mockClear();
-    act(() => button('ellipsis.circle').onPress?.());
+    // @ai: a plain glyph; the toolbar draws the glass circle.
+    act(() => button('ellipsis').onPress?.());
     expect(mockShowSheet).toHaveBeenLastCalledWith('mushaf-player-options', {
       payload: {currentPage: 300},
     });

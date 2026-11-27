@@ -10,12 +10,15 @@ import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {GlassView} from 'expo-glass-effect';
 import {ProgressTrack} from '@/components/ProgressTrack'; // @ai
-import {SheetManager} from 'react-native-actions-sheet';
 import {useReducedMotion} from 'react-native-reanimated';
 import {useTranslation} from 'react-i18next';
 import {moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {
+  USE_GLASS,
+  useGlassColorScheme,
+  useGlassTint, // @ai
+} from '@/hooks/useGlassProps';
 import {PauseIcon, PlayIcon} from '@/components/Icons';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {createStyles} from '@/components/cards/recentCardStyles';
@@ -27,6 +30,7 @@ import type {AdhkarSession} from '@/services/adhkar/playback/types';
 // @ai-start
 import {useNativeOptionsMenu} from '@/components/sheets/options/OptionsMenu';
 import {AdhkarSessionOptionsMenu} from '@/components/sheets/options/adhkarSessionOptions';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 /** Progress through the list: the current row counts as reached. */
@@ -54,6 +58,7 @@ export function AdhkarSessionCard({
   const dispatch = useAdhkarSessionStore(s => s.dispatch);
   const reduceMotion = useReducedMotion();
   const glassColorScheme = useGlassColorScheme();
+  const glassTint = useGlassTint(); // @ai
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const active = session.status === 'playing' || session.status === 'loading';
@@ -75,7 +80,7 @@ export function AdhkarSessionCard({
   // On iPad the card is a context menu (long press or secondary click). @ai
   const contextMenu = useNativeOptionsMenu('longPress');
   const handleLongPress = useCallback(() => {
-    SheetManager.show('adhkar-session-options', {
+    showSheet('adhkar-session-options', {
       payload: {title: listTitle, subtitle: position},
     });
   }, [listTitle, position]);
@@ -91,7 +96,11 @@ export function AdhkarSessionCard({
         width != null && {width}, // @ai
       ]}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
+        ? {
+            glassEffectStyle: 'regular',
+            colorScheme: glassColorScheme,
+            tintColor: glassTint,
+          }
         : {})}>
       {/* Background layers (fallback for non-glass), as RecentReciterCard */}
       {!USE_GLASS && (

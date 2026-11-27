@@ -6,7 +6,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useReciterStore} from '@/store/reciterStore';
 import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
@@ -17,11 +17,17 @@ import {Ionicons} from '@expo/vector-icons';
 import {DiscoverIcon} from '@/components/Icons';
 // @ai-start
 import {useTranslation} from 'react-i18next';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 // @ai-end
 
 // @ai-start
 export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
   const {theme} = useTheme();
+  const sheetBottomPadding = useSheetBottomPadding(
+    moderateScale(40),
+    moderateScale(16),
+  ); // @ai
   const styles = createStyles(theme);
   const {t} = useTranslation('sheets');
   const defaultReciter = useReciterStore(state => state.defaultReciter);
@@ -52,7 +58,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
   }, [surahId]);
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('select-reciter');
+    hideSheet('select-reciter');
   }, []);
 
   const handleUseDefaultReciter = useCallback(async () => {
@@ -111,17 +117,14 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{t('selectReciter.title')}</Text>
         </View>
 
         <View style={styles.optionsGrid}>
           <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
+            style={[styles.option]}
             onPress={() =>
               handleReciterSelection(handleUseDefaultReciter, 'useDefault')
             }>
@@ -136,10 +139,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
           </Pressable>
 
           <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
+            style={[styles.option]}
             onPress={() =>
               handleReciterSelection(handleUseRandomReciter, 'randomReciter')
             }>
@@ -148,10 +148,7 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
           </Pressable>
 
           <Pressable
-            style={({pressed}) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
+            style={[styles.option]}
             onPress={() =>
               handleReciterSelection(handleBrowseAllReciters, 'browseAll')
             }>
@@ -225,9 +222,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateScale(12),
       borderWidth: 1,
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,

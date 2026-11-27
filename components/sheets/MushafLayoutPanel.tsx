@@ -1,104 +1,60 @@
 // @ai-generated
-import React, {useState, useCallback} from 'react';
+import React from 'react';
 import {
-  View,
-  Text,
-  Pressable,
-  useWindowDimensions,
   StyleSheet,
-  LayoutAnimation,
   ScrollView as RNScrollView,
   type ScrollViewProps,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
-import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import {Feather} from '@expo/vector-icons';
-import {useTranslation} from 'react-i18next';
-import {MushafSettingsContent} from '@/components/MushafSettingsContent';
-import {ReadingThemeContent} from '@/components/ReadingThemeContent';
-import {flipX} from '@/utils/rtl';
-import {SheetNoDrag} from './SheetGestures';
+import {
+  MushafOptionsContent,
+  type MushafOptionsContext,
+} from '@/components/mushaf-options/MushafOptionsContent'; // @ai
 
-type ActiveScreen = 'theme' | null;
-export type MushafLayoutContext = 'mushaf' | 'player';
+export type MushafLayoutContext = MushafOptionsContext; // @ai
 
 /**
- * Reading settings with the reading-theme picker as a sub-screen. Fills its
- * parent: the sheet, or the iPad popover (which gives it a height).
+ * The Reading options (components/mushaf-options). Fills its parent: the
+ * sheet, or the iPad popover (which gives it a height). @ai
  */
 export function MushafLayoutPanel({
   context,
   ScrollComponent = RNScrollView,
+  onClose,
+  onGrow,
+  onShrink,
+  inLibrarySheet = false,
 }: {
   context?: MushafLayoutContext;
   /** The sheet passes its own ScrollView so drags scroll before closing. */
   ScrollComponent?: React.ComponentType<ScrollViewProps>;
+  // @ai-start
+  /** Closes the popover; the sheet hides itself. */
+  onClose?: () => void;
+  /** Snaps the React Native sheet to its top point. */
+  onGrow?: () => void;
+  /** Snaps it back to its opening point. */
+  onShrink?: () => void;
+  /** On react-native-actions-sheet, whose background is drawn here. */
+  inLibrarySheet?: boolean;
+  // @ai-end
 }) {
-  const {theme} = useTheme();
-  const {height: windowHeight} = useWindowDimensions();
-  const styles = createStyles(theme, windowHeight);
-  const {t} = useTranslation(['sheets', 'common']);
-  const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
-
-  const setActiveScreen = useCallback((screen: ActiveScreen) => {
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(250, 'easeInEaseOut', 'opacity'),
-    );
-    setActiveScreenRaw(screen);
-  }, []);
-
-  const handleBack = useCallback(() => {
-    setActiveScreen(null);
-  }, [setActiveScreen]);
-
-  const handleOpenThemePicker = useCallback(() => {
-    setActiveScreen('theme');
-  }, [setActiveScreen]);
-
-  return activeScreen === null ? (
-    <ScrollComponent
-      style={styles.scrollView}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}>
-      <MushafSettingsContent
-        showTitle={true}
-        context={context}
-        onOpenThemePicker={handleOpenThemePicker}
-      />
-    </ScrollComponent>
-  ) : (
-    <View style={styles.subScreenContainer}>
-      {/* Back header */}
-      <View style={styles.backRowContainer}>
-        <Pressable
-          onPress={handleBack}
-          style={({pressed}) => [styles.backRow, pressed && {opacity: 0.6}]}>
-          <Feather
-            name="chevron-left"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-            style={flipX}
-          />
-          <Text style={styles.backText}>{t('common:actions.back')}</Text>
-        </Pressable>
-        <Text style={styles.subScreenTitle}>
-          {t('mushafLayout.readingTheme')}
-        </Text>
-        <View style={styles.backRowSpacer} />
-      </View>
-
-      {/* Theme picker content. It scrolls in React Native's own ScrollView,
-          so its touches are kept from dragging the sheet. */}
-      {activeScreen === 'theme' && (
-        <SheetNoDrag style={styles.subScreenContent}>
-          <ReadingThemeContent onBack={handleBack} />
-        </SheetNoDrag>
-      )}
-    </View>
+  return (
+    <MushafOptionsContent
+      context={context}
+      ScrollComponent={ScrollComponent}
+      onClose={onClose}
+      onGrow={onGrow}
+      onShrink={onShrink}
+      crossfadeBackground={inLibrarySheet}
+    />
   );
 }
+
+/** The phone sheet's height, as a share of the window. @ai */
+export const MUSHAF_SHEET_HEIGHT_RATIO = 0.82;
 
 export const createStyles = (theme: Theme, windowHeight: number) =>
   ScaledSheet.create({
@@ -111,52 +67,15 @@ export const createStyles = (theme: Theme, windowHeight: number) =>
       borderRightWidth: StyleSheet.hairlineWidth,
       borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
-      height: windowHeight * 0.82, // @ai
+      height: windowHeight * MUSHAF_SHEET_HEIGHT_RATIO, // @ai
+    },
+    // @ai: the sheet's content area
+    fill: {
+      flex: 1,
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
       height: 2.5,
-    },
-    scrollView: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingBottom: moderateScale(40),
-    },
-    subScreenContainer: {
-      flex: 1,
-    },
-    subScreenContent: {
-      flex: 1,
-    },
-    backRowContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(12),
-      paddingVertical: moderateScale(10),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
-      marginBottom: moderateScale(12),
-    },
-    backRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(4),
-    },
-    backText: {
-      fontSize: moderateScale(14),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.text,
-    },
-    subScreenTitle: {
-      flex: 1,
-      textAlign: 'center',
-      fontSize: moderateScale(16),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
-    },
-    backRowSpacer: {
-      width: moderateScale(60),
     },
   });

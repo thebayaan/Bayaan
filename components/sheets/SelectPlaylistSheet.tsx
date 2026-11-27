@@ -11,7 +11,7 @@ import {ScaledSheet, moderateScale} from '@/utils/scale';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, HeartIcon} from '@/components/Icons';
-import {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import {SheetProps} from 'react-native-actions-sheet';
 import ActionSheet from '@/components/sheets/AdaptiveActionSheet';
 import {SheetScrollView} from './SheetGestures';
 import {usePlaylists} from '@/hooks/usePlaylists';
@@ -24,6 +24,7 @@ import Color from 'color';
 import {latinLetterSpacing} from '@/utils/rtl';
 import {useTranslation} from 'react-i18next';
 import {getSurahDisplayName, getSurahMeaning} from '@/i18n/format';
+import {hideSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -66,7 +67,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
   // @ai-end
 
   const handleClose = useCallback(() => {
-    SheetManager.hide('select-playlist');
+    hideSheet('select-playlist');
   }, []);
 
   // Handle playlist selection
@@ -195,10 +196,9 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
             {/* Add to Loved Option */}
             {reciterId && (
               <Pressable
-                style={({pressed}) => [
+                style={[
                   styles.lovedOption,
                   isLovedState && styles.lovedOptionActive,
-                  pressed && styles.lovedOptionPressed,
                 ]}
                 onPress={handleToggleLoved}>
                 <View
@@ -351,9 +351,6 @@ const createStyles = (theme: Theme) =>
     lovedOptionActive: {
       backgroundColor: Color('#FF6B6B').alpha(0.08).toString(),
       borderColor: Color('#FF6B6B').alpha(0.2).toString(),
-    },
-    lovedOptionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     lovedIconContainer: {
       width: moderateScale(50),

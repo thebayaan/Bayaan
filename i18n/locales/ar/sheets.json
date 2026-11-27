@@ -254,7 +254,85 @@
     "endingVerse": "آية النهاية",
     "reciter": "القارئ",
     "play": "تشغيل",
-    "reciterPickerSubtitle": "قرّاء يدعمون التشغيل آيةً بآية"
+    "reciterPickerSubtitle": "قرّاء يدعمون التشغيل آيةً بآية",
+    "listenTitle": "استماع",
+    "changeReciter": "تغيير القارئ",
+    "noReciter": "اختر قارئًا",
+    "whatToPlay": "ماذا تريد أن تسمع",
+    "presetPage": "الصفحة",
+    "presetSurah": "السورة",
+    "presetJuz": "الجزء",
+    "presetCustom": "مخصص",
+    "rangeSubtitlePage": "{{surah}} · صفحة {{page}}",
+    "rangeSubtitleSurah": "{{surah}} · السورة كاملة",
+    "rangeSubtitleJuz": "الجزء {{juz}}",
+    "rangeSubtitleCustom": "{{surah}} · نطاقك",
+    "rangeSubtitleAcross": "من {{from}} إلى {{to}}",
+    "verses_zero": "آية",
+    "verses_one": "آية",
+    "verses_two": "آيتان",
+    "verses_few": "آيات",
+    "verses_many": "آية",
+    "verses_other": "آية",
+    "verseCount_zero": "{{count}} آية",
+    "verseCount_one": "آية واحدة",
+    "verseCount_two": "آيتان",
+    "verseCount_few": "{{count}} آيات",
+    "verseCount_many": "{{count}} آية",
+    "verseCount_other": "{{count}} آية",
+    "editRange": "اختيار الآيات",
+    "repeatTitle": "التكرار",
+    "eachVerse": "كل آية",
+    "wholeRange": "النطاق كاملًا",
+    "fewer": "أقل",
+    "more": "أكثر",
+    "loopShort": "∞",
+    "speedTitle": "السرعة",
+    "repeatStraight": "تُتلى مرة واحدة متتابعة.",
+    "repeatEachLoop": "تتكرر كل آية بلا توقف.",
+    "repeatSentence": "تُتلى كل آية {{verse}}، ثم يُتلى النطاق {{range}}.",
+    "timesOnce": "مرة واحدة",
+    "timesTwice": "مرتين",
+    "timesMany": "{{times}} مرات",
+    "timesLoop": "بلا توقف",
+    "playRange": "تشغيل {{label}}",
+    "restartWithChanges": "إعادة التشغيل بالتغييرات",
+    "speedLive": "تتغير السرعة فورًا",
+    "nowPlayingVerse": "يُتلى الآن {{verse}}",
+    "from": "من",
+    "to": "إلى",
+    "back": "رجوع",
+    "searchVerses": "سورة، أو اكتب 2:255",
+    "modeNumbers": "123",
+    "modeText": "النص",
+    "tapFirst": "اضغط أول آية",
+    "tapLast": "اضغط آخر آية",
+    "extendPlus5": "+5 آيات",
+    "extendPage": "إلى نهاية الصفحة",
+    "extendSurah": "إلى نهاية السورة",
+    "extendJuz": "إلى نهاية الجزء",
+    "useVerses_zero": "استخدم هذه الآيات",
+    "useVerses_one": "استخدم هذه الآية",
+    "useVerses_two": "استخدم الآيتين",
+    "useVerses_few": "استخدم هذه الآيات الـ{{count}}",
+    "useVerses_many": "استخدم هذه الآيات الـ{{count}}",
+    "useVerses_other": "استخدم هذه الآيات الـ{{count}}",
+    "suggestRange": "{{label}}",
+    "suggestVerse": "{{label}} فقط",
+    "suggestToEnd": "من {{label}} إلى نهاية {{surah}}",
+    "suggestPage": "الصفحة {{page}} كاملة",
+    "suggestJuz": "الجزء {{juz}}",
+    "suggestSurah": "سورة {{surah}} كاملة",
+    "suggestUse": "استخدم",
+    "suggestOr": "أو",
+    "noMatches": "لا توجد آيات مطابقة. جرّب 2:255 أو الملك 1-10 أو جزء 30 أو صفحة 42.",
+    "typeHelp": "يمكنك أيضًا كتابة",
+    "hafsNumbers": "ترقيم حفص",
+    "recent": "الأخيرة",
+    "favorites": "المفضلة",
+    "allReciters": "كل القراء",
+    "filterAll": "الكل",
+    "untimedNote": "بعض القراء غير معروضين لأن تلاواتهم بلا توقيت للآيات، فلا يمكن للصفحة متابعتها."
   },
   "playlistContext": {
     "edit": "تعديل قائمة التشغيل",
@@ -555,6 +633,174 @@
     "studyWord": "دراسة {{word}}",
     "morphology": {
       "searchRoot": "ابحث بالجذر {{root}}"
+    }
+  },
+  "wordDetail": {
+    "context": "الآية {{ref}} · الكلمة {{position}} من {{total}}"
+  },
+  "mushafOptions": {
+    "title": "القراءة",
+    "close": "إغلاق",
+    "listSeparator": "، ",
+    "view": {
+      "header": "العرض",
+      "mushaf": "المصحف",
+      "list": "قائمة",
+      "mushafHelp": "الصفحة المطبوعة كما هي في المصحف.",
+      "listHelp": "آية بعد آية، وتحتها الترجمة."
+    },
+    "layout": {
+      "header": "التخطيط",
+      "single": "صفحة واحدة",
+      "book": "كتاب",
+      "scroll": "تمرير",
+      "pages": "صفحات",
+      "continuous": "متصل",
+      "help": {
+        "single": "اسحب جانبًا، صفحة في كل مرة.",
+        "book": "اسحب جانبًا، بكعب وحواف صفحات كالمصحف المطبوع.",
+        "scroll": "تتوالى الصفحات من الأعلى إلى الأسفل. مرّر لأعلى لتواصل القراءة.",
+        "pages": "اسحب جانبًا عبر صفحة من الآيات في كل مرة.",
+        "continuous": "تتوالى الآيات من الأعلى إلى الأسفل بلا فواصل."
+      }
+    },
+    "theme": {
+      "header": "السمة",
+      "help": "الفاتح والداكن والتلقائي تغيّر التطبيق كله. التلقائي يتبع هاتفك.",
+      "modes": {
+        "light": "فاتح",
+        "dark": "داكن",
+        "system": "تلقائي"
+      },
+      "modeLabel": "المظهر، {{mode}}",
+      "modeMenuTitle": "المظهر"
+    },
+    "text": {
+      "title": "النص",
+      "summaryMushaf": "السماكة: {{weight}}",
+      "summaryList": "حجم العربي {{size}} · {{weight}}",
+      "weightHeader": "السماكة",
+      "targets": {
+        "arabic": "العربي",
+        "translation": "الترجمة",
+        "transliteration": "النطق"
+      },
+      "targetNames": {
+        "arabic": "النص العربي",
+        "translation": "الترجمة",
+        "transliteration": "النطق اللاتيني"
+      },
+      "targetsLabel": "النص الذي يتغير حجمه",
+      "sizeLabel": "حجم {{target}}",
+      "mushafHelp": "صفحات المصحف تبقى بحجمها المطبوع. انتقل إلى القائمة لتغيير الحجم.",
+      "listHelp": "لكل نص حجمه الخاص."
+    },
+    "verse": {
+      "title": "تحت كل آية",
+      "translation": "الترجمة",
+      "transliteration": "النطق اللاتيني",
+      "wordByWord": "كلمة بكلمة",
+      "nothing": "لا شيء",
+      "help": "اختر ما تشاء. الترجمة هي ترجمة صحيح إنترناشونال."
+    },
+    "highlights": {
+      "title": "التلوين",
+      "off": "متوقف",
+      "summaryTajweed": "التجويد",
+      "summaryAllah": "أسماء الله",
+      "summaryThemes": "المواضيع",
+      "previewLabel": "معاينة التلوين",
+      "tajweed": "ألوان التجويد",
+      "tajweedHelp": "لكل حكم من أحكام التلاوة لونه",
+      "tajweedPreview": "معاينة في مصحف 1440",
+      "legend": "معاني الألوان",
+      "allah": "أسماء الله",
+      "allahHelp": "لفظ الجلالة والرب باللون الذي تختاره",
+      "colorLabel": "لون التمييز",
+      "themes": "المقاطع الموضوعية",
+      "themesHelp": "يظلل كل مقطع لترى أين يتغير الموضوع",
+      "reflections": "تأملات المجتمع",
+      "reflectionsHelp": "إظهار التأملات تحت كل آية في عرض القائمة"
+    },
+    "legend": {
+      "necessary": {
+        "label": "مد لازم",
+        "detail": "6 حركات"
+      },
+      "obligatory": {
+        "label": "مد واجب",
+        "detail": "4 أو 5 حركات"
+      },
+      "permissible": {
+        "label": "مد جائز",
+        "detail": "2 أو 4 أو 6"
+      },
+      "normal": {
+        "label": "مد طبيعي",
+        "detail": "حركتان"
+      },
+      "ghunnah": {
+        "label": "غنة",
+        "detail": "صوت من الأنف"
+      },
+      "qalqalah": {
+        "label": "قلقلة",
+        "detail": "صدى"
+      },
+      "tafkhim": {
+        "label": "تفخيم",
+        "detail": "حروف مفخمة"
+      },
+      "silent": {
+        "label": "لا يُنطق",
+        "detail": "حرف ساكت"
+      }
+    },
+    "words": {
+      "title": "تفاصيل الكلمات",
+      "meaning": "المعنى",
+      "transliteration": "النطق اللاتيني",
+      "off": "متوقف",
+      "previewLabel": "معاينة تفاصيل الكلمات",
+      "help": "تظهر عند لمس كلمة، وتحت كل كلمة عند تشغيل كلمة بكلمة.",
+      "sample": {
+        "rahim": {
+          "meaning": "the Most Merciful",
+          "translit": "ar-raḥīm"
+        },
+        "allah": {
+          "meaning": "(of) Allah",
+          "translit": "allāhi"
+        }
+      }
+    },
+    "mushafText": {
+      "title": "نص المصحف",
+      "summary": "{{script}} · {{rewayah}}",
+      "back": "القراءة",
+      "scriptHeader": "الخط",
+      "beta": "تجريبي",
+      "scripts": {
+        "dkV1": "طبعة مجمع الملك فهد الكلاسيكية",
+        "dkV2": "طبعة مجمع الملك فهد الحديثة",
+        "indopak": "على طريقة شبه القارة الهندية",
+        "qcfV2": "طبعة المدينة الحديثة · تجريبي"
+      },
+      "rewayahHeader": "الرواية",
+      "rewayahLocked": "مصحف 1440 تجريبي ويعرض رواية حفص فقط.",
+      "qurra": {
+        "asim": "عاصم",
+        "nafi": "نافع",
+        "ibnKathir": "ابن كثير",
+        "abuAmr": "أبو عمرو"
+      },
+      "moreComing": "{{number}} رواية أخرى قادمة حين يجهز نصها.",
+      "about": "الرواية طريقة منقولة في تلاوة القرآن. وحفص هي الأوسع طباعة.",
+      "differences": "إظهار الفروق عن حفص",
+      "differencesHelp": {
+        "words": "يلوّن الكلمات التي تُقرأ بشكل مختلف",
+        "wordsAndSilah": "يلوّن الكلمات التي تُقرأ بشكل مختلف وعلامات الصلة"
+      }
     }
   }
 }

@@ -46,7 +46,15 @@ jest.mock('expo-router', () => ({
   useNavigation: () => ({setOptions: jest.fn(), addListener: jest.fn()}),
 }));
 jest.mock('expo-router/react-navigation', () => ({useHeaderHeight: () => 0}));
+jest.mock('@/components/popovers/ToolPopovers', () => ({
+  ReadingSettingsPopover: () => null,
+}));
+// @ai: the reader's layout transition runs on Reanimated; pass through.
+jest.mock('@/components/mushaf-options/ReaderLayoutTransition', () => ({
+  ReaderLayoutTransition: ({children}: {children: React.ReactNode}) => children,
+}));
 jest.mock('@/hooks/useGlassProps', () => ({
+  useGlassTint: () => undefined,
   USE_GLASS: false,
   useGlassColorScheme: () => 'light',
 }));

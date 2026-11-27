@@ -7,7 +7,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {SheetManager, type SheetProps} from 'react-native-actions-sheet';
+import {type SheetProps} from 'react-native-actions-sheet';
 import {router} from 'expo-router';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
@@ -40,6 +40,8 @@ import {
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {ScaledSheet, moderateScale} from '@/utils/scale';
 import type {Theme} from '@/utils/themeUtils';
+import {hideSheet, showSheet} from '@/components/sheets/sheetControl'; // @ai
+import {useSheetBottomPadding} from '@/components/sheets/useSheetBottomPadding'; // @ai
 
 // Which ayah?: listens and names the ayah being recited, by the reader or
 // anyone nearby, then offers to open or play it. Opened from "Recite to
@@ -74,6 +76,8 @@ export const WhichAyahSheet = (
 ): React.JSX.Element => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  // @ai: a native sheet ends at the home indicator's inset.
+  const sheetBottomPadding = useSheetBottomPadding(moderateScale(40));
   const {t} = useTranslation(['sheets', 'common']);
   // null while checking whether the model is on the phone.
   const [askFirst, setAskFirst] = useState<boolean | null>(null);
@@ -101,7 +105,7 @@ export const WhichAyahSheet = (
       const key = keyOf(ayah);
       const page = digitalKhattDataService.getPageForVerse(key);
       await stopAyahIdentify();
-      await SheetManager.hide(props.sheetId);
+      await hideSheet('which-ayah');
       router.push({
         pathname: '/mushaf',
         params: {
@@ -119,7 +123,7 @@ export const WhichAyahSheet = (
           currentPage: page,
           pendingStartVerseKey: key,
         });
-        SheetManager.show('mushaf-player-options', {
+        showSheet('mushaf-player-options', {
           payload: {currentPage: page},
         });
         return;
@@ -147,13 +151,13 @@ export const WhichAyahSheet = (
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>{t('whichAyah.title')}</Text>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, {paddingBottom: sheetBottomPadding}]}>
         {askFirst === true ? (
           <Intro
             styles={styles}
             theme={theme}
             onStart={begin}
-            onNotNow={() => void SheetManager.hide(props.sheetId)}
+            onNotNow={() => void hideSheet('which-ayah')}
           />
         ) : (
           <IdentifyBody

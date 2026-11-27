@@ -748,7 +748,9 @@ const StepButton: React.FC<{
       {...hoverProps}
       style={({pressed}) => [
         styles.stepButton,
-        (pressed || hovered) && !disabled && styles.hovered,
+        hovered && !disabled && styles.hovered,
+        pressed && !disabled && styles.stepPressed, // @ai
+        disabled && styles.stepDisabled, // @ai
       ]}>
       {/* The chevron on the outer side: › Previous on the right, ‹ Next on the left. */}
       {icon === 'chevron-right' ? (
@@ -934,30 +936,38 @@ function createStyles(theme: Theme, isTablet: boolean) {
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 8,
+      // @ai: the Tafsir footer's look: no band of its own over the sheet,
+      // a faint rule, and bordered pill buttons.
+      paddingHorizontal: moderateScale(16),
       paddingTop: verticalScale(12),
       paddingBottom: verticalScale(18),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: Color(theme.colors.text).alpha(0.08).toString(),
-      backgroundColor: theme.colors.background,
+      borderTopWidth: 1,
+      borderTopColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     stepButton: {
       flexDirection: ROW_FROM_RIGHT,
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 4,
       minHeight: 44,
       minWidth: 44,
-      paddingHorizontal: moderateScale(10),
-      borderRadius: moderateScale(10),
+      paddingHorizontal: moderateScale(14),
+      borderRadius: moderateScale(12),
+      backgroundColor: subtle,
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     stepText: {
       fontFamily: 'Manrope-SemiBold',
       fontSize: moderateScale(callout),
     },
+    stepPressed: {opacity: 0.6},
+    stepDisabled: {opacity: 0.4},
     counter: {
       flexShrink: 1,
-      fontFamily: 'Manrope-Medium',
-      fontSize: moderateScale(footnote),
-      color: secondary,
+      fontFamily: 'Manrope-SemiBold',
+      fontSize: moderateScale(12.5),
+      color: theme.colors.textTertiary,
       textAlign: 'center',
     },
   });

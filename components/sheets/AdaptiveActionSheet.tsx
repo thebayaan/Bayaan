@@ -9,14 +9,19 @@ import React, {
 } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
+  useWindowDimensions,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import {SafeAreaInsetsContext} from 'react-native-safe-area-context';
+import {
+  SafeAreaInsetsContext,
+  initialWindowMetrics,
+} from 'react-native-safe-area-context';
 // eslint-disable-next-line no-restricted-imports -- this is the wrapper
 import ActionSheet, {
   type ActionSheetProps,
@@ -25,6 +30,13 @@ import ActionSheet, {
 import {useResponsive} from '@/hooks/useResponsive';
 import {getRecentTouch, type TouchPoint} from '@/utils/lastTouch';
 import {appLayoutDirection, forceLTR} from '@/utils/rtl';
+// @ai-start
+import {
+  useNativeSheetId,
+  useNativeSheetLevel,
+} from '@/components/native/nativeSheetContext';
+import {fitNativeSheet} from '@/components/native/nativeSheets';
+// @ai-end
 
 /** Widest a sheet gets on iPad (ipad-standards §5.3, sheets and dialogs). */
 export const SHEET_MAX_WIDTH = 560;
@@ -299,10 +311,84 @@ const TabletSheet = forwardRef<ActionSheetRef, TabletSheetProps>(
 );
 TabletSheet.displayName = 'TabletSheet';
 
+// @ai-start
+/**
+ * A sheet's content inside a native sheet (`showSheet`): the native sheet
+ * draws the background, grabber and corners, so the content only fills it.
+ * `onOpen` and `onClose` still run, on mount and when the sheet is gone.
+ */
+function NativeSheetBody({
+  onOpen,
+  onClose,
+  children,
+}: Pick<ActionSheetProps, 'onOpen' | 'onClose' | 'children'>) {
+  const callbacks = useRef({onOpen, onClose});
+  callbacks.current = {onOpen, onClose};
+  useEffect(() => {
+    callbacks.current.onOpen?.();
+    return () => callbacks.current.onClose?.();
+  }, []);
+  const level = useNativeSheetLevel();
+  const {height: windowHeight} = useWindowDimensions();
+  // The sheet's own height, so content given fixed detents gets a bounded
+  // height to scroll in. Inside a ScrollView `flex: 1` alone can leave it as
+  // tall as its content, and its scroll views then never scroll (Word Study,
+  // Tafseer). @ai
+  const [viewport, setViewport] = useState<number | null>(null);
+  if (!level?.fitted) {
+    return <View style={styles.nativeBody}>{children}</View>;
+  }
+
+  // A fitted sheet is as tall as its content plus the space above it; past
+  // the large height its content scrolls. The content ends with the home
+  // indicator's inset, which the detent does not count (the sheet adds the
+  // bottom safe area below the detent), so it comes off.
+  const insets = initialWindowMetrics?.insets;
+  const chrome = NATIVE_BODY_TOP - (insets?.bottom ?? 0);
+  const maxHeight = windowHeight - (insets?.top ?? 0) - LARGE_DETENT_GAP;
+  const onLayout = (event: LayoutChangeEvent) =>
+    fitNativeSheet(
+      level.key,
+      event.nativeEvent.layout.height + chrome,
+      maxHeight,
+    );
+  // The same tree whether fitted or given fixed detents for a while, so
+  // the content keeps its state; with fixed detents it fills the sheet.
+  return (
+    <ScrollView
+      style={styles.nativeScroll}
+      contentContainerStyle={styles.nativeFitBody}
+      scrollEnabled={level.fit}
+      bounces={false}
+      onLayout={event => setViewport(event.nativeEvent.layout.height)}
+      showsVerticalScrollIndicator={false}>
+      <View
+        onLayout={level.fit ? onLayout : undefined}
+        style={
+          level.fit
+            ? undefined
+            : [
+                styles.nativeFill,
+                viewport !== null && {height: viewport - NATIVE_BODY_TOP},
+              ]
+        }>
+        {children}
+      </View>
+    </ScrollView>
+  );
+}
+
+/** Space between the native grabber and the content. */
+const NATIVE_BODY_TOP = 18;
+/** The large detent stops this far below the status bar. */
+const LARGE_DETENT_GAP = 10;
+// @ai-end
+
 /**
  * `ActionSheet` as phones get it. On iPad it never spans the window: it
  * shows as a centered card at most `SHEET_MAX_WIDTH` wide, or as a menu
- * beside its button when `tabletPresentation` is `menu`.
+ * beside its button when `tabletPresentation` is `menu`. Inside a native
+ * sheet it draws only its content.
  *
  * Phone sheets do not stretch up when dragged up (overdraw). At the top of
  * a `SheetScrollView` the sheet's drag runs along with the scroll, and an
@@ -313,6 +399,14 @@ const AdaptiveActionSheet = forwardRef<
   AdaptiveActionSheetProps
 >(({tabletPresentation = 'card', ...props}, ref) => {
   const {isTablet} = useResponsive();
+  const nativeSheetId = useNativeSheetId(); // @ai
+  if (nativeSheetId) {
+    return (
+      <NativeSheetBody onOpen={props.onOpen} onClose={props.onClose}>
+        {props.children}
+      </NativeSheetBody>
+    );
+  }
   if (isTablet) {
     return (
       <TabletSheet ref={ref} presentation={tabletPresentation} {...props} />
@@ -325,6 +419,11 @@ AdaptiveActionSheet.displayName = 'AdaptiveActionSheet';
 export default AdaptiveActionSheet;
 
 const styles = StyleSheet.create({
+  // @ai: below the native grabber
+  nativeBody: {flex: 1, paddingTop: NATIVE_BODY_TOP},
+  nativeFitBody: {flexGrow: 1, paddingTop: NATIVE_BODY_TOP},
+  nativeScroll: {flex: 1},
+  nativeFill: {flex: 1},
   layer: {
     height: '100%',
     backgroundColor: 'transparent',

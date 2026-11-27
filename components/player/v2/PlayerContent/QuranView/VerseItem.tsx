@@ -20,7 +20,6 @@ import {
 } from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations'; // @ai
-import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
@@ -51,6 +50,7 @@ import {useTranslation} from 'react-i18next';
 import {localizeDigits} from '@/i18n/format';
 import {isRTL} from '@/utils/rtl';
 import {useTranslationStore} from '@/store/translationStore';
+import {showSheet} from '@/components/sheets/sheetControl'; // @ai
 // @ai-end
 
 // Type for processed word data from store
@@ -397,7 +397,7 @@ export const VerseItem = memo<VerseItemProps>(
           unitRow.unit.ayah,
           unitRow.rewayah,
         );
-        return SheetManager.show('verse-actions', {
+        return showSheet('verse-actions', {
           payload: word
             ? {
                 ...payload,
@@ -441,7 +441,7 @@ export const VerseItem = memo<VerseItemProps>(
       // @ai-end
       mediumHaptics();
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
-      SheetManager.show('verse-actions', {
+      showSheet('verse-actions', {
         payload: hafsVerseActionsPayload(), // @ai
       });
     }, [
@@ -462,7 +462,7 @@ export const VerseItem = memo<VerseItemProps>(
       }
       // @ai-end
       selectVerse(verseKey, verse.surah_number, verse.ayah_number);
-      SheetManager.show('verse-actions', {
+      showSheet('verse-actions', {
         payload: hafsVerseActionsPayload(), // @ai
       });
     }, [
@@ -482,7 +482,7 @@ export const VerseItem = memo<VerseItemProps>(
       (position: number) => {
         setSelectedWordPosition(position);
         selectVerse(verseKey, verse.surah_number, verse.ayah_number);
-        SheetManager.show('verse-actions', {
+        showSheet('verse-actions', {
           payload: {
             ...hafsVerseActionsPayload(),
             initialScreen: 'words',
@@ -508,7 +508,7 @@ export const VerseItem = memo<VerseItemProps>(
             ? unnumberedWordStudyPayload(unitRow, word, source ?? 'player')
             : null;
         const shown = basmala
-          ? SheetManager.show('verse-actions', {payload: basmala})
+          ? showSheet('verse-actions', {payload: basmala})
           : openUnitActions(false, word);
         if (!shown) return;
         setSelectedUnitWord(word);
